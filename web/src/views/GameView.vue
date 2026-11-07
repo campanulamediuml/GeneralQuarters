@@ -143,8 +143,8 @@ onUnmounted(() => {
             <div><span class="section-kicker">OPERATIONAL MAP</span><h1>{{ state.map.name }}</h1></div>
             <div class="map-legend"><span><i class="legend-a"></i>A 阵营</span><span><i class="legend-b"></i>B 阵营</span><span><i class="legend-move"></i>可移动</span></div>
           </div>
-          <div class="map-canvas"><HexMap :map="state.map" :units="state.units" :selected-unit="selectedUnit" :orders="state.orders" @select-unit="$event.faction === state.you.faction && (selectedID = $event.id)" @move="move" /></div>
-          <div class="map-help"><b>操作方式</b><span>选择己方舰艇</span><i>→</i><span>选择高亮hex</span><i>→</i><span>双方就绪后统一结算</span></div>
+          <div class="map-canvas"><HexMap :map="state.map" :units="state.units" :player-faction="state.you.faction" :selected-unit="selectedUnit" :orders="state.orders" @select-unit="$event.faction === state.you.faction && (selectedID = $event.id)" @move="move" /></div>
+          <div class="map-help"><b>操作方式</b><span>点选或直接拖动己方舰艇</span><i>→</i><span>松开至高亮hex</span><i>→</i><span>双方就绪后统一结算</span></div>
         </section>
 
         <aside class="command-sidebar">
@@ -164,7 +164,7 @@ onUnmounted(() => {
             <div v-if="selectedUnit" class="selected-detail">
               <div><span class="unit-type-badge">{{ selectedUnit.type }}</span><h3>{{ selectedUnit.name }}</h3></div>
               <dl><div><dt>当前位置</dt><dd>{{ selectedUnit.coord }}</dd></div><div><dt>结构强度</dt><dd>{{ selectedUnit.strength }} / {{ selectedUnit.max_strength }}</dd></div><div><dt>可移动hex</dt><dd>{{ selectedUnit.legal_moves?.length || 0 }}</dd></div></dl>
-              <p>请在地图上选择一个绿色高亮hex。</p>
+              <p>点击绿色高亮hex，或将算子拖到目标hex后松开。</p>
             </div>
             <div v-else class="empty-selection"><span class="selection-cross">+</span><p>选择地图上的己方舰艇<br />以下达移动命令</p></div>
           </section>
