@@ -1,0 +1,270 @@
+openapi: 3.0.3
+info:
+  title: General Quarters API
+  version: 0.1.0
+  description: 权威服务器房间与回合接口。所有命中、移动合法性和战争迷雾均由服务器处理。
+servers:
+  - url: /
+tags:
+  - name: System
+  - name: Rooms
+  - name: Commands
+paths:
+  /healthz:
+    get:
+      tags: [System]
+      summary: 健康检查
+      responses:
+        '200':
+          description: 服务正常
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: {type: string, example: ok}
+  /api/v1/openapi.yaml:
+    get:
+      tags: [System]
+      summary: 下载OpenAPI文档
+      responses:
+        '200': {description: OpenAPI YAML}
+  /api/v1/rooms:
+    post:
+      tags: [Rooms]
+      summary: 创建房间并载入剧本
+      description: 创建后自动成为A阵营房主，并通过HttpOnly Cookie建立玩家会话。
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: {type: string, example: 玩家A}
+                scenario_id: {type: string, example: _sandbox, default: _sandbox}
+      responses:
+        '201':
+          description: 创建成功
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RoomResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+  /api/v1/rooms/join:
+    post:
+      tags: [Rooms]
+      summary: 使用邀请token加入房间
+      description: 成功后成为剩余阵营玩家，并建立独立HttpOnly会话。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: {type: string, example: 7K4M-9Q2X-6T8P}
+                name: {type: string, example: 玩家B}
+      responses:
+        '200':
+          description: 加入成功
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/RoomResponse'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+  /api/v1/rooms/{roomID}/state:
+    get:
+      tags: [Rooms]
+      summary: 获取当前玩家的私有游戏快照
+      description: 响应只包含该玩家有权看到的单位、命令和事件。join_token仅向房主返回。
+      parameters:
+        - {$ref: '#/components/parameters/RoomID'}
+      responses:
+        '200':
+          description: 私有快照
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/GameView'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+  /api/v1/rooms/{roomID}/events:
+    get:
+      tags: [Rooms]
+      summary: 获取当前玩家可见的最近100条事件
+      parameters:
+        - {$ref: '#/components/parameters/RoomID'}
+      responses:
+        '200':
+          description: 事件列表，按事件ID倒序
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items: {$ref: '#/components/schemas/Event'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+  /api/v1/rooms/{roomID}/commands:
+    post:
+      tags: [Commands]
+      summary: 提交或替换本回合单位命令
+      description: command_id用于幂等重试。相同玩家、相同unit_id的新SET_MOVE会替换旧命令；CLEAR_MOVE取消命令。
+      parameters:
+        - {$ref: '#/components/parameters/RoomID'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Command'}
+      responses:
+        '200':
+          description: 命令已接受，或返回幂等命令的首次响应
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accepted: {type: boolean}
+                  command_id: {type: string}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '409': {$ref: '#/components/responses/Conflict'}
+  /api/v1/rooms/{roomID}/ready:
+    post:
+      tags: [Commands]
+      summary: 设置回合准备状态
+      description: 所有当前玩家ready后同步结算回合。单人沙盒中，唯一玩家ready即可结算。
+      parameters:
+        - {$ref: '#/components/parameters/RoomID'}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [base_version, ready]
+              properties:
+                base_version: {type: integer, format: int64, example: 1}
+                ready: {type: boolean, example: true}
+      responses:
+        '200':
+          description: 最新私有快照
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/GameView'}
+        '409': {$ref: '#/components/responses/Conflict'}
+components:
+  parameters:
+    RoomID:
+      name: roomID
+      in: path
+      required: true
+      schema: {type: string, example: 04ca6f34b85a65d2}
+  responses:
+    BadRequest:
+      description: 请求或命令无效
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    Unauthorized:
+      description: 缺少或失效的玩家会话
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    Forbidden:
+      description: 会话不属于该房间
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    Conflict:
+      description: base_version已过期或回合正在结算
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: {type: string, example: 目标必须与当前hex相邻且可通行}
+    RoomResponse:
+      type: object
+      properties:
+        room_id: {type: string}
+        player_id: {type: string}
+        join_token: {type: string, description: 仅创建房间时返回}
+    Command:
+      type: object
+      required: [command_id, base_version, type, unit_id]
+      properties:
+        command_id: {type: string, maxLength: 128}
+        base_version: {type: integer, format: int64}
+        type: {type: string, enum: [SET_MOVE, CLEAR_MOVE]}
+        unit_id: {type: string, example: a-flag}
+        coord: {type: string, description: SET_MOVE必填，ABCD坐标, example: '0203'}
+    Player:
+      type: object
+      properties:
+        id: {type: string}
+        faction: {type: string, enum: [A, B]}
+        name: {type: string}
+        is_host: {type: boolean}
+        ready: {type: boolean}
+        connected: {type: boolean}
+    Unit:
+      type: object
+      properties:
+        id: {type: string}
+        name: {type: string}
+        type: {type: string}
+        faction: {type: string}
+        coord: {type: string, example: '0202'}
+        strength: {type: integer}
+        max_strength: {type: integer}
+        legal_moves:
+          type: array
+          description: 仅己方单位返回，由服务器计算
+          items: {type: string}
+    Event:
+      type: object
+      properties:
+        id: {type: integer, format: int64}
+        turn: {type: integer}
+        sequence: {type: integer}
+        type: {type: string}
+        text: {type: string}
+        created_at: {type: string, format: date-time}
+    GameView:
+      type: object
+      properties:
+        room_id: {type: string}
+        status: {type: string}
+        turn: {type: integer}
+        version: {type: integer, format: int64}
+        scenario:
+          type: object
+          properties:
+            id: {type: string}
+            name: {type: string}
+            description: {type: string}
+        map: {type: object, description: 地图定义；ABCD坐标，奇数行向右偏移半格}
+        units:
+          type: array
+          items: {$ref: '#/components/schemas/Unit'}
+        you: {$ref: '#/components/schemas/Player'}
+        players:
+          type: array
+          items: {$ref: '#/components/schemas/Player'}
+        orders:
+          type: array
+          items:
+            type: object
+            properties:
+              type: {type: string}
+              unit_id: {type: string}
+              coord: {type: string}
+        events:
+          type: array
+          items: {$ref: '#/components/schemas/Event'}
+        join_token: {type: string, description: 仅房主可见}
+        server_time: {type: string, format: date-time}

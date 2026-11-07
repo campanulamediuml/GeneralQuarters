@@ -1,0 +1,13 @@
+.git
+.gitignore
+data
+GeneralQuarterData
+node_modules
+web/node_modules
+web/dist
+artifacts
+test-results
+playwright-report
+*.db
+*.db-shm
+*.db-wal

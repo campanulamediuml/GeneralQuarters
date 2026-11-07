@@ -1,0 +1,13 @@
+{
+  "id": "_sandbox",
+  "version": 1,
+  "name": "灰海接触",
+  "map": "_sandbox",
+  "description": "用于验证房间、命令、回合结算与战争迷雾的联机沙盒。选择己方舰艇，再选择高亮hex下达移动命令；双方就绪后由服务器统一结算。敌对舰艇进入同一hex时自动进行测试炮战。",
+  "deployments": [
+    {"id": "a-flag", "unit": "bb", "faction": "A", "name": "苍岭", "coord": "0202"},
+    {"id": "a-screen", "unit": "dd", "faction": "A", "name": "细雨", "coord": "0302"},
+    {"id": "b-flag", "unit": "ca", "faction": "B", "name": "赤礁", "coord": "0208"},
+    {"id": "b-screen", "unit": "dd", "faction": "B", "name": "潮声", "coord": "0608"}
+  ]
+}

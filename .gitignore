@@ -1,0 +1,12 @@
+node_modules/
+web/node_modules/
+web/dist/
+*.db
+*.db-shm
+*.db-wal
+GeneralQuarterData/
+artifacts/
+playwright-report/
+test-results/
+*.tsbuildinfo
+.DS_Store

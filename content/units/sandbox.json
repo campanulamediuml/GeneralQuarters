@@ -1,0 +1,9 @@
+{
+  "id": "sandbox",
+  "version": 1,
+  "units": [
+    {"id": "bb", "type": "BB", "name": "战列舰", "strength": 6},
+    {"id": "ca", "type": "CA", "name": "重巡洋舰", "strength": 4},
+    {"id": "dd", "type": "DD", "name": "驱逐舰", "strength": 3}
+  ]
+}

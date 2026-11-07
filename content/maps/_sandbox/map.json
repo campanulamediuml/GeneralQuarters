@@ -1,0 +1,15 @@
+{
+  "id": "_sandbox",
+  "version": 1,
+  "name": "灰蓝海图 · 通信试验场",
+  "rows": 7,
+  "cols": 9,
+  "cells": [
+    {"coord": "0304", "terrain": "island", "name": "灯塔岛"},
+    {"coord": "0404", "terrain": "shoal", "name": "北侧浅滩"},
+    {"coord": "0506", "terrain": "reef", "name": "暗礁"},
+    {"coord": "0207", "terrain": "island", "name": "瞭望岛"},
+    {"coord": "0602", "terrain": "shoal", "name": "南侧浅滩"},
+    {"coord": "0607", "terrain": "island", "name": "锚地"}
+  ]
+}

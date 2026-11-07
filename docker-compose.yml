@@ -1,0 +1,16 @@
+services:
+  general-quarters:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: general-quarters:0.1.0
+    container_name: general-quarters
+    restart: unless-stopped
+    user: "1000:1000"
+    ports:
+      - "18085:8080"
+    environment:
+      GQ_DATA_DIR: /data
+      GQ_DB_PATH: /data/generalquarters.db
+    volumes:
+      - ${HOME}/GeneralQuarterData:/data
