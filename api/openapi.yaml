@@ -217,19 +217,42 @@ components:
         is_host: {type: boolean}
         ready: {type: boolean}
         connected: {type: boolean}
+    ShipCard:
+      type: object
+      description: 服务端生成的舰船角色卡。当前生命在Unit.strength中，其余当前装备与能力在此字段中。
+      properties:
+        gunnery: {type: integer, description: 服务端按主炮口径×数量÷9四舍五入计算}
+        damage_control: {type: integer, description: 当前损管值，DCT骰点小于等于此值时通过}
+        main_gun_count: {type: integer}
+        main_gun_caliber: {type: number, description: 主炮口径，英寸}
+        heavy_aa: {type: number}
+        light_aa: {type: number}
+        surface_radar: {type: boolean}
+        air_radar: {type: boolean}
+        speed_class: {type: string, enum: [normal, fast, slow, very_slow]}
+        torpedo_salvos: {type: integer, description: 剩余齐射轮数，每轮4枚鱼雷}
+        aircraft: {type: integer, description: 当前舰载机或水上飞机数量}
+        deck_capacity: {type: integer, description: 航母每回合起降容量}
+        elevator_count: {type: integer}
+        depth_charges: {type: integer}
+        cargo: {type: integer}
+        armored_carrier: {type: boolean}
+        historical_loss: {type: string, description: 历史沉没时间，可选}
     Unit:
       type: object
       properties:
         id: {type: string}
+        definition_id: {type: string, description: 单位目录中的稳定定义ID}
         fleet_id: {type: string}
         name: {type: string}
-        type: {type: string}
+        type: {type: string, enum: [BB, BC, CA, CL, DD, CV, CVL, TRS, CVE]}
         faction: {type: string}
         coord: {type: string, example: '0202'}
         heading: {type: string, enum: [E, SE, SW, W, NW, NE]}
         moved: {type: boolean, description: 本回合是否已经移动}
-        strength: {type: integer}
-        max_strength: {type: integer}
+        strength: {type: integer, description: 当前生命值}
+        max_strength: {type: integer, description: 初始生命值}
+        card: {$ref: '#/components/schemas/ShipCard'}
         legal_moves:
           type: array
           description: 仅己方单位返回，由服务器计算

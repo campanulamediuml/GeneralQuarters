@@ -101,7 +101,7 @@
 
 - `scenario`、`map`、`turn`、`version`、`status`；
 - `you`和`players`；
-- 当前阵营可见的`units`；己方单位额外包含`legal_moves`；
+- 当前阵营可见的`units`；己方单位额外包含`legal_moves`。每艘舰船包含`definition_id`、当前/初始生命值和服务端生成的`card`角色卡，字段涵盖火炮、防空、损管、雷达、航速、鱼雷、航空设施、货物等；
 - 服务端生成的`fleets`舰队投影，包含`fleet_id`、成员列表、数量、总强度、朝向、移动状态和合法移动，地图直接渲染此字段；
 - 仅自己的`orders`；
 - 按受众过滤的`events`；

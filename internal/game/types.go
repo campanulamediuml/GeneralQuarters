@@ -38,10 +38,31 @@ type ScenarioDefinition struct {
 }
 
 type UnitDefinition struct {
-	ID       string `json:"id"`
-	Type     string `json:"type"`
-	Name     string `json:"name"`
-	Strength int    `json:"strength"`
+	ID       string   `json:"id"`
+	Type     string   `json:"type"`
+	Name     string   `json:"name"`
+	Strength int      `json:"strength"`
+	Card     ShipCard `json:"card"`
+}
+
+type ShipCard struct {
+	Gunnery        int     `json:"gunnery"`
+	DamageControl  int     `json:"damage_control"`
+	MainGunCount   int     `json:"main_gun_count"`
+	MainGunCaliber float64 `json:"main_gun_caliber"`
+	HeavyAA        float64 `json:"heavy_aa"`
+	LightAA        float64 `json:"light_aa"`
+	SurfaceRadar   bool    `json:"surface_radar"`
+	AirRadar       bool    `json:"air_radar"`
+	SpeedClass     string  `json:"speed_class"`
+	TorpedoSalvos  int     `json:"torpedo_salvos"`
+	Aircraft       int     `json:"aircraft"`
+	DeckCapacity   int     `json:"deck_capacity"`
+	ElevatorCount  int     `json:"elevator_count"`
+	DepthCharges   int     `json:"depth_charges"`
+	Cargo          int     `json:"cargo"`
+	ArmoredCarrier bool    `json:"armored_carrier"`
+	HistoricalLoss string  `json:"historical_loss,omitempty"`
 }
 
 type UnitCatalog struct {
@@ -51,17 +72,19 @@ type UnitCatalog struct {
 }
 
 type Unit struct {
-	ID          string   `json:"id"`
-	FleetID     string   `json:"fleet_id"`
-	Name        string   `json:"name"`
-	Type        string   `json:"type"`
-	Faction     string   `json:"faction"`
-	Coord       string   `json:"coord"`
-	Heading     string   `json:"heading"`
-	Strength    int      `json:"strength"`
-	MaxStrength int      `json:"max_strength"`
-	Moved       bool     `json:"moved"`
-	LegalMoves  []string `json:"legal_moves,omitempty"`
+	ID           string   `json:"id"`
+	DefinitionID string   `json:"definition_id"`
+	FleetID      string   `json:"fleet_id"`
+	Name         string   `json:"name"`
+	Type         string   `json:"type"`
+	Faction      string   `json:"faction"`
+	Coord        string   `json:"coord"`
+	Heading      string   `json:"heading"`
+	Strength     int      `json:"strength"`
+	MaxStrength  int      `json:"max_strength"`
+	Moved        bool     `json:"moved"`
+	Card         ShipCard `json:"card"`
+	LegalMoves   []string `json:"legal_moves,omitempty"`
 }
 
 type FleetGroup struct {

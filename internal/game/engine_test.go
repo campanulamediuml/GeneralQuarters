@@ -35,7 +35,29 @@ func TestScenarioValidationAndMovement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if len(catalog.Units) != 9 || len(state.Units) != 18 {
+		t.Fatalf("沙盒应包含九类共18艘舰船：definitions=%d units=%d", len(catalog.Units), len(state.Units))
+	}
+	types := map[string]bool{}
+	for _, definition := range catalog.Units {
+		types[definition.Type] = true
+	}
+	for _, shipType := range []string{"BB", "BC", "CA", "CL", "DD", "CV", "CVL", "TRS", "CVE"} {
+		if !types[shipType] {
+			t.Fatalf("单位库缺少舰船类型%s", shipType)
+		}
+	}
 	unit := state.Units["a-flag"]
+	if unit.DefinitionID != "bb" || unit.Card.Gunnery != 16 || unit.Card.DamageControl != 7 || !unit.Card.SurfaceRadar {
+		t.Fatalf("战列舰角色卡生成错误：%+v", unit)
+	}
+	carrier := state.Units["a-cv"]
+	if carrier.Card.Gunnery != 4 || carrier.Card.DeckCapacity != 9 || carrier.Card.ElevatorCount != 3 || carrier.Card.Aircraft != 72 {
+		t.Fatalf("航母角色卡生成错误：%+v", carrier)
+	}
+	if state.Definitions["units"] != "2" {
+		t.Fatalf("未记录单位目录版本：%+v", state.Definitions)
+	}
 	if err := ValidateOrder(state, "A", Order{Type: "SET_MOVE", UnitID: unit.ID, Coord: "0203"}); err != nil {
 		t.Fatal(err)
 	}

@@ -5,6 +5,7 @@ import { api } from '../api'
 import type { GameView, Unit } from '../types'
 import { groupFleets } from '../fleet'
 import HexMap from '../components/HexMap.vue'
+import ShipCard from '../components/ShipCard.vue'
 
 const props = defineProps<{ roomID: string }>()
 const router = useRouter()
@@ -253,8 +254,8 @@ onUnmounted(() => {
               <div v-if="selectedFleet" class="selected-detail">
                 <div><span class="unit-type-badge">{{ selectedFleet.type }}</span><h3>{{ selectedFleet.name }}</h3></div>
                 <dl><div><dt>当前位置</dt><dd>{{ selectedFleet.coord }}</dd></div><div><dt>舰队规模</dt><dd>{{ selectedFleet.count }} 艘</dd></div><div><dt>总强度</dt><dd>{{ selectedFleet.strength }} / {{ selectedFleet.max_strength }}</dd></div></dl>
-                <div class="member-list"><span>舰队成员</span><div v-for="member in selectedFleet.members" :key="member.id"><b>{{ member.type }}</b><p>{{ member.name }}</p><code>{{ member.strength }}/{{ member.max_strength }}</code></div></div>
-                <p>点击多舰队hex，可查看并整编其中的舰队。</p>
+                <div class="member-list"><span>舰队成员 · 点击查看角色卡</span><button v-for="member in selectedFleet.members" :key="member.id" class="ship-member" :class="{ active: selectedUnit?.id === member.id }" @click="selectedID = member.id"><b>{{ member.type }}</b><p>{{ member.name }}</p><code>{{ member.strength }}/{{ member.max_strength }}</code></button></div>
+                <ShipCard v-if="selectedUnit" :key="selectedUnit.id" :unit="selectedUnit" />
               </div>
               <div v-else class="empty-selection"><span class="selection-cross">+</span><p>选择地图上的己方舰队<br />查看成员并下达命令</p></div>
             </section>

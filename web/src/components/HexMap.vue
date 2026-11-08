@@ -173,7 +173,7 @@ function headingAngle(heading?: string) {
         v-for="(unit, index) in fleetsAt(hex.coord)"
         :key="unit.fleet_id"
         class="map-unit"
-        :class="[`faction-${unit.faction.toLowerCase()}`, { selected: selectedUnit?.id === unit.id, draggable: unit.faction === playerFaction && !unit.moved, moved: unit.moved, planned: Boolean(moveOrder(unit)), 'drag-source': dragging && draggedUnit?.id === unit.id }]"
+        :class="[`faction-${unit.faction.toLowerCase()}`, { selected: selectedUnit?.fleet_id === unit.fleet_id, draggable: unit.faction === playerFaction && !unit.moved, moved: unit.moved, planned: Boolean(moveOrder(unit)), 'drag-source': dragging && draggedUnit?.id === unit.id }]"
         :data-unit-id="unit.id"
         :data-fleet-id="unit.fleet_id"
         :data-display-coord="unit.coord"

@@ -1,9 +1,213 @@
 {
   "id": "sandbox",
-  "version": 1,
+  "version": 2,
   "units": [
-    {"id": "bb", "type": "BB", "name": "战列舰", "strength": 6},
-    {"id": "ca", "type": "CA", "name": "重巡洋舰", "strength": 4},
-    {"id": "dd", "type": "DD", "name": "驱逐舰", "strength": 3}
+    {
+      "id": "bb",
+      "type": "BB",
+      "name": "战列舰",
+      "strength": 6,
+      "card": {
+        "damage_control": 7,
+        "main_gun_count": 9,
+        "main_gun_caliber": 16,
+        "heavy_aa": 12,
+        "light_aa": 18,
+        "surface_radar": true,
+        "air_radar": true,
+        "speed_class": "normal",
+        "torpedo_salvos": 0,
+        "aircraft": 3,
+        "deck_capacity": 0,
+        "elevator_count": 0,
+        "depth_charges": 0,
+        "cargo": 0,
+        "armored_carrier": false
+      }
+    },
+    {
+      "id": "bc",
+      "type": "BC",
+      "name": "战列巡洋舰",
+      "strength": 5,
+      "card": {
+        "damage_control": 6,
+        "main_gun_count": 9,
+        "main_gun_caliber": 15,
+        "heavy_aa": 10,
+        "light_aa": 16,
+        "surface_radar": true,
+        "air_radar": true,
+        "speed_class": "fast",
+        "torpedo_salvos": 0,
+        "aircraft": 2,
+        "deck_capacity": 0,
+        "elevator_count": 0,
+        "depth_charges": 0,
+        "cargo": 0,
+        "armored_carrier": false
+      }
+    },
+    {
+      "id": "ca",
+      "type": "CA",
+      "name": "重巡洋舰",
+      "strength": 4,
+      "card": {
+        "damage_control": 6,
+        "main_gun_count": 8,
+        "main_gun_caliber": 8,
+        "heavy_aa": 8,
+        "light_aa": 12,
+        "surface_radar": true,
+        "air_radar": false,
+        "speed_class": "normal",
+        "torpedo_salvos": 2,
+        "aircraft": 2,
+        "deck_capacity": 0,
+        "elevator_count": 0,
+        "depth_charges": 0,
+        "cargo": 0,
+        "armored_carrier": false
+      }
+    },
+    {
+      "id": "cl",
+      "type": "CL",
+      "name": "轻巡洋舰",
+      "strength": 3,
+      "card": {
+        "damage_control": 5,
+        "main_gun_count": 6,
+        "main_gun_caliber": 6,
+        "heavy_aa": 6,
+        "light_aa": 14,
+        "surface_radar": true,
+        "air_radar": true,
+        "speed_class": "fast",
+        "torpedo_salvos": 2,
+        "aircraft": 1,
+        "deck_capacity": 0,
+        "elevator_count": 0,
+        "depth_charges": 2,
+        "cargo": 0,
+        "armored_carrier": false
+      }
+    },
+    {
+      "id": "dd",
+      "type": "DD",
+      "name": "驱逐舰",
+      "strength": 3,
+      "card": {
+        "damage_control": 5,
+        "main_gun_count": 5,
+        "main_gun_caliber": 5,
+        "heavy_aa": 2,
+        "light_aa": 8,
+        "surface_radar": true,
+        "air_radar": false,
+        "speed_class": "fast",
+        "torpedo_salvos": 3,
+        "aircraft": 0,
+        "deck_capacity": 0,
+        "elevator_count": 0,
+        "depth_charges": 6,
+        "cargo": 0,
+        "armored_carrier": false
+      }
+    },
+    {
+      "id": "cv",
+      "type": "CV",
+      "name": "航空母舰",
+      "strength": 5,
+      "card": {
+        "damage_control": 6,
+        "main_gun_count": 8,
+        "main_gun_caliber": 5,
+        "heavy_aa": 12,
+        "light_aa": 20,
+        "surface_radar": true,
+        "air_radar": true,
+        "speed_class": "normal",
+        "torpedo_salvos": 0,
+        "aircraft": 72,
+        "deck_capacity": 9,
+        "elevator_count": 3,
+        "depth_charges": 0,
+        "cargo": 0,
+        "armored_carrier": false
+      }
+    },
+    {
+      "id": "cvl",
+      "type": "CVL",
+      "name": "轻型航空母舰",
+      "strength": 4,
+      "card": {
+        "damage_control": 5,
+        "main_gun_count": 0,
+        "main_gun_caliber": 0,
+        "heavy_aa": 8,
+        "light_aa": 14,
+        "surface_radar": false,
+        "air_radar": true,
+        "speed_class": "fast",
+        "torpedo_salvos": 0,
+        "aircraft": 30,
+        "deck_capacity": 6,
+        "elevator_count": 2,
+        "depth_charges": 0,
+        "cargo": 0,
+        "armored_carrier": false
+      }
+    },
+    {
+      "id": "trs",
+      "type": "TRS",
+      "name": "运输船",
+      "strength": 2,
+      "card": {
+        "damage_control": 3,
+        "main_gun_count": 0,
+        "main_gun_caliber": 0,
+        "heavy_aa": 1,
+        "light_aa": 3,
+        "surface_radar": false,
+        "air_radar": false,
+        "speed_class": "slow",
+        "torpedo_salvos": 0,
+        "aircraft": 0,
+        "deck_capacity": 0,
+        "elevator_count": 0,
+        "depth_charges": 0,
+        "cargo": 12,
+        "armored_carrier": false
+      }
+    },
+    {
+      "id": "cve",
+      "type": "CVE",
+      "name": "护航航空母舰",
+      "strength": 3,
+      "card": {
+        "damage_control": 4,
+        "main_gun_count": 4,
+        "main_gun_caliber": 5,
+        "heavy_aa": 4,
+        "light_aa": 10,
+        "surface_radar": false,
+        "air_radar": true,
+        "speed_class": "slow",
+        "torpedo_salvos": 0,
+        "aircraft": 24,
+        "deck_capacity": 4,
+        "elevator_count": 1,
+        "depth_charges": 0,
+        "cargo": 0,
+        "armored_carrier": false
+      }
+    }
   ]
 }

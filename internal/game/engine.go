@@ -3,6 +3,7 @@ package game
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -54,7 +55,7 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 	state := State{
 		ScenarioID: scenario.ID, ScenarioName: scenario.Name, Description: scenario.Description,
 		Map: gameMap, Units: map[string]*Unit{}, RNGState: seed,
-		Definitions: map[string]string{"scenario": fmt.Sprint(scenario.Version), "map": fmt.Sprint(gameMap.Version)},
+		Definitions: map[string]string{"scenario": fmt.Sprint(scenario.Version), "map": fmt.Sprint(gameMap.Version), "units": fmt.Sprint(catalog.Version)},
 	}
 	definitions := map[string]UnitDefinition{}
 	for _, definition := range catalog.Units {
@@ -71,12 +72,25 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		if !ok {
 			return state, fmt.Errorf("单位定义不存在：%s", deployment.Unit)
 		}
+		switch definition.Type {
+		case "BB", "BC", "CA", "CL", "DD", "CV", "CVL", "TRS", "CVE":
+		default:
+			return state, fmt.Errorf("单位%s舰船类型无效：%s", definition.ID, definition.Type)
+		}
+		if definition.Strength <= 0 {
+			return state, fmt.Errorf("单位%s生命值必须大于0", definition.ID)
+		}
 		if !inBounds(gameMap, deployment.Coord) || terrainAt(gameMap, deployment.Coord) == "island" || terrainAt(gameMap, deployment.Coord) == "reef" {
 			return state, fmt.Errorf("部署%s坐标不可通行", deployment.ID)
 		}
+		card := definition.Card
+		card.Gunnery = int(math.Round(card.MainGunCaliber * float64(card.MainGunCount) / 9))
+		if card.SpeedClass == "" {
+			card.SpeedClass = "normal"
+		}
 		state.Units[deployment.ID] = &Unit{
-			ID: deployment.ID, FleetID: deployment.ID, Name: deployment.Name, Type: definition.Type, Faction: deployment.Faction,
-			Coord: deployment.Coord, Heading: "NE", Strength: definition.Strength, MaxStrength: definition.Strength,
+			ID: deployment.ID, DefinitionID: definition.ID, FleetID: deployment.ID, Name: deployment.Name, Type: definition.Type, Faction: deployment.Faction,
+			Coord: deployment.Coord, Heading: "NE", Strength: definition.Strength, MaxStrength: definition.Strength, Card: card,
 		}
 	}
 	return state, nil

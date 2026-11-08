@@ -15,8 +15,29 @@ export interface GameMap {
   cells: MapCell[]
 }
 
+export interface ShipCard {
+  gunnery: number
+  damage_control: number
+  main_gun_count: number
+  main_gun_caliber: number
+  heavy_aa: number
+  light_aa: number
+  surface_radar: boolean
+  air_radar: boolean
+  speed_class: 'normal' | 'fast' | 'slow' | 'very_slow'
+  torpedo_salvos: number
+  aircraft: number
+  deck_capacity: number
+  elevator_count: number
+  depth_charges: number
+  cargo: number
+  armored_carrier: boolean
+  historical_loss?: string
+}
+
 export interface Unit {
   id: string
+  definition_id: string
   fleet_id?: string
   name: string
   type: string
@@ -26,6 +47,7 @@ export interface Unit {
   moved?: boolean
   strength: number
   max_strength: number
+  card: ShipCard
   legal_moves?: string[]
 }
 

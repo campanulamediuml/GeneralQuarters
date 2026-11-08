@@ -1,13 +1,27 @@
 {
   "id": "_sandbox",
-  "version": 1,
+  "version": 2,
   "name": "灰海接触",
   "map": "_sandbox",
-  "description": "用于验证房间、命令、回合结算与战争迷雾的联机沙盒。选择己方舰艇，再选择高亮hex下达移动命令；双方就绪后由服务器统一结算。敌对舰艇进入同一hex时自动进行测试炮战。",
+  "description": "用于验证房间、角色卡、命令、回合结算与战争迷雾的联机沙盒。包含规则书全部九类通用舰船，参数仅用于功能测试。选择己方舰艇，再选择高亮hex下达移动命令；双方就绪后由服务器统一结算。敌对舰艇进入同一hex时自动进行测试炮战。",
   "deployments": [
     {"id": "a-flag", "unit": "bb", "faction": "A", "name": "苍岭", "coord": "0202"},
     {"id": "a-screen", "unit": "dd", "faction": "A", "name": "细雨", "coord": "0302"},
+    {"id": "a-bc", "unit": "bc", "faction": "A", "name": "岚岳", "coord": "0101"},
+    {"id": "a-ca", "unit": "ca", "faction": "A", "name": "铁礁", "coord": "0103"},
+    {"id": "a-cl", "unit": "cl", "faction": "A", "name": "白露", "coord": "0401"},
+    {"id": "a-cv", "unit": "cv", "faction": "A", "name": "云庭", "coord": "0601"},
+    {"id": "a-cvl", "unit": "cvl", "faction": "A", "name": "飞涟", "coord": "0701"},
+    {"id": "a-trs", "unit": "trs", "faction": "A", "name": "远浦", "coord": "0703"},
+    {"id": "a-cve", "unit": "cve", "faction": "A", "name": "守潮", "coord": "0603"},
     {"id": "b-flag", "unit": "ca", "faction": "B", "name": "赤礁", "coord": "0208"},
-    {"id": "b-screen", "unit": "dd", "faction": "B", "name": "潮声", "coord": "0608"}
+    {"id": "b-screen", "unit": "dd", "faction": "B", "name": "潮声", "coord": "0608"},
+    {"id": "b-bb", "unit": "bb", "faction": "B", "name": "烈岭", "coord": "0109"},
+    {"id": "b-bc", "unit": "bc", "faction": "B", "name": "霞冲", "coord": "0309"},
+    {"id": "b-cl", "unit": "cl", "faction": "B", "name": "海雾", "coord": "0409"},
+    {"id": "b-cv", "unit": "cv", "faction": "B", "name": "赤穹", "coord": "0509"},
+    {"id": "b-cvl", "unit": "cvl", "faction": "B", "name": "轻鸿", "coord": "0709"},
+    {"id": "b-trs", "unit": "trs", "faction": "B", "name": "归航", "coord": "0707"},
+    {"id": "b-cve", "unit": "cve", "faction": "B", "name": "护澜", "coord": "0507"}
   ]
 }
