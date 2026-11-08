@@ -98,15 +98,19 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		fleetHomes[fleetID] = deployment
 		card := definition.Card
 		card.Aircraft = 0
+		if deployment.HangarCapacity < 0 {
+			return state, fmt.Errorf("部署%s机库容量不能为负数", deployment.ID)
+		}
 		if card.HangarCapacity == 0 {
 			switch definition.Type {
 			case "CV":
 				card.HangarCapacity = 24
 			case "CVL", "CVE":
 				card.HangarCapacity = 9
-			case "BB", "BC", "CA", "CL":
-				card.HangarCapacity = 1
 			}
+		}
+		if deployment.HangarCapacity > 0 {
+			card.HangarCapacity = deployment.HangarCapacity
 		}
 		card.Gunnery = int(math.Round(card.MainGunCaliber * float64(card.MainGunCount) / 9))
 		if card.SpeedClass == "" {

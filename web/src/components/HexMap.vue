@@ -20,6 +20,7 @@ const emit = defineEmits<{
 }>()
 
 const size = 43
+const zoom = ref(1)
 const mapElement = ref<SVGSVGElement>()
 const ghostElement = ref<SVGGElement>()
 const draggedUnit = ref<FleetGroup>()
@@ -48,6 +49,15 @@ const viewBox = computed(() => `0 0 ${Math.sqrt(3) * size * (props.map.cols + 1)
 const selectedMoves = computed(() => new Set(props.selectedUnit?.legal_moves || []))
 const reconCells = computed(() => new Set(props.reconTasks.flatMap((task) => task.sector_hexes || [])))
 const reconCurrentCells = computed(() => new Set(props.reconTasks.flatMap((task) => task.current_ring_hexes || [])))
+const mapStyle = computed(() => ({ width: `${zoom.value * 100}%`, minWidth: `${620 * zoom.value}px`, maxHeight: 'none' }))
+
+function adjustZoom(amount: number) {
+  zoom.value = Math.min(2.4, Math.max(0.6, Math.round((zoom.value + amount) * 10) / 10))
+}
+
+function wheelZoom(event: WheelEvent) {
+  adjustZoom(event.deltaY > 0 ? -0.2 : 0.2)
+}
 
 function center(coord: string) {
   const row = Number(coord.slice(0, 2))
@@ -166,7 +176,13 @@ function headingAngle(heading?: string) {
 </script>
 
 <template>
-  <svg ref="mapElement" class="hex-map" :viewBox="viewBox" role="img" aria-label="沙盒海图">
+  <div class="map-zoom-controls" @click.stop>
+    <button aria-label="缩小地图" @click="adjustZoom(-0.2)">−</button>
+    <button class="map-zoom-value" aria-label="地图缩放复位" @click="zoom = 1">{{ Math.round(zoom * 100) }}%</button>
+    <button aria-label="放大地图" @click="adjustZoom(0.2)">+</button>
+    <span>滚轮缩放</span>
+  </div>
+  <svg ref="mapElement" class="hex-map" :viewBox="viewBox" :style="mapStyle" :data-zoom="zoom.toFixed(1)" role="img" aria-label="沙盒海图" @wheel.prevent="wheelZoom">
     <g v-for="hex in hexes" :key="hex.coord" class="hex-cell" :data-coord="hex.coord" :class="[`terrain-${hex.terrain}`, { legal: selectedMoves.has(hex.coord), 'drop-hover': dropHover === hex.coord, 'recon-sector': reconCells.has(hex.coord), 'recon-current': reconCurrentCells.has(hex.coord) }]" @click="clickHex(hex.coord)">
       <polygon :points="points(hex.x, hex.y)" />
       <text class="coord-label" :x="hex.x" :y="hex.y - 23">{{ hex.coord }}</text>

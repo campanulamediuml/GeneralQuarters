@@ -236,7 +236,7 @@ components:
         speed_class: {type: string, enum: [normal, fast, slow, very_slow]}
         torpedo_salvos: {type: integer, description: 剩余齐射轮数，每轮4枚鱼雷}
         aircraft: {type: integer, description: 当前舰载机或水上飞机数量}
-        hangar_capacity: {type: integer, description: 独立机库容量；CV默认24，CVL/CVE默认9，水机舰默认1}
+        hangar_capacity: {type: integer, description: 独立机库容量；CV默认24，CVL/CVE默认9，非航母由具体剧本部署指定}
         deck_capacity: {type: integer, description: 航母每回合起降容量}
         elevator_count: {type: integer}
         depth_charges: {type: integer}

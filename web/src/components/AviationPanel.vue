@@ -1,14 +1,19 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import type { AirUnit, AviationView, GameMap, ReconHeading } from '../types'
 import ReconSectorMap from './ReconSectorMap.vue'
 
-const props = defineProps<{ aviation: AviationView; gameMap: GameMap; busy: boolean }>()
+const props = defineProps<{ aviation: AviationView; gameMap: GameMap; focusUnitId?: string; busy: boolean }>()
 const emit = defineEmits<{
   command: [type: 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK', aircraftID: string, options?: { heading?: ReconHeading; sector_width?: 60 | 120; recon_radius?: number }]
 }>()
 const carriers = computed(() => props.aviation.carriers)
 const tasks = computed(() => props.aviation.tasks)
+watch(() => props.focusUnitId, async (unitID) => {
+  if (!unitID) return
+  await nextTick()
+  document.querySelector(`[data-carrier-id="${unitID}"]`)?.scrollIntoView({ block: 'center' })
+}, { immediate: true, flush: 'post' })
 const reconAircraft = ref<AirUnit>()
 const reconHeading = ref<ReconHeading>('W')
 const reconWidth = ref<60 | 120>(60)
@@ -92,7 +97,7 @@ function laneTasks(lane: TaskLane) {
 
     <div v-if="!carriers.length" class="aviation-placeholder"><span>△</span><h2>当前舰队没有航空作业舰</h2><p>在剧本中部署航母或搭载水上飞机的舰船。</p></div>
     <div class="carrier-air-grid">
-      <section v-for="carrier in carriers" :key="carrier.unit_id" class="carrier-air-card" :data-carrier-id="carrier.unit_id">
+      <section v-for="carrier in carriers" :key="carrier.unit_id" class="carrier-air-card" :class="{ focused: focusUnitId === carrier.unit_id }" :data-carrier-id="carrier.unit_id">
         <header><div><span class="unit-type-badge">{{ carrier.type }}</span><h2>{{ carrier.name }}</h2></div><div class="hangar-meter"><span>机库</span><strong>{{ carrier.hangar_used }} / {{ carrier.hangar_capacity }}</strong></div></header>
         <div class="carrier-operation"><span :class="`operation-${carrier.operation || 'idle'}`">{{ carrier.operation === 'launch' ? '本回合：起飞作业' : carrier.operation === 'recover' ? '本回合：降落作业' : carrier.deck_capacity ? '甲板待命' : '水机机库' }}</span><small v-if="carrier.deck_capacity">本回合起飞 {{ carrier.deck_used }} / {{ carrier.deck_capacity }}</small><small v-else>{{ carrier.unit_id }}</small></div>
         <div class="air-counter-grid">

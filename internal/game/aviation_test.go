@@ -18,7 +18,7 @@ func sandboxState(t *testing.T) State {
 func TestAviationProjectionIncludesCarriersAndSeaplaneShips(t *testing.T) {
 	state := sandboxState(t)
 	view := VisibleAviation(state, "B")
-	if len(view.Carriers) != 12 || len(view.Tasks) != 0 {
+	if len(view.Carriers) != 7 || len(view.Tasks) != 0 {
 		t.Fatalf("航空作业舰投影错误：%+v", view)
 	}
 	var carrier *CarrierAirStatus
@@ -39,6 +39,16 @@ func TestAviationProjectionIncludesCarriersAndSeaplaneShips(t *testing.T) {
 	}
 	if seaplanes != 3 {
 		t.Fatalf("水上飞机数量错误：%d", seaplanes)
+	}
+	for _, unitID := range []string{"b-ca-01", "b-ca-02", "b-cl-01"} {
+		if state.Units[unitID].Card.HangarCapacity != 1 || state.Units[unitID].Card.Aircraft != 1 {
+			t.Fatalf("指定水机舰能力或当前搭载错误：%+v", state.Units[unitID])
+		}
+	}
+	for _, unitID := range []string{"b-bb-01", "b-ca-03", "b-ca-04", "b-cl-02", "b-dd-01"} {
+		if state.Units[unitID].Card.HangarCapacity != 0 || state.Units[unitID].Card.Aircraft != 0 {
+			t.Fatalf("普通舰船被错误赋予水机作业能力：%+v", state.Units[unitID])
+		}
 	}
 }
 

@@ -22,13 +22,14 @@ type MapDefinition struct {
 }
 
 type Deployment struct {
-	ID        string `json:"id"`
-	Unit      string `json:"unit"`
-	Faction   string `json:"faction"`
-	Name      string `json:"name"`
-	Coord     string `json:"coord"`
-	FleetID   string `json:"fleet_id"`
-	FleetName string `json:"fleet_name"`
+	ID             string `json:"id"`
+	Unit           string `json:"unit"`
+	Faction        string `json:"faction"`
+	Name           string `json:"name"`
+	Coord          string `json:"coord"`
+	FleetID        string `json:"fleet_id"`
+	FleetName      string `json:"fleet_name"`
+	HangarCapacity int    `json:"hangar_capacity,omitempty"`
 }
 
 type AirDeployment struct {
