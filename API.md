@@ -56,7 +56,36 @@
 }
 ```
 
-`coord`必须位于该单位服务器返回的`legal_moves`中。相同单位的新命令替换旧命令。`CLEAR_MOVE`只需`command_id`、`base_version`、`type`和`unit_id`。
+`coord`必须位于该单位服务器返回的`legal_moves`中。移动由服务器立即生效并递增`version`，不生成待结算移动命令；同一舰队每回合只能移动一次，只要任一成员已移动，整个编队就不能再次移动。`CLEAR_MOVE`仅用于取消旧版协议遗留的待结算移动命令，包含`command_id`、`base_version`、`type`和`unit_id`。
+
+### 整编舰队
+
+```json
+{
+  "command_id":"01J...",
+  "base_version":1,
+  "type":"MERGE_FLEET",
+  "unit_id":"a-screen",
+  "target_unit_id":"a-flag"
+}
+```
+
+`unit_id`为整编源，`target_unit_id`为目标舰队中的单位。双方必须属于当前玩家、位于同一hex且`fleet_id`不同。整编由服务器立即生效并递增`version`。
+
+### 整个hex整编
+
+```json
+{
+  "command_id":"01J...",
+  "base_version":1,
+  "type":"REORGANIZE_HEX",
+  "unit_id":"hex-0302",
+  "coord":"0302",
+  "assignments":{"a-flag":"a-flag","a-screen":"a-flag"}
+}
+```
+
+`assignments`必须包含该hex全部己方单位，值为目标`fleet_id`。同一操作可以合并、拆分或转移成员；不允许遗漏单位、包含其他阵营单位或跨hex整编。整编由服务器立即生效并递增`version`。快照中每个单位还包含`heading`和`moved`。
 
 ### Ready
 
@@ -73,6 +102,7 @@
 - `scenario`、`map`、`turn`、`version`、`status`；
 - `you`和`players`；
 - 当前阵营可见的`units`；己方单位额外包含`legal_moves`；
+- 服务端生成的`fleets`舰队投影，包含`fleet_id`、成员列表、数量、总强度、朝向、移动状态和合法移动，地图直接渲染此字段；
 - 仅自己的`orders`；
 - 按受众过滤的`events`；
 - 仅房主可见的`join_token`。
@@ -87,7 +117,7 @@
 {"type":"turn_resolved","version":2,"time":"2026-..."}
 ```
 
-事件类型：`player_joined`、`orders_updated`、`ready_changed`、`turn_resolved`、`presence_changed`。消息不包含私有状态，收到后应重新请求`state`。连接断开时使用15秒轮询兜底，恢复后重新获取完整快照。
+事件类型：`player_joined`、`orders_updated`、`state_changed`、`ready_changed`、`turn_resolved`、`presence_changed`。消息不包含私有状态，收到后应重新请求`state`。连接断开时使用15秒轮询兜底，恢复后重新获取完整快照。
 
 ## DeepSeek与文字对手扩展
 

@@ -23,8 +23,29 @@ type Server struct {
 	store      *store.Store
 	contentDir string
 	hub        *hub
-	locks      sync.Map
+	actors     sync.Map
 	secure     bool
+}
+
+type roomJob struct {
+	run  func()
+	done chan struct{}
+}
+
+type roomActor struct {
+	jobs  chan roomJob
+	start sync.Once
+}
+
+func newRoomActor() *roomActor {
+	return &roomActor{jobs: make(chan roomJob, 128)}
+}
+
+func (a *roomActor) run() {
+	for job := range a.jobs {
+		job.run()
+		close(job.done)
+	}
 }
 
 type createRoomRequest struct {
@@ -38,11 +59,13 @@ type joinRoomRequest struct {
 }
 
 type commandRequest struct {
-	CommandID   string `json:"command_id"`
-	BaseVersion int64  `json:"base_version"`
-	Type        string `json:"type"`
-	UnitID      string `json:"unit_id"`
-	Coord       string `json:"coord"`
+	CommandID    string            `json:"command_id"`
+	BaseVersion  int64             `json:"base_version"`
+	Type         string            `json:"type"`
+	UnitID       string            `json:"unit_id"`
+	TargetUnitID string            `json:"target_unit_id"`
+	Coord        string            `json:"coord"`
+	Assignments  map[string]string `json:"assignments"`
 }
 
 type readyRequest struct {
@@ -89,21 +112,20 @@ func (s *Server) roomRoutes(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "当前会话不属于此房间")
 		return
 	}
-	lock := s.roomLock(roomID)
-	lock.Lock()
-	defer lock.Unlock()
-	switch {
-	case r.Method == http.MethodGet && action == "state":
-		s.writeState(w, r, roomID, player)
-	case r.Method == http.MethodGet && action == "events":
-		s.writeEvents(w, r, roomID, player)
-	case r.Method == http.MethodPost && action == "commands":
-		s.handleCommand(w, r, roomID, player)
-	case r.Method == http.MethodPost && action == "ready":
-		s.handleReady(w, r, roomID, player)
-	default:
-		writeError(w, http.StatusNotFound, "接口不存在")
-	}
+	s.submitRoom(roomID, func() {
+		switch {
+		case r.Method == http.MethodGet && action == "state":
+			s.writeState(w, r, roomID, player)
+		case r.Method == http.MethodGet && action == "events":
+			s.writeEvents(w, r, roomID, player)
+		case r.Method == http.MethodPost && action == "commands":
+			s.handleCommand(w, r, roomID, player)
+		case r.Method == http.MethodPost && action == "ready":
+			s.handleReady(w, r, roomID, player)
+		default:
+			writeError(w, http.StatusNotFound, "接口不存在")
+		}
+	})
 }
 
 func (s *Server) createRoom(w http.ResponseWriter, r *http.Request) {
@@ -159,9 +181,17 @@ func (s *Server) joinRoom(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "请输入12位房间token")
 		return
 	}
+	roomID, err := s.store.RoomIDByToken(r.Context(), token)
+	if err != nil {
+		writeError(w, http.StatusBadRequest, "房间token无效")
+		return
+	}
 	playerID, _ := randomHex(12)
 	session, _ := randomHex(32)
-	player, err := s.store.JoinRoom(r.Context(), token, strings.TrimSpace(request.Name), playerID, hashToken(session))
+	var player store.Player
+	s.submitRoom(roomID, func() {
+		player, err = s.store.JoinRoom(r.Context(), token, strings.TrimSpace(request.Name), playerID, hashToken(session))
+	})
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
@@ -195,9 +225,27 @@ func (s *Server) handleCommand(w http.ResponseWriter, r *http.Request, roomID st
 		writeError(w, http.StatusConflict, "状态已更新，请刷新后重试")
 		return
 	}
-	order := game.Order{Type: request.Type, UnitID: request.UnitID, Coord: game.NormalizeToken(request.Coord)}
+	order := game.Order{Type: request.Type, UnitID: request.UnitID, TargetUnitID: request.TargetUnitID, Coord: game.NormalizeToken(request.Coord), Assignments: request.Assignments}
 	if err := game.ValidateOrder(room.State, player.Faction, order); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if order.Type == "SET_MOVE" || order.Type == "MERGE_FLEET" || order.Type == "REORGANIZE_HEX" {
+		var events []game.EngineEvent
+		if order.Type == "SET_MOVE" {
+			events = game.ApplyImmediateMove(&room.State, order)
+		} else {
+			events = game.ApplyImmediateOrganization(&room.State, order)
+		}
+		response, _ := json.Marshal(map[string]any{"accepted": true, "command_id": request.CommandID, "version": room.Version + 1})
+		room, err = s.store.ApplyImmediate(r.Context(), room, player.ID, request.CommandID, string(response), room.State, events)
+		if err != nil {
+			writeError(w, http.StatusConflict, "命令结算失败："+err.Error())
+			return
+		}
+		s.hub.broadcast(roomID, "state_changed", room.Version)
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(response)
 		return
 	}
 	response, _ := json.Marshal(map[string]any{"accepted": true, "command_id": request.CommandID})
@@ -299,7 +347,7 @@ func (s *Server) writeState(w http.ResponseWriter, r *http.Request, roomID strin
 	response := map[string]any{
 		"room_id": room.ID, "status": room.Status, "turn": room.Turn, "version": room.Version,
 		"scenario": map[string]any{"id": room.State.ScenarioID, "name": room.State.ScenarioName, "description": room.State.Description},
-		"map":      room.State.Map, "units": game.VisibleUnits(room.State, player.Faction),
+		"map":      room.State.Map, "units": game.VisibleUnits(room.State, player.Faction), "fleets": game.VisibleFleets(room.State, player.Faction),
 		"you": player, "players": players, "orders": ownOrders, "events": events,
 		"server_time": time.Now().UTC(),
 	}
@@ -336,9 +384,13 @@ func (s *Server) setSessionCookie(w http.ResponseWriter, session string) {
 	http.SetCookie(w, &http.Cookie{Name: "gq_session", Value: session, Path: "/", HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: s.secure, MaxAge: 30 * 24 * 3600})
 }
 
-func (s *Server) roomLock(roomID string) *sync.Mutex {
-	lock, _ := s.locks.LoadOrStore(roomID, &sync.Mutex{})
-	return lock.(*sync.Mutex)
+func (s *Server) submitRoom(roomID string, run func()) {
+	value, _ := s.actors.LoadOrStore(roomID, newRoomActor())
+	actor := value.(*roomActor)
+	actor.start.Do(func() { go actor.run() })
+	job := roomJob{run: run, done: make(chan struct{})}
+	actor.jobs <- job
+	<-job.done
 }
 
 func decodeJSON(r *http.Request, target any) error {
@@ -469,7 +521,9 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 	}
 	client := &wsClient{conn: conn, send: make(chan []byte, 32), roomID: player.RoomID, playerID: player.ID}
 	s.hub.add(client)
-	_ = s.store.SetConnected(r.Context(), player.ID, true)
+	s.submitRoom(player.RoomID, func() {
+		_ = s.store.SetConnected(context.Background(), player.ID, true)
+	})
 	s.hub.broadcast(player.RoomID, "presence_changed", 0)
 	done := make(chan struct{})
 	go func() {
@@ -484,7 +538,9 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		ticker.Stop()
 		s.hub.remove(client)
-		_ = s.store.SetConnected(context.Background(), player.ID, false)
+		s.submitRoom(player.RoomID, func() {
+			_ = s.store.SetConnected(context.Background(), player.ID, false)
+		})
 		s.hub.broadcast(player.RoomID, "presence_changed", 0)
 		conn.Close()
 	}()

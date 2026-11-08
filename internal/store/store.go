@@ -198,6 +198,12 @@ func (s *Store) PlayerBySession(ctx context.Context, tokenHash string) (Player, 
 	return player, err
 }
 
+func (s *Store) RoomIDByToken(ctx context.Context, token string) (string, error) {
+	var roomID string
+	err := s.DB.QueryRowContext(ctx, `SELECT id FROM rooms WHERE join_token=?`, token).Scan(&roomID)
+	return roomID, err
+}
+
 func (s *Store) Room(ctx context.Context, roomID string) (Room, error) {
 	var room Room
 	var stateJSON string
@@ -305,6 +311,46 @@ func (s *Store) Orders(ctx context.Context, roomID string, turn int, playerID st
 type OrderRecord struct {
 	PlayerID string
 	Order    game.Order
+}
+
+func (s *Store) ApplyImmediate(ctx context.Context, room Room, playerID, commandID, response string, newState game.State, events []game.EngineEvent) (Room, error) {
+	data, err := json.Marshal(newState)
+	if err != nil {
+		return room, err
+	}
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return room, err
+	}
+	defer tx.Rollback()
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	newVersion := room.Version + 1
+	result, err := tx.ExecContext(ctx, `UPDATE rooms SET state_json=?,version=?,updated_at=? WHERE id=? AND version=?`, data, newVersion, now, room.ID, room.Version)
+	if err != nil {
+		return room, err
+	}
+	if affected, _ := result.RowsAffected(); affected != 1 {
+		return room, fmt.Errorf("房间版本冲突")
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE players SET ready=0 WHERE id=?`, playerID); err != nil {
+		return room, err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE turns SET version=?,state_json=? WHERE room_id=? AND turn=?`, newVersion, data, room.ID, room.Turn); err != nil {
+		return room, err
+	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO commands VALUES(?,?,?,?)`, playerID, commandID, response, now); err != nil {
+		return room, err
+	}
+	for sequence, event := range events {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO events(room_id,turn,sequence,type,text,audience,created_at) VALUES(?,?,?,?,?,?,?)`, room.ID, room.Turn, sequence, event.Type, event.Text, event.Audience, now); err != nil {
+			return room, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return room, err
+	}
+	room.Version, room.State = newVersion, newState
+	return room, nil
 }
 
 func (s *Store) Resolve(ctx context.Context, room Room, newState game.State, events []game.EngineEvent) (Room, error) {

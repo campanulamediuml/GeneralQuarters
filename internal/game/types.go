@@ -52,13 +52,32 @@ type UnitCatalog struct {
 
 type Unit struct {
 	ID          string   `json:"id"`
+	FleetID     string   `json:"fleet_id"`
 	Name        string   `json:"name"`
 	Type        string   `json:"type"`
 	Faction     string   `json:"faction"`
 	Coord       string   `json:"coord"`
+	Heading     string   `json:"heading"`
 	Strength    int      `json:"strength"`
 	MaxStrength int      `json:"max_strength"`
+	Moved       bool     `json:"moved"`
 	LegalMoves  []string `json:"legal_moves,omitempty"`
+}
+
+type FleetGroup struct {
+	ID          string   `json:"id"`
+	FleetID     string   `json:"fleet_id"`
+	Name        string   `json:"name"`
+	Type        string   `json:"type"`
+	Faction     string   `json:"faction"`
+	Coord       string   `json:"coord"`
+	Heading     string   `json:"heading"`
+	Strength    int      `json:"strength"`
+	MaxStrength int      `json:"max_strength"`
+	Moved       bool     `json:"moved"`
+	LegalMoves  []string `json:"legal_moves,omitempty"`
+	Count       int      `json:"count"`
+	Members     []Unit   `json:"members"`
 }
 
 type State struct {
@@ -72,9 +91,11 @@ type State struct {
 }
 
 type Order struct {
-	Type   string `json:"type"`
-	UnitID string `json:"unit_id,omitempty"`
-	Coord  string `json:"coord,omitempty"`
+	Type         string            `json:"type"`
+	UnitID       string            `json:"unit_id,omitempty"`
+	TargetUnitID string            `json:"target_unit_id,omitempty"`
+	Coord        string            `json:"coord,omitempty"`
+	Assignments  map[string]string `json:"assignments,omitempty"`
 }
 
 type EngineEvent struct {

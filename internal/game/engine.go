@@ -75,8 +75,8 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 			return state, fmt.Errorf("部署%s坐标不可通行", deployment.ID)
 		}
 		state.Units[deployment.ID] = &Unit{
-			ID: deployment.ID, Name: deployment.Name, Type: definition.Type, Faction: deployment.Faction,
-			Coord: deployment.Coord, Strength: definition.Strength, MaxStrength: definition.Strength,
+			ID: deployment.ID, FleetID: deployment.ID, Name: deployment.Name, Type: definition.Type, Faction: deployment.Faction,
+			Coord: deployment.Coord, Heading: "NE", Strength: definition.Strength, MaxStrength: definition.Strength,
 		}
 	}
 	return state, nil
@@ -100,6 +100,14 @@ func LegalMoves(state State, unit *Unit) []string {
 	if unit == nil {
 		return nil
 	}
+	if unit.Moved {
+		return []string{}
+	}
+	for _, member := range state.Units {
+		if FleetKey(member) == FleetKey(unit) && member.Moved {
+			return []string{}
+		}
+	}
 	moves := []string{}
 	for _, coord := range Neighbors(unit.Coord) {
 		if !inBounds(state.Map, coord) {
@@ -113,7 +121,41 @@ func LegalMoves(state State, unit *Unit) []string {
 	return moves
 }
 
+func FleetKey(unit *Unit) string {
+	if unit.FleetID == "" {
+		return unit.ID
+	}
+	return unit.FleetID
+}
+
+func headingBetween(from, to string) string {
+	fromRow, fromCol, fromErr := ParseCoord(from)
+	toRow, toCol, toErr := ParseCoord(to)
+	if fromErr != nil || toErr != nil {
+		return "NE"
+	}
+	if toRow == fromRow {
+		if toCol > fromCol {
+			return "E"
+		}
+		return "W"
+	}
+	if toRow < fromRow {
+		if (fromRow%2 == 0 && toCol < fromCol) || (fromRow%2 == 1 && toCol == fromCol) {
+			return "NW"
+		}
+		return "NE"
+	}
+	if (fromRow%2 == 0 && toCol < fromCol) || (fromRow%2 == 1 && toCol == fromCol) {
+		return "SW"
+	}
+	return "SE"
+}
+
 func ValidateOrder(state State, faction string, order Order) error {
+	if order.Type == "REORGANIZE_HEX" {
+		return validateReorganization(state, faction, order)
+	}
 	unit, ok := state.Units[order.UnitID]
 	if !ok || unit.Faction != faction {
 		return fmt.Errorf("单位不存在或不属于当前玩家")
@@ -122,6 +164,9 @@ func ValidateOrder(state State, faction string, order Order) error {
 	case "CLEAR_MOVE":
 		return nil
 	case "SET_MOVE":
+		if unit.Moved {
+			return fmt.Errorf("该舰队本回合已经移动")
+		}
 		if !inBounds(state.Map, order.Coord) {
 			return fmt.Errorf("目标坐标不在地图内")
 		}
@@ -131,17 +176,147 @@ func ValidateOrder(state State, faction string, order Order) error {
 			}
 		}
 		return fmt.Errorf("目标必须与当前hex相邻且可通行")
+	case "MERGE_FLEET":
+		target, ok := state.Units[order.TargetUnitID]
+		if !ok || target.Faction != faction {
+			return fmt.Errorf("目标舰队不存在或不属于当前玩家")
+		}
+		if unit.Coord != target.Coord {
+			return fmt.Errorf("只有同一hex内的舰队可以整编")
+		}
+		if FleetKey(unit) == FleetKey(target) {
+			return fmt.Errorf("这两个单位已经属于同一舰队")
+		}
+		return nil
 	default:
 		return fmt.Errorf("不支持的命令类型")
 	}
 }
 
-func ResolveOrders(state *State, orders []Order) []EngineEvent {
+func validateReorganization(state State, faction string, order Order) error {
+	expected := map[string]bool{}
+	for _, unit := range state.Units {
+		if unit.Faction == faction && unit.Coord == order.Coord {
+			expected[unit.ID] = true
+		}
+	}
+	if len(expected) == 0 || len(order.Assignments) != len(expected) {
+		return fmt.Errorf("整编必须包含当前hex内的全部己方舰船")
+	}
+	fleetSizes := map[string]int{}
+	for unitID, fleetID := range order.Assignments {
+		if !expected[unitID] || strings.TrimSpace(fleetID) == "" || len(fleetID) > 64 {
+			return fmt.Errorf("整编包含无效单位或舰队标识")
+		}
+		fleetSizes[fleetID]++
+		if fleetSizes[fleetID] > 20 {
+			return fmt.Errorf("一支舰队最多允许20艘船")
+		}
+	}
+	return nil
+}
+
+func ApplyImmediateMove(state *State, order Order) []EngineEvent {
+	leader := state.Units[order.UnitID]
 	events := []EngineEvent{}
+	for _, unit := range state.Units {
+		if FleetKey(unit) != FleetKey(leader) {
+			continue
+		}
+		from := unit.Coord
+		unit.Coord = order.Coord
+		unit.Heading = headingBetween(from, order.Coord)
+		unit.Moved = true
+		events = append(events, EngineEvent{Type: "unit_moved", Audience: unit.Faction, Text: fmt.Sprintf("%s从%s移动至%s", unit.Name, from, order.Coord)})
+	}
+	return append(events, resolveContacts(state)...)
+}
+
+func ApplyImmediateOrganization(state *State, order Order) []EngineEvent {
+	if order.Type == "REORGANIZE_HEX" {
+		faction := ""
+		for unitID := range order.Assignments {
+			if unit := state.Units[unitID]; unit != nil {
+				faction = unit.Faction
+			}
+			break
+		}
+		if validateReorganization(*state, faction, order) != nil {
+			return nil
+		}
+		for unitID, fleetID := range order.Assignments {
+			state.Units[unitID].FleetID = fleetID
+		}
+		return []EngineEvent{{Type: "fleet_reorganized", Audience: faction, Text: order.Coord + "内舰队编成已更新"}}
+	}
+	if order.Type == "MERGE_FLEET" {
+		source := state.Units[order.UnitID]
+		target := state.Units[order.TargetUnitID]
+		fleetID := FleetKey(target)
+		for _, unit := range state.Units {
+			if unit.Faction == source.Faction && unit.Coord == source.Coord && FleetKey(unit) == FleetKey(source) {
+				unit.FleetID = fleetID
+			}
+		}
+		return []EngineEvent{{Type: "fleet_merged", Audience: source.Faction, Text: fmt.Sprintf("%s与%s在%s完成整编", source.Name, target.Name, source.Coord)}}
+	}
+	return nil
+}
+
+func ResolveOrders(state *State, orders []Order) []EngineEvent {
+	for _, unit := range state.Units {
+		unit.Moved = false
+	}
+	events := []EngineEvent{}
+	for _, order := range orders {
+		if order.Type != "REORGANIZE_HEX" {
+			continue
+		}
+		faction := ""
+		for unitID := range order.Assignments {
+			if unit := state.Units[unitID]; unit != nil {
+				faction = unit.Faction
+			}
+			break
+		}
+		if validateReorganization(*state, faction, order) != nil {
+			continue
+		}
+		for unitID, fleetID := range order.Assignments {
+			state.Units[unitID].FleetID = fleetID
+		}
+		events = append(events, EngineEvent{Type: "fleet_reorganized", Audience: faction, Text: order.Coord + "内舰队编成已更新"})
+	}
+	for _, order := range orders {
+		if order.Type != "MERGE_FLEET" {
+			continue
+		}
+		source, sourceOK := state.Units[order.UnitID]
+		target, targetOK := state.Units[order.TargetUnitID]
+		if !sourceOK || !targetOK || source.Coord != target.Coord || source.Faction != target.Faction {
+			continue
+		}
+		fleetID := FleetKey(target)
+		for _, unit := range state.Units {
+			if unit.Faction == source.Faction && unit.Coord == source.Coord && FleetKey(unit) == FleetKey(source) {
+				unit.FleetID = fleetID
+			}
+		}
+		events = append(events, EngineEvent{Type: "fleet_merged", Audience: source.Faction, Text: fmt.Sprintf("%s与%s在%s完成整编", source.Name, target.Name, source.Coord)})
+	}
 	moves := map[string]string{}
 	for _, order := range orders {
-		if order.Type == "SET_MOVE" {
-			moves[order.UnitID] = order.Coord
+		if order.Type != "SET_MOVE" {
+			continue
+		}
+		leader, ok := state.Units[order.UnitID]
+		if !ok {
+			continue
+		}
+		for _, unit := range state.Units {
+			if FleetKey(unit) == FleetKey(leader) {
+				moves[unit.ID] = order.Coord
+			}
 		}
 	}
 	ids := sortedUnitIDs(state.Units)
@@ -153,6 +328,7 @@ func ResolveOrders(state *State, orders []Order) []EngineEvent {
 		unit := state.Units[id]
 		from := unit.Coord
 		unit.Coord = coord
+		unit.Heading = headingBetween(from, coord)
 		events = append(events, EngineEvent{Type: "unit_moved", Audience: unit.Faction, Text: fmt.Sprintf("%s从%s移动至%s", unit.Name, from, coord)})
 	}
 	return append(events, resolveContacts(state)...)
@@ -229,6 +405,10 @@ func VisibleUnits(state State, faction string) []Unit {
 		}
 		if visible {
 			copyUnit := *unit
+			copyUnit.FleetID = FleetKey(unit)
+			if copyUnit.Heading == "" {
+				copyUnit.Heading = "NE"
+			}
 			copyUnit.LegalMoves = nil
 			if unit.Faction == faction {
 				copyUnit.LegalMoves = LegalMoves(state, unit)
@@ -238,6 +418,31 @@ func VisibleUnits(state State, faction string) []Unit {
 	}
 	sort.Slice(units, func(i, j int) bool { return units[i].ID < units[j].ID })
 	return units
+}
+
+func VisibleFleets(state State, faction string) []FleetGroup {
+	groups := map[string][]Unit{}
+	for _, unit := range VisibleUnits(state, faction) {
+		id := FleetKey(&unit)
+		groups[id] = append(groups[id], unit)
+	}
+	fleets := []FleetGroup{}
+	for id, members := range groups {
+		sort.Slice(members, func(i, j int) bool { return members[i].ID < members[j].ID })
+		leader := members[0]
+		fleet := FleetGroup{ID: leader.ID, FleetID: id, Name: leader.Name, Type: leader.Type, Faction: leader.Faction, Coord: leader.Coord, Heading: leader.Heading, Count: len(members), Members: members, LegalMoves: leader.LegalMoves}
+		if len(members) > 1 {
+			fleet.Name += "编队"
+		}
+		for _, unit := range members {
+			fleet.Strength += unit.Strength
+			fleet.MaxStrength += unit.MaxStrength
+			fleet.Moved = fleet.Moved || unit.Moved
+		}
+		fleets = append(fleets, fleet)
+	}
+	sort.Slice(fleets, func(i, j int) bool { return fleets[i].FleetID < fleets[j].FleetID })
+	return fleets
 }
 
 func sortedUnitIDs(units map[string]*Unit) []string {

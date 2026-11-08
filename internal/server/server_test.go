@@ -7,6 +7,9 @@ import (
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"path/filepath"
+	"runtime"
+	"sync"
+	"sync/atomic"
 	"testing"
 
 	"generalquarters/internal/game"
@@ -14,13 +17,14 @@ import (
 )
 
 type testView struct {
-	Turn      int            `json:"turn"`
-	Version   int64          `json:"version"`
-	Units     []game.Unit    `json:"units"`
-	You       store.Player   `json:"you"`
-	Players   []store.Player `json:"players"`
-	Orders    []game.Order   `json:"orders"`
-	JoinToken string         `json:"join_token"`
+	Turn      int               `json:"turn"`
+	Version   int64             `json:"version"`
+	Units     []game.Unit       `json:"units"`
+	Fleets    []game.FleetGroup `json:"fleets"`
+	You       store.Player      `json:"you"`
+	Players   []store.Player    `json:"players"`
+	Orders    []game.Order      `json:"orders"`
+	JoinToken string            `json:"join_token"`
 }
 
 type testClient struct {
@@ -124,30 +128,39 @@ func TestTwoPlayerCommandAndTurnFlow(t *testing.T) {
 	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/commands", valid, nil); status != http.StatusOK {
 		t.Fatal("幂等重试失败")
 	}
-	var ordered testView
-	_ = a.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &ordered)
-	if len(ordered.Orders) != 1 {
-		t.Fatalf("幂等命令产生重复命令：%d", len(ordered.Orders))
+	var moved testView
+	_ = a.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &moved)
+	if moved.Version != 2 || len(moved.Orders) != 0 {
+		t.Fatalf("立即移动未更新版本或错误生成待结算命令：%+v", moved)
+	}
+	movedFound := false
+	for _, unit := range moved.Units {
+		if unit.ID == "a-flag" && unit.Coord == "0203" && unit.Moved {
+			movedFound = true
+		}
+	}
+	if !movedFound {
+		t.Fatal("立即移动结果或移动状态未写入私有快照")
 	}
 
 	var readyView testView
-	if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": 1, "ready": true}, &readyView); status != http.StatusOK || readyView.Version != 1 {
+	if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": 2, "ready": true}, &readyView); status != http.StatusOK || readyView.Version != 2 {
 		t.Fatal("单方ready不应结算")
 	}
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": 1, "ready": true}, &readyView); status != http.StatusOK {
+	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": 2, "ready": true}, &readyView); status != http.StatusOK {
 		t.Fatal("双方ready结算失败")
 	}
-	if readyView.Turn != 2 || readyView.Version != 2 {
+	if readyView.Turn != 2 || readyView.Version != 3 {
 		t.Fatalf("回合版本错误：%+v", readyView)
 	}
 	found := false
 	for _, unit := range readyView.Units {
-		if unit.ID == "a-flag" && unit.Coord == "0203" {
+		if unit.ID == "a-flag" && unit.Coord == "0203" && !unit.Moved {
 			found = true
 		}
 	}
 	if !found {
-		t.Fatal("移动结果未写入私有快照")
+		t.Fatal("新回合未重置移动状态")
 	}
 
 	stale := map[string]any{"command_id": "move-stale", "base_version": 1, "type": "SET_MOVE", "unit_id": "a-flag", "coord": "0204"}
@@ -182,5 +195,102 @@ func TestSoloReadyAndInvalidToken(t *testing.T) {
 	other := newTestClient(t, a.base)
 	if status := other.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]string{"token": "XXXX-XXXX-XXXX"}, nil); status != http.StatusBadRequest {
 		t.Fatal("无效token未被拒绝")
+	}
+}
+
+func TestRoomActorSerializesAllJobs(t *testing.T) {
+	app := &Server{}
+	const jobCount = 64
+	var active atomic.Int32
+	var maximum atomic.Int32
+	var completed int
+	start := make(chan struct{})
+	var workers sync.WaitGroup
+	for index := 0; index < jobCount; index++ {
+		workers.Add(1)
+		go func() {
+			defer workers.Done()
+			<-start
+			app.submitRoom("same-room", func() {
+				current := active.Add(1)
+				for {
+					previous := maximum.Load()
+					if current <= previous || maximum.CompareAndSwap(previous, current) {
+						break
+					}
+				}
+				runtime.Gosched()
+				completed++
+				active.Add(-1)
+			})
+		}()
+	}
+	close(start)
+	workers.Wait()
+	if completed != jobCount {
+		t.Fatalf("房间任务丢失：%d/%d", completed, jobCount)
+	}
+	if maximum.Load() != 1 {
+		t.Fatalf("房间任务并发执行，最大并发数：%d", maximum.Load())
+	}
+}
+
+func TestConcurrentCommandsHaveSingleWinner(t *testing.T) {
+	a, _, _, cleanup := setupTestServer(t)
+	defer cleanup()
+	var created roomResponse
+	if status := a.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{}, &created); status != http.StatusCreated {
+		t.Fatal("创建房间失败")
+	}
+	commands := []map[string]any{
+		{"command_id": "concurrent-flag", "base_version": 1, "type": "SET_MOVE", "unit_id": "a-flag", "coord": "0203"},
+		{"command_id": "concurrent-screen", "base_version": 1, "type": "SET_MOVE", "unit_id": "a-screen", "coord": "0303"},
+	}
+	statuses := make(chan int, len(commands))
+	errors := make(chan error, len(commands))
+	for _, command := range commands {
+		go func() {
+			body, err := json.Marshal(command)
+			if err != nil {
+				errors <- err
+				return
+			}
+			request, err := http.NewRequest(http.MethodPost, a.base+"/api/v1/rooms/"+created.RoomID+"/commands", bytes.NewReader(body))
+			if err != nil {
+				errors <- err
+				return
+			}
+			request.Header.Set("Content-Type", "application/json")
+			response, err := a.client.Do(request)
+			if err != nil {
+				errors <- err
+				return
+			}
+			response.Body.Close()
+			statuses <- response.StatusCode
+		}()
+	}
+	accepted, conflicts := 0, 0
+	for range commands {
+		select {
+		case err := <-errors:
+			t.Fatal(err)
+		case status := <-statuses:
+			switch status {
+			case http.StatusOK:
+				accepted++
+			case http.StatusConflict:
+				conflicts++
+			default:
+				t.Fatalf("并发命令返回意外状态码：%d", status)
+			}
+		}
+	}
+	if accepted != 1 || conflicts != 1 {
+		t.Fatalf("同一版本并发命令应只有一个成功：accepted=%d conflicts=%d", accepted, conflicts)
+	}
+	var view testView
+	if status := a.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &view); status != http.StatusOK || view.Version != 2 {
+		t.Fatalf("并发命令后权威版本错误：%+v", view)
 	}
 }

@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onUnmounted, ref } from 'vue'
 import type { GameMap, Order, Unit } from '../types'
+import { fleetOrder, type FleetGroup } from '../fleet'
 
 const props = defineProps<{
   map: GameMap
-  units: Unit[]
+  fleets: FleetGroup[]
   playerFaction: 'A' | 'B'
   selectedUnit?: Unit
   orders: Order[]
@@ -12,16 +13,23 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   selectUnit: [unit: Unit]
+  selectHex: [coord: string]
+  manageHex: [coord: string]
   move: [coord: string]
 }>()
 
 const size = 43
 const mapElement = ref<SVGSVGElement>()
-const draggedUnit = ref<Unit>()
+const ghostElement = ref<SVGGElement>()
+const draggedUnit = ref<FleetGroup>()
 const dragging = ref(false)
-const dragPosition = ref({ x: 0, y: 0 })
 const dropHover = ref('')
 let pointerStart = { x: 0, y: 0 }
+let dragMatrix: DOMMatrix | null = null
+let dragFrame = 0
+let pendingPoint = { x: 0, y: 0 }
+let longPressTimer: ReturnType<typeof setTimeout> | undefined
+let longPressTriggered = false
 
 const hexes = computed(() => {
   const result = []
@@ -54,8 +62,8 @@ function points(x: number, y: number) {
   }).join(' ')
 }
 
-function unitsAt(coord: string) {
-  return props.units.filter((unit) => unit.coord === coord)
+function fleetsAt(coord: string) {
+  return props.fleets.filter((fleet) => fleet.coord === coord).sort((a, b) => Number(a.id === props.selectedUnit?.id) - Number(b.id === props.selectedUnit?.id))
 }
 
 function unitPosition(coord: string, index: number) {
@@ -63,48 +71,80 @@ function unitPosition(coord: string, index: number) {
   return { x: point.x + index * 13 - 6, y: point.y - index * 13 + 5 }
 }
 
-function orderFor(unitID: string) {
-  return props.orders.find((order) => order.unit_id === unitID && order.type === 'SET_MOVE')
+function moveOrder(fleet: FleetGroup) {
+  return fleetOrder(fleet, props.orders)
 }
 
-function startDrag(unit: Unit, event: PointerEvent) {
+function clickHex(coord: string) {
+  if (selectedMoves.value.has(coord)) emit('move', coord)
+  else emit('selectHex', coord)
+}
+
+function startDrag(unit: FleetGroup, event: PointerEvent) {
   if (unit.faction !== props.playerFaction || (event.pointerType === 'mouse' && event.button !== 0)) return
   event.preventDefault()
   emit('selectUnit', unit)
   draggedUnit.value = unit
   pointerStart = { x: event.clientX, y: event.clientY }
-  dragPosition.value = unitPosition(unit.coord, 0)
+  dragMatrix = mapElement.value?.getScreenCTM()?.inverse() || null
+  longPressTriggered = false
+  longPressTimer = setTimeout(() => {
+    longPressTriggered = true
+    emit('manageHex', unit.coord)
+    cancelDrag()
+  }, 550)
   window.addEventListener('pointermove', continueDrag)
   window.addEventListener('pointerup', finishDrag, { once: true })
   window.addEventListener('pointercancel', cancelDrag, { once: true })
 }
 
 function continueDrag(event: PointerEvent) {
-  if (!draggedUnit.value || !mapElement.value) return
-  if (Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y) > 5) dragging.value = true
+  if (!draggedUnit.value || draggedUnit.value.moved || !mapElement.value) return
+  if (Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y) > 5) {
+    if (longPressTimer) clearTimeout(longPressTimer)
+    dragging.value = true
+  }
   if (!dragging.value) return
-  const matrix = mapElement.value.getScreenCTM()
-  if (!matrix) return
+  pendingPoint = { x: event.clientX, y: event.clientY }
+  if (dragFrame) return
+  dragFrame = requestAnimationFrame(renderDrag)
+}
+
+function renderDrag() {
+  dragFrame = 0
+  if (!draggedUnit.value || !mapElement.value || !dragMatrix) return
   const point = mapElement.value.createSVGPoint()
-  point.x = event.clientX
-  point.y = event.clientY
-  const local = point.matrixTransform(matrix.inverse())
-  dragPosition.value = { x: local.x, y: local.y }
-  const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('.hex-cell')
-  const coord = target?.getAttribute('data-coord') || ''
+  point.x = pendingPoint.x
+  point.y = pendingPoint.y
+  const local = point.matrixTransform(dragMatrix)
+  nextTick(() => ghostElement.value?.setAttribute('transform', `translate(${local.x}, ${local.y})`))
+  const coord = coordAtPoint(pendingPoint.x, pendingPoint.y)
   dropHover.value = draggedUnit.value.legal_moves?.includes(coord) ? coord : ''
 }
 
 function finishDrag(event: PointerEvent) {
-  if (dragging.value && draggedUnit.value) {
-    const target = document.elementFromPoint(event.clientX, event.clientY)?.closest('.hex-cell')
-    const coord = target?.getAttribute('data-coord') || ''
+  if (longPressTimer) clearTimeout(longPressTimer)
+  if (!longPressTriggered && dragging.value && draggedUnit.value) {
+    const coord = coordAtPoint(event.clientX, event.clientY)
     if (draggedUnit.value.legal_moves?.includes(coord)) emit('move', coord)
   }
+  longPressTriggered = false
   cancelDrag()
 }
 
+function coordAtPoint(x: number, y: number) {
+  for (const element of document.elementsFromPoint(x, y)) {
+    const hex = element.closest('.hex-cell')
+    if (hex) return hex.getAttribute('data-coord') || ''
+  }
+  return ''
+}
+
 function cancelDrag() {
+  if (longPressTimer) clearTimeout(longPressTimer)
+  if (dragFrame) cancelAnimationFrame(dragFrame)
+  dragFrame = 0
+  dragMatrix = null
   window.removeEventListener('pointermove', continueDrag)
   window.removeEventListener('pointerup', finishDrag)
   window.removeEventListener('pointercancel', cancelDrag)
@@ -114,11 +154,15 @@ function cancelDrag() {
 }
 
 onUnmounted(cancelDrag)
+
+function headingAngle(heading?: string) {
+  return { E: 90, SE: 150, SW: 210, W: 270, NW: 300, NE: 30 }[heading || 'NE'] ?? 30
+}
 </script>
 
 <template>
   <svg ref="mapElement" class="hex-map" :viewBox="viewBox" role="img" aria-label="沙盒海图">
-    <g v-for="hex in hexes" :key="hex.coord" class="hex-cell" :data-coord="hex.coord" :class="[`terrain-${hex.terrain}`, { legal: selectedMoves.has(hex.coord), 'drop-hover': dropHover === hex.coord }]" @click="selectedMoves.has(hex.coord) && emit('move', hex.coord)">
+    <g v-for="hex in hexes" :key="hex.coord" class="hex-cell" :data-coord="hex.coord" :class="[`terrain-${hex.terrain}`, { legal: selectedMoves.has(hex.coord), 'drop-hover': dropHover === hex.coord }]" @click="clickHex(hex.coord)">
       <polygon :points="points(hex.x, hex.y)" />
       <text class="coord-label" :x="hex.x" :y="hex.y - 23">{{ hex.coord }}</text>
       <text v-if="hex.name" class="terrain-label" :x="hex.x" :y="hex.y + 27">{{ hex.name }}</text>
@@ -126,10 +170,14 @@ onUnmounted(cancelDrag)
     </g>
     <g v-for="hex in hexes" :key="`units-${hex.coord}`">
       <g
-        v-for="(unit, index) in unitsAt(hex.coord)"
-        :key="unit.id"
+        v-for="(unit, index) in fleetsAt(hex.coord)"
+        :key="unit.fleet_id"
         class="map-unit"
-        :class="[`faction-${unit.faction.toLowerCase()}`, { selected: selectedUnit?.id === unit.id, draggable: unit.faction === playerFaction, 'drag-source': dragging && draggedUnit?.id === unit.id }]"
+        :class="[`faction-${unit.faction.toLowerCase()}`, { selected: selectedUnit?.id === unit.id, draggable: unit.faction === playerFaction && !unit.moved, moved: unit.moved, planned: Boolean(moveOrder(unit)), 'drag-source': dragging && draggedUnit?.id === unit.id }]"
+        :data-unit-id="unit.id"
+        :data-fleet-id="unit.fleet_id"
+        :data-display-coord="unit.coord"
+        :data-moved="String(Boolean(unit.moved))"
         :transform="`translate(${unitPosition(hex.coord, index).x}, ${unitPosition(hex.coord, index).y})`"
         @pointerdown="startDrag(unit, $event)"
         @click.stop="emit('selectUnit', unit)"
@@ -137,16 +185,21 @@ onUnmounted(cancelDrag)
         <rect x="-26" y="-18" width="52" height="36" rx="3" />
         <path class="unit-stripe" d="M-26 11h52v7h-52z" />
         <text class="unit-type" text-anchor="middle" y="4">{{ unit.type }}</text>
-        <text class="unit-strength" x="20" y="-8">{{ unit.strength }}</text>
+        <text class="unit-strength" x="-20" y="-7">{{ unit.strength }}</text>
+        <text class="unit-heading" :transform="`rotate(${headingAngle(unit.heading)} 19 -7)`" x="19" y="-7">▲</text>
+        <text v-if="unit.count > 1" class="unit-count" x="-20" y="16">×{{ unit.count }}</text>
         <text class="unit-name" text-anchor="middle" y="34">{{ unit.name }}</text>
-        <text v-if="orderFor(unit.id)" class="unit-order" text-anchor="middle" y="48">→ {{ orderFor(unit.id)?.coord }}</text>
+        <text v-if="moveOrder(unit)" class="unit-order" text-anchor="middle" y="48">预定 {{ unit.coord }}</text>
+        <text v-else-if="unit.moved" class="unit-order" text-anchor="middle" y="48">已移动</text>
       </g>
     </g>
-    <g v-if="dragging && draggedUnit" class="map-unit drag-ghost" :class="`faction-${draggedUnit.faction.toLowerCase()}`" :transform="`translate(${dragPosition.x}, ${dragPosition.y})`">
+    <g v-if="dragging && draggedUnit" ref="ghostElement" class="map-unit drag-ghost" :class="`faction-${draggedUnit.faction.toLowerCase()}`" transform="translate(-1000, -1000)">
       <rect x="-26" y="-18" width="52" height="36" rx="3" />
       <path class="unit-stripe" d="M-26 11h52v7h-52z" />
       <text class="unit-type" text-anchor="middle" y="4">{{ draggedUnit.type }}</text>
-      <text class="unit-strength" x="20" y="-8">{{ draggedUnit.strength }}</text>
+      <text class="unit-strength" x="-20" y="-7">{{ draggedUnit.strength }}</text>
+      <text class="unit-heading" :transform="`rotate(${headingAngle(draggedUnit.heading)} 19 -7)`" x="19" y="-7">▲</text>
+      <text v-if="draggedUnit.count > 1" class="unit-count" x="-20" y="16">×{{ draggedUnit.count }}</text>
     </g>
   </svg>
 </template>

@@ -1,3 +1,5 @@
+import type { FleetGroup } from './fleet'
+
 export interface MapCell {
   coord: string
   terrain: string
@@ -15,10 +17,13 @@ export interface GameMap {
 
 export interface Unit {
   id: string
+  fleet_id?: string
   name: string
   type: string
   faction: 'A' | 'B'
   coord: string
+  heading?: 'E' | 'SE' | 'SW' | 'W' | 'NW' | 'NE'
+  moved?: boolean
   strength: number
   max_strength: number
   legal_moves?: string[]
@@ -34,9 +39,11 @@ export interface Player {
 }
 
 export interface Order {
-  type: 'SET_MOVE' | 'CLEAR_MOVE'
+  type: 'SET_MOVE' | 'CLEAR_MOVE' | 'MERGE_FLEET' | 'REORGANIZE_HEX'
   unit_id: string
+  target_unit_id?: string
   coord?: string
+  assignments?: Record<string, string>
 }
 
 export interface GameEvent {
@@ -56,6 +63,7 @@ export interface GameView {
   scenario: { id: string; name: string; description: string }
   map: GameMap
   units: Unit[]
+  fleets: FleetGroup[]
   you: Player
   players: Player[]
   orders: Order[]

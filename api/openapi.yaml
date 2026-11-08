@@ -108,8 +108,8 @@ paths:
   /api/v1/rooms/{roomID}/commands:
     post:
       tags: [Commands]
-      summary: 提交或替换本回合单位命令
-      description: command_id用于幂等重试。相同玩家、相同unit_id的新SET_MOVE会替换旧命令；CLEAR_MOVE取消命令。
+      summary: 提交立即生效的移动或整编命令
+      description: command_id用于幂等重试，base_version用于拒绝过期操作。SET_MOVE、MERGE_FLEET和REORGANIZE_HEX立即结算；CLEAR_MOVE仅清理旧版协议的待结算命令。
       parameters:
         - {$ref: '#/components/parameters/RoomID'}
       requestBody:
@@ -199,9 +199,15 @@ components:
       properties:
         command_id: {type: string, maxLength: 128}
         base_version: {type: integer, format: int64}
-        type: {type: string, enum: [SET_MOVE, CLEAR_MOVE]}
+        type: {type: string, enum: [SET_MOVE, CLEAR_MOVE, MERGE_FLEET, REORGANIZE_HEX]}
         unit_id: {type: string, example: a-flag}
-        coord: {type: string, description: SET_MOVE必填，ABCD坐标, example: '0203'}
+        target_unit_id: {type: string, description: MERGE_FLEET必填，目标舰队中的单位, example: a-screen}
+        coord: {type: string, description: SET_MOVE和REORGANIZE_HEX必填，ABCD坐标, example: '0203'}
+        assignments:
+          type: object
+          description: REORGANIZE_HEX必填，该hex全部己方单位ID到fleet_id的映射
+          additionalProperties: {type: string}
+          example: {a-flag: a-flag, a-screen: a-flag}
     Player:
       type: object
       properties:
@@ -215,16 +221,33 @@ components:
       type: object
       properties:
         id: {type: string}
+        fleet_id: {type: string}
         name: {type: string}
         type: {type: string}
         faction: {type: string}
         coord: {type: string, example: '0202'}
+        heading: {type: string, enum: [E, SE, SW, W, NW, NE]}
+        moved: {type: boolean, description: 本回合是否已经移动}
         strength: {type: integer}
         max_strength: {type: integer}
         legal_moves:
           type: array
           description: 仅己方单位返回，由服务器计算
           items: {type: string}
+    FleetGroup:
+      allOf:
+        - {$ref: '#/components/schemas/Unit'}
+        - type: object
+          description: 服务端生成的地图舰队投影；id为舰队首舰单位ID，客户端不得以此修改状态
+          properties:
+            fleet_id: {type: string}
+            members:
+              type: array
+              items: {$ref: '#/components/schemas/Unit'}
+            count: {type: integer, description: 成员舰船数量}
+            strength: {type: integer, description: 服务端汇总的当前总强度}
+            max_strength: {type: integer, description: 服务端汇总的最大总强度}
+            moved: {type: boolean, description: 舰队本回合是否已经移动}
     Event:
       type: object
       properties:
@@ -251,6 +274,10 @@ components:
         units:
           type: array
           items: {$ref: '#/components/schemas/Unit'}
+        fleets:
+          type: array
+          description: 服务端按fleet_id生成的权威舰队投影，地图直接渲染此字段
+          items: {$ref: '#/components/schemas/FleetGroup'}
         you: {$ref: '#/components/schemas/Player'}
         players:
           type: array

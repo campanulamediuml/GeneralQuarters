@@ -85,3 +85,95 @@ func TestResolveAndFogProjection(t *testing.T) {
 		}
 	}
 }
+
+func TestManualFleetMergeAndFleetMovement(t *testing.T) {
+	state := State{RNGState: 42, Map: MapDefinition{Rows: 3, Cols: 3}, Units: map[string]*Unit{
+		"a1": {ID: "a1", FleetID: "a1", Name: "旗舰", Type: "BB", Faction: "A", Coord: "0101", Strength: 3, MaxStrength: 3},
+		"a2": {ID: "a2", FleetID: "a2", Name: "护航", Type: "DD", Faction: "A", Coord: "0101", Strength: 2, MaxStrength: 2},
+	}}
+	merge := Order{Type: "MERGE_FLEET", UnitID: "a2", TargetUnitID: "a1"}
+	if err := ValidateOrder(state, "A", merge); err != nil {
+		t.Fatal(err)
+	}
+	state.Units["a2"].Coord = "0102"
+	if err := ValidateOrder(state, "A", merge); err == nil {
+		t.Fatal("允许跨hex整编")
+	}
+	state.Units["a2"].Coord = "0101"
+	events := ResolveOrders(&state, []Order{merge, {Type: "SET_MOVE", UnitID: "a1", Coord: "0102"}})
+	if FleetKey(state.Units["a1"]) != "a1" || FleetKey(state.Units["a2"]) != "a1" {
+		t.Fatal("整编未统一fleet_id")
+	}
+	if state.Units["a1"].Coord != "0102" || state.Units["a2"].Coord != "0102" {
+		t.Fatal("编队成员未一起移动")
+	}
+	found := false
+	for _, event := range events {
+		if event.Type == "fleet_merged" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("缺少整编战报")
+	}
+}
+
+func TestHexReorganizationValidationAndApply(t *testing.T) {
+	state := State{Map: MapDefinition{Rows: 3, Cols: 3}, Units: map[string]*Unit{
+		"a1": {ID: "a1", FleetID: "a1", Faction: "A", Coord: "0101"},
+		"a2": {ID: "a2", FleetID: "a1", Faction: "A", Coord: "0101"},
+		"a3": {ID: "a3", FleetID: "a3", Faction: "A", Coord: "0101"},
+		"b1": {ID: "b1", FleetID: "b1", Faction: "B", Coord: "0101"},
+	}}
+	order := Order{Type: "REORGANIZE_HEX", Coord: "0101", Assignments: map[string]string{"a1": "a1", "a2": "detached", "a3": "a1"}}
+	if err := ValidateOrder(state, "A", order); err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateOrder(state, "B", order); err == nil {
+		t.Fatal("整编允许包含其他阵营舰船")
+	}
+	invalid := order
+	invalid.Assignments = map[string]string{"a1": "a1", "a2": "a1"}
+	if err := ValidateOrder(state, "A", invalid); err == nil {
+		t.Fatal("整编允许遗漏hex内舰船")
+	}
+	events := ResolveOrders(&state, []Order{order})
+	if state.Units["a1"].FleetID != "a1" || state.Units["a3"].FleetID != "a1" || state.Units["a2"].FleetID != "detached" {
+		t.Fatal("整编未正确应用转移、合并与拆分")
+	}
+	found := false
+	for _, event := range events {
+		if event.Type == "fleet_reorganized" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("缺少整编事件")
+	}
+}
+
+func TestVisibleFleetsAuthoritativeProjection(t *testing.T) {
+	state := State{Map: MapDefinition{Rows: 3, Cols: 3}, Units: map[string]*Unit{
+		"a1": {ID: "a1", FleetID: "fleet", Name: "旗舰", Type: "BB", Faction: "A", Coord: "0101", Heading: "E", Strength: 3, MaxStrength: 4, Moved: true},
+		"a2": {ID: "a2", FleetID: "fleet", Name: "护航", Type: "DD", Faction: "A", Coord: "0101", Heading: "E", Strength: 2, MaxStrength: 2},
+		"b1": {ID: "b1", FleetID: "b1", Name: "远敌", Type: "CA", Faction: "B", Coord: "0303", Strength: 3, MaxStrength: 3},
+	}}
+	fleets := VisibleFleets(state, "A")
+	if len(fleets) != 1 {
+		t.Fatalf("服务端舰队投影数量或视野错误：%+v", fleets)
+	}
+	fleet := fleets[0]
+	if fleet.FleetID != "fleet" || fleet.Count != 2 || len(fleet.Members) != 2 {
+		t.Fatalf("服务端舰队成员聚合错误：%+v", fleet)
+	}
+	if fleet.Strength != 5 || fleet.MaxStrength != 6 || !fleet.Moved || len(fleet.LegalMoves) != 0 {
+		t.Fatalf("服务端舰队状态计算错误：%+v", fleet)
+	}
+	move := Order{Type: "SET_MOVE", UnitID: "a2", Coord: "0102"}
+	if err := ValidateOrder(state, "A", move); err == nil {
+		t.Fatal("混合编队通过未移动成员绕过了整队移动限制")
+	}
+	if moves := LegalMoves(state, state.Units["a2"]); len(moves) != 0 {
+		t.Fatalf("已移动编队的未移动成员仍收到合法目标：%v", moves)
+	}
+}
