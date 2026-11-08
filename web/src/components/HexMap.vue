@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref } from 'vue'
-import type { AirTask, GameMap, Order, Unit } from '../types'
+import type { AirTask, DistanceReference, GameMap, Order, Unit } from '../types'
 import { fleetOrder, type FleetGroup } from '../fleet'
 
 const props = defineProps<{
@@ -10,6 +10,7 @@ const props = defineProps<{
   selectedUnit?: Unit
   orders: Order[]
   reconTasks: AirTask[]
+  distanceReference?: DistanceReference
 }>()
 
 const emit = defineEmits<{
@@ -50,13 +51,19 @@ const selectedMoves = computed(() => new Set(props.selectedUnit?.legal_moves || 
 const reconCells = computed(() => new Set(props.reconTasks.flatMap((task) => task.sector_hexes || [])))
 const reconCurrentCells = computed(() => new Set(props.reconTasks.flatMap((task) => task.current_ring_hexes || [])))
 const mapStyle = computed(() => ({ width: `${zoom.value * 100}%`, minWidth: `${620 * zoom.value}px`, maxHeight: 'none' }))
+const distanceByCoord = computed(() => new Map((props.distanceReference?.cells || []).map((cell) => [cell.coord, cell.distance])))
+
+function distanceAt(coord: string) {
+  return distanceByCoord.value.get(coord) ?? -1
+}
+
+function distanceLabel(coord: string) {
+  const distance = distanceAt(coord)
+  return distance > 0 && distance % 2 === 0 ? String(distance) : ''
+}
 
 function adjustZoom(amount: number) {
   zoom.value = Math.min(2.4, Math.max(0.6, Math.round((zoom.value + amount) * 10) / 10))
-}
-
-function wheelZoom(event: WheelEvent) {
-  adjustZoom(event.deltaY > 0 ? -0.2 : 0.2)
 }
 
 function center(coord: string) {
@@ -180,14 +187,17 @@ function headingAngle(heading?: string) {
     <button aria-label="缩小地图" @click="adjustZoom(-0.2)">−</button>
     <button class="map-zoom-value" aria-label="地图缩放复位" @click="zoom = 1">{{ Math.round(zoom * 100) }}%</button>
     <button aria-label="放大地图" @click="adjustZoom(0.2)">+</button>
-    <span>滚轮缩放</span>
   </div>
-  <svg ref="mapElement" class="hex-map" :viewBox="viewBox" :style="mapStyle" :data-zoom="zoom.toFixed(1)" role="img" aria-label="沙盒海图" @wheel.prevent="wheelZoom">
-    <g v-for="hex in hexes" :key="hex.coord" class="hex-cell" :data-coord="hex.coord" :class="[`terrain-${hex.terrain}`, { legal: selectedMoves.has(hex.coord), 'drop-hover': dropHover === hex.coord, 'recon-sector': reconCells.has(hex.coord), 'recon-current': reconCurrentCells.has(hex.coord) }]" @click="clickHex(hex.coord)">
+  <svg ref="mapElement" class="hex-map" :viewBox="viewBox" :style="mapStyle" :data-zoom="zoom.toFixed(1)" role="img" aria-label="沙盒海图">
+    <g v-for="hex in hexes" :key="hex.coord" class="hex-cell" :data-coord="hex.coord" :data-distance="distanceAt(hex.coord) >= 0 ? distanceAt(hex.coord) : undefined" :class="[`terrain-${hex.terrain}`, { legal: selectedMoves.has(hex.coord), 'drop-hover': dropHover === hex.coord, 'recon-sector': reconCells.has(hex.coord), 'recon-current': reconCurrentCells.has(hex.coord), 'distance-reference': distanceAt(hex.coord) > 0 && distanceAt(hex.coord) <= 2, 'distance-outer': distanceAt(hex.coord) === 2, 'distance-origin': distanceAt(hex.coord) === 0 }]" @click="clickHex(hex.coord)">
       <polygon :points="points(hex.x, hex.y)" />
       <text class="coord-label" :x="hex.x" :y="hex.y - 23">{{ hex.coord }}</text>
       <text v-if="hex.name" class="terrain-label" :x="hex.x" :y="hex.y + 27">{{ hex.name }}</text>
       <circle v-if="selectedMoves.has(hex.coord)" class="legal-dot" :cx="hex.x" :cy="hex.y" r="5" />
+      <g v-if="distanceLabel(hex.coord)" class="distance-label" :data-distance-label="distanceLabel(hex.coord)">
+        <circle :cx="hex.x" :cy="hex.y" r="9" />
+        <text :x="hex.x" :y="hex.y + 3">{{ distanceLabel(hex.coord) }}</text>
+      </g>
     </g>
     <g v-for="hex in hexes" :key="`units-${hex.coord}`">
       <g

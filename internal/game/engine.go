@@ -525,6 +525,9 @@ func VisibleFleets(state State, faction string) []FleetGroup {
 		sort.Slice(members, func(i, j int) bool { return members[i].ID < members[j].ID })
 		leader := members[0]
 		fleet := FleetGroup{ID: leader.ID, FleetID: id, FleetName: leader.FleetName, Name: leader.Name, Type: leader.Type, Faction: leader.Faction, Coord: leader.Coord, Heading: leader.Heading, Count: len(members), Members: members, LegalMoves: leader.LegalMoves}
+		if fleet.Faction == faction {
+			fleet.DistanceReference = BuildDistanceReference(state.Map, fleet.Coord, 8)
+		}
 		if leader.FleetName != "" {
 			fleet.Name = leader.FleetName
 		} else if len(members) > 1 {

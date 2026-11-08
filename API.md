@@ -94,7 +94,7 @@
 ```
 
 - `LAUNCH_CAP`：战斗机从机库升空形成CAP任务，消耗母舰当回合起飞容量，递减机库占用；非战斗机、容量不足或母舰本回合已回收时返回400。
-- `LAUNCH_RECON`：侦察机升空执行扇面侦察，额外提交`heading`、`sector_width`和`recon_radius`。例如`{"command_id":"01J...","base_version":1,"type":"LAUNCH_RECON","aircraft_id":"air-b-10","heading":"W","sector_width":60,"recon_radius":6}`。航向为`E/SE/SW/W/NW/NE`，角度只能为60或120，半径不能超过服务器返回的`recon_radius_limit`。
+- `LAUNCH_RECON`：侦察机升空执行扇面侦察，额外提交`heading`和`sector_width`。例如`{"command_id":"01J...","base_version":1,"type":"LAUNCH_RECON","aircraft_id":"air-b-10","heading":"W","sector_width":60}`。航向为`E/SE/SW/W/NW/NE`，角度只能为60或120。`recon_radius`为可选高级参数，省略或为0时由服务端使用`recon_radius_limit`作为默认最大安全半径，手动值不能超过该上限。
 - `RECOVER_AIR`：将CAP算子回收至机库，使用相同`aircraft_id`；母舰本回合已起飞时返回400。侦察机沿航线自动返航，不能在空中直接回收。
 - `PRIORITIZE_AIR_TASK`：将指定CAP或侦察任务置为最高优先级，其他空中任务顺序由服务端调整。航空界面任务边缘的灰色旗子调用此命令，最高优先级旗子高亮。
 - 这些命令都立即生效并递增`version`，所有校验、机库数量、扇面hex、发现判定、情报、燃油与任务排序仅由Go服务端计算。回合结算清除起降作业状态、CAP剩余航程-1、机库航空算子补满航程；普通侦察机每回合移动2 hex，水机1 hex，飞出和返航逐距离圈搜索。
@@ -114,8 +114,8 @@
 - `scenario`、`map`、`turn`、`version`、`status`；
 - `you`和`players`；
 - 当前阵营可见的`units`；己方单位额外包含`legal_moves`。每艘舰船包含`definition_id`、当前/初始生命值和服务端生成的`card`角色卡，字段涵盖火炮、防空、损管、雷达、航速、鱼雷、航空设施、货物等；
-- 服务端生成的`fleets`舰队投影，包含`fleet_id`、成员列表、数量、总强度、朝向、移动状态和合法移动，地图直接渲染此字段；
-- `aviation.carriers`：全部航空作业舰，包含机库占用/容量、甲板占用/容量、作业类型和航空算子；`aviation.tasks`：按服务端优先级排序的空中任务。侦察任务额外包含`origin_coord`、`current_coord`、`heading`、`sector_width`、`recon_radius`、`recon_distance`、`returning`、`tracking_fleet_id`、`sector_hexes`和`current_ring_hexes`，客户端只渲染这些服务器结果；
+- 服务端生成的`fleets`舰队投影，包含`fleet_id`、成员列表、数量、总强度、朝向、移动状态、合法移动和`distance_reference`；距离参考由`origin/max_distance/cells`组成，每个cell包含服务端计算的`coord/distance`；
+- `aviation.carriers`：全部航空作业舰，包含机库占用/容量、甲板占用/容量、作业类型和航空算子；`aviation.tasks`：按服务端优先级排序的空中任务。空中任务包含以当前位置为中心的`distance_reference`，侦察任务额外包含`origin_coord`、`current_coord`、`heading`、`sector_width`、`recon_radius`、`recon_distance`、`returning`、`tracking_fleet_id`、`sector_hexes`和`current_ring_hexes`，客户端只渲染这些服务器结果；
 - 仅自己的`orders`；
 - 按受众过滤的`events`；
 - 仅房主可见的`join_token`。

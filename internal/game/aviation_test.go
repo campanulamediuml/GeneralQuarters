@@ -115,3 +115,31 @@ func TestAviationRejectsNonFighterAndDeckOverflow(t *testing.T) {
 		t.Fatal("甲板容量溢出未被拒绝")
 	}
 }
+
+func TestDistanceReferenceProjection(t *testing.T) {
+	state := sandboxState(t)
+	var reference *DistanceReference
+	for _, fleet := range VisibleFleets(state, "A") {
+		if fleet.FleetID == "TG-A" {
+			reference = fleet.DistanceReference
+		}
+	}
+	if reference == nil || reference.Origin != "0202" || reference.MaxDistance != 8 || len(reference.Cells) != 59 {
+		t.Fatalf("舰队距离参考投影错误：%+v", reference)
+	}
+	for _, cell := range reference.Cells {
+		if cell.Distance != Distance(reference.Origin, cell.Coord) {
+			t.Fatalf("距离参考与服务端距离不一致：%+v", cell)
+		}
+	}
+	ApplyAirOrder(&state, Order{Type: "LAUNCH_CAP", AircraftID: "air-b-01"})
+	tasks := VisibleAviation(state, "B").Tasks
+	if len(tasks) != 1 || tasks[0].CurrentCoord != "0208" || tasks[0].DistanceReference == nil {
+		t.Fatalf("CAP距离参考缺失：%+v", tasks)
+	}
+	for _, cell := range tasks[0].DistanceReference.Cells {
+		if cell.Coord == "0202" && cell.Distance != 6 {
+			t.Fatalf("CAP中心到0202的距离应为6：%+v", cell)
+		}
+	}
+}

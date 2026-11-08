@@ -85,6 +85,17 @@ export interface AirUnit {
   tracking_fleet_id?: string
 }
 
+export interface DistanceHex {
+  coord: string
+  distance: number
+}
+
+export interface DistanceReference {
+  origin: string
+  max_distance: number
+  cells: DistanceHex[]
+}
+
 export interface AirTask {
   id: string
   kind: 'cap' | 'recon' | 'asw' | 'attack'
@@ -102,6 +113,7 @@ export interface AirTask {
   tracking_fleet_id?: string
   sector_hexes?: string[]
   current_ring_hexes?: string[]
+  distance_reference?: DistanceReference
 }
 
 export interface CarrierAirStatus {

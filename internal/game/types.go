@@ -114,21 +114,33 @@ type Unit struct {
 	LegalMoves   []string `json:"legal_moves,omitempty"`
 }
 
+type DistanceHex struct {
+	Coord    string `json:"coord"`
+	Distance int    `json:"distance"`
+}
+
+type DistanceReference struct {
+	Origin      string        `json:"origin"`
+	MaxDistance int           `json:"max_distance"`
+	Cells       []DistanceHex `json:"cells"`
+}
+
 type FleetGroup struct {
-	ID          string   `json:"id"`
-	FleetID     string   `json:"fleet_id"`
-	FleetName   string   `json:"fleet_name"`
-	Name        string   `json:"name"`
-	Type        string   `json:"type"`
-	Faction     string   `json:"faction"`
-	Coord       string   `json:"coord"`
-	Heading     string   `json:"heading"`
-	Strength    int      `json:"strength"`
-	MaxStrength int      `json:"max_strength"`
-	Moved       bool     `json:"moved"`
-	LegalMoves  []string `json:"legal_moves,omitempty"`
-	Count       int      `json:"count"`
-	Members     []Unit   `json:"members"`
+	ID                string             `json:"id"`
+	FleetID           string             `json:"fleet_id"`
+	FleetName         string             `json:"fleet_name"`
+	Name              string             `json:"name"`
+	Type              string             `json:"type"`
+	Faction           string             `json:"faction"`
+	Coord             string             `json:"coord"`
+	Heading           string             `json:"heading"`
+	Strength          int                `json:"strength"`
+	MaxStrength       int                `json:"max_strength"`
+	Moved             bool               `json:"moved"`
+	LegalMoves        []string           `json:"legal_moves,omitempty"`
+	Count             int                `json:"count"`
+	Members           []Unit             `json:"members"`
+	DistanceReference *DistanceReference `json:"distance_reference,omitempty"`
 }
 
 type AirUnit struct {
@@ -161,22 +173,23 @@ type AirUnit struct {
 }
 
 type AirTask struct {
-	ID               string   `json:"id"`
-	Kind             string   `json:"kind"`
-	Name             string   `json:"name"`
-	CarrierID        string   `json:"carrier_id"`
-	AircraftIDs      []string `json:"aircraft_ids"`
-	Priority         int      `json:"priority"`
-	OriginCoord      string   `json:"origin_coord,omitempty"`
-	CurrentCoord     string   `json:"current_coord,omitempty"`
-	Heading          string   `json:"heading,omitempty"`
-	SectorWidth      int      `json:"sector_width,omitempty"`
-	ReconRadius      int      `json:"recon_radius,omitempty"`
-	ReconDistance    int      `json:"recon_distance,omitempty"`
-	Returning        bool     `json:"returning,omitempty"`
-	TrackingFleetID  string   `json:"tracking_fleet_id,omitempty"`
-	SectorHexes      []string `json:"sector_hexes,omitempty"`
-	CurrentRingHexes []string `json:"current_ring_hexes,omitempty"`
+	ID                string             `json:"id"`
+	Kind              string             `json:"kind"`
+	Name              string             `json:"name"`
+	CarrierID         string             `json:"carrier_id"`
+	AircraftIDs       []string           `json:"aircraft_ids"`
+	Priority          int                `json:"priority"`
+	OriginCoord       string             `json:"origin_coord,omitempty"`
+	CurrentCoord      string             `json:"current_coord,omitempty"`
+	Heading           string             `json:"heading,omitempty"`
+	SectorWidth       int                `json:"sector_width,omitempty"`
+	ReconRadius       int                `json:"recon_radius,omitempty"`
+	ReconDistance     int                `json:"recon_distance,omitempty"`
+	Returning         bool               `json:"returning,omitempty"`
+	TrackingFleetID   string             `json:"tracking_fleet_id,omitempty"`
+	SectorHexes       []string           `json:"sector_hexes,omitempty"`
+	CurrentRingHexes  []string           `json:"current_ring_hexes,omitempty"`
+	DistanceReference *DistanceReference `json:"distance_reference,omitempty"`
 }
 
 type AviationView struct {
@@ -276,7 +289,7 @@ func Neighbors(coord string) []string {
 func offsetCube(row, col int) (int, int, int) {
 	zeroCol := col - 1
 	zeroRow := row - 1
-	x := zeroCol - (zeroRow-(zeroRow&1))/2
+	x := zeroCol - (zeroRow+(zeroRow&1))/2
 	z := zeroRow
 	y := -x - z
 	return x, y, z
@@ -307,4 +320,21 @@ func Distance(a, b string) int {
 		return dy
 	}
 	return dz
+}
+
+func BuildDistanceReference(gameMap MapDefinition, origin string, maxDistance int) *DistanceReference {
+	if _, _, err := ParseCoord(origin); err != nil || maxDistance < 1 {
+		return nil
+	}
+	reference := &DistanceReference{Origin: origin, MaxDistance: maxDistance, Cells: []DistanceHex{}}
+	for row := 1; row <= gameMap.Rows; row++ {
+		for col := 1; col <= gameMap.Cols; col++ {
+			coord := Coord(row, col)
+			distance := Distance(origin, coord)
+			if distance <= maxDistance {
+				reference.Cells = append(reference.Cells, DistanceHex{Coord: coord, Distance: distance})
+			}
+		}
+	}
+	return reference
 }

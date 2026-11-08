@@ -18,6 +18,21 @@ func TestCoordNeighborsAndDistance(t *testing.T) {
 	if !reflect.DeepEqual(neighbors, expected) {
 		t.Fatalf("相邻坐标错误：%v", neighbors)
 	}
+	for _, coord := range neighbors {
+		if Distance("0202", coord) != 1 {
+			t.Fatalf("相邻坐标%s被错误计算为%d距离", coord, Distance("0202", coord))
+		}
+	}
+	for _, origin := range []string{"0202", "0303", "0405"} {
+		for _, coord := range Neighbors(origin) {
+			if Distance(origin, coord) != 1 {
+				t.Fatalf("奇偶行邻接不一致：%s到%s为%d", origin, coord, Distance(origin, coord))
+			}
+		}
+	}
+	if Distance("0202", "0103") != 2 {
+		t.Fatal("隔格hex被错误计算为相邻")
+	}
 	if Distance("0202", "0203") != 1 {
 		t.Fatal("相邻hex距离应为1")
 	}

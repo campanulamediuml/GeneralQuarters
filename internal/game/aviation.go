@@ -36,8 +36,8 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 		if order.SectorWidth != 60 && order.SectorWidth != 120 {
 			return fmt.Errorf("侦察扇面只能选择60度或120度")
 		}
-		if order.ReconRadius < 1 || order.ReconRadius > ReconRadiusLimit(*aircraft) {
-			return fmt.Errorf("侦察半径必须在1到%d hex之间", ReconRadiusLimit(*aircraft))
+		if order.ReconRadius < 0 || order.ReconRadius > ReconRadiusLimit(*aircraft) {
+			return fmt.Errorf("侦察半径不能超过%d hex", ReconRadiusLimit(*aircraft))
 		}
 		if !aircraft.Seaplane && !IsCarrier(carrier) {
 			return fmt.Errorf("舰载机只能从航母起飞")
@@ -116,6 +116,9 @@ func ApplyAirOrder(state *State, order Order) []EngineEvent {
 		aircraft.Heading = strings.ToUpper(order.Heading)
 		aircraft.SectorWidth = order.SectorWidth
 		aircraft.ReconRadius = order.ReconRadius
+		if aircraft.ReconRadius == 0 {
+			aircraft.ReconRadius = ReconRadiusLimit(*aircraft)
+		}
 		aircraft.ReconDistance = 0
 		aircraft.Returning = false
 		aircraft.TrackingFleetID = ""
@@ -201,6 +204,7 @@ func VisibleAviation(state State, faction string) AviationView {
 		task := AirTask{ID: aircraft.ID, Kind: aircraft.Status, CarrierID: aircraft.CarrierID, AircraftIDs: []string{aircraft.ID}, Priority: aircraft.Priority}
 		if aircraft.Status == "cap" {
 			task.Name = "CAP · " + aircraft.Model
+			task.CurrentCoord = state.Units[aircraft.CarrierID].Coord
 		} else {
 			task.Name = "扇面侦察 · " + aircraft.Model
 			task.OriginCoord = aircraft.OriginCoord
@@ -214,6 +218,7 @@ func VisibleAviation(state State, faction string) AviationView {
 			task.SectorHexes = ReconSectorHexes(state.Map, aircraft.OriginCoord, aircraft.Heading, aircraft.SectorWidth, aircraft.ReconRadius)
 			task.CurrentRingHexes = ReconRingHexes(state.Map, aircraft.OriginCoord, aircraft.Heading, aircraft.SectorWidth, aircraft.ReconDistance)
 		}
+		task.DistanceReference = BuildDistanceReference(state.Map, task.CurrentCoord, 8)
 		view.Tasks = append(view.Tasks, task)
 	}
 	sort.Slice(view.Carriers, func(i, j int) bool { return view.Carriers[i].UnitID < view.Carriers[j].UnitID })

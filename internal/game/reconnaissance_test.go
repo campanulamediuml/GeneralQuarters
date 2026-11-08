@@ -171,3 +171,15 @@ func TestReconDetectionContactAndReturn(t *testing.T) {
 		t.Fatal("返航不应清除已经取得的情报")
 	}
 }
+
+func TestReconRadiusDefaultsToAircraftLimit(t *testing.T) {
+	state := sandboxState(t)
+	order := Order{Type: "LAUNCH_RECON", AircraftID: "air-b-10", Heading: "W", SectorWidth: 60}
+	if err := ValidateAirOrder(state, "B", order); err != nil {
+		t.Fatal(err)
+	}
+	ApplyAirOrder(&state, order)
+	if state.Aircraft["air-b-10"].ReconRadius != 8 {
+		t.Fatalf("省略半径时未使用服务端默认值：%+v", state.Aircraft["air-b-10"])
+	}
+}

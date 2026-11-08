@@ -1,9 +1,10 @@
-import type { Order, Unit } from './types'
+import type { DistanceReference, Order, Unit } from './types'
 
 export interface FleetGroup extends Unit {
   fleet_id: string
   members: Unit[]
   count: number
+  distance_reference?: DistanceReference
 }
 
 export function fleetID(unit: Unit) {
