@@ -13,11 +13,15 @@ const reconAircraft = ref<AirUnit>()
 const reconHeading = ref<ReconHeading>('W')
 const reconWidth = ref<60 | 120>(60)
 const reconRadius = ref(1)
-const lanes = [
-  { kind: 'recon', name: '侦察任务' },
-  { kind: 'cap', name: '空中巡逻' },
-  { kind: 'asw', name: '反潜巡逻' },
-  { kind: 'attack', name: '攻击 / 转场' },
+type TaskLane = { id: string; name: string; kind: string; slot?: number }
+const lanes: TaskLane[] = [
+  { id: 'recon-1', name: '空中侦察 I', kind: 'recon', slot: 0 },
+  { id: 'recon-2', name: '空中侦察 II', kind: 'recon', slot: 1 },
+  { id: 'strike-1', name: '打击任务 I', kind: 'attack', slot: 0 },
+  { id: 'strike-2', name: '打击任务 II', kind: 'attack', slot: 1 },
+  { id: 'asw', name: '反潜巡逻', kind: 'asw' },
+  { id: 'cap', name: 'CAP', kind: 'cap' },
+  { id: 'escort', name: '空中掩护', kind: 'escort' },
 ]
 const kindNames = { fighter: '战斗机', dive_bomber: '俯冲轰炸机', torpedo_bomber: '鱼雷机', recon: '侦察机' }
 const headings: { id: ReconHeading; arrow: string; name: string }[] = [
@@ -58,6 +62,12 @@ function taskSummary(task: (typeof tasks.value)[number]) {
   const phase = task.tracking_fleet_id ? '持续跟踪' : task.returning ? '返航搜索' : `第 ${task.recon_distance || 0} 距离圈`
   return `${task.sector_width}° ${task.heading} · 半径 ${task.recon_radius} · ${phase}`
 }
+
+function laneTasks(lane: TaskLane) {
+  const matching = tasks.value.filter((task) => task.kind === lane.kind)
+  if (lane.slot === undefined) return matching
+  return matching.filter((_, index) => index % 2 === lane.slot)
+}
 </script>
 
 <template>
@@ -66,10 +76,10 @@ function taskSummary(task: (typeof tasks.value)[number]) {
     <p class="aviation-intro">侦察以起飞位置为顶点，沿预定航向搜索60°扇面；120°扇面的最终发现率减半。普通飞机每回合飞行2 hex，水上飞机1 hex，飞出与返航都会逐圈搜索。所有扇面、判定和情报均由服务器计算。</p>
 
     <div class="air-task-lanes">
-      <section v-for="lane in lanes" :key="lane.kind" class="air-task-lane">
-        <header><span>{{ lane.name }}</span><small>{{ tasks.filter((task) => task.kind === lane.kind).length }} 项</small></header>
-        <div v-if="tasks.some((task) => task.kind === lane.kind)" class="air-task-list">
-          <article v-for="task in tasks.filter((item) => item.kind === lane.kind)" :key="task.id" class="air-task" :class="{ prioritized: task.priority === 1, 'recon-task': task.kind === 'recon' }" :data-task-id="task.id">
+      <section v-for="lane in lanes" :key="lane.id" class="air-task-lane" :data-lane-id="lane.id">
+        <header><span>{{ lane.name }}</span><small>{{ laneTasks(lane).length }} 项</small></header>
+        <div v-if="laneTasks(lane).length" class="air-task-list">
+          <article v-for="task in laneTasks(lane)" :key="task.id" class="air-task" :class="{ prioritized: task.priority === 1, 'recon-task': task.kind === 'recon' }" :data-task-id="task.id">
             <div class="air-task-copy"><strong>{{ task.name }}</strong><small>{{ taskSummary(task) }}</small></div>
             <ReconSectorMap v-if="task.kind === 'recon'" :map="gameMap" :task="task" />
             <span class="task-priority">优先级 {{ task.priority }}</span>
