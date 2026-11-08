@@ -226,7 +226,7 @@ func headingBetween(from, to string) string {
 }
 
 func ValidateOrder(state State, faction string, order Order) error {
-	if order.Type == "LAUNCH_CAP" || order.Type == "LAUNCH_RECON" || order.Type == "RECOVER_AIR" || order.Type == "PRIORITIZE_AIR_TASK" {
+	if order.Type == "LAUNCH_CAP" || order.Type == "LAUNCH_RECON" || order.Type == "PREPARE_AIR" || order.Type == "RETURN_TO_HANGAR" || order.Type == "RECOVER_AIR" || order.Type == "PRIORITIZE_AIR_TASK" {
 		return ValidateAirOrder(state, faction, order)
 	}
 	if order.Type == "REORGANIZE_HEX" {

@@ -143,3 +143,59 @@ func TestDistanceReferenceProjection(t *testing.T) {
 		}
 	}
 }
+
+func TestDeckPreparationReturnAndBatchCAP(t *testing.T) {
+	state := sandboxState(t)
+	prepare := Order{Type: "PREPARE_AIR", AircraftIDs: []string{"air-b-01", "air-b-02"}}
+	if err := ValidateAirOrder(state, "B", prepare); err != nil {
+		t.Fatal(err)
+	}
+	ApplyAirOrder(&state, prepare)
+	if state.Aircraft["air-b-01"].Status != "deck" || state.Aircraft["air-b-02"].Status != "deck" || state.Units["b-cv-01"].Card.Aircraft != 4 {
+		t.Fatal("批量提升甲板状态或母舰载机数错误")
+	}
+	carrier := VisibleAviation(state, "B").Carriers[3]
+	if carrier.UnitID != "b-cv-01" || carrier.HangarUsed != 2 || carrier.DeckUsed != 2 || carrier.LaunchUsed != 0 {
+		t.Fatalf("甲板与机库投影错误：%+v", carrier)
+	}
+	if err := ValidateAirOrder(state, "B", Order{Type: "LAUNCH_CAP", AircraftID: "air-b-01"}); err == nil {
+		t.Fatal("提前整备同回合仍允许起飞")
+	}
+	returnOrder := Order{Type: "RETURN_TO_HANGAR", AircraftIDs: []string{"air-b-01", "air-b-02"}}
+	if err := ValidateAirOrder(state, "B", returnOrder); err != nil {
+		t.Fatal(err)
+	}
+	ApplyAirOrder(&state, returnOrder)
+	if state.Aircraft["air-b-01"].Status != "hangar" || state.CarrierOperations["b-cv-01"] != "" {
+		t.Fatal("拉回机库未清除整备状态")
+	}
+	ApplyAirOrder(&state, prepare)
+	AdvanceAviation(&state)
+	launch := Order{Type: "LAUNCH_CAP", AircraftIDs: []string{"air-b-01", "air-b-02"}}
+	if err := ValidateAirOrder(state, "B", launch); err != nil {
+		t.Fatal(err)
+	}
+	ApplyAirOrder(&state, launch)
+	if state.Aircraft["air-b-01"].TaskID != "air-b-01" || state.Aircraft["air-b-02"].TaskID != "air-b-01" || state.Units["b-cv-01"].Card.Aircraft != 2 {
+		t.Fatal("批量CAP未形成同一任务或载机数错误")
+	}
+	tasks := VisibleAviation(state, "B").Tasks
+	if len(tasks) != 1 || len(tasks[0].AircraftIDs) != 2 || len(tasks[0].Aircraft) != 2 || tasks[0].ID != "air-b-01" {
+		t.Fatalf("批量CAP任务投影错误：%+v", tasks)
+	}
+	AdvanceAviation(&state)
+	recover := Order{Type: "RECOVER_AIR", AircraftIDs: []string{"air-b-01", "air-b-02"}}
+	if err := ValidateAirOrder(state, "B", recover); err != nil {
+		t.Fatal(err)
+	}
+	ApplyAirOrder(&state, recover)
+	if state.Aircraft["air-b-01"].Status != "hangar" || state.Aircraft["air-b-02"].Status != "hangar" || state.Units["b-cv-01"].Card.Aircraft != 4 {
+		t.Fatal("批量回收未恢复机库状态")
+	}
+	if err := ValidateAirOrder(state, "B", Order{Type: "PREPARE_AIR", AircraftID: "air-b-11"}); err == nil {
+		t.Fatal("水机舰被错误提供飞行甲板")
+	}
+	if err := ValidateAirOrder(state, "B", Order{Type: "LAUNCH_CAP", AircraftIDs: []string{"air-b-01", "air-b-05"}}); err == nil {
+		t.Fatal("跨母舰批量命令未被拒绝")
+	}
+}

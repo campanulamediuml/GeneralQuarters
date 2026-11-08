@@ -161,6 +161,7 @@ type AirUnit struct {
 	Seaplane         bool   `json:"seaplane"`
 	Launched         bool   `json:"launched"`
 	Priority         int    `json:"priority"`
+	TaskID           string `json:"task_id,omitempty"`
 	OriginCoord      string `json:"origin_coord,omitempty"`
 	Coord            string `json:"coord,omitempty"`
 	Heading          string `json:"heading,omitempty"`
@@ -178,6 +179,7 @@ type AirTask struct {
 	Name              string             `json:"name"`
 	CarrierID         string             `json:"carrier_id"`
 	AircraftIDs       []string           `json:"aircraft_ids"`
+	Aircraft          []AirUnit          `json:"aircraft"`
 	Priority          int                `json:"priority"`
 	OriginCoord       string             `json:"origin_coord,omitempty"`
 	CurrentCoord      string             `json:"current_coord,omitempty"`
@@ -205,6 +207,7 @@ type CarrierAirStatus struct {
 	HangarCapacity int       `json:"hangar_capacity"`
 	DeckCapacity   int       `json:"deck_capacity"`
 	DeckUsed       int       `json:"deck_used"`
+	LaunchUsed     int       `json:"launch_used"`
 	Operation      string    `json:"operation"`
 	Aircraft       []AirUnit `json:"aircraft"`
 }
@@ -236,6 +239,7 @@ type Order struct {
 	UnitID       string            `json:"unit_id,omitempty"`
 	TargetUnitID string            `json:"target_unit_id,omitempty"`
 	AircraftID   string            `json:"aircraft_id,omitempty"`
+	AircraftIDs  []string          `json:"aircraft_ids,omitempty"`
 	Coord        string            `json:"coord,omitempty"`
 	Heading      string            `json:"heading,omitempty"`
 	SectorWidth  int               `json:"sector_width,omitempty"`

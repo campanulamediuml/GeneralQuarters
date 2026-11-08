@@ -199,10 +199,11 @@ components:
       properties:
         command_id: {type: string, maxLength: 128}
         base_version: {type: integer, format: int64}
-        type: {type: string, enum: [SET_MOVE, CLEAR_MOVE, MERGE_FLEET, REORGANIZE_HEX, LAUNCH_CAP, LAUNCH_RECON, RECOVER_AIR, PRIORITIZE_AIR_TASK]}
+        type: {type: string, enum: [SET_MOVE, CLEAR_MOVE, MERGE_FLEET, REORGANIZE_HEX, LAUNCH_CAP, LAUNCH_RECON, PREPARE_AIR, RETURN_TO_HANGAR, RECOVER_AIR, PRIORITIZE_AIR_TASK]}
         unit_id: {type: string, description: 舰船移动与整编命令必填, example: a-bb-01}
         target_unit_id: {type: string, description: MERGE_FLEET必填，目标舰队中的单位, example: a-dd-01}
-        aircraft_id: {type: string, description: 航空命令必填，航空算子或任务ID, example: air-b-01}
+        aircraft_id: {type: string, description: 单算子航空命令或任务ID, example: air-b-01}
+        aircraft_ids: {type: array, minItems: 1, maxItems: 20, items: {type: string}, description: 同一母舰的批量算子；起飞任务必须同型}
         coord: {type: string, description: SET_MOVE和REORGANIZE_HEX必填，ABCD坐标, example: '0203'}
         heading: {type: string, enum: [E, SE, SW, W, NW, NE], description: LAUNCH_RECON必填，侦察航线中轴, example: W}
         sector_width: {type: integer, enum: [60, 120], description: LAUNCH_RECON必填；120度最终发现率减半, example: 60}
@@ -300,7 +301,7 @@ components:
         name: {type: string}
         model: {type: string}
         kind: {type: string, enum: [fighter, dive_bomber, torpedo_bomber, recon]}
-        status: {type: string, enum: [hangar, cap, recon]}
+        status: {type: string, enum: [hangar, deck, cap, recon]}
         strength: {type: integer}
         max_range: {type: integer, description: 服务端包含副油箱后的最大航程}
         remaining_range: {type: integer}
@@ -310,6 +311,7 @@ components:
         seaplane: {type: boolean, description: true时界面使用橙色水机算子}
         launched: {type: boolean, description: 是否占用本回合起飞容量}
         priority: {type: integer}
+        task_id: {type: string, description: 同一批量航空任务的共享ID}
         origin_coord: {type: string, description: 侦察扇面顶点}
         coord: {type: string, description: 侦察机当前hex}
         heading: {type: string, enum: [E, SE, SW, W, NW, NE]}
@@ -327,6 +329,7 @@ components:
         name: {type: string}
         carrier_id: {type: string}
         aircraft_ids: {type: array, items: {type: string}}
+        aircraft: {type: array, items: {$ref: '#/components/schemas/AirUnit'}}
         priority: {type: integer, description: 1为最高优先级}
         origin_coord: {type: string}
         current_coord: {type: string}
@@ -348,8 +351,9 @@ components:
         hangar_used: {type: integer}
         hangar_capacity: {type: integer}
         deck_capacity: {type: integer}
-        deck_used: {type: integer}
-        operation: {type: string, enum: ['', launch, recover]}
+        deck_used: {type: integer, description: 当前停放在甲板的算子数}
+        launch_used: {type: integer, description: 本回合已经起飞的算子数}
+        operation: {type: string, enum: ['', prepare, launch, recover]}
         aircraft: {type: array, items: {$ref: '#/components/schemas/AirUnit'}}
     AviationView:
       type: object

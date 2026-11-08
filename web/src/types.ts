@@ -64,7 +64,7 @@ export interface AirUnit {
   name: string
   model: string
   kind: 'fighter' | 'dive_bomber' | 'torpedo_bomber' | 'recon'
-  status: 'hangar' | 'cap' | 'recon'
+  status: 'hangar' | 'deck' | 'cap' | 'recon'
   strength: number
   max_range: number
   remaining_range: number
@@ -74,6 +74,7 @@ export interface AirUnit {
   seaplane: boolean
   launched: boolean
   priority: number
+  task_id?: string
   origin_coord?: string
   coord?: string
   heading?: ReconHeading
@@ -102,6 +103,7 @@ export interface AirTask {
   name: string
   carrier_id: string
   aircraft_ids: string[]
+  aircraft: AirUnit[]
   priority: number
   origin_coord?: string
   current_coord?: string
@@ -124,7 +126,8 @@ export interface CarrierAirStatus {
   hangar_capacity: number
   deck_capacity: number
   deck_used: number
-  operation: '' | 'launch' | 'recover'
+  launch_used: number
+  operation: '' | 'prepare' | 'launch' | 'recover'
   aircraft: AirUnit[]
 }
 
@@ -143,10 +146,11 @@ export interface Player {
 }
 
 export interface Order {
-  type: 'SET_MOVE' | 'CLEAR_MOVE' | 'MERGE_FLEET' | 'REORGANIZE_HEX' | 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK'
+  type: 'SET_MOVE' | 'CLEAR_MOVE' | 'MERGE_FLEET' | 'REORGANIZE_HEX' | 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'PREPARE_AIR' | 'RETURN_TO_HANGAR' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK'
   unit_id?: string
   target_unit_id?: string
   aircraft_id?: string
+  aircraft_ids?: string[]
   coord?: string
   heading?: ReconHeading
   sector_width?: 60 | 120

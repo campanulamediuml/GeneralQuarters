@@ -56,7 +56,6 @@ async function loadState(initial = false) {
       mergeSourceID.value = ''
     }
     state.value = next
-    error.value = ''
   } catch (cause) {
     if (requestID !== stateRequest) return
     error.value = cause instanceof Error ? cause.message : '同步失败'
@@ -193,12 +192,13 @@ async function applyReorganization() {
   }
 }
 
-async function airCommand(type: 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK', aircraftID: string, options?: { heading?: ReconHeading; sector_width?: 60 | 120; recon_radius?: number }) {
+async function airCommand(type: 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'PREPARE_AIR' | 'RETURN_TO_HANGAR' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK', aircraftIDs: string[], options?: { heading?: ReconHeading; sector_width?: 60 | 120; recon_radius?: number }) {
   if (!state.value || actionBusy.value) return
   actionBusy.value = true
   try {
-    await api.command(props.roomID, state.value.version, { type, aircraft_id: aircraftID, ...options })
+    await api.command(props.roomID, state.value.version, { type, aircraft_id: aircraftIDs[0], aircraft_ids: aircraftIDs, ...options })
     await loadState()
+    error.value = ''
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : '航空命令失败'
   } finally {
