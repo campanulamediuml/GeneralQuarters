@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -43,8 +44,15 @@ func newRoomActor() *roomActor {
 
 func (a *roomActor) run() {
 	for job := range a.jobs {
-		job.run()
-		close(job.done)
+		func() {
+			defer func() {
+				if recovered := recover(); recovered != nil {
+					log.Printf("房间任务异常：%v", recovered)
+				}
+				close(job.done)
+			}()
+			job.run()
+		}()
 	}
 }
 
@@ -64,6 +72,7 @@ type commandRequest struct {
 	Type         string            `json:"type"`
 	UnitID       string            `json:"unit_id"`
 	TargetUnitID string            `json:"target_unit_id"`
+	AircraftID   string            `json:"aircraft_id"`
 	Coord        string            `json:"coord"`
 	Assignments  map[string]string `json:"assignments"`
 }
@@ -225,16 +234,19 @@ func (s *Server) handleCommand(w http.ResponseWriter, r *http.Request, roomID st
 		writeError(w, http.StatusConflict, "状态已更新，请刷新后重试")
 		return
 	}
-	order := game.Order{Type: request.Type, UnitID: request.UnitID, TargetUnitID: request.TargetUnitID, Coord: game.NormalizeToken(request.Coord), Assignments: request.Assignments}
+	order := game.Order{Type: request.Type, UnitID: request.UnitID, TargetUnitID: request.TargetUnitID, AircraftID: request.AircraftID, Coord: game.NormalizeToken(request.Coord), Assignments: request.Assignments}
 	if err := game.ValidateOrder(room.State, player.Faction, order); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if order.Type == "SET_MOVE" || order.Type == "MERGE_FLEET" || order.Type == "REORGANIZE_HEX" {
+	if order.Type == "SET_MOVE" || order.Type == "MERGE_FLEET" || order.Type == "REORGANIZE_HEX" || order.Type == "LAUNCH_CAP" || order.Type == "RECOVER_AIR" || order.Type == "PRIORITIZE_AIR_TASK" {
 		var events []game.EngineEvent
-		if order.Type == "SET_MOVE" {
+		switch order.Type {
+		case "SET_MOVE":
 			events = game.ApplyImmediateMove(&room.State, order)
-		} else {
+		case "LAUNCH_CAP", "RECOVER_AIR", "PRIORITIZE_AIR_TASK":
+			events = game.ApplyAirOrder(&room.State, order)
+		default:
 			events = game.ApplyImmediateOrganization(&room.State, order)
 		}
 		response, _ := json.Marshal(map[string]any{"accepted": true, "command_id": request.CommandID, "version": room.Version + 1})
@@ -348,7 +360,8 @@ func (s *Server) writeState(w http.ResponseWriter, r *http.Request, roomID strin
 		"room_id": room.ID, "status": room.Status, "turn": room.Turn, "version": room.Version,
 		"scenario": map[string]any{"id": room.State.ScenarioID, "name": room.State.ScenarioName, "description": room.State.Description},
 		"map":      room.State.Map, "units": game.VisibleUnits(room.State, player.Faction), "fleets": game.VisibleFleets(room.State, player.Faction),
-		"you": player, "players": players, "orders": ownOrders, "events": events,
+		"aviation": game.VisibleAviation(room.State, player.Faction),
+		"you":      player, "players": players, "orders": ownOrders, "events": events,
 		"server_time": time.Now().UTC(),
 	}
 	if player.IsHost {

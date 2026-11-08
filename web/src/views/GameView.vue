@@ -6,6 +6,8 @@ import type { GameView, Unit } from '../types'
 import { groupFleets } from '../fleet'
 import HexMap from '../components/HexMap.vue'
 import ShipCard from '../components/ShipCard.vue'
+import ShipCounter from '../components/ShipCounter.vue'
+import AviationPanel from '../components/AviationPanel.vue'
 
 const props = defineProps<{ roomID: string }>()
 const router = useRouter()
@@ -161,6 +163,19 @@ async function applyReorganization() {
   }
 }
 
+async function airCommand(type: 'LAUNCH_CAP' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK', aircraftID: string) {
+  if (!state.value || actionBusy.value) return
+  actionBusy.value = true
+  try {
+    await api.command(props.roomID, state.value.version, { type, aircraft_id: aircraftID })
+    await loadState()
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : '航空命令失败'
+  } finally {
+    actionBusy.value = false
+  }
+}
+
 async function toggleReady() {
   if (!state.value || actionBusy.value) return
   actionBusy.value = true
@@ -179,8 +194,8 @@ async function toggleReady() {
   }
 }
 
-function unitName(unitID: string) {
-  return state.value?.units.find((unit) => unit.id === unitID)?.name || unitID
+function unitName(unitID?: string) {
+  return state.value?.units.find((unit) => unit.id === unitID)?.name || unitID || ''
 }
 
 async function copyToken() {
@@ -237,6 +252,10 @@ onUnmounted(() => {
         <div v-if="activePanel === 'map'" class="game-layout">
           <section class="map-panel">
             <div class="map-toolbar"><div><span class="section-kicker">OPERATIONAL MAP</span><h1>{{ state.map.name }}</h1></div><div class="map-legend"><span><i class="legend-a"></i>A 阵营</span><span><i class="legend-b"></i>B 阵营</span><span><i class="legend-move"></i>可移动</span></div></div>
+            <section v-if="selectedFleet" class="fleet-workbench" :data-fleet-id="selectedFleet.fleet_id">
+              <header><div><span class="section-kicker">TASK FORCE · {{ selectedFleet.coord }}</span><h2>{{ selectedFleet.name }}</h2><small>{{ selectedFleet.count }}艘 · 点击舰船算子查看完整角色卡</small></div><div class="fleet-workbench-actions"><button @click="openManager(selectedFleet.coord)">舰队整编</button><button v-if="selectedFleet.members.some((unit) => ['CV', 'CVL', 'CVE'].includes(unit.type))" @click="activePanel = 'aviation'">航空作业</button><button aria-label="关闭舰队详情" @click="selectedID = ''">×</button></div></header>
+              <div class="fleet-counter-grid"><button v-for="member in selectedFleet.members" :key="member.id" class="fleet-counter-button" :class="{ active: selectedUnit?.id === member.id }" :data-ship-id="member.id" @click="selectedID = member.id"><ShipCounter :unit="member" /></button></div>
+            </section>
             <div class="map-canvas"><HexMap :map="state.map" :fleets="fleets" :player-faction="state.you.faction" :selected-unit="selectedUnit" :orders="state.orders" @select-unit="selectedID = $event.id" @select-hex="selectHex" @manage-hex="openManager" @move="move" /></div>
             <div class="map-help"><b>操作方式</b><span>拖动后立即移动</span><i>→</i><span>蓝条已移动，黄条可移动</span><i>→</i><span>点击多舰队hex可整编</span></div>
           </section>
@@ -250,19 +269,14 @@ onUnmounted(() => {
             <section v-if="state.join_token" class="side-card invite-card"><div><span class="section-kicker">INVITE PLAYER B</span><p>将邀请token发送给第二位玩家。</p></div><button class="token-display" @click="copyToken"><code>{{ state.join_token }}</code><span>{{ copied ? '已复制' : '复制' }}</span></button></section>
 
             <section class="side-card selection-card">
-              <div class="side-card-head"><span class="section-kicker">FLEET DETAIL</span><span>{{ ownFleets.length }} 个己方舰队</span></div>
-              <div v-if="selectedFleet" class="selected-detail">
-                <div><span class="unit-type-badge">{{ selectedFleet.type }}</span><h3>{{ selectedFleet.name }}</h3></div>
-                <dl><div><dt>当前位置</dt><dd>{{ selectedFleet.coord }}</dd></div><div><dt>舰队规模</dt><dd>{{ selectedFleet.count }} 艘</dd></div><div><dt>总强度</dt><dd>{{ selectedFleet.strength }} / {{ selectedFleet.max_strength }}</dd></div></dl>
-                <div class="member-list"><span>舰队成员 · 点击查看角色卡</span><button v-for="member in selectedFleet.members" :key="member.id" class="ship-member" :class="{ active: selectedUnit?.id === member.id }" @click="selectedID = member.id"><b>{{ member.type }}</b><p>{{ member.name }}</p><code>{{ member.strength }}/{{ member.max_strength }}</code></button></div>
-                <ShipCard v-if="selectedUnit" :key="selectedUnit.id" :unit="selectedUnit" />
-              </div>
-              <div v-else class="empty-selection"><span class="selection-cross">+</span><p>选择地图上的己方舰队<br />查看成员并下达命令</p></div>
+              <div class="side-card-head"><span class="section-kicker">SHIP DETAIL</span><span>{{ selectedFleet?.name || `${ownFleets.length} 个己方舰队` }}</span></div>
+              <div v-if="selectedUnit" class="selected-detail"><ShipCard :key="selectedUnit.id" :unit="selectedUnit" /></div>
+              <div v-else class="empty-selection"><span class="selection-cross">+</span><p>选择地图上的己方舰队<br />再点击舰船算子查看角色卡</p></div>
             </section>
 
             <section class="side-card orders-card">
               <div class="side-card-head"><span class="section-kicker">PENDING ORDERS</span><span>{{ state.orders.length }}</span></div>
-              <div v-if="state.orders.length" class="order-list"><div v-for="order in state.orders" :key="order.unit_id"><span>{{ unitName(order.unit_id) }}</span><code>{{ order.type === 'MERGE_FLEET' ? `整编 → ${unitName(order.target_unit_id || '')}` : order.type === 'REORGANIZE_HEX' ? `整编hex ${order.coord}` : `预定 → ${order.coord}` }}</code><button aria-label="取消命令" @click="clearOrder(order.unit_id)">×</button></div></div>
+              <div v-if="state.orders.length" class="order-list"><div v-for="order in state.orders" :key="order.unit_id"><span>{{ unitName(order.unit_id) }}</span><code>{{ order.type === 'MERGE_FLEET' ? `整编 → ${unitName(order.target_unit_id || '')}` : order.type === 'REORGANIZE_HEX' ? `整编hex ${order.coord}` : `预定 → ${order.coord}` }}</code><button aria-label="取消命令" @click="clearOrder(order.unit_id || '')">×</button></div></div>
               <p v-else class="empty-copy">尚未下达移动或整编命令</p>
             </section>
             <section class="side-card players-card"><div class="side-card-head"><span class="section-kicker">PLAYERS</span></div><div v-for="player in state.players" :key="player.id" class="player-row"><span class="player-faction" :class="`seal-${player.faction.toLowerCase()}`">{{ player.faction }}</span><span>{{ player.name }}</span><i :class="{ online: player.connected }"></i><b :class="{ ready: player.ready }">{{ player.ready ? '已就绪' : '部署中' }}</b></div></section>
@@ -272,7 +286,7 @@ onUnmounted(() => {
 
         <section v-else-if="activePanel === 'rules'" class="workspace-page"><span class="section-kicker">RULEBOOK</span><h1>规则书与沙盒指南</h1><div class="document-grid"><article><h2>当前通信沙盒</h2><p>选择己方舰队，再选择相邻高亮hex下达移动命令。移动由服务器立即生效，同一舰队每回合只能移动一次；底条黄色表示仍可移动，蓝色表示本回合已经移动，右上角箭头表示舰队朝向。</p><p>同一hex存在多个舰队时，点击hex弹出舰队列表。选择舰队可查看成员，选择整编可将任意两个同阵营舰队合并，整编同样由服务器立即生效。</p></article><article><h2>坐标与地形</h2><p>hex使用ABCD坐标，AB为行、CD为列。当前只能移动至相邻且可通行的hex，岛屿和暗礁不可进入。</p><p>正式航空、损管与剧本规则位于项目《规则书.md》，将随规则模块逐步接入。</p></article></div></section>
         <section v-else-if="activePanel === 'settings'" class="workspace-page"><span class="section-kicker">SETTINGS</span><h1>作战室设置</h1><div class="settings-grid"><div class="side-card"><h2>当前会话</h2><p>指挥官：{{ state.you.name }}</p><p>阵营：{{ state.you.faction }} · 房间：{{ state.room_id }}</p><p>连接方式：{{ socketStatus === 'online' ? 'WebSocket实时同步' : '15秒轮询' }}</p></div><div class="side-card"><h2>地图与资源</h2><p>坐标格式：ABCD（行 + 列）</p><p>地图与剧本从服务器持久化内容目录载入。</p><a class="secondary-link" href="/api/docs" target="_blank">查看API与AI扩展文档 ↗</a></div></div></section>
-        <section v-else-if="activePanel === 'aviation'" class="workspace-page"><span class="section-kicker">AVIATION COMMAND</span><h1>航空指挥界面</h1><div class="aviation-placeholder"><span>△</span><h2>航空作业尚未在当前沙盒启用</h2><p>后续将在此集中管理CAP、侦查、攻击编队、整备与甲板作业。所有航空判定仍由服务器执行。</p></div></section>
+        <AviationPanel v-else-if="activePanel === 'aviation'" :aviation="state.aviation" :busy="actionBusy" @command="airCommand" />
         <section v-else class="workspace-page"><span class="section-kicker">EVENT LOG</span><h1>日志信息</h1><div class="full-log"><div v-for="event in orderedEvents" :key="event.id" class="full-log-row"><span>T{{ String(event.turn).padStart(2, '0') }}</span><code>#{{ event.id }}</code><p>{{ event.text }}</p><time>{{ new Date(event.created_at).toLocaleTimeString() }}</time></div></div></section>
       </template>
     </div>
@@ -284,11 +298,14 @@ onUnmounted(() => {
         <div class="fleet-columns">
           <article v-for="fleet in menuFleets" :key="fleet.fleet_id" class="fleet-column" :class="{ default: selectedFleet?.fleet_id === fleet.fleet_id, 'merge-source': mergeSourceID === fleet.fleet_id, 'transfer-target': movingMemberID && !fleet.members.some((unit) => unit.id === movingMemberID) }">
             <header><div><span class="unit-type-badge">{{ fleet.type }}</span><h3>{{ fleet.name }}</h3><small>{{ fleet.count }}艘 · 强度{{ fleet.strength }}/{{ fleet.max_strength }}</small></div><button class="default-button" @click="selectedID = fleet.id">{{ selectedFleet?.fleet_id === fleet.fleet_id ? '默认' : '设为默认' }}</button></header>
-            <div class="fleet-member-list">
-              <div v-for="member in fleet.members" :key="member.id" class="fleet-member"><span class="unit-type-badge">{{ member.type }}</span><div><strong>{{ member.name }}</strong><small>{{ member.coord }} · 强度{{ member.strength }}/{{ member.max_strength }}</small></div><button @click="movingMemberID = movingMemberID === member.id ? '' : member.id">{{ movingMemberID === member.id ? '取消' : '转移' }}</button><button v-if="fleet.count > 1" @click="splitMember(member)">拆出</button></div>
+            <div class="fleet-counter-grid manager-counter-grid">
+              <div v-for="member in fleet.members" :key="member.id" class="manager-counter" :class="{ selected: movingMemberID === member.id }">
+                <button class="fleet-counter-button" :data-ship-id="member.id" @click="movingMemberID = movingMemberID === member.id ? '' : member.id"><ShipCounter :unit="member" /></button>
+                <button v-if="movingMemberID === member.id && fleet.count > 1" class="split-counter" @click="splitMember(member)">拆出新舰队</button>
+              </div>
             </div>
             <button v-if="movingMemberID && !fleet.members.some((unit) => unit.id === movingMemberID)" class="transfer-button" @click="transferMember(fleet.fleet_id)">转移到此舰队</button>
-            <footer><button v-if="!mergeSourceID" @click="mergeSourceID = fleet.fleet_id">合并舰队</button><button v-else-if="mergeSourceID === fleet.fleet_id" disabled>当前整编源</button><button v-else class="confirm" @click="mergeDraftInto(fleet.fleet_id)">合并到此队</button></footer>
+            <footer v-if="!movingMemberID"><button v-if="!mergeSourceID" @click="mergeSourceID = fleet.fleet_id">合并舰队</button><button v-else-if="mergeSourceID === fleet.fleet_id" disabled>当前整编源</button><button v-else class="confirm" @click="mergeDraftInto(fleet.fleet_id)">合并到此队</button></footer>
           </article>
         </div>
         <footer class="manager-actions"><button class="reset-button" @click="openManager(menuCoord)">重置</button><span>整编由服务器立即生效</span><button class="apply-button" :disabled="actionBusy" @click="applyReorganization">应用整编</button></footer>

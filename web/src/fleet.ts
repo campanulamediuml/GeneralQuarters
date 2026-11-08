@@ -12,7 +12,7 @@ export function fleetID(unit: Unit) {
 
 export function fleetOrder(fleet: FleetGroup, orders: Order[]) {
   const ids = new Set(fleet.members.map((unit) => unit.id))
-  return orders.find((order) => ids.has(order.unit_id) && order.type === 'SET_MOVE')
+  return orders.find((order) => order.unit_id && ids.has(order.unit_id) && order.type === 'SET_MOVE')
 }
 
 export function groupFleets(units: Unit[], orders: Order[]) {

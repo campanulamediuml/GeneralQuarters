@@ -83,7 +83,6 @@ function clickHex(coord: string) {
 function startDrag(unit: FleetGroup, event: PointerEvent) {
   if (unit.faction !== props.playerFaction || (event.pointerType === 'mouse' && event.button !== 0)) return
   event.preventDefault()
-  emit('selectUnit', unit)
   draggedUnit.value = unit
   pointerStart = { x: event.clientX, y: event.clientY }
   dragMatrix = mapElement.value?.getScreenCTM()?.inverse() || null
@@ -126,7 +125,10 @@ function finishDrag(event: PointerEvent) {
   if (longPressTimer) clearTimeout(longPressTimer)
   if (!longPressTriggered && dragging.value && draggedUnit.value) {
     const coord = coordAtPoint(event.clientX, event.clientY)
-    if (draggedUnit.value.legal_moves?.includes(coord)) emit('move', coord)
+    if (draggedUnit.value.legal_moves?.includes(coord)) {
+      emit('selectUnit', draggedUnit.value)
+      emit('move', coord)
+    }
   }
   longPressTriggered = false
   cancelDrag()
@@ -184,10 +186,10 @@ function headingAngle(heading?: string) {
       >
         <rect x="-26" y="-18" width="52" height="36" rx="3" />
         <path class="unit-stripe" d="M-26 11h52v7h-52z" />
-        <text class="unit-type" text-anchor="middle" y="4">{{ unit.type }}</text>
-        <text class="unit-strength" x="-20" y="-7">{{ unit.strength }}</text>
+        <g v-if="unit.count > 1" class="fleet-silhouettes"><path d="M-21 5h42l-6 5h-29zM-5 0H6v5H-5zM-2-5H1V0H-2z" /><path d="M-21 5h42l-6 5h-29zM-5 0H6v5H-5zM-2-5H1V0H-2z" transform="translate(0 -7)" /></g>
+        <text v-else class="unit-type" text-anchor="middle" y="4">{{ unit.type }}</text>
+        <text class="unit-strength" x="-20" y="-7">{{ unit.count }}</text>
         <text class="unit-heading" :transform="`rotate(${headingAngle(unit.heading)} 19 -7)`" x="19" y="-7">▲</text>
-        <text v-if="unit.count > 1" class="unit-count" x="-20" y="16">×{{ unit.count }}</text>
         <text class="unit-name" text-anchor="middle" y="34">{{ unit.name }}</text>
         <text v-if="moveOrder(unit)" class="unit-order" text-anchor="middle" y="48">预定 {{ unit.coord }}</text>
         <text v-else-if="unit.moved" class="unit-order" text-anchor="middle" y="48">已移动</text>
@@ -196,10 +198,10 @@ function headingAngle(heading?: string) {
     <g v-if="dragging && draggedUnit" ref="ghostElement" class="map-unit drag-ghost" :class="`faction-${draggedUnit.faction.toLowerCase()}`" transform="translate(-1000, -1000)">
       <rect x="-26" y="-18" width="52" height="36" rx="3" />
       <path class="unit-stripe" d="M-26 11h52v7h-52z" />
-      <text class="unit-type" text-anchor="middle" y="4">{{ draggedUnit.type }}</text>
-      <text class="unit-strength" x="-20" y="-7">{{ draggedUnit.strength }}</text>
+      <g v-if="draggedUnit.count > 1" class="fleet-silhouettes"><path d="M-21 5h42l-6 5h-29zM-5 0H6v5H-5zM-2-5H1V0H-2z" /><path d="M-21 5h42l-6 5h-29zM-5 0H6v5H-5zM-2-5H1V0H-2z" transform="translate(0 -7)" /></g>
+      <text v-else class="unit-type" text-anchor="middle" y="4">{{ draggedUnit.type }}</text>
+      <text class="unit-strength" x="-20" y="-7">{{ draggedUnit.count }}</text>
       <text class="unit-heading" :transform="`rotate(${headingAngle(draggedUnit.heading)} 19 -7)`" x="19" y="-7">▲</text>
-      <text v-if="draggedUnit.count > 1" class="unit-count" x="-20" y="16">×{{ draggedUnit.count }}</text>
     </g>
   </svg>
 </template>

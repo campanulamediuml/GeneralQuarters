@@ -27,6 +27,7 @@ export interface ShipCard {
   speed_class: 'normal' | 'fast' | 'slow' | 'very_slow'
   torpedo_salvos: number
   aircraft: number
+  hangar_capacity: number
   deck_capacity: number
   elevator_count: number
   depth_charges: number
@@ -39,6 +40,7 @@ export interface Unit {
   id: string
   definition_id: string
   fleet_id?: string
+  fleet_name?: string
   name: string
   type: string
   faction: 'A' | 'B'
@@ -51,6 +53,52 @@ export interface Unit {
   legal_moves?: string[]
 }
 
+export interface AirUnit {
+  id: string
+  definition_id: string
+  carrier_id: string
+  faction: 'A' | 'B'
+  name: string
+  model: string
+  kind: 'fighter' | 'dive_bomber' | 'torpedo_bomber' | 'recon'
+  status: 'hangar' | 'cap'
+  strength: number
+  max_range: number
+  remaining_range: number
+  air_combat: number
+  anti_ship: number
+  anti_ground: number
+  seaplane: boolean
+  launched: boolean
+  priority: number
+}
+
+export interface AirTask {
+  id: string
+  kind: 'cap' | 'recon' | 'asw' | 'attack'
+  name: string
+  carrier_id: string
+  aircraft_ids: string[]
+  priority: number
+}
+
+export interface CarrierAirStatus {
+  unit_id: string
+  name: string
+  type: string
+  hangar_used: number
+  hangar_capacity: number
+  deck_capacity: number
+  deck_used: number
+  operation: '' | 'launch' | 'recover'
+  aircraft: AirUnit[]
+}
+
+export interface AviationView {
+  carriers: CarrierAirStatus[]
+  tasks: AirTask[]
+}
+
 export interface Player {
   id: string
   faction: 'A' | 'B'
@@ -61,9 +109,10 @@ export interface Player {
 }
 
 export interface Order {
-  type: 'SET_MOVE' | 'CLEAR_MOVE' | 'MERGE_FLEET' | 'REORGANIZE_HEX'
-  unit_id: string
+  type: 'SET_MOVE' | 'CLEAR_MOVE' | 'MERGE_FLEET' | 'REORGANIZE_HEX' | 'LAUNCH_CAP' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK'
+  unit_id?: string
   target_unit_id?: string
+  aircraft_id?: string
   coord?: string
   assignments?: Record<string, string>
 }
@@ -86,6 +135,7 @@ export interface GameView {
   map: GameMap
   units: Unit[]
   fleets: FleetGroup[]
+  aviation: AviationView
   you: Player
   players: Player[]
   orders: Order[]

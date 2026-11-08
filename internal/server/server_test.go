@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
@@ -117,11 +118,11 @@ func TestTwoPlayerCommandAndTurnFlow(t *testing.T) {
 		}
 	}
 
-	invalid := map[string]any{"command_id": "invalid", "base_version": 1, "type": "SET_MOVE", "unit_id": "a-flag", "coord": "0404"}
+	invalid := map[string]any{"command_id": "invalid", "base_version": 1, "type": "SET_MOVE", "unit_id": "a-bb-01", "coord": "0404"}
 	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/commands", invalid, nil); status != http.StatusBadRequest {
 		t.Fatalf("非法移动状态码%d", status)
 	}
-	valid := map[string]any{"command_id": "move-1", "base_version": 1, "type": "SET_MOVE", "unit_id": "a-flag", "coord": "0203"}
+	valid := map[string]any{"command_id": "move-1", "base_version": 1, "type": "SET_MOVE", "unit_id": "a-bb-01", "coord": "0203"}
 	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/commands", valid, nil); status != http.StatusOK {
 		t.Fatal("合法移动被拒绝")
 	}
@@ -135,7 +136,7 @@ func TestTwoPlayerCommandAndTurnFlow(t *testing.T) {
 	}
 	movedFound := false
 	for _, unit := range moved.Units {
-		if unit.ID == "a-flag" && unit.Coord == "0203" && unit.Moved {
+		if unit.ID == "a-bb-01" && unit.Coord == "0203" && unit.Moved {
 			movedFound = true
 		}
 	}
@@ -155,7 +156,7 @@ func TestTwoPlayerCommandAndTurnFlow(t *testing.T) {
 	}
 	found := false
 	for _, unit := range readyView.Units {
-		if unit.ID == "a-flag" && unit.Coord == "0203" && !unit.Moved {
+		if unit.ID == "a-bb-01" && unit.Coord == "0203" && !unit.Moved {
 			found = true
 		}
 	}
@@ -163,7 +164,7 @@ func TestTwoPlayerCommandAndTurnFlow(t *testing.T) {
 		t.Fatal("新回合未重置移动状态")
 	}
 
-	stale := map[string]any{"command_id": "move-stale", "base_version": 1, "type": "SET_MOVE", "unit_id": "a-flag", "coord": "0204"}
+	stale := map[string]any{"command_id": "move-stale", "base_version": 1, "type": "SET_MOVE", "unit_id": "a-bb-01", "coord": "0204"}
 	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/commands", stale, nil); status != http.StatusConflict {
 		t.Fatal("过期版本未被拒绝")
 	}
@@ -173,7 +174,7 @@ func TestTwoPlayerCommandAndTurnFlow(t *testing.T) {
 	}
 	defer persisted.Close()
 	room, err := persisted.Room(t.Context(), created.RoomID)
-	if err != nil || room.Turn != 2 || room.State.Units["a-flag"].Coord != "0203" {
+	if err != nil || room.Turn != 2 || room.State.Units["a-bb-01"].Coord != "0203" {
 		t.Fatalf("持久化恢复失败：%+v %v", room, err)
 	}
 
@@ -235,6 +236,16 @@ func TestRoomActorSerializesAllJobs(t *testing.T) {
 	}
 }
 
+func TestRoomActorContinuesAfterPanic(t *testing.T) {
+	app := &Server{}
+	app.submitRoom("same-room", func() { panic("test panic") })
+	completed := false
+	app.submitRoom("same-room", func() { completed = true })
+	if !completed {
+		t.Fatal("房间actor在任务panic后停止处理后续任务")
+	}
+}
+
 func TestConcurrentCommandsHaveSingleWinner(t *testing.T) {
 	a, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
@@ -243,8 +254,8 @@ func TestConcurrentCommandsHaveSingleWinner(t *testing.T) {
 		t.Fatal("创建房间失败")
 	}
 	commands := []map[string]any{
-		{"command_id": "concurrent-flag", "base_version": 1, "type": "SET_MOVE", "unit_id": "a-flag", "coord": "0203"},
-		{"command_id": "concurrent-screen", "base_version": 1, "type": "SET_MOVE", "unit_id": "a-screen", "coord": "0303"},
+		{"command_id": "concurrent-flag", "base_version": 1, "type": "SET_MOVE", "unit_id": "a-bb-01", "coord": "0203"},
+		{"command_id": "concurrent-screen", "base_version": 1, "type": "SET_MOVE", "unit_id": "a-dd-01", "coord": "0201"},
 	}
 	statuses := make(chan int, len(commands))
 	errors := make(chan error, len(commands))
@@ -266,7 +277,9 @@ func TestConcurrentCommandsHaveSingleWinner(t *testing.T) {
 				errors <- err
 				return
 			}
+			responseBody, _ := io.ReadAll(response.Body)
 			response.Body.Close()
+			t.Logf("并发命令响应：status=%d body=%s", response.StatusCode, responseBody)
 			statuses <- response.StatusCode
 		}()
 	}

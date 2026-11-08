@@ -21,20 +21,29 @@ type MapDefinition struct {
 }
 
 type Deployment struct {
+	ID        string `json:"id"`
+	Unit      string `json:"unit"`
+	Faction   string `json:"faction"`
+	Name      string `json:"name"`
+	Coord     string `json:"coord"`
+	FleetID   string `json:"fleet_id"`
+	FleetName string `json:"fleet_name"`
+}
+
+type AirDeployment struct {
 	ID      string `json:"id"`
 	Unit    string `json:"unit"`
-	Faction string `json:"faction"`
-	Name    string `json:"name"`
-	Coord   string `json:"coord"`
+	Carrier string `json:"carrier"`
 }
 
 type ScenarioDefinition struct {
-	ID          string       `json:"id"`
-	Version     int          `json:"version"`
-	Name        string       `json:"name"`
-	Map         string       `json:"map"`
-	Description string       `json:"description"`
-	Deployments []Deployment `json:"deployments"`
+	ID             string          `json:"id"`
+	Version        int             `json:"version"`
+	Name           string          `json:"name"`
+	Map            string          `json:"map"`
+	Description    string          `json:"description"`
+	Deployments    []Deployment    `json:"deployments"`
+	AirDeployments []AirDeployment `json:"air_deployments"`
 }
 
 type UnitDefinition struct {
@@ -57,6 +66,7 @@ type ShipCard struct {
 	SpeedClass     string  `json:"speed_class"`
 	TorpedoSalvos  int     `json:"torpedo_salvos"`
 	Aircraft       int     `json:"aircraft"`
+	HangarCapacity int     `json:"hangar_capacity"`
 	DeckCapacity   int     `json:"deck_capacity"`
 	ElevatorCount  int     `json:"elevator_count"`
 	DepthCharges   int     `json:"depth_charges"`
@@ -65,16 +75,31 @@ type ShipCard struct {
 	HistoricalLoss string  `json:"historical_loss,omitempty"`
 }
 
+type AircraftDefinition struct {
+	ID         string `json:"id"`
+	Name       string `json:"name"`
+	Model      string `json:"model"`
+	Kind       string `json:"kind"`
+	Strength   int    `json:"strength"`
+	Range      int    `json:"range"`
+	AirCombat  int    `json:"air_combat"`
+	AntiShip   int    `json:"anti_ship"`
+	AntiGround int    `json:"anti_ground"`
+	Seaplane   bool   `json:"seaplane"`
+}
+
 type UnitCatalog struct {
-	ID      string           `json:"id"`
-	Version int              `json:"version"`
-	Units   []UnitDefinition `json:"units"`
+	ID      string               `json:"id"`
+	Version int                  `json:"version"`
+	Units   []UnitDefinition     `json:"units"`
+	Air     []AircraftDefinition `json:"aircraft"`
 }
 
 type Unit struct {
 	ID           string   `json:"id"`
 	DefinitionID string   `json:"definition_id"`
 	FleetID      string   `json:"fleet_id"`
+	FleetName    string   `json:"fleet_name"`
 	Name         string   `json:"name"`
 	Type         string   `json:"type"`
 	Faction      string   `json:"faction"`
@@ -90,6 +115,7 @@ type Unit struct {
 type FleetGroup struct {
 	ID          string   `json:"id"`
 	FleetID     string   `json:"fleet_id"`
+	FleetName   string   `json:"fleet_name"`
 	Name        string   `json:"name"`
 	Type        string   `json:"type"`
 	Faction     string   `json:"faction"`
@@ -103,20 +129,69 @@ type FleetGroup struct {
 	Members     []Unit   `json:"members"`
 }
 
+type AirUnit struct {
+	ID             string `json:"id"`
+	DefinitionID   string `json:"definition_id"`
+	CarrierID      string `json:"carrier_id"`
+	Faction        string `json:"faction"`
+	Name           string `json:"name"`
+	Model          string `json:"model"`
+	Kind           string `json:"kind"`
+	Status         string `json:"status"`
+	Strength       int    `json:"strength"`
+	MaxRange       int    `json:"max_range"`
+	RemainingRange int    `json:"remaining_range"`
+	AirCombat      int    `json:"air_combat"`
+	AntiShip       int    `json:"anti_ship"`
+	AntiGround     int    `json:"anti_ground"`
+	Seaplane       bool   `json:"seaplane"`
+	Launched       bool   `json:"launched"`
+	Priority       int    `json:"priority"`
+}
+
+type AirTask struct {
+	ID          string   `json:"id"`
+	Kind        string   `json:"kind"`
+	Name        string   `json:"name"`
+	CarrierID   string   `json:"carrier_id"`
+	AircraftIDs []string `json:"aircraft_ids"`
+	Priority    int      `json:"priority"`
+}
+
+type AviationView struct {
+	Carriers []CarrierAirStatus `json:"carriers"`
+	Tasks    []AirTask          `json:"tasks"`
+}
+
+type CarrierAirStatus struct {
+	UnitID         string    `json:"unit_id"`
+	Name           string    `json:"name"`
+	Type           string    `json:"type"`
+	HangarUsed     int       `json:"hangar_used"`
+	HangarCapacity int       `json:"hangar_capacity"`
+	DeckCapacity   int       `json:"deck_capacity"`
+	DeckUsed       int       `json:"deck_used"`
+	Operation      string    `json:"operation"`
+	Aircraft       []AirUnit `json:"aircraft"`
+}
+
 type State struct {
-	ScenarioID   string            `json:"scenario_id"`
-	ScenarioName string            `json:"scenario_name"`
-	Description  string            `json:"description"`
-	Map          MapDefinition     `json:"map"`
-	Units        map[string]*Unit  `json:"units"`
-	RNGState     uint64            `json:"rng_state"`
-	Definitions  map[string]string `json:"definition_versions"`
+	ScenarioID        string              `json:"scenario_id"`
+	ScenarioName      string              `json:"scenario_name"`
+	Description       string              `json:"description"`
+	Map               MapDefinition       `json:"map"`
+	Units             map[string]*Unit    `json:"units"`
+	Aircraft          map[string]*AirUnit `json:"aircraft,omitempty"`
+	CarrierOperations map[string]string   `json:"carrier_operations,omitempty"`
+	RNGState          uint64              `json:"rng_state"`
+	Definitions       map[string]string   `json:"definition_versions"`
 }
 
 type Order struct {
 	Type         string            `json:"type"`
 	UnitID       string            `json:"unit_id,omitempty"`
 	TargetUnitID string            `json:"target_unit_id,omitempty"`
+	AircraftID   string            `json:"aircraft_id,omitempty"`
 	Coord        string            `json:"coord,omitempty"`
 	Assignments  map[string]string `json:"assignments,omitempty"`
 }

@@ -1,6 +1,6 @@
 {
   "id": "sandbox",
-  "version": 2,
+  "version": 3,
   "units": [
     {
       "id": "bb",
@@ -209,5 +209,12 @@
         "armored_carrier": false
       }
     }
+  ],
+  "aircraft": [
+    {"id":"fighter","name":"战斗机","model":"F6F 地狱猫","kind":"fighter","strength":3,"range":10,"air_combat":5,"anti_ship":0,"anti_ground":1},
+    {"id":"dive_bomber","name":"俯冲轰炸机","model":"SB2C 地狱俯冲者","kind":"dive_bomber","strength":2,"range":9,"air_combat":1,"anti_ship":4,"anti_ground":4},
+    {"id":"torpedo_bomber","name":"鱼雷机","model":"TBF 复仇者","kind":"torpedo_bomber","strength":2,"range":9,"air_combat":1,"anti_ship":5,"anti_ground":2},
+    {"id":"recon","name":"侦察机","model":"F6F-5P 侦察型","kind":"recon","strength":1,"range":12,"air_combat":2,"anti_ship":0,"anti_ground":0},
+    {"id":"seaplane","name":"水上侦察机","model":"SOC 海鸥","kind":"recon","strength":1,"range":8,"air_combat":1,"anti_ship":0,"anti_ground":0,"seaplane":true}
   ]
 }

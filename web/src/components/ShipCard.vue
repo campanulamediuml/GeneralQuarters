@@ -44,7 +44,7 @@ function number(value: number) {
       <div><dt>轻型防空</dt><dd>{{ number(unit.card.light_aa) }}</dd></div>
       <div v-if="unit.card.main_gun_count"><dt>主炮配置</dt><dd>{{ unit.card.main_gun_count }} × {{ number(unit.card.main_gun_caliber) }}″</dd></div>
       <div><dt>雷达</dt><dd>{{ unit.card.surface_radar ? '对海' : '' }}{{ unit.card.surface_radar && unit.card.air_radar ? ' / ' : '' }}{{ unit.card.air_radar ? '对空' : '' }}{{ !unit.card.surface_radar && !unit.card.air_radar ? '无' : '' }}</dd></div>
-      <div v-if="unit.card.aircraft"><dt>{{ isCarrier ? '舰载机' : '水上飞机' }}</dt><dd>{{ unit.card.aircraft }}</dd></div>
+      <div v-if="unit.card.hangar_capacity"><dt>{{ isCarrier ? '舰载机 / 机库' : '水机 / 机库' }}</dt><dd>{{ unit.card.aircraft }} / {{ unit.card.hangar_capacity }}</dd></div>
       <div v-if="unit.card.torpedo_salvos"><dt>鱼雷齐射</dt><dd>{{ unit.card.torpedo_salvos }} 轮</dd></div>
       <div v-if="unit.card.depth_charges"><dt>深水炸弹</dt><dd>{{ unit.card.depth_charges }} 组</dd></div>
       <div v-if="unit.card.cargo"><dt>货物</dt><dd>{{ unit.card.cargo }}</dd></div>

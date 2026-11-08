@@ -35,8 +35,13 @@ func TestScenarioValidationAndMovement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(catalog.Units) != 9 || len(state.Units) != 18 {
-		t.Fatalf("沙盒应包含九类共18艘舰船：definitions=%d units=%d", len(catalog.Units), len(state.Units))
+	if len(catalog.Units) != 9 || len(state.Units) != 31 || len(state.Aircraft) != 13 {
+		t.Fatalf("沙盒部署数量错误：definitions=%d units=%d aircraft=%d", len(catalog.Units), len(state.Units), len(state.Aircraft))
+	}
+	fleetA := VisibleFleets(state, "A")
+	fleetB := VisibleFleets(state, "B")
+	if len(fleetA) != 1 || fleetA[0].Count != 14 || len(fleetB) != 1 || fleetB[0].Count != 17 {
+		t.Fatalf("初始两支舰队编制错误：A=%+v B=%+v", fleetA, fleetB)
 	}
 	types := map[string]bool{}
 	for _, definition := range catalog.Units {
@@ -47,15 +52,15 @@ func TestScenarioValidationAndMovement(t *testing.T) {
 			t.Fatalf("单位库缺少舰船类型%s", shipType)
 		}
 	}
-	unit := state.Units["a-flag"]
+	unit := state.Units["a-bb-01"]
 	if unit.DefinitionID != "bb" || unit.Card.Gunnery != 16 || unit.Card.DamageControl != 7 || !unit.Card.SurfaceRadar {
 		t.Fatalf("战列舰角色卡生成错误：%+v", unit)
 	}
-	carrier := state.Units["a-cv"]
-	if carrier.Card.Gunnery != 4 || carrier.Card.DeckCapacity != 9 || carrier.Card.ElevatorCount != 3 || carrier.Card.Aircraft != 72 {
+	carrier := state.Units["b-cv-01"]
+	if carrier.Card.Gunnery != 4 || carrier.Card.DeckCapacity != 9 || carrier.Card.ElevatorCount != 3 || carrier.Card.Aircraft != 4 || carrier.Card.HangarCapacity != 24 {
 		t.Fatalf("航母角色卡生成错误：%+v", carrier)
 	}
-	if state.Definitions["units"] != "2" {
+	if state.Definitions["units"] != "3" {
 		t.Fatalf("未记录单位目录版本：%+v", state.Definitions)
 	}
 	if err := ValidateOrder(state, "A", Order{Type: "SET_MOVE", UnitID: unit.ID, Coord: "0203"}); err != nil {
@@ -68,11 +73,11 @@ func TestScenarioValidationAndMovement(t *testing.T) {
 		t.Fatal("允许非相邻移动")
 	}
 
-	state.Units["a-flag"].Coord = "0303"
+	state.Units["a-bb-01"].Coord = "0303"
 	if err := ValidateOrder(state, "A", Order{Type: "SET_MOVE", UnitID: unit.ID, Coord: "0304"}); err == nil {
 		t.Fatal("允许进入岛屿")
 	}
-	state.Units["a-flag"].Coord = "0405"
+	state.Units["a-bb-01"].Coord = "0405"
 	if err := ValidateOrder(state, "A", Order{Type: "SET_MOVE", UnitID: unit.ID, Coord: "0506"}); err == nil {
 		t.Fatal("允许进入暗礁")
 	}

@@ -54,13 +54,14 @@ func readJSON(path string, target any) error {
 func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCatalog, seed uint64) (State, error) {
 	state := State{
 		ScenarioID: scenario.ID, ScenarioName: scenario.Name, Description: scenario.Description,
-		Map: gameMap, Units: map[string]*Unit{}, RNGState: seed,
+		Map: gameMap, Units: map[string]*Unit{}, Aircraft: map[string]*AirUnit{}, CarrierOperations: map[string]string{}, RNGState: seed,
 		Definitions: map[string]string{"scenario": fmt.Sprint(scenario.Version), "map": fmt.Sprint(gameMap.Version), "units": fmt.Sprint(catalog.Version)},
 	}
 	definitions := map[string]UnitDefinition{}
 	for _, definition := range catalog.Units {
 		definitions[definition.ID] = definition
 	}
+	fleetHomes := map[string]Deployment{}
 	for _, deployment := range scenario.Deployments {
 		if deployment.Faction != "A" && deployment.Faction != "B" {
 			return state, fmt.Errorf("部署%s阵营无效", deployment.ID)
@@ -83,17 +84,71 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		if !inBounds(gameMap, deployment.Coord) || terrainAt(gameMap, deployment.Coord) == "island" || terrainAt(gameMap, deployment.Coord) == "reef" {
 			return state, fmt.Errorf("部署%s坐标不可通行", deployment.ID)
 		}
+		fleetID := deployment.FleetID
+		if fleetID == "" {
+			fleetID = deployment.ID
+		}
+		fleetName := deployment.FleetName
+		if fleetName == "" {
+			fleetName = fleetID
+		}
+		if home, exists := fleetHomes[fleetID]; exists && (home.Faction != deployment.Faction || home.Coord != deployment.Coord) {
+			return state, fmt.Errorf("舰队%s的初始成员必须属于同一阵营和hex", fleetID)
+		}
+		fleetHomes[fleetID] = deployment
 		card := definition.Card
+		card.Aircraft = 0
+		if card.HangarCapacity == 0 {
+			switch definition.Type {
+			case "CV":
+				card.HangarCapacity = 24
+			case "CVL", "CVE":
+				card.HangarCapacity = 9
+			case "BB", "BC", "CA", "CL":
+				card.HangarCapacity = 1
+			}
+		}
 		card.Gunnery = int(math.Round(card.MainGunCaliber * float64(card.MainGunCount) / 9))
 		if card.SpeedClass == "" {
 			card.SpeedClass = "normal"
 		}
 		state.Units[deployment.ID] = &Unit{
-			ID: deployment.ID, DefinitionID: definition.ID, FleetID: deployment.ID, Name: deployment.Name, Type: definition.Type, Faction: deployment.Faction,
+			ID: deployment.ID, DefinitionID: definition.ID, FleetID: fleetID, FleetName: fleetName, Name: deployment.Name, Type: definition.Type, Faction: deployment.Faction,
 			Coord: deployment.Coord, Heading: "NE", Strength: definition.Strength, MaxStrength: definition.Strength, Card: card,
 		}
 	}
+	airDefinitions := map[string]AircraftDefinition{}
+	for _, definition := range catalog.Air {
+		airDefinitions[definition.ID] = definition
+	}
+	for _, deployment := range scenario.AirDeployments {
+		if _, exists := state.Aircraft[deployment.ID]; exists {
+			return state, fmt.Errorf("航空部署ID重复：%s", deployment.ID)
+		}
+		carrier := state.Units[deployment.Carrier]
+		if carrier == nil || carrier.Card.HangarCapacity <= 0 {
+			return state, fmt.Errorf("航空部署%s的载机舰无效", deployment.ID)
+		}
+		definition, ok := airDefinitions[deployment.Unit]
+		if !ok {
+			return state, fmt.Errorf("航空单位定义不存在：%s", deployment.Unit)
+		}
+		if carrier.Card.Aircraft >= carrier.Card.HangarCapacity {
+			return state, fmt.Errorf("载机舰%s的机库容量不足", carrier.ID)
+		}
+		maxRange := int(math.Round(float64(definition.Range) * 1.3))
+		state.Aircraft[deployment.ID] = &AirUnit{
+			ID: deployment.ID, DefinitionID: definition.ID, CarrierID: carrier.ID, Faction: carrier.Faction,
+			Name: definition.Name, Model: definition.Model, Kind: definition.Kind, Status: "hangar", Strength: definition.Strength,
+			MaxRange: maxRange, RemainingRange: maxRange, AirCombat: definition.AirCombat, AntiShip: definition.AntiShip, AntiGround: definition.AntiGround, Seaplane: definition.Seaplane,
+		}
+		carrier.Card.Aircraft++
+	}
 	return state, nil
+}
+
+func IsCarrier(unit *Unit) bool {
+	return unit != nil && (unit.Type == "CV" || unit.Type == "CVL" || unit.Type == "CVE")
 }
 
 func inBounds(gameMap MapDefinition, coord string) bool {
@@ -167,6 +222,9 @@ func headingBetween(from, to string) string {
 }
 
 func ValidateOrder(state State, faction string, order Order) error {
+	if order.Type == "LAUNCH_CAP" || order.Type == "RECOVER_AIR" || order.Type == "PRIORITIZE_AIR_TASK" {
+		return ValidateAirOrder(state, faction, order)
+	}
 	if order.Type == "REORGANIZE_HEX" {
 		return validateReorganization(state, faction, order)
 	}
@@ -258,8 +316,18 @@ func ApplyImmediateOrganization(state *State, order Order) []EngineEvent {
 		if validateReorganization(*state, faction, order) != nil {
 			return nil
 		}
+		fleetNames := map[string]string{}
+		for _, unit := range state.Units {
+			if unit.FleetName != "" {
+				fleetNames[FleetKey(unit)] = unit.FleetName
+			}
+		}
 		for unitID, fleetID := range order.Assignments {
 			state.Units[unitID].FleetID = fleetID
+			state.Units[unitID].FleetName = fleetNames[fleetID]
+			if state.Units[unitID].FleetName == "" {
+				state.Units[unitID].FleetName = fleetID
+			}
 		}
 		return []EngineEvent{{Type: "fleet_reorganized", Audience: faction, Text: order.Coord + "内舰队编成已更新"}}
 	}
@@ -281,7 +349,7 @@ func ResolveOrders(state *State, orders []Order) []EngineEvent {
 	for _, unit := range state.Units {
 		unit.Moved = false
 	}
-	events := []EngineEvent{}
+	events := AdvanceAviation(state)
 	for _, order := range orders {
 		if order.Type != "REORGANIZE_HEX" {
 			continue
@@ -444,8 +512,10 @@ func VisibleFleets(state State, faction string) []FleetGroup {
 	for id, members := range groups {
 		sort.Slice(members, func(i, j int) bool { return members[i].ID < members[j].ID })
 		leader := members[0]
-		fleet := FleetGroup{ID: leader.ID, FleetID: id, Name: leader.Name, Type: leader.Type, Faction: leader.Faction, Coord: leader.Coord, Heading: leader.Heading, Count: len(members), Members: members, LegalMoves: leader.LegalMoves}
-		if len(members) > 1 {
+		fleet := FleetGroup{ID: leader.ID, FleetID: id, FleetName: leader.FleetName, Name: leader.Name, Type: leader.Type, Faction: leader.Faction, Coord: leader.Coord, Heading: leader.Heading, Count: len(members), Members: members, LegalMoves: leader.LegalMoves}
+		if leader.FleetName != "" {
+			fleet.Name = leader.FleetName
+		} else if len(members) > 1 {
 			fleet.Name += "编队"
 		}
 		for _, unit := range members {
