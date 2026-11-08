@@ -3,6 +3,7 @@ import type { FleetGroup } from './fleet'
 export interface MapCell {
   coord: string
   terrain: string
+  weather?: 'cloud' | 'rain' | 'storm'
   name?: string
 }
 
@@ -53,6 +54,8 @@ export interface Unit {
   legal_moves?: string[]
 }
 
+export type ReconHeading = 'E' | 'SE' | 'SW' | 'W' | 'NW' | 'NE'
+
 export interface AirUnit {
   id: string
   definition_id: string
@@ -61,7 +64,7 @@ export interface AirUnit {
   name: string
   model: string
   kind: 'fighter' | 'dive_bomber' | 'torpedo_bomber' | 'recon'
-  status: 'hangar' | 'cap'
+  status: 'hangar' | 'cap' | 'recon'
   strength: number
   max_range: number
   remaining_range: number
@@ -71,6 +74,15 @@ export interface AirUnit {
   seaplane: boolean
   launched: boolean
   priority: number
+  origin_coord?: string
+  coord?: string
+  heading?: ReconHeading
+  sector_width?: 60 | 120
+  recon_radius?: number
+  recon_distance?: number
+  recon_radius_limit?: number
+  returning?: boolean
+  tracking_fleet_id?: string
 }
 
 export interface AirTask {
@@ -80,6 +92,16 @@ export interface AirTask {
   carrier_id: string
   aircraft_ids: string[]
   priority: number
+  origin_coord?: string
+  current_coord?: string
+  heading?: ReconHeading
+  sector_width?: 60 | 120
+  recon_radius?: number
+  recon_distance?: number
+  returning?: boolean
+  tracking_fleet_id?: string
+  sector_hexes?: string[]
+  current_ring_hexes?: string[]
 }
 
 export interface CarrierAirStatus {
@@ -109,11 +131,14 @@ export interface Player {
 }
 
 export interface Order {
-  type: 'SET_MOVE' | 'CLEAR_MOVE' | 'MERGE_FLEET' | 'REORGANIZE_HEX' | 'LAUNCH_CAP' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK'
+  type: 'SET_MOVE' | 'CLEAR_MOVE' | 'MERGE_FLEET' | 'REORGANIZE_HEX' | 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK'
   unit_id?: string
   target_unit_id?: string
   aircraft_id?: string
   coord?: string
+  heading?: ReconHeading
+  sector_width?: 60 | 120
+  recon_radius?: number
   assignments?: Record<string, string>
 }
 

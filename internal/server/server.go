@@ -74,6 +74,9 @@ type commandRequest struct {
 	TargetUnitID string            `json:"target_unit_id"`
 	AircraftID   string            `json:"aircraft_id"`
 	Coord        string            `json:"coord"`
+	Heading      string            `json:"heading"`
+	SectorWidth  int               `json:"sector_width"`
+	ReconRadius  int               `json:"recon_radius"`
 	Assignments  map[string]string `json:"assignments"`
 }
 
@@ -234,17 +237,17 @@ func (s *Server) handleCommand(w http.ResponseWriter, r *http.Request, roomID st
 		writeError(w, http.StatusConflict, "状态已更新，请刷新后重试")
 		return
 	}
-	order := game.Order{Type: request.Type, UnitID: request.UnitID, TargetUnitID: request.TargetUnitID, AircraftID: request.AircraftID, Coord: game.NormalizeToken(request.Coord), Assignments: request.Assignments}
+	order := game.Order{Type: request.Type, UnitID: request.UnitID, TargetUnitID: request.TargetUnitID, AircraftID: request.AircraftID, Coord: game.NormalizeToken(request.Coord), Heading: strings.ToUpper(request.Heading), SectorWidth: request.SectorWidth, ReconRadius: request.ReconRadius, Assignments: request.Assignments}
 	if err := game.ValidateOrder(room.State, player.Faction, order); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if order.Type == "SET_MOVE" || order.Type == "MERGE_FLEET" || order.Type == "REORGANIZE_HEX" || order.Type == "LAUNCH_CAP" || order.Type == "RECOVER_AIR" || order.Type == "PRIORITIZE_AIR_TASK" {
+	if order.Type == "SET_MOVE" || order.Type == "MERGE_FLEET" || order.Type == "REORGANIZE_HEX" || order.Type == "LAUNCH_CAP" || order.Type == "LAUNCH_RECON" || order.Type == "RECOVER_AIR" || order.Type == "PRIORITIZE_AIR_TASK" {
 		var events []game.EngineEvent
 		switch order.Type {
 		case "SET_MOVE":
 			events = game.ApplyImmediateMove(&room.State, order)
-		case "LAUNCH_CAP", "RECOVER_AIR", "PRIORITIZE_AIR_TASK":
+		case "LAUNCH_CAP", "LAUNCH_RECON", "RECOVER_AIR", "PRIORITIZE_AIR_TASK":
 			events = game.ApplyAirOrder(&room.State, order)
 		default:
 			events = game.ApplyImmediateOrganization(&room.State, order)

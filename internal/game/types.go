@@ -8,6 +8,7 @@ import (
 type MapCell struct {
 	Coord   string `json:"coord"`
 	Terrain string `json:"terrain"`
+	Weather string `json:"weather,omitempty"`
 	Name    string `json:"name,omitempty"`
 }
 
@@ -130,32 +131,51 @@ type FleetGroup struct {
 }
 
 type AirUnit struct {
-	ID             string `json:"id"`
-	DefinitionID   string `json:"definition_id"`
-	CarrierID      string `json:"carrier_id"`
-	Faction        string `json:"faction"`
-	Name           string `json:"name"`
-	Model          string `json:"model"`
-	Kind           string `json:"kind"`
-	Status         string `json:"status"`
-	Strength       int    `json:"strength"`
-	MaxRange       int    `json:"max_range"`
-	RemainingRange int    `json:"remaining_range"`
-	AirCombat      int    `json:"air_combat"`
-	AntiShip       int    `json:"anti_ship"`
-	AntiGround     int    `json:"anti_ground"`
-	Seaplane       bool   `json:"seaplane"`
-	Launched       bool   `json:"launched"`
-	Priority       int    `json:"priority"`
+	ID               string `json:"id"`
+	DefinitionID     string `json:"definition_id"`
+	CarrierID        string `json:"carrier_id"`
+	Faction          string `json:"faction"`
+	Name             string `json:"name"`
+	Model            string `json:"model"`
+	Kind             string `json:"kind"`
+	Status           string `json:"status"`
+	Strength         int    `json:"strength"`
+	MaxRange         int    `json:"max_range"`
+	RemainingRange   int    `json:"remaining_range"`
+	AirCombat        int    `json:"air_combat"`
+	AntiShip         int    `json:"anti_ship"`
+	AntiGround       int    `json:"anti_ground"`
+	Seaplane         bool   `json:"seaplane"`
+	Launched         bool   `json:"launched"`
+	Priority         int    `json:"priority"`
+	OriginCoord      string `json:"origin_coord,omitempty"`
+	Coord            string `json:"coord,omitempty"`
+	Heading          string `json:"heading,omitempty"`
+	SectorWidth      int    `json:"sector_width,omitempty"`
+	ReconRadius      int    `json:"recon_radius,omitempty"`
+	ReconDistance    int    `json:"recon_distance,omitempty"`
+	ReconRadiusLimit int    `json:"recon_radius_limit,omitempty"`
+	Returning        bool   `json:"returning,omitempty"`
+	TrackingFleetID  string `json:"tracking_fleet_id,omitempty"`
 }
 
 type AirTask struct {
-	ID          string   `json:"id"`
-	Kind        string   `json:"kind"`
-	Name        string   `json:"name"`
-	CarrierID   string   `json:"carrier_id"`
-	AircraftIDs []string `json:"aircraft_ids"`
-	Priority    int      `json:"priority"`
+	ID               string   `json:"id"`
+	Kind             string   `json:"kind"`
+	Name             string   `json:"name"`
+	CarrierID        string   `json:"carrier_id"`
+	AircraftIDs      []string `json:"aircraft_ids"`
+	Priority         int      `json:"priority"`
+	OriginCoord      string   `json:"origin_coord,omitempty"`
+	CurrentCoord     string   `json:"current_coord,omitempty"`
+	Heading          string   `json:"heading,omitempty"`
+	SectorWidth      int      `json:"sector_width,omitempty"`
+	ReconRadius      int      `json:"recon_radius,omitempty"`
+	ReconDistance    int      `json:"recon_distance,omitempty"`
+	Returning        bool     `json:"returning,omitempty"`
+	TrackingFleetID  string   `json:"tracking_fleet_id,omitempty"`
+	SectorHexes      []string `json:"sector_hexes,omitempty"`
+	CurrentRingHexes []string `json:"current_ring_hexes,omitempty"`
 }
 
 type AviationView struct {
@@ -175,16 +195,26 @@ type CarrierAirStatus struct {
 	Aircraft       []AirUnit `json:"aircraft"`
 }
 
+type FleetContact struct {
+	FleetID string `json:"fleet_id"`
+	Faction string `json:"faction"`
+	Level   int    `json:"level"`
+	Coord   string `json:"coord"`
+	Count   int    `json:"count"`
+	Members []Unit `json:"members,omitempty"`
+}
+
 type State struct {
-	ScenarioID        string              `json:"scenario_id"`
-	ScenarioName      string              `json:"scenario_name"`
-	Description       string              `json:"description"`
-	Map               MapDefinition       `json:"map"`
-	Units             map[string]*Unit    `json:"units"`
-	Aircraft          map[string]*AirUnit `json:"aircraft,omitempty"`
-	CarrierOperations map[string]string   `json:"carrier_operations,omitempty"`
-	RNGState          uint64              `json:"rng_state"`
-	Definitions       map[string]string   `json:"definition_versions"`
+	ScenarioID        string                              `json:"scenario_id"`
+	ScenarioName      string                              `json:"scenario_name"`
+	Description       string                              `json:"description"`
+	Map               MapDefinition                       `json:"map"`
+	Units             map[string]*Unit                    `json:"units"`
+	Aircraft          map[string]*AirUnit                 `json:"aircraft,omitempty"`
+	CarrierOperations map[string]string                   `json:"carrier_operations,omitempty"`
+	Contacts          map[string]map[string]*FleetContact `json:"contacts,omitempty"`
+	RNGState          uint64                              `json:"rng_state"`
+	Definitions       map[string]string                   `json:"definition_versions"`
 }
 
 type Order struct {
@@ -193,6 +223,9 @@ type Order struct {
 	TargetUnitID string            `json:"target_unit_id,omitempty"`
 	AircraftID   string            `json:"aircraft_id,omitempty"`
 	Coord        string            `json:"coord,omitempty"`
+	Heading      string            `json:"heading,omitempty"`
+	SectorWidth  int               `json:"sector_width,omitempty"`
+	ReconRadius  int               `json:"recon_radius,omitempty"`
 	Assignments  map[string]string `json:"assignments,omitempty"`
 }
 

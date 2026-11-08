@@ -108,8 +108,8 @@ paths:
   /api/v1/rooms/{roomID}/commands:
     post:
       tags: [Commands]
-      summary: 提交立即生效的移动或整编命令
-      description: command_id用于幂等重试，base_version用于拒绝过期操作。SET_MOVE、MERGE_FLEET和REORGANIZE_HEX立即结算；CLEAR_MOVE仅清理旧版协议的待结算命令。
+      summary: 提交立即生效的移动、整编或航空命令
+      description: command_id用于幂等重试，base_version用于拒绝过期操作。移动、整编、CAP和扇面侦察立即结算；扇面hex、发现判定和情报只由服务端计算。CLEAR_MOVE仅清理旧版协议的待结算命令。
       parameters:
         - {$ref: '#/components/parameters/RoomID'}
       requestBody:
@@ -199,11 +199,14 @@ components:
       properties:
         command_id: {type: string, maxLength: 128}
         base_version: {type: integer, format: int64}
-        type: {type: string, enum: [SET_MOVE, CLEAR_MOVE, MERGE_FLEET, REORGANIZE_HEX, LAUNCH_CAP, RECOVER_AIR, PRIORITIZE_AIR_TASK]}
+        type: {type: string, enum: [SET_MOVE, CLEAR_MOVE, MERGE_FLEET, REORGANIZE_HEX, LAUNCH_CAP, LAUNCH_RECON, RECOVER_AIR, PRIORITIZE_AIR_TASK]}
         unit_id: {type: string, description: 舰船移动与整编命令必填, example: a-bb-01}
         target_unit_id: {type: string, description: MERGE_FLEET必填，目标舰队中的单位, example: a-dd-01}
         aircraft_id: {type: string, description: 航空命令必填，航空算子或任务ID, example: air-b-01}
         coord: {type: string, description: SET_MOVE和REORGANIZE_HEX必填，ABCD坐标, example: '0203'}
+        heading: {type: string, enum: [E, SE, SW, W, NW, NE], description: LAUNCH_RECON必填，侦察航线中轴, example: W}
+        sector_width: {type: integer, enum: [60, 120], description: LAUNCH_RECON必填；120度最终发现率减半, example: 60}
+        recon_radius: {type: integer, minimum: 1, description: LAUNCH_RECON必填，不能超过航空算子的recon_radius_limit, example: 6}
         assignments:
           type: object
           description: REORGANIZE_HEX必填，该hex全部己方单位ID到fleet_id的映射
@@ -283,7 +286,7 @@ components:
         name: {type: string}
         model: {type: string}
         kind: {type: string, enum: [fighter, dive_bomber, torpedo_bomber, recon]}
-        status: {type: string, enum: [hangar, cap]}
+        status: {type: string, enum: [hangar, cap, recon]}
         strength: {type: integer}
         max_range: {type: integer, description: 服务端包含副油箱后的最大航程}
         remaining_range: {type: integer}
@@ -293,6 +296,15 @@ components:
         seaplane: {type: boolean, description: true时界面使用橙色水机算子}
         launched: {type: boolean, description: 是否占用本回合起飞容量}
         priority: {type: integer}
+        origin_coord: {type: string, description: 侦察扇面顶点}
+        coord: {type: string, description: 侦察机当前hex}
+        heading: {type: string, enum: [E, SE, SW, W, NW, NE]}
+        sector_width: {type: integer, enum: [60, 120]}
+        recon_radius: {type: integer}
+        recon_distance: {type: integer, description: 当前距离圈}
+        recon_radius_limit: {type: integer, description: 服务端按返航燃料给出的最大可选半径}
+        returning: {type: boolean}
+        tracking_fleet_id: {type: string}
     AirTask:
       type: object
       properties:
@@ -302,6 +314,16 @@ components:
         carrier_id: {type: string}
         aircraft_ids: {type: array, items: {type: string}}
         priority: {type: integer, description: 1为最高优先级}
+        origin_coord: {type: string}
+        current_coord: {type: string}
+        heading: {type: string, enum: [E, SE, SW, W, NW, NE]}
+        sector_width: {type: integer, enum: [60, 120]}
+        recon_radius: {type: integer}
+        recon_distance: {type: integer}
+        returning: {type: boolean}
+        tracking_fleet_id: {type: string}
+        sector_hexes: {type: array, items: {type: string}, description: 服务端计算的完整扇面覆盖}
+        current_ring_hexes: {type: array, items: {type: string}, description: 服务端计算的当前距离圈覆盖}
     CarrierAirStatus:
       type: object
       properties:

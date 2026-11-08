@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref } from 'vue'
-import type { GameMap, Order, Unit } from '../types'
+import type { AirTask, GameMap, Order, Unit } from '../types'
 import { fleetOrder, type FleetGroup } from '../fleet'
 
 const props = defineProps<{
@@ -9,6 +9,7 @@ const props = defineProps<{
   playerFaction: 'A' | 'B'
   selectedUnit?: Unit
   orders: Order[]
+  reconTasks: AirTask[]
 }>()
 
 const emit = defineEmits<{
@@ -45,6 +46,8 @@ const hexes = computed(() => {
 
 const viewBox = computed(() => `0 0 ${Math.sqrt(3) * size * (props.map.cols + 1)} ${size * (1.5 * props.map.rows + 0.7)}`)
 const selectedMoves = computed(() => new Set(props.selectedUnit?.legal_moves || []))
+const reconCells = computed(() => new Set(props.reconTasks.flatMap((task) => task.sector_hexes || [])))
+const reconCurrentCells = computed(() => new Set(props.reconTasks.flatMap((task) => task.current_ring_hexes || [])))
 
 function center(coord: string) {
   const row = Number(coord.slice(0, 2))
@@ -164,7 +167,7 @@ function headingAngle(heading?: string) {
 
 <template>
   <svg ref="mapElement" class="hex-map" :viewBox="viewBox" role="img" aria-label="沙盒海图">
-    <g v-for="hex in hexes" :key="hex.coord" class="hex-cell" :data-coord="hex.coord" :class="[`terrain-${hex.terrain}`, { legal: selectedMoves.has(hex.coord), 'drop-hover': dropHover === hex.coord }]" @click="clickHex(hex.coord)">
+    <g v-for="hex in hexes" :key="hex.coord" class="hex-cell" :data-coord="hex.coord" :class="[`terrain-${hex.terrain}`, { legal: selectedMoves.has(hex.coord), 'drop-hover': dropHover === hex.coord, 'recon-sector': reconCells.has(hex.coord), 'recon-current': reconCurrentCells.has(hex.coord) }]" @click="clickHex(hex.coord)">
       <polygon :points="points(hex.x, hex.y)" />
       <text class="coord-label" :x="hex.x" :y="hex.y - 23">{{ hex.coord }}</text>
       <text v-if="hex.name" class="terrain-label" :x="hex.x" :y="hex.y + 27">{{ hex.name }}</text>

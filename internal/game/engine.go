@@ -54,7 +54,7 @@ func readJSON(path string, target any) error {
 func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCatalog, seed uint64) (State, error) {
 	state := State{
 		ScenarioID: scenario.ID, ScenarioName: scenario.Name, Description: scenario.Description,
-		Map: gameMap, Units: map[string]*Unit{}, Aircraft: map[string]*AirUnit{}, CarrierOperations: map[string]string{}, RNGState: seed,
+		Map: gameMap, Units: map[string]*Unit{}, Aircraft: map[string]*AirUnit{}, CarrierOperations: map[string]string{}, Contacts: map[string]map[string]*FleetContact{}, RNGState: seed,
 		Definitions: map[string]string{"scenario": fmt.Sprint(scenario.Version), "map": fmt.Sprint(gameMap.Version), "units": fmt.Sprint(catalog.Version)},
 	}
 	definitions := map[string]UnitDefinition{}
@@ -222,7 +222,7 @@ func headingBetween(from, to string) string {
 }
 
 func ValidateOrder(state State, faction string, order Order) error {
-	if order.Type == "LAUNCH_CAP" || order.Type == "RECOVER_AIR" || order.Type == "PRIORITIZE_AIR_TASK" {
+	if order.Type == "LAUNCH_CAP" || order.Type == "LAUNCH_RECON" || order.Type == "RECOVER_AIR" || order.Type == "PRIORITIZE_AIR_TASK" {
 		return ValidateAirOrder(state, faction, order)
 	}
 	if order.Type == "REORGANIZE_HEX" {
@@ -475,6 +475,7 @@ func resolveContacts(state *State) []EngineEvent {
 
 func VisibleUnits(state State, faction string) []Unit {
 	units := []Unit{}
+	visibleFleets := map[string]bool{}
 	for _, unit := range state.Units {
 		visible := unit.Faction == faction
 		if !visible {
@@ -488,6 +489,7 @@ func VisibleUnits(state State, faction string) []Unit {
 		if visible {
 			copyUnit := *unit
 			copyUnit.FleetID = FleetKey(unit)
+			visibleFleets[copyUnit.FleetID] = true
 			if copyUnit.Heading == "" {
 				copyUnit.Heading = "NE"
 			}
@@ -497,6 +499,12 @@ func VisibleUnits(state State, faction string) []Unit {
 			}
 			units = append(units, copyUnit)
 		}
+	}
+	for _, contact := range state.Contacts[faction] {
+		if contact.Faction == faction || visibleFleets[contact.FleetID] {
+			continue
+		}
+		units = append(units, projectedContactUnits(*contact)...)
 	}
 	sort.Slice(units, func(i, j int) bool { return units[i].ID < units[j].ID })
 	return units

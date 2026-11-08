@@ -22,6 +22,7 @@ type testView struct {
 	Version   int64             `json:"version"`
 	Units     []game.Unit       `json:"units"`
 	Fleets    []game.FleetGroup `json:"fleets"`
+	Aviation  game.AviationView `json:"aviation"`
 	You       store.Player      `json:"you"`
 	Players   []store.Player    `json:"players"`
 	Orders    []game.Order      `json:"orders"`
@@ -305,5 +306,59 @@ func TestConcurrentCommandsHaveSingleWinner(t *testing.T) {
 	var view testView
 	if status := a.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &view); status != http.StatusOK || view.Version != 2 {
 		t.Fatalf("并发命令后权威版本错误：%+v", view)
+	}
+}
+
+func TestSectorReconCommandPersistsAndAdvances(t *testing.T) {
+	a, dbPath, database, cleanup := setupTestServer(t)
+	defer cleanup()
+	var created roomResponse
+	if status := a.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{}, &created); status != http.StatusCreated {
+		t.Fatal("创建房间失败")
+	}
+	b := newTestClient(t, a.base)
+	if status := b.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]string{"token": created.JoinToken}, nil); status != http.StatusOK {
+		t.Fatal("加入房间失败")
+	}
+	command := map[string]any{
+		"command_id": "recon-sector-1", "base_version": 1, "type": "LAUNCH_RECON", "aircraft_id": "air-b-10",
+		"heading": "W", "sector_width": 60, "recon_radius": 6,
+	}
+	if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/commands", command, nil); status != http.StatusOK {
+		t.Fatalf("扇面侦察命令状态码%d", status)
+	}
+	var launched testView
+	if status := b.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &launched); status != http.StatusOK {
+		t.Fatal("读取侦察任务失败")
+	}
+	if launched.Version != 2 || len(launched.Aviation.Tasks) != 1 {
+		t.Fatalf("侦察任务未立即生效：%+v", launched)
+	}
+	task := launched.Aviation.Tasks[0]
+	if task.Kind != "recon" || task.Heading != "W" || task.SectorWidth != 60 || task.ReconRadius != 6 || len(task.SectorHexes) == 0 {
+		t.Fatalf("服务端扇面投影错误：%+v", task)
+	}
+	room, err := database.Room(t.Context(), created.RoomID)
+	if err != nil || room.State.Aircraft["air-b-10"].Status != "recon" || room.State.Aircraft["air-b-10"].ReconRadius != 6 {
+		t.Fatalf("侦察任务未持久化：%+v %v", room.State.Aircraft["air-b-10"], err)
+	}
+	var ready testView
+	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": 2, "ready": true}, &ready); status != http.StatusOK {
+		t.Fatal("A ready失败")
+	}
+	if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": 2, "ready": true}, &ready); status != http.StatusOK {
+		t.Fatal("B ready失败")
+	}
+	if ready.Turn != 2 || len(ready.Aviation.Tasks) != 1 || ready.Aviation.Tasks[0].ReconDistance != 2 || ready.Aviation.Tasks[0].CurrentCoord != "0206" {
+		t.Fatalf("回合结算没有推进侦察航线：%+v", ready.Aviation.Tasks)
+	}
+	persisted, err := store.Open(dbPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer persisted.Close()
+	restored, err := persisted.Room(t.Context(), created.RoomID)
+	if err != nil || restored.State.Aircraft["air-b-10"].Coord != "0206" || restored.State.Aircraft["air-b-10"].RemainingRange != 14 {
+		t.Fatalf("重启读取的侦察状态错误：%+v %v", restored.State.Aircraft["air-b-10"], err)
 	}
 }
