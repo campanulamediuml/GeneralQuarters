@@ -35,13 +35,19 @@ func TestScenarioValidationAndMovement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(catalog.Units) != 9 || len(state.Units) != 31 || len(state.Aircraft) != 13 {
+	if len(catalog.Units) != 9 || len(state.Units) != 62 || len(state.Aircraft) != 32 {
 		t.Fatalf("沙盒部署数量错误：definitions=%d units=%d aircraft=%d", len(catalog.Units), len(state.Units), len(state.Aircraft))
 	}
 	fleetA := VisibleFleets(state, "A")
 	fleetB := VisibleFleets(state, "B")
-	if len(fleetA) != 1 || fleetA[0].Count != 14 || len(fleetB) != 1 || fleetB[0].Count != 17 {
-		t.Fatalf("初始两支舰队编制错误：A=%+v B=%+v", fleetA, fleetB)
+	if len(fleetA) != 2 || len(fleetB) != 2 {
+		t.Fatalf("双方初始舰队数量错误：A=%+v B=%+v", fleetA, fleetB)
+	}
+	expectedFleets := map[string]int{"TG-A": 14, "TG-A-CV": 17, "TG-B": 17, "TG-B-BB": 14}
+	for _, fleet := range append(fleetA, fleetB...) {
+		if expectedFleets[fleet.FleetID] != fleet.Count {
+			t.Fatalf("舰队%s编制错误：%+v", fleet.FleetID, fleet)
+		}
 	}
 	types := map[string]bool{}
 	for _, definition := range catalog.Units {
