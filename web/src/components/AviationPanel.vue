@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { AirUnit, AviationView, CarrierAirStatus, GameMap, ReconHeading } from '../types'
+import type { AirUnit, AviationView, CarrierAirStatus, GameMap, Player, ReconHeading } from '../types'
+import AircraftCounter from './AircraftCounter.vue'
 import ReconSectorMap from './ReconSectorMap.vue'
 
 type AirCommandType = 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'PREPARE_AIR' | 'RETURN_TO_HANGAR' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK'
 type TaskLane = { id: string; name: string; kind: string; slot?: number }
 
-const props = defineProps<{ aviation: AviationView; gameMap: GameMap; focusUnitId?: string; selectedAircraftId?: string; busy: boolean }>()
+const props = defineProps<{ aviation: AviationView; gameMap: GameMap; playerFaction: Player['faction']; focusUnitId?: string; selectedAircraftId?: string; busy: boolean }>()
 const emit = defineEmits<{
   command: [type: AirCommandType, aircraftIDs: string[], options?: { heading?: ReconHeading; sector_width?: 60 | 120; recon_radius?: number }]
   selectAircraft: [aircraftID: string]
@@ -31,7 +32,6 @@ const lanes: TaskLane[] = [
   { id: 'cap', name: 'CAP', kind: 'cap' },
   { id: 'escort', name: '空中掩护', kind: 'escort' },
 ]
-const kindNames = { fighter: '战斗机', dive_bomber: '俯冲轰炸机', torpedo_bomber: '鱼雷机', recon: '侦察机' }
 const headings: { id: ReconHeading; arrow: string; name: string }[] = [
   { id: 'NE', arrow: '↗', name: '东北' },
   { id: 'E', arrow: '→', name: '东' },
@@ -152,13 +152,6 @@ function launchRecon() {
   selectedIDs.value = []
 }
 
-function statusName(aircraft: AirUnit) {
-  if (aircraft.status === 'cap') return 'CAP'
-  if (aircraft.status === 'deck') return '甲板'
-  if (aircraft.status === 'recon') return aircraft.returning ? '返航' : aircraft.tracking_fleet_id ? '跟踪' : '侦察'
-  return '机库'
-}
-
 function taskSummary(task: (typeof tasks.value)[number]) {
   if (task.kind !== 'recon') return `${task.carrier_id} · ${task.aircraft_ids.length} 算子`
   const phase = task.tracking_fleet_id ? '持续跟踪' : task.returning ? '返航搜索' : `第 ${task.recon_distance || 0} 距离圈`
@@ -226,11 +219,10 @@ function operationName(carrier: CarrierAirStatus) {
           <header><div><span class="section-kicker">FLIGHT DECK</span><h3>飞行甲板</h3></div><strong>{{ selectedCarrier.deck_used }} / {{ selectedCarrier.deck_capacity }}</strong></header>
           <p>拖入机库算子提前整备；点击甲板算子可继续分配任务。</p>
           <div class="air-counter-grid">
-            <article v-for="aircraft in aircraftAt('deck')" :key="aircraft.id" class="air-counter" :class="[`air-${aircraft.status}`, `kind-${aircraft.kind}`, { seaplane: aircraft.seaplane, selected: selectedIDs.includes(aircraft.id) || selectedAircraftId === aircraft.id, selectable: true }]" :data-aircraft-id="aircraft.id" :data-status="aircraft.status" draggable="true" @click="selectCounter(aircraft)" @dragstart="startDrag(aircraft, $event)" @dragend="endDrag">
-              <header><strong>{{ aircraft.seaplane ? '水上飞机' : kindNames[aircraft.kind] }}</strong><span>{{ statusName(aircraft) }}</span></header><div class="aircraft-symbol">✈</div><h3>{{ aircraft.model }}</h3>
-              <dl><div><dt>机体</dt><dd>{{ aircraft.strength }}</dd></div><div><dt>空战</dt><dd>{{ aircraft.air_combat }}</dd></div><div><dt>对舰</dt><dd>{{ aircraft.anti_ship }}</dd></div><div><dt>航程</dt><dd>{{ aircraft.remaining_range }} / {{ aircraft.max_range }}</dd></div></dl>
-              <button v-if="aircraft.kind === 'fighter'" :disabled="busy" @click.stop="action(aircraft)">CAP 起飞</button><button v-else-if="aircraft.kind === 'recon'" :disabled="busy" @click.stop="openRecon(aircraft)">扇面侦察</button><button v-else class="air-no-action" disabled>等待打击模块</button>
-            </article>
+            <div v-for="aircraft in aircraftAt('deck')" :key="aircraft.id" class="air-counter-item" :data-aircraft-id="aircraft.id" :data-status="aircraft.status">
+              <AircraftCounter :aircraft="aircraft" :player-faction="playerFaction" :class="{ selected: selectedIDs.includes(aircraft.id) || selectedAircraftId === aircraft.id, selectable: true }" draggable="true" @click="selectCounter(aircraft)" @dragstart="startDrag(aircraft, $event)" @dragend="endDrag" />
+              <button v-if="aircraft.kind === 'fighter'" :disabled="busy" @click.stop="action(aircraft)">CAP 起飞</button><button v-else-if="aircraft.kind === 'recon'" :disabled="busy" @click.stop="openRecon(aircraft)">扇面侦察</button><span v-else class="air-no-action">待命</span>
+            </div>
             <button v-if="selectedCarrier.deck_used" class="return-hangar-button" @click="assignTarget('hangar')">将已选甲板算子拉回机库</button>
             <span v-else class="empty-air-zone">甲板空置</span>
           </div>
@@ -239,11 +231,10 @@ function operationName(carrier: CarrierAirStatus) {
         <section class="air-storage-zone hangar-zone" :class="{ 'drop-active': dragOver === 'hangar' }" data-drop-target="hangar" @click="assignTarget('hangar')" @dragover.prevent="dragOver = 'hangar'" @dragleave="dragOver = ''" @drop.prevent="assignTarget('hangar')">
           <header><div><span class="section-kicker">HANGAR</span><h3>机库</h3></div><strong>{{ selectedCarrier.hangar_used }} / {{ selectedCarrier.hangar_capacity }}</strong></header>
           <div class="air-counter-grid">
-            <article v-for="aircraft in aircraftAt('hangar')" :key="aircraft.id" class="air-counter" :class="[`air-${aircraft.status}`, `kind-${aircraft.kind}`, { seaplane: aircraft.seaplane, selected: selectedIDs.includes(aircraft.id) || selectedAircraftId === aircraft.id, selectable: true }]" :data-aircraft-id="aircraft.id" :data-status="aircraft.status" draggable="true" @click.stop="selectCounter(aircraft)" @dragstart="startDrag(aircraft, $event)" @dragend="endDrag">
-              <header><strong>{{ aircraft.seaplane ? '水上飞机' : kindNames[aircraft.kind] }}</strong><span>{{ statusName(aircraft) }}</span></header><div class="aircraft-symbol">✈</div><h3>{{ aircraft.model }}</h3>
-              <dl><div><dt>机体</dt><dd>{{ aircraft.strength }}</dd></div><div><dt>空战</dt><dd>{{ aircraft.air_combat }}</dd></div><div><dt>对舰</dt><dd>{{ aircraft.anti_ship }}</dd></div><div><dt>航程</dt><dd>{{ aircraft.remaining_range }} / {{ aircraft.max_range }}</dd></div></dl>
-              <button v-if="aircraft.kind === 'fighter'" :disabled="busy" @click.stop="action(aircraft)">CAP 升空</button><button v-else-if="aircraft.kind === 'recon'" :disabled="busy" @click.stop="openRecon(aircraft)">扇面侦察</button><span v-else class="air-no-action">等待后续任务模块</span>
-            </article>
+            <div v-for="aircraft in aircraftAt('hangar')" :key="aircraft.id" class="air-counter-item" :data-aircraft-id="aircraft.id" :data-status="aircraft.status">
+              <AircraftCounter :aircraft="aircraft" :player-faction="playerFaction" :class="{ selected: selectedIDs.includes(aircraft.id) || selectedAircraftId === aircraft.id, selectable: true }" draggable="true" @click.stop="selectCounter(aircraft)" @dragstart="startDrag(aircraft, $event)" @dragend="endDrag" />
+              <button v-if="aircraft.kind === 'fighter'" :disabled="busy" @click.stop="action(aircraft)">CAP 升空</button><button v-else-if="aircraft.kind === 'recon'" :disabled="busy" @click.stop="openRecon(aircraft)">扇面侦察</button><span v-else class="air-no-action">待命</span>
+            </div>
             <p v-if="!aircraftAt('hangar').length" class="empty-hangar">机库空置</p>
           </div>
         </section>
@@ -251,11 +242,10 @@ function operationName(carrier: CarrierAirStatus) {
         <section v-if="aircraftAt('airborne').length" class="air-storage-zone airborne-zone">
           <header><div><span class="section-kicker">AIRBORNE</span><h3>空中算子</h3></div><strong>{{ aircraftAt('airborne').length }}</strong></header>
           <div class="air-counter-grid">
-            <article v-for="aircraft in aircraftAt('airborne')" :key="aircraft.id" class="air-counter" :class="[`air-${aircraft.status}`, `kind-${aircraft.kind}`, { seaplane: aircraft.seaplane, selected: selectedAircraftId === aircraft.id, selectable: true }]" :data-aircraft-id="aircraft.id" :data-status="aircraft.status" @click="selectCounter(aircraft)">
-              <header><strong>{{ aircraft.seaplane ? '水上飞机' : kindNames[aircraft.kind] }}</strong><span>{{ statusName(aircraft) }}</span></header><div class="aircraft-symbol">✈</div><h3>{{ aircraft.model }}</h3>
-              <dl><div><dt>机体</dt><dd>{{ aircraft.strength }}</dd></div><div><dt>空战</dt><dd>{{ aircraft.air_combat }}</dd></div><div><dt>对舰</dt><dd>{{ aircraft.anti_ship }}</dd></div><div><dt>航程</dt><dd :class="{ 'low-range': aircraft.remaining_range <= 1 }">{{ aircraft.remaining_range }} / {{ aircraft.max_range }}</dd></div></dl>
-              <button v-if="aircraft.status === 'cap'" :disabled="busy" @click.stop="action(aircraft)">回收至机库</button><button v-else disabled @click.stop>{{ aircraft.returning ? '正在返航' : aircraft.tracking_fleet_id ? '正在跟踪目标' : '扇面搜索中' }}</button>
-            </article>
+            <div v-for="aircraft in aircraftAt('airborne')" :key="aircraft.id" class="air-counter-item" :data-aircraft-id="aircraft.id" :data-status="aircraft.status">
+              <AircraftCounter :aircraft="aircraft" :player-faction="playerFaction" :class="{ selected: selectedAircraftId === aircraft.id, selectable: true }" @click="selectCounter(aircraft)" />
+              <button v-if="aircraft.status === 'cap'" :disabled="busy" @click.stop="action(aircraft)">回收至机库</button><span v-else class="air-no-action">{{ aircraft.returning ? '正在返航' : aircraft.tracking_fleet_id ? '正在跟踪目标' : '扇面搜索中' }}</span>
+            </div>
           </div>
         </section>
       </section>
