@@ -64,6 +64,7 @@ func TestReconDetectionChanceModifiers(t *testing.T) {
 
 func TestLaunchReconValidationAndProjection(t *testing.T) {
 	state := sandboxState(t)
+	setAircraftReady(&state, "air-b-10", "air-b-11")
 	valid := Order{Type: "LAUNCH_RECON", AircraftID: "air-b-10", Heading: "W", SectorWidth: 60, ReconRadius: 6}
 	if err := ValidateAirOrder(state, "B", valid); err != nil {
 		t.Fatal(err)
@@ -113,6 +114,7 @@ func TestLaunchReconValidationAndProjection(t *testing.T) {
 
 func TestReconDetectionContactAndReturn(t *testing.T) {
 	state := sandboxState(t)
+	setAircraftReady(&state, "air-b-10", "air-b-11")
 	for _, unit := range state.Units {
 		if unit.Faction == "A" {
 			unit.Type = "BB"
@@ -174,6 +176,7 @@ func TestReconDetectionContactAndReturn(t *testing.T) {
 
 func TestReconRadiusDefaultsToAircraftLimit(t *testing.T) {
 	state := sandboxState(t)
+	setAircraftReady(&state, "air-b-10", "air-b-11")
 	order := Order{Type: "LAUNCH_RECON", AircraftID: "air-b-10", Heading: "W", SectorWidth: 60}
 	if err := ValidateAirOrder(state, "B", order); err != nil {
 		t.Fatal(err)

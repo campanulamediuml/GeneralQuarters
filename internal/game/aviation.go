@@ -69,12 +69,16 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 			return err
 		}
 		definitionID := aircraftList[0].DefinitionID
+		requiredStatus := "deck"
+		if aircraftList[0].Seaplane {
+			requiredStatus = "ready"
+		}
 		for _, aircraft := range aircraftList {
 			if aircraft.DefinitionID != definitionID {
 				return fmt.Errorf("同一航空任务必须使用同型算子")
 			}
-			if aircraft.Status != "hangar" && aircraft.Status != "deck" {
-				return fmt.Errorf("只有机库或甲板上的航空算子可以升空")
+			if aircraft.Status != requiredStatus {
+				return fmt.Errorf("航空算子必须先完成机库整备和起飞准备，才能升空")
 			}
 			if order.Type == "LAUNCH_CAP" && aircraft.Kind != "fighter" {
 				return fmt.Errorf("只有战斗机可以执行CAP")
@@ -104,31 +108,38 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 		}
 		return nil
 	case "PREPARE_AIR":
-		if !IsCarrier(carrier) || carrier.Card.DeckCapacity <= 0 {
-			return fmt.Errorf("该舰没有可用于提前整备的飞行甲板")
+		seaplane := aircraftList[0].Seaplane
+		if !seaplane && (!IsCarrier(carrier) || carrier.Card.DeckCapacity <= 0) {
+			return fmt.Errorf("该舰没有可用于舰载机整备的飞行甲板")
 		}
 		if operation != "" {
 			return fmt.Errorf("该母舰本回合已经进行航空作业")
 		}
-		used := 0
-		for _, aircraft := range state.Aircraft {
-			if aircraft.CarrierID == carrier.ID && aircraft.Status == "deck" {
-				used++
-			}
-		}
-		if used+len(aircraftList) > carrier.Card.DeckCapacity {
-			return fmt.Errorf("飞行甲板没有足够停放容量")
+		status := aircraftList[0].Status
+		if status != "hangar" && status != "service" {
+			return fmt.Errorf("只有未整备或已完成机库整备的算子可以进入下一阶段")
 		}
 		for _, aircraft := range aircraftList {
-			if aircraft.Status != "hangar" {
-				return fmt.Errorf("只有机库算子可以提升至甲板")
+			if aircraft.Status != status || aircraft.Seaplane != seaplane {
+				return fmt.Errorf("同批整备算子必须处于相同阶段和类型")
+			}
+		}
+		if status == "service" && !seaplane {
+			used := 0
+			for _, aircraft := range state.Aircraft {
+				if aircraft.CarrierID == carrier.ID && aircraft.Status == "deck" {
+					used++
+				}
+			}
+			if used+len(aircraftList) > carrier.Card.DeckCapacity {
+				return fmt.Errorf("飞行甲板没有足够停放容量")
 			}
 		}
 		return nil
 	case "RETURN_TO_HANGAR":
 		for _, aircraft := range aircraftList {
-			if aircraft.Status != "deck" {
-				return fmt.Errorf("只有甲板上的算子可以拉回机库")
+			if aircraft.Status != "service" && aircraft.Status != "deck" && aircraft.Status != "ready" {
+				return fmt.Errorf("只有整备或起飞准备中的算子可以拉回机库")
 			}
 		}
 		return nil
@@ -194,12 +205,22 @@ func ApplyAirOrder(state *State, order Order) []EngineEvent {
 	}
 	switch order.Type {
 	case "PREPARE_AIR":
+		nextStatus := "service"
+		message := fmt.Sprintf("%s完成%d个航空算子的机库整备", carrier.Name, len(aircraftList))
+		if aircraftList[0].Status == "service" {
+			nextStatus = "deck"
+			message = fmt.Sprintf("%s将%d个航空算子提升至飞行甲板", carrier.Name, len(aircraftList))
+			if aircraftList[0].Seaplane {
+				nextStatus = "ready"
+				message = fmt.Sprintf("%s完成%d个水上飞机算子的起飞准备", carrier.Name, len(aircraftList))
+			}
+		}
 		for _, aircraft := range aircraftList {
-			aircraft.Status = "deck"
+			aircraft.Status = nextStatus
 			aircraft.TaskID = ""
 		}
 		state.CarrierOperations[carrier.ID] = "prepare"
-		return []EngineEvent{{Type: "air_prepared", Audience: carrier.Faction, Text: fmt.Sprintf("%s将%d个航空算子提升至飞行甲板", carrier.Name, len(aircraftList))}}
+		return []EngineEvent{{Type: "air_prepared", Audience: carrier.Faction, Text: message}}
 	case "RETURN_TO_HANGAR":
 		for _, aircraft := range aircraftList {
 			aircraft.Status = "hangar"
@@ -207,7 +228,7 @@ func ApplyAirOrder(state *State, order Order) []EngineEvent {
 		if state.CarrierOperations[carrier.ID] == "prepare" {
 			delete(state.CarrierOperations, carrier.ID)
 		}
-		return []EngineEvent{{Type: "air_returned_to_hangar", Audience: carrier.Faction, Text: fmt.Sprintf("%s将%d个甲板算子拉回机库", carrier.Name, len(aircraftList))}}
+		return []EngineEvent{{Type: "air_returned_to_hangar", Audience: carrier.Faction, Text: fmt.Sprintf("%s将%d个整备中算子拉回机库并重置整备", carrier.Name, len(aircraftList))}}
 	case "LAUNCH_CAP", "LAUNCH_RECON":
 		priority := nextAirTaskPriority(state, carrier.Faction)
 		taskID := aircraftList[0].ID
@@ -317,7 +338,7 @@ func AdvanceAviation(state *State) []EngineEvent {
 	for _, id := range ids {
 		aircraft := state.Aircraft[id]
 		aircraft.Launched = false
-		if aircraft.Status == "hangar" || aircraft.Status == "deck" {
+		if aircraft.Status == "hangar" || aircraft.Status == "service" || aircraft.Status == "deck" || aircraft.Status == "ready" {
 			aircraft.RemainingRange = aircraft.MaxRange
 			continue
 		}
@@ -352,7 +373,7 @@ func VisibleAviation(state State, faction string) AviationView {
 				carrier.LaunchUsed++
 			}
 			switch aircraft.Status {
-			case "hangar":
+			case "hangar", "service", "ready":
 				carrier.HangarUsed++
 			case "deck":
 				carrier.DeckUsed++

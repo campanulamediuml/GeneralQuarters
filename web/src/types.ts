@@ -64,7 +64,7 @@ export interface AirUnit {
   name: string
   model: string
   kind: 'fighter' | 'dive_bomber' | 'torpedo_bomber' | 'recon'
-  status: 'hangar' | 'deck' | 'cap' | 'recon'
+  status: 'hangar' | 'service' | 'deck' | 'ready' | 'cap' | 'recon'
   strength: number
   max_range: number
   remaining_range: number

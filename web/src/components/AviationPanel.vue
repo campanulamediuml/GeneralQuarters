@@ -71,7 +71,7 @@ function selectCarrier(carrier: CarrierAirStatus) {
 }
 
 function selectCounter(aircraft: AirUnit) {
-  if (aircraft.status !== 'hangar' && aircraft.status !== 'deck') {
+  if (!['hangar', 'service', 'deck', 'ready'].includes(aircraft.status)) {
     emit('selectAircraft', aircraft.id)
     return
   }
@@ -160,11 +160,18 @@ function laneTasks(lane: TaskLane) {
 function aircraftAt(status: 'hangar' | 'deck' | 'airborne') {
   const aircraft = selectedCarrier.value?.aircraft || []
   if (status === 'airborne') return aircraft.filter((item) => item.status === 'cap' || item.status === 'recon')
-  return aircraft.filter((item) => item.status === status)
+  if (status === 'hangar') return aircraft.filter((item) => item.status === 'hangar' || item.status === 'service')
+  return aircraft.filter((item) => item.status === 'deck' || item.status === 'ready')
+}
+
+function counterHint(aircraft: AirUnit) {
+  if (aircraft.status === 'service') return '整备完成 · 下回合提升'
+  if (aircraft.status === 'deck' || aircraft.status === 'ready') return '准备完成 · 下回合任务'
+  return '拖至整备区'
 }
 
 function operationName(carrier: CarrierAirStatus) {
-  if (carrier.operation === 'prepare') return '本回合：提前整备'
+  if (carrier.operation === 'prepare') return '本回合：整备作业'
   if (carrier.operation === 'launch') return '本回合：起飞作业'
   if (carrier.operation === 'recover') return '本回合：降落作业'
   return carrier.deck_capacity ? '甲板待命' : '水机机库'
@@ -173,8 +180,8 @@ function operationName(carrier: CarrierAirStatus) {
 
 <template>
   <section class="workspace-page aviation-workspace">
-    <div class="aviation-title"><div><span class="section-kicker">AVIATION COMMAND</span><h1>航空指挥界面</h1></div><span>拖拽分配 / 批量编组</span></div>
-    <p class="aviation-intro">选择一艘作业舰，将机库算子拖入飞行甲板提前整备，或拖入CAP、侦察任务栏直接起飞。拖动时也可使用屏幕顶部的任务投放条。所有批量命令由服务端一次结算。</p>
+    <div class="aviation-title"><div><span class="section-kicker">AVIATION COMMAND</span><h1>航空指挥界面</h1></div><span>三回合整备 / 拖拽分配</span></div>
+    <p class="aviation-intro">第1回合拖入整备区完成机库整备，第2回合再次拖入完成甲板或水机起飞准备，第3回合才能拖入CAP、侦察等任务栏起飞。拖动时可使用屏幕顶部的任务投放条。</p>
 
     <div v-if="draggingIDs.length" class="task-drag-dock" aria-label="航空任务投放条">
       <span>拖入任务</span>
@@ -214,15 +221,15 @@ function operationName(carrier: CarrierAirStatus) {
         <p v-if="selectionHint" class="air-selection-hint" role="alert">{{ selectionHint }}</p>
 
         <section class="air-storage-zone flight-deck-zone" :class="{ 'drop-active': dragOver === 'deck' }" data-drop-target="deck" @dragover.prevent="dragOver = 'deck'" @dragleave="dragOver = ''" @drop.prevent="assignTarget('deck')">
-          <header><div><span class="section-kicker">FLIGHT DECK</span><h3>飞行甲板</h3></div><strong>{{ selectedCarrier.deck_used }} / {{ selectedCarrier.deck_capacity }}</strong></header>
-          <p>拖入机库算子提前整备；点击甲板算子可继续分配任务。</p>
+          <header><div><span class="section-kicker">{{ selectedCarrier.deck_capacity ? 'FLIGHT DECK' : 'LAUNCH READY' }}</span><h3>{{ selectedCarrier.deck_capacity ? '整备 / 飞行甲板' : '整备 / 起飞准备' }}</h3></div><strong v-if="selectedCarrier.deck_capacity">{{ selectedCarrier.deck_used }} / {{ selectedCarrier.deck_capacity }}</strong><strong v-else>{{ aircraftAt('deck').length }} 已准备</strong></header>
+          <p>第1回合拖入机库算子完成整备；第2回合将整备算子再次拖入，完成起飞准备。</p>
           <div class="air-counter-grid">
             <div v-for="aircraft in aircraftAt('deck')" :key="aircraft.id" class="air-counter-item" :data-aircraft-id="aircraft.id" :data-status="aircraft.status">
               <AircraftCounter :aircraft="aircraft" :player-faction="playerFaction" :class="{ selected: selectedIDs.includes(aircraft.id) || selectedAircraftId === aircraft.id, selectable: true }" draggable="true" @click="selectCounter(aircraft)" @dragstart="startDrag(aircraft, $event)" @dragend="endDrag" />
-              <span class="air-no-action">拖至任务栏</span>
+              <span class="air-no-action">{{ counterHint(aircraft) }}</span>
             </div>
-            <button v-if="selectedCarrier.deck_used" class="return-hangar-button" @click="assignTarget('hangar')">将已选甲板算子拉回机库</button>
-            <span v-else class="empty-air-zone">甲板空置</span>
+            <button v-if="aircraftAt('deck').length" class="return-hangar-button" @click="assignTarget('hangar')">将已选算子拉回机库并重置整备</button>
+            <span v-else class="empty-air-zone">拖入机库算子开始整备</span>
           </div>
         </section>
 
@@ -231,7 +238,7 @@ function operationName(carrier: CarrierAirStatus) {
           <div class="air-counter-grid">
             <div v-for="aircraft in aircraftAt('hangar')" :key="aircraft.id" class="air-counter-item" :data-aircraft-id="aircraft.id" :data-status="aircraft.status">
               <AircraftCounter :aircraft="aircraft" :player-faction="playerFaction" :class="{ selected: selectedIDs.includes(aircraft.id) || selectedAircraftId === aircraft.id, selectable: true }" draggable="true" @click.stop="selectCounter(aircraft)" @dragstart="startDrag(aircraft, $event)" @dragend="endDrag" />
-              <span class="air-no-action">拖至任务栏</span>
+              <span class="air-no-action">{{ counterHint(aircraft) }}</span>
             </div>
             <p v-if="!aircraftAt('hangar').length" class="empty-hangar">机库空置</p>
           </div>
@@ -252,7 +259,7 @@ function operationName(carrier: CarrierAirStatus) {
     <div v-if="reconAircraft" class="recon-dialog" @click.self="reconAircraftIDs = []">
       <section class="recon-modal" role="dialog" aria-modal="true" aria-label="配置扇面侦察">
         <header><div><span class="section-kicker">SECTOR RECONNAISSANCE</span><h2>配置扇面侦察</h2></div><button aria-label="关闭" @click="reconAircraftIDs = []">×</button></header>
-        <p>{{ reconAircraft.model }} · {{ reconAircraftIDs.length }}个算子仍在机库，确认下方配置并点击“起飞执行扇面侦察”后才会转为空中算子。扇面中轴决定航线，飞机进入每个距离圈时由服务器进行发现判定。</p>
+        <p>{{ reconAircraft.model }} · {{ reconAircraftIDs.length }}个算子。确认配置并点击“起飞执行扇面侦察”才会提交起飞；只有已完成机库整备和甲板／水机起飞准备的算子才能升空。扇面中轴决定航线，飞机进入每个距离圈时由服务器进行发现判定。</p>
         <fieldset class="recon-heading-picker"><legend>预定侦察航向</legend><button v-for="heading in headings" :key="heading.id" :class="{ active: reconHeading === heading.id }" :aria-label="`${heading.id} ${heading.name}`" @click="reconHeading = heading.id"><span>{{ heading.arrow }}</span><b>{{ heading.id }}</b><small>{{ heading.name }}</small></button></fieldset>
         <div class="recon-options">
           <fieldset><legend>扇面角度</legend><div class="segmented-control"><button :class="{ active: reconWidth === 60 }" @click="reconWidth = 60">60°<small>标准发现率</small></button><button :class="{ active: reconWidth === 120 }" @click="reconWidth = 120">120°<small>发现率减半</small></button></div></fieldset>

@@ -94,13 +94,13 @@
 ```
 
 - 所有航空命令都可使用`aircraft_ids`批量提交同一母舰的1至20个算子，旧`aircraft_id`单算子格式继续兼容。批量起飞要求同型算子并共享`task_id`，服务端一次校验和结算。
-- `PREPARE_AIR`：将机库算子批量提升至飞行甲板，要求航母具有甲板停放容量且本回合尚未进行其他航空作业。
-- `RETURN_TO_HANGAR`：将甲板算子批量拉回机库，并取消本回合提前整备。
-- `LAUNCH_CAP`：战斗机从机库或甲板升空形成CAP任务，消耗母舰当回合起飞容量；非战斗机、容量不足或母舰本回合已进行其他作业时返回400。
-- `LAUNCH_RECON`：侦察机升空执行扇面侦察，额外提交`heading`和`sector_width`。例如`{"command_id":"01J...","base_version":1,"type":"LAUNCH_RECON","aircraft_id":"air-b-10","heading":"W","sector_width":60}`。航向为`E/SE/SW/W/NW/NE`，角度只能为60或120。`recon_radius`为可选高级参数，省略或为0时由服务端使用`recon_radius_limit`作为默认最大安全半径，手动值不能超过该上限。
-- `RECOVER_AIR`：将CAP算子批量回收至机库；母舰本回合已起飞或提前整备时返回400。侦察机沿航线自动返航，不能在空中直接回收。
+- `PREPARE_AIR`：普通整备必须跨两个准备回合。第一回合把`hangar`改为`service`，完成机库加油整备；第二回合把舰载机`service`改为`deck`，或把水机改为`ready`。舰载机甲板停放容量在第二阶段校验，母舰进行整备的回合不能起飞。
+- `RETURN_TO_HANGAR`：将`service/deck/ready`算子批量拉回机库并重置为`hangar`，取消当前整备进度；之后必须重新完成两个准备回合。
+- `LAUNCH_CAP`：只有位于`deck`的战斗机可以在后续回合升空形成CAP任务，消耗母舰当回合起飞容量；机库直接起飞、非战斗机、容量不足或母舰本回合已进行其他作业时返回400。
+- `LAUNCH_RECON`：位于`deck`的舰载侦察机或位于`ready`的水机可在后续回合升空执行扇面侦察，额外提交`heading`和`sector_width`。例如`{"command_id":"01J...","base_version":1,"type":"LAUNCH_RECON","aircraft_id":"air-b-10","heading":"W","sector_width":60}`。航向为`E/SE/SW/W/NW/NE`，角度只能为60或120。`recon_radius`为可选高级参数，省略或为0时由服务端使用`recon_radius_limit`作为默认最大安全半径，手动值不能超过该上限。
+- `RECOVER_AIR`：将CAP算子批量回收至机库并重置为未整备的`hangar`；母舰本回合已起飞或整备时返回400。侦察机沿航线自动返航，不能在空中直接回收。
 - `PRIORITIZE_AIR_TASK`：将指定CAP或侦察任务置为最高优先级，其他空中任务顺序由服务端调整。航空界面任务边缘的灰色旗子调用此命令，最高优先级旗子高亮。
-- 这些命令都立即生效并递增`version`，所有校验、机库与甲板数量、扇面hex、发现判定、情报、燃油与任务排序仅由Go服务端计算。回合结算清除航空作业状态、CAP剩余航程-1、机库和甲板航空算子补满航程；普通侦察机每回合移动2 hex，水机1 hex，飞出和返航逐距离圈搜索。
+- 这些命令都立即生效并递增`version`，所有校验、整备阶段、机库与甲板数量、扇面hex、发现判定、情报、燃油与任务排序仅由Go服务端计算。回合结算清除航空作业标记但保留算子的`service/deck/ready`准备进度，空中CAP剩余航程-1，非空中算子补满航程；普通侦察机每回合移动2 hex，水机1 hex，飞出和返航逐距离圈搜索。
 
 ### Ready
 
