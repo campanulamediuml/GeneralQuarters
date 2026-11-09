@@ -16,6 +16,10 @@ func ValidReconHeading(heading string) bool {
 	return ok
 }
 
+func canSearch(aircraft AirUnit) bool {
+	return aircraft.Kind == "recon" || aircraft.Kind == "dive_bomber" || aircraft.Kind == "torpedo_bomber"
+}
+
 func ReconRadiusLimit(aircraft AirUnit) int {
 	limit := aircraft.MaxRange / 2
 	if limit < 1 {

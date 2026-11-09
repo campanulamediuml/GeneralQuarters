@@ -205,7 +205,7 @@ components:
         aircraft_id: {type: string, description: 单算子航空命令或任务ID, example: air-b-01}
         aircraft_ids: {type: array, minItems: 1, maxItems: 20, items: {type: string}, description: 同一母舰的批量算子；起飞任务必须同型}
         coord: {type: string, description: SET_MOVE和REORGANIZE_HEX必填，ABCD坐标, example: '0203'}
-        heading: {type: string, enum: [E, SE, SW, W, NW, NE], description: LAUNCH_RECON必填，侦察航线中轴, example: W}
+        heading: {type: string, enum: [E, SE, SW, W, NW, NE], description: LAUNCH_RECON必填，搜索航线中轴；侦察机、TBF鱼雷机和SB2C俯冲轰炸机可执行, example: W}
         sector_width: {type: integer, enum: [60, 120], description: LAUNCH_RECON必填；120度最终发现率减半, example: 60}
         recon_radius: {type: integer, minimum: 0, description: 可选；省略或为0时使用recon_radius_limit，手动值不能超过该上限, example: 6}
         assignments:

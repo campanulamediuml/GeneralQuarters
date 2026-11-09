@@ -97,7 +97,7 @@
 - `PREPARE_AIR`：手动整备必须跨两个准备回合。第一回合把`hangar`改为`service`，完成机库加油整备；第二回合把舰载机`service`改为`deck`，或把水机改为`ready`。舰载机甲板停放容量在第二阶段校验，母舰进行整备的回合不能起飞。
 - `RETURN_TO_HANGAR`：将`service/deck/ready`算子批量拉回机库并重置为`hangar`，同时取消`task_id/task_kind`、优先级和侦察配置；之后必须重新完成两个准备回合。
 - `LAUNCH_CAP`：将战斗机分配至CAP任务。`hangar/service`算子立即形成预备任务并进入`service`，不会直接升空；已经位于`deck`的算子立即升空并消耗母舰当回合起飞容量。非战斗机、容量不足或母舰本回合已进行其他不相容作业时返回400。
-- `LAUNCH_RECON`：将侦察机分配至扇面侦察任务，额外提交`heading`和`sector_width`。例如`{"command_id":"01J...","base_version":1,"type":"LAUNCH_RECON","aircraft_id":"air-b-10","heading":"W","sector_width":60}`。机库算子先形成预备任务，`deck`舰载侦察机或`ready`水机立即起飞。航向为`E/SE/SW/W/NW/NE`，角度只能为60或120。`recon_radius`为可选高级参数，省略或为0时由服务端使用`recon_radius_limit`作为默认最大安全半径，手动值不能超过该上限。
+- `LAUNCH_RECON`：将侦察机或攻击机分配至扇面搜索任务，额外提交`heading`和`sector_width`。允许`recon`、`torpedo_bomber`（TBF）和`dive_bomber`（SB2C），拒绝战斗机。例如`{"command_id":"01J...","base_version":1,"type":"LAUNCH_RECON","aircraft_id":"air-b-10","heading":"W","sector_width":60}`。机库算子先形成预备任务，`deck`舰载机或`ready`水机立即起飞。航向为`E/SE/SW/W/NW/NE`，角度只能为60或120。`recon_radius`为可选高级参数，省略或为0时由服务端使用`recon_radius_limit`作为默认最大安全半径，手动值不能超过该上限；可搜索的各机型都会获得服务端计算的`recon_radius_limit`。
 - 预备任务在后续回合结算中自动从`service`进入`deck/ready`，再于下一回合自动起飞。任务创建后立即出现在`aviation.tasks`，`phase`依次为`servicing`（整备中）、`preparing`（起飞准备中）、`launching`（起飞中）和`active`（任务执行中）；飞机状态仍在对应算子的`status`中。侦察参数在分配时持久化，扇面顶点使用实际起飞时的母舰位置。甲板或起飞容量不足时自动作业推迟，不跳过阶段。
 - `RECOVER_AIR`：将CAP算子批量回收至机库并重置为未整备的`hangar`；母舰本回合已起飞或整备时返回400。侦察机沿航线自动返航，不能在空中直接回收。
 - `PRIORITIZE_AIR_TASK`：将指定预备或空中CAP/侦察任务置为最高优先级，其他任务顺序由服务端调整。航空界面任务边缘的灰色旗子调用此命令，最高优先级旗子高亮。

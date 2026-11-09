@@ -89,8 +89,8 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 			if order.Type == "LAUNCH_CAP" && aircraft.Kind != "fighter" {
 				return fmt.Errorf("只有战斗机可以执行CAP")
 			}
-			if order.Type == "LAUNCH_RECON" && aircraft.Kind != "recon" {
-				return fmt.Errorf("战斗机和攻击机不能执行专用扇面侦察")
+			if order.Type == "LAUNCH_RECON" && !canSearch(*aircraft) {
+				return fmt.Errorf("战斗机不能执行扇面搜索，TBF、SB2C和侦察机可以执行搜索")
 			}
 		}
 		if order.Type == "LAUNCH_CAP" && !IsCarrier(carrier) {
@@ -507,7 +507,7 @@ func VisibleAviation(state State, faction string) AviationView {
 				carrier.DeckUsed++
 			}
 			projection := *aircraft
-			if projection.Kind == "recon" {
+			if canSearch(projection) {
 				projection.ReconRadiusLimit = ReconRadiusLimit(projection)
 			}
 			carrier.Aircraft = append(carrier.Aircraft, projection)

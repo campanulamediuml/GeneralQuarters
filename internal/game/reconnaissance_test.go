@@ -186,3 +186,49 @@ func TestReconRadiusDefaultsToAircraftLimit(t *testing.T) {
 		t.Fatalf("省略半径时未使用服务端默认值：%+v", state.Aircraft["air-b-10"])
 	}
 }
+
+func TestAttackAircraftCanLaunchSectorSearch(t *testing.T) {
+	for _, test := range []struct {
+		id      string
+		kind    string
+		model   string
+		carrier string
+	}{
+		{id: "air-b-06", kind: "dive_bomber", model: "SB2C 地狱俯冲者", carrier: "b-cv-02"},
+		{id: "air-b-08", kind: "torpedo_bomber", model: "TBF 复仇者", carrier: "b-cv-03"},
+	} {
+		t.Run(test.model, func(t *testing.T) {
+			state := sandboxState(t)
+			setAircraftReady(&state, test.id)
+			var projected *AirUnit
+			for _, carrier := range VisibleAviation(state, "B").Carriers {
+				for index := range carrier.Aircraft {
+					if carrier.Aircraft[index].ID == test.id {
+						projected = &carrier.Aircraft[index]
+					}
+				}
+			}
+			if projected == nil || projected.ReconRadiusLimit != ReconRadiusLimit(*state.Aircraft[test.id]) || projected.ReconRadiusLimit == 0 {
+				t.Fatalf("攻击机缺少服务端搜索半径：%+v", projected)
+			}
+			order := Order{Type: "LAUNCH_RECON", AircraftID: test.id, Heading: "W", SectorWidth: 60}
+			if err := ValidateAirOrder(state, "B", order); err != nil {
+				t.Fatalf("攻击机不能分配搜索任务：%v", err)
+			}
+			initialAircraft := state.Units[test.carrier].Card.Aircraft
+			ApplyAirOrder(&state, order)
+			aircraft := state.Aircraft[test.id]
+			if aircraft.Kind != test.kind || aircraft.Status != "recon" || aircraft.TaskKind != "recon" || aircraft.ReconRadius != projected.ReconRadiusLimit {
+				t.Fatalf("攻击机搜索任务状态错误：%+v", aircraft)
+			}
+			tasks := VisibleAviation(state, "B").Tasks
+			if len(tasks) != 1 || tasks[0].Kind != "recon" || len(tasks[0].SectorHexes) == 0 || state.Units[test.carrier].Card.Aircraft != initialAircraft-1 {
+				t.Fatalf("攻击机搜索投影或载机数错误：%+v", tasks)
+			}
+			AdvanceAviation(&state)
+			if aircraft.ReconDistance != 2 {
+				t.Fatalf("攻击机没有按普通飞机速度搜索：%+v", aircraft)
+			}
+		})
+	}
+}
