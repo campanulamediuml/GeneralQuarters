@@ -114,6 +114,7 @@ export interface AirUnit {
   task_kind?: 'cap' | 'recon' | 'attack'
   origin_coord?: string
   coord?: string
+  target_coord?: string
   heading?: ReconHeading
   sector_width?: 60 | 120
   recon_radius?: number
@@ -148,6 +149,7 @@ export interface AirTask {
   priority: number
   origin_coord?: string
   current_coord?: string
+  target_coord?: string
   heading?: ReconHeading
   sector_width?: 60 | 120
   recon_radius?: number
@@ -196,6 +198,7 @@ export interface Order {
   aircraft_ids?: string[]
   task_id?: string
   coord?: string
+  target_coord?: string
   heading?: ReconHeading
   sector_width?: 60 | 120
   recon_radius?: number
@@ -233,4 +236,11 @@ export interface RoomResponse {
   room_id: string
   player_id: string
   join_token?: string
+}
+
+export interface StrikeTarget {
+  coord: string
+  label: string
+  count: number
+  contact_level?: 1 | 2 | 3 | 4
 }

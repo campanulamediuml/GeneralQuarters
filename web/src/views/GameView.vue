@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api'
-import type { GameView, ReconHeading, Unit } from '../types'
+import type { GameView, ReconHeading, StrikeTarget, Unit } from '../types'
 import { groupFleets } from '../fleet'
 import HexMap from '../components/HexMap.vue'
 import ShipCard from '../components/ShipCard.vue'
@@ -36,6 +36,12 @@ let stateRequest = 0
 const ownUnits = computed(() => state.value?.units.filter((unit) => unit.faction === state.value?.you.faction) || [])
 const fleets = computed(() => state.value?.fleets || [])
 const ownFleets = computed(() => fleets.value.filter((fleet) => fleet.faction === state.value?.you.faction))
+const strikeTargets = computed<StrikeTarget[]>(() => fleets.value.filter((fleet) => fleet.faction !== state.value?.you.faction).map((fleet) => ({
+  coord: fleet.coord,
+  label: `${fleet.fleet_name || fleet.name} · ${fleet.count}艘 · ${fleet.coord}${fleet.contact_level ? ` · 情报${fleet.contact_level}` : ''}`,
+  count: fleet.count,
+  contact_level: fleet.contact_level,
+})))
 const selectedUnit = computed(() => ownUnits.value.find((unit) => unit.id === selectedID.value))
 const selectedFleet = computed(() => ownFleets.value.find((fleet) => fleet.id === selectedID.value || fleet.members.some((unit) => unit.id === selectedID.value)))
 const canOpenAviation = computed(() => Boolean(selectedFleet.value?.members.some((unit) => unit.card.hangar_capacity > 0)))
@@ -332,9 +338,9 @@ onUnmounted(() => {
           </section>
         </div>
 
-        <section v-else-if="activePanel === 'rules'" class="workspace-page"><span class="section-kicker">RULEBOOK</span><h1>规则书与沙盒指南</h1><div class="document-grid"><article><h2>当前通信沙盒</h2><p>选择己方舰队，再把舰队拖到相邻绿色hex下达移动命令，点击目标hex不会移动。移动由服务器立即生效，同一舰队每回合只能移动一次；底条黄色表示仍可移动，蓝色表示本回合已经移动，右上角箭头表示舰队朝向。</p><p>同一hex存在多个舰队时，点击hex弹出舰队列表。选择舰队可查看成员，选择整编可将任意两个同阵营舰队合并，整编同样由服务器立即生效。</p></article><article><h2>坐标与地形</h2><p>hex使用ABCD坐标，AB为行、CD为列。当前只能拖动至相邻且可通行的hex，岛屿和暗礁不可进入，含航母的编队不可进入浅滩。蓝灰色虚线仅用于距离参考，不代表可移动。</p><p>正式航空、损管与剧本规则位于项目《规则书.md》，将随规则模块逐步接入。</p></article></div></section>
+        <section v-else-if="activePanel === 'rules'" class="workspace-page"><span class="section-kicker">RULEBOOK</span><h1>规则书与沙盒指南</h1><div class="document-grid"><article><h2>当前通信沙盒</h2><p>选择己方舰队，再把舰队拖到相邻绿色hex下达移动命令，点击目标hex不会移动。到达可移动时机后由服务器立即生效，普通/快速舰队移动后等待3回合，纯高速驱逐舰2回合，慢速5回合；底条黄色表示可移动，蓝色表示已移动或冷却中，右上角箭头表示舰队朝向。</p><p>同一hex存在多个舰队时，点击hex弹出舰队列表。选择舰队可查看成员，选择整编可将任意两个同阵营舰队合并，整编同样由服务器立即生效。</p></article><article><h2>坐标与地形</h2><p>hex使用ABCD坐标，AB为行、CD为列。当前只能拖动至相邻且可通行的hex，岛屿和暗礁不可进入，含航母的编队不可进入浅滩。蓝灰色虚线仅用于距离参考，不代表可移动。</p><p>正式航空、损管与剧本规则位于项目《规则书.md》，将随规则模块逐步接入。</p></article></div></section>
         <section v-else-if="activePanel === 'settings'" class="workspace-page"><span class="section-kicker">SETTINGS</span><h1>作战室设置</h1><div class="settings-grid"><div class="side-card"><h2>当前会话</h2><p>指挥官：{{ state.you.name }}</p><p>阵营：{{ state.you.faction }} · 房间：{{ state.room_id }}</p><p>连接方式：{{ socketStatus === 'online' ? 'WebSocket实时同步' : '15秒轮询' }}</p></div><div class="side-card"><h2>地图与资源</h2><p>坐标格式：ABCD（行 + 列）</p><p>地图与剧本从服务器持久化内容目录载入。</p><a class="secondary-link" href="/api/docs" target="_blank">查看API与AI扩展文档 ↗</a></div></div></section>
-        <AviationPanel v-else-if="activePanel === 'aviation'" :aviation="state.aviation" :units="ownUnits" :fleet-id="aviationFleetID" :player-faction="state.you.faction" :focus-unit-id="aviationFocusID" :selected-aircraft-id="selectedAirTaskID" :busy="actionBusy" @command="airCommand" @select-aircraft="selectAircraft" />
+        <AviationPanel v-else-if="activePanel === 'aviation'" :aviation="state.aviation" :units="ownUnits" :fleet-id="aviationFleetID" :targets="strikeTargets" :player-faction="state.you.faction" :focus-unit-id="aviationFocusID" :selected-aircraft-id="selectedAirTaskID" :busy="actionBusy" @command="airCommand" @select-aircraft="selectAircraft" />
         <section v-else class="workspace-page"><span class="section-kicker">EVENT LOG</span><h1>日志信息</h1><div class="full-log"><div v-for="event in orderedEvents" :key="event.id" class="full-log-row"><span>T{{ String(event.turn).padStart(2, '0') }}</span><code>#{{ event.id }}</code><p>{{ event.text }}</p><time>{{ new Date(event.created_at).toLocaleTimeString() }}</time></div></div></section>
       </template>
     </div>

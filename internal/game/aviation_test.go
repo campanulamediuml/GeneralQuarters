@@ -253,7 +253,9 @@ func TestSingleElevatorBatchesAndDeckLengthDelay(t *testing.T) {
 
 func TestAttackFormationWaitsForOtherCarrier(t *testing.T) {
 	state := sandboxState(t)
-	first := Order{Type: "LAUNCH_STRIKE", AircraftIDs: []string{"air-b-03", "air-b-04"}}
+	state.Contacts["B"] = map[string]*FleetContact{}
+	state.Contacts["B"]["TG-A"] = &FleetContact{FleetID: "TG-A", Faction: "A", Level: 1, Coord: "0202", Count: 14}
+	first := Order{Type: "LAUNCH_STRIKE", AircraftIDs: []string{"air-b-03", "air-b-04"}, Coord: "0202"}
 	if err := ValidateAirOrder(state, "B", first); err != nil {
 		t.Fatal(err)
 	}

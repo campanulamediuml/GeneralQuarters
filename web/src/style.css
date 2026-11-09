@@ -81,3 +81,5 @@
 .fleet-ready{color:var(--mint);font-weight:500}.fleet-cooling{color:#79b7d0;font-weight:500}.ship-damage-report{padding:9px 12px;border-top:1px solid #6e493f;background:#4a2a2555}.ship-damage-report>strong{color:#e6a08a;font-size:9px}.ship-damage-report>div{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}.ship-damage-report span{padding:2px 5px;border:1px solid #8b5d50;color:#e6b2a2;font-size:8px}
 
 .elevator-card.elevator-damaged{border-color:#8b5d50;background:#3c2724}.elevator-card.elevator-damaged>header span{border-color:#b77968;color:#e6a08a}
+
+.strike-target-picker{display:flex;flex-direction:column;gap:8px}.strike-target-picker select{width:100%;padding:12px;border:1px solid #4a6870;background:#0c1d23;color:#d7bb7b;font:600 14px 'Noto Sans SC',sans-serif}.strike-target-picker select:disabled{opacity:.75;cursor:not-allowed}.strike-target-picker small{color:#718d92;font-size:9px;line-height:1.6}

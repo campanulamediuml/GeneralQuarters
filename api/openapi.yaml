@@ -205,7 +205,7 @@ components:
         aircraft_id: {type: string, description: 单算子航空命令或任务ID, example: air-b-01}
         aircraft_ids: {type: array, minItems: 1, maxItems: 20, items: {type: string}, description: CAP和侦察须同舰同型；攻击编队可跨同舰队母舰并混合攻击机型}
         task_id: {type: string, description: LAUNCH_RECON加入同舰队已有侦察组或LAUNCH_STRIKE加入同舰队已有攻击编队时必填；侦察组继承原组参数，已离场攻击编队不可加入, example: air-b-03}
-        coord: {type: string, description: SET_MOVE和REORGANIZE_HEX必填，ABCD坐标, example: '0203'}
+        coord: {type: string, description: SET_MOVE和REORGANIZE_HEX必填；新建LAUNCH_STRIKE时作为已侦测敌方目标hex必填，加入已有编队时继承, example: '0203'}
         heading: {type: string, enum: [E, SE, SW, W, NW, NE], description: LAUNCH_RECON必填，搜索航线中轴；侦察机、TBF鱼雷机和SB2C俯冲轰炸机可执行, example: W}
         sector_width: {type: integer, enum: [60, 120], description: LAUNCH_RECON必填；120度最终发现率减半, example: 60}
         recon_radius: {type: integer, minimum: 0, description: 可选；省略或为0时使用recon_radius_limit，手动值不能超过该上限, example: 6}
@@ -358,7 +358,8 @@ components:
         task_id: {type: string, description: 同一航空任务的共享ID，攻击编队可跨母舰共享}
         task_kind: {type: string, enum: [cap, recon, attack], description: 已分配任务类型，算子尚未起飞时用于区分预备任务}
         origin_coord: {type: string, description: 侦察扇面顶点}
-        coord: {type: string, description: 侦察机当前hex}
+        coord: {type: string, description: 航空算子当前hex}
+        target_coord: {type: string, description: 攻击编队目标hex}
         heading: {type: string, enum: [E, SE, SW, W, NW, NE]}
         sector_width: {type: integer, enum: [60, 120]}
         recon_radius: {type: integer}
@@ -382,6 +383,7 @@ components:
         priority: {type: integer, description: 1为最高优先级，参与升降机调度}
         origin_coord: {type: string}
         current_coord: {type: string}
+        target_coord: {type: string, description: 攻击编队目标hex，新建时由服务端校验已侦测目标}
         heading: {type: string, enum: [E, SE, SW, W, NW, NE]}
         sector_width: {type: integer, enum: [60, 120]}
         recon_radius: {type: integer}

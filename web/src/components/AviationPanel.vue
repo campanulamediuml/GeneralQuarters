@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { AircraftElevator, AirTask, AirUnit, AviationView, CarrierAirStatus, Player, ReconHeading, Unit } from '../types'
+import type { AircraftElevator, AirTask, AirUnit, AviationView, CarrierAirStatus, Player, ReconHeading, StrikeTarget, Unit } from '../types'
 import AircraftCounter from './AircraftCounter.vue'
 import ShipCounter from './ShipCounter.vue'
 
 type AirCommandType = 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' | 'RETURN_TO_HANGAR' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK'
-type CommandOptions = { heading?: ReconHeading; sector_width?: 60 | 120; recon_radius?: number; task_id?: string }
+type CommandOptions = { heading?: ReconHeading; sector_width?: 60 | 120; recon_radius?: number; task_id?: string; coord?: string }
 type TaskLane = { id: string; name: string; kind: string; slot?: number }
 type AirZone = 'hangar' | 'elevator' | 'deck'
 
-const props = defineProps<{ aviation: AviationView; units: Unit[]; fleetId: string; playerFaction: Player['faction']; focusUnitId?: string; selectedAircraftId?: string; busy: boolean }>()
+const props = defineProps<{ aviation: AviationView; units: Unit[]; fleetId: string; targets: StrikeTarget[]; playerFaction: Player['faction']; focusUnitId?: string; selectedAircraftId?: string; busy: boolean }>()
 const emit = defineEmits<{
   command: [type: AirCommandType, aircraftIDs: string[], options?: CommandOptions]
   selectAircraft: [aircraftID: string]
@@ -28,6 +28,9 @@ const reconAircraftIDs = ref<string[]>([])
 const reconTaskID = ref('')
 const reconHeading = ref<ReconHeading>('W')
 const reconWidth = ref<60 | 120>(60)
+const strikeAircraftIDs = ref<string[]>([])
+const strikeTaskID = ref('')
+const strikeTargetCoord = ref('')
 const lanes: TaskLane[] = [
   { id: 'recon-1', name: '空中侦察 I', kind: 'recon', slot: 0 },
   { id: 'recon-2', name: '空中侦察 II', kind: 'recon', slot: 1 },
@@ -84,7 +87,7 @@ function carrierUnit(unitID: string) {
 
 function counterSelection(aircraft: AirUnit, stackIDs: string[]) {
   if (selectionMode.value === 'single') return [aircraft.id]
-  const carrier = selectedCarrier.value
+  const carrier = carriers.value.find((item) => item.unit_id === aircraft.carrier_id)
   if (!carrier) return stackIDs
   return carrier.aircraft.filter((item) => item.definition_id === aircraft.definition_id && item.status === aircraft.status).map((item) => item.id)
 }
@@ -146,7 +149,17 @@ function assignTarget(target: string, taskID = '') {
   selectionHint.value = ''
   if (target === 'hangar') emitBatch('RETURN_TO_HANGAR', ids)
   else if (target === 'cap') emitBatch('LAUNCH_CAP', ids)
-  else if (target.startsWith('strike-')) emitBatch('LAUNCH_STRIKE', ids, taskID ? { task_id: taskID } : undefined)
+  else if (target.startsWith('strike-')) {
+    const existing = taskID ? tasks.value.find((task) => task.id === taskID) : undefined
+    const targetCoord = existing?.target_coord || props.targets[0]?.coord || ''
+    if (!targetCoord) {
+      selectionHint.value = '当前没有已知敌方目标，请先侦察'
+      return
+    }
+    strikeAircraftIDs.value = ids
+    strikeTaskID.value = taskID
+    strikeTargetCoord.value = targetCoord
+  }
   else if (target.startsWith('recon-')) {
     const lane = lanes.find((item) => item.id === target)
     const existing = taskID ? tasks.value.find((task) => task.id === taskID) : lane ? laneTasks(lane)[0] : undefined
@@ -179,6 +192,14 @@ function launchRecon() {
   selectedIDs.value = []
 }
 
+function launchStrike() {
+  if (!strikeAircraftIDs.value.length || !strikeTargetCoord.value) return
+  emitBatch('LAUNCH_STRIKE', strikeAircraftIDs.value, { coord: strikeTargetCoord.value, task_id: strikeTaskID.value || undefined })
+  strikeAircraftIDs.value = []
+  strikeTaskID.value = ''
+  strikeTargetCoord.value = ''
+}
+
 function taskPhase(task: AirTask) {
   if ((task.kind === 'cap' || task.kind === 'recon') && task.airborne_count > 0 && task.airborne_count < task.aircraft_ids.length) return `部分已升空 · ${task.airborne_count}/${task.aircraft_ids.length}`
   if (task.phase === 'servicing') return '任务整备中'
@@ -195,7 +216,7 @@ function carrierNames(task: AirTask) {
 }
 
 function taskSummary(task: AirTask) {
-  if (task.kind === 'attack') return `${carrierNames(task)} · ${task.airborne_count}/${task.aircraft_ids.length} 已升空 · 等待全部到齐后离场`
+  if (task.kind === 'attack') return `目标 ${task.target_coord || '未设置'} · ${carrierNames(task)} · ${task.airborne_count}/${task.aircraft_ids.length} 已升空 · ${task.current_coord || '母舰'}`
   if (task.kind !== 'recon') return `${carrierNames(task)} · ${task.aircraft_ids.length} 算子`
   if (['servicing', 'lifting', 'preparing'].includes(task.phase)) return `${carrierNames(task)} · ${task.sector_width}° ${task.heading} · 半径 ${task.recon_radius} · ${task.airborne_count}/${task.aircraft_ids.length} 已升空`
   const phase = task.tracking_fleet_id ? '持续跟踪' : task.returning ? '返航搜索' : `第 ${task.recon_distance || 0} 距离圈`
@@ -252,10 +273,10 @@ function taskAircraftStacks(task: AirTask) {
 }
 
 function counterHint(aircraft: AirUnit) {
-  if (aircraft.status === 'service') return '任务整备中 · 等待本舰升降机'
-  if (aircraft.status === 'elevator') return `${aircraft.elevator_id} 占用中`
+  if (aircraft.status === 'service') return '整备中 · 可拖回机库'
+  if (aircraft.status === 'elevator') return `${aircraft.elevator_id} 占用中 · 不可撤回`
   if (aircraft.status === 'recovery') return '已着舰 · 等待升降机下降'
-  if (aircraft.status === 'deck' || aircraft.status === 'ready') return aircraft.task_id ? '甲板待飞 · 回合结算放飞' : '可拖入任务立即放飞'
+  if (aircraft.status === 'deck' || aircraft.status === 'ready') return aircraft.task_id ? '甲板待飞 · 可拖回排队下降' : '可拖入任务立即放飞'
   if (aircraft.status === 'attack_holding') return `已升空 · 等待编队 · 剩余航程 ${aircraft.remaining_range}`
   if (['cap', 'recon', 'attack'].includes(aircraft.status)) return `已升空 · 剩余航程 ${aircraft.remaining_range}`
   return '拖至任务栏开始整备'
@@ -307,7 +328,7 @@ function elevatorStatus(elevator: AircraftElevator) {
             </div>
             <div class="air-task-counters" @click.stop>
               <div v-for="stack in taskAircraftStacks(task)" :key="`${stack.aircraft.id}-${stack.aircraft.status}`" :data-task-aircraft-id="stack.aircraft.id" :data-status="stack.aircraft.status">
-                <AircraftCounter :aircraft="stack.aircraft" :stack-count="stack.ids.length" :player-faction="playerFaction" :class="{ selected: selectedAircraftId && stack.ids.includes(selectedAircraftId) }" @click="selectCounter(stack.aircraft)" />
+                <AircraftCounter :aircraft="stack.aircraft" :stack-count="stack.ids.length" :player-faction="playerFaction" :class="{ selected: selectedAircraftId && stack.ids.includes(selectedAircraftId) }" :draggable="['service', 'deck', 'ready'].includes(stack.aircraft.status)" @click="selectCounter(stack.aircraft)" @dragstart="['service', 'deck', 'ready'].includes(stack.aircraft.status) && startDrag(stack.aircraft, $event, stack.ids)" @dragend="endDrag" />
                 <small>{{ counterHint(stack.aircraft) }}</small>
                 <button v-if="stack.aircraft.status === 'cap'" :disabled="busy" @click.stop="recover(stack.ids)">着舰并排队下降</button>
               </div>
@@ -388,6 +409,16 @@ function elevatorStatus(elevator: AircraftElevator) {
         </div>
         <div class="recon-brief"><span>顶点</span><strong>实际起飞时的母舰位置</strong><i>→</i><span>航线</span><strong>{{ reconHeading }}</strong><i>→</i><span>扇面</span><strong>{{ reconWidth }}° / {{ reconTask?.recon_radius || reconAircraft.recon_radius_limit }} hex</strong></div>
         <footer><button class="reset-button" @click="reconAircraftIDs = []; reconTaskID = ''">取消</button><button class="apply-button" :disabled="busy" @click="launchRecon">{{ ['deck', 'ready'].includes(reconAircraft.status) ? '起飞执行扇面侦察' : '加入侦察任务' }}</button></footer>
+      </section>
+    </div>
+
+    <div v-if="strikeAircraftIDs.length" class="recon-dialog" @click.self="strikeAircraftIDs = []; strikeTaskID = ''; strikeTargetCoord = ''">
+      <section class="recon-modal strike-modal" role="dialog" aria-modal="true" aria-label="设置打击目标">
+        <header><div><span class="section-kicker">STRIKE TARGET</span><h2>{{ strikeTaskID ? '加入已有攻击编队' : '设置打击目标' }}</h2></div><button aria-label="关闭打击目标" @click="strikeAircraftIDs = []; strikeTaskID = ''; strikeTargetCoord = ''">×</button></header>
+        <p>{{ strikeAircraftIDs.length }}个航空算子。{{ strikeTaskID ? '新飞机继承已有编队的目标，全部成员到齐后共同离场。' : '从当前已侦测的敌方舰队中选择目标，全部成员到齐后向目标飞行。' }}</p>
+        <fieldset class="strike-target-picker"><legend>目标舰队 / hex</legend><select v-model="strikeTargetCoord" :disabled="!!strikeTaskID" aria-label="打击目标"><option v-for="target in targets" :key="target.coord" :value="target.coord">{{ target.label }}</option></select><small>目标由服务端根据当前视野和情报校验，不能选择未侦测坐标。</small></fieldset>
+        <div class="recon-brief"><span>编队目标</span><strong>{{ strikeTargetCoord }}</strong><i>→</i><span>每回合最多飞行 2 hex</span></div>
+        <footer><button class="reset-button" @click="strikeAircraftIDs = []; strikeTaskID = ''; strikeTargetCoord = ''">取消</button><button class="apply-button" :disabled="busy || !strikeTargetCoord" @click="launchStrike">确认打击目标</button></footer>
       </section>
     </div>
   </section>

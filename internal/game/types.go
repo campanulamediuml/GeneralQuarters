@@ -209,6 +209,7 @@ type AirUnit struct {
 	TaskKind         string `json:"task_kind,omitempty"`
 	OriginCoord      string `json:"origin_coord,omitempty"`
 	Coord            string `json:"coord,omitempty"`
+	TargetCoord      string `json:"target_coord,omitempty"`
 	Heading          string `json:"heading,omitempty"`
 	SectorWidth      int    `json:"sector_width,omitempty"`
 	ReconRadius      int    `json:"recon_radius,omitempty"`
@@ -232,6 +233,7 @@ type AirTask struct {
 	Priority          int                `json:"priority"`
 	OriginCoord       string             `json:"origin_coord,omitempty"`
 	CurrentCoord      string             `json:"current_coord,omitempty"`
+	TargetCoord       string             `json:"target_coord,omitempty"`
 	Heading           string             `json:"heading,omitempty"`
 	SectorWidth       int                `json:"sector_width,omitempty"`
 	ReconRadius       int                `json:"recon_radius,omitempty"`

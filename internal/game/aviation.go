@@ -237,6 +237,11 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 				return fmt.Errorf("最多同时保留两个侦察组，请把飞机加入已有任务栏")
 			}
 		}
+		if order.Type == "LAUNCH_STRIKE" && order.TaskID == "" {
+			if err := ValidateStrikeTarget(state, faction, order.Coord); err != nil {
+				return err
+			}
+		}
 		if status == "deck" || status == "ready" {
 			return validateLaunchCapacity(state, aircraftList)
 		}
@@ -341,6 +346,7 @@ func clearAirTask(aircraft *AirUnit) {
 	aircraft.TaskKind = ""
 	aircraft.OriginCoord = ""
 	aircraft.Coord = ""
+	aircraft.TargetCoord = ""
 	aircraft.Heading = ""
 	aircraft.SectorWidth = 0
 	aircraft.ReconRadius = 0
@@ -371,6 +377,9 @@ func configureAirTask(state *State, aircraftList []*AirUnit, order Order) {
 		order.SectorWidth = existingTask[0].SectorWidth
 		order.ReconRadius = existingTask[0].ReconRadius
 	}
+	if taskKind == "attack" && len(existingTask) > 0 {
+		order.Coord = existingTask[0].TargetCoord
+	}
 	for _, aircraft := range aircraftList {
 		clearAirTask(aircraft)
 		aircraft.TaskID = taskID
@@ -383,6 +392,9 @@ func configureAirTask(state *State, aircraftList []*AirUnit, order Order) {
 			if aircraft.ReconRadius == 0 {
 				aircraft.ReconRadius = ReconRadiusLimit(*aircraft)
 			}
+		}
+		if taskKind == "attack" {
+			aircraft.TargetCoord = order.Coord
 		}
 	}
 }
@@ -753,8 +765,10 @@ func AdvanceAviation(state *State) []EngineEvent {
 			continue
 		}
 		switch aircraft.Status {
-		case "cap", "attack_holding", "attack":
+		case "cap", "attack_holding":
 			aircraft.RemainingRange--
+		case "attack":
+			events = append(events, advanceAttack(state, aircraft)...)
 		case "recon":
 			events = append(events, advanceRecon(state, aircraft)...)
 		}
@@ -910,6 +924,7 @@ func VisibleAviation(state State, faction string) AviationView {
 			task.Name = "攻击编队 · " + leader.Model
 			task.OriginCoord = leader.OriginCoord
 			task.CurrentCoord = leader.Coord
+			task.TargetCoord = leader.TargetCoord
 		default:
 			reconLeader := leader
 			for _, aircraft := range aircraftList {
