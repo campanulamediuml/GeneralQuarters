@@ -361,3 +361,33 @@ func TestReconGroupsAcceptDifferentAircraftAndRepeatedJoins(t *testing.T) {
 		}
 	}
 }
+
+func TestReconGroupsAreScopedToFleet(t *testing.T) {
+	state := sandboxState(t)
+	setAircraftReady(&state, "air-b-14", "air-b-15", "air-b-16", "air-b-03")
+	for _, id := range []string{"air-b-14", "air-b-15"} {
+		order := Order{Type: "LAUNCH_RECON", AircraftID: id, Heading: "W", SectorWidth: 60}
+		if err := ValidateAirOrder(state, "B", order); err != nil {
+			t.Fatal(err)
+		}
+		ApplyAirOrder(&state, order)
+	}
+	if err := ValidateAirOrder(state, "B", Order{Type: "LAUNCH_RECON", AircraftID: "air-b-16", Heading: "W", SectorWidth: 60}); err == nil {
+		t.Fatal("同一舰队已有两组侦察时仍允许创建第三组")
+	}
+	otherFleet := Order{Type: "LAUNCH_RECON", AircraftID: "air-b-03", Heading: "W", SectorWidth: 60}
+	if err := ValidateAirOrder(state, "B", otherFleet); err != nil {
+		t.Fatalf("另一支舰队不能创建自己的侦察组：%v", err)
+	}
+	ApplyAirOrder(&state, otherFleet)
+	if err := ValidateAirOrder(state, "B", Order{Type: "LAUNCH_RECON", AircraftID: "air-b-16", TaskID: "air-b-03", Heading: "W", SectorWidth: 60}); err == nil {
+		t.Fatal("飞机可以跨舰队加入侦察组")
+	}
+	fleets := map[string]bool{}
+	for _, task := range VisibleAviation(state, "B").Tasks {
+		fleets[task.FleetID] = true
+	}
+	if !fleets["TG-B"] || !fleets["TG-B-BB"] {
+		t.Fatalf("侦察任务没有保留舰队归属：%+v", fleets)
+	}
+}

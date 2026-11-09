@@ -181,6 +181,9 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 			if order.Type == "LAUNCH_RECON" && members[0].TaskKind != "recon" {
 				return fmt.Errorf("要加入的侦察组不存在")
 			}
+			if order.Type == "LAUNCH_RECON" && FleetKey(state.Units[members[0].CarrierID]) != fleetID {
+				return fmt.Errorf("只能加入同一舰队的侦察组")
+			}
 			if order.Type == "LAUNCH_STRIKE" {
 				if members[0].TaskKind != "attack" {
 					return fmt.Errorf("要加入的攻击编队不存在")
@@ -200,7 +203,8 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 		} else if order.Type == "LAUNCH_RECON" {
 			groups := map[string]bool{}
 			for _, aircraft := range state.Aircraft {
-				if aircraft.Faction == faction && aircraft.TaskKind == "recon" && aircraft.TaskID != "" {
+				ship := state.Units[aircraft.CarrierID]
+				if aircraft.Faction == faction && ship != nil && FleetKey(ship) == fleetID && aircraft.TaskKind == "recon" && aircraft.TaskID != "" {
 					groups[aircraft.TaskID] = true
 				}
 			}

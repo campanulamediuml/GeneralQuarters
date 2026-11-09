@@ -9,13 +9,14 @@ type CommandOptions = { heading?: ReconHeading; sector_width?: 60 | 120; recon_r
 type TaskLane = { id: string; name: string; kind: string; slot?: number }
 type AirZone = 'hangar' | 'elevator' | 'deck'
 
-const props = defineProps<{ aviation: AviationView; units: Unit[]; playerFaction: Player['faction']; focusUnitId?: string; selectedAircraftId?: string; busy: boolean }>()
+const props = defineProps<{ aviation: AviationView; units: Unit[]; fleetId: string; playerFaction: Player['faction']; focusUnitId?: string; selectedAircraftId?: string; busy: boolean }>()
 const emit = defineEmits<{
   command: [type: AirCommandType, aircraftIDs: string[], options?: CommandOptions]
   selectAircraft: [aircraftID: string]
 }>()
-const carriers = computed(() => props.aviation.carriers)
-const tasks = computed(() => props.aviation.tasks)
+const fleetCarrierIDs = computed(() => new Set(props.units.filter((unit) => (unit.fleet_id || unit.id) === props.fleetId).map((unit) => unit.id)))
+const carriers = computed(() => props.fleetId ? props.aviation.carriers.filter((carrier) => fleetCarrierIDs.value.has(carrier.unit_id)) : props.aviation.carriers)
+const tasks = computed(() => props.fleetId ? props.aviation.tasks.filter((task) => task.fleet_id === props.fleetId || (!task.fleet_id && fleetCarrierIDs.value.has(task.carrier_id))) : props.aviation.tasks)
 const selectedCarrierID = ref('')
 const selectionMode = ref<'single' | 'type'>('single')
 const expandStacks = ref(false)
@@ -58,7 +59,7 @@ const reconAircraft = computed(() => {
 })
 
 watch(carriers, (items) => {
-  if (!items.some((item) => item.unit_id === selectedCarrierID.value)) selectedCarrierID.value = props.focusUnitId || items[0]?.unit_id || ''
+  if (!items.some((item) => item.unit_id === selectedCarrierID.value)) selectedCarrierID.value = items.some((item) => item.unit_id === props.focusUnitId) ? props.focusUnitId || '' : items[0]?.unit_id || ''
 }, { immediate: true })
 watch(() => props.focusUnitId, (unitID) => {
   if (unitID && carriers.value.some((item) => item.unit_id === unitID)) {
@@ -81,17 +82,20 @@ function carrierUnit(unitID: string) {
   return props.units.find((unit) => unit.id === unitID)
 }
 
+function counterSelection(aircraft: AirUnit, stackIDs: string[]) {
+  if (selectionMode.value === 'single') return [aircraft.id]
+  const carrier = selectedCarrier.value
+  if (!carrier) return stackIDs
+  return carrier.aircraft.filter((item) => item.definition_id === aircraft.definition_id && item.status === aircraft.status).map((item) => item.id)
+}
+
 function selectCounter(aircraft: AirUnit, stackIDs: string[] = [aircraft.id]) {
   if (!['hangar', 'service', 'deck', 'ready'].includes(aircraft.status)) {
     emit('selectAircraft', aircraft.id)
     return
   }
   selectionHint.value = ''
-  const carrier = selectedCarrier.value
-  if (!carrier) return
-  const group = selectionMode.value === 'type'
-    ? carrier.aircraft.filter((item) => item.definition_id === aircraft.definition_id && item.status === aircraft.status).map((item) => item.id)
-    : stackIDs
+  const group = counterSelection(aircraft, stackIDs)
   const allSelected = group.every((id) => selectedIDs.value.includes(id))
   if (selectionMode.value === 'single') {
     selectedIDs.value = allSelected ? [] : group
@@ -103,8 +107,8 @@ function selectCounter(aircraft: AirUnit, stackIDs: string[] = [aircraft.id]) {
 }
 
 function startDrag(aircraft: AirUnit, event: DragEvent, stackIDs: string[] = [aircraft.id]) {
-  if (!selectedIDs.value.includes(aircraft.id)) selectedIDs.value = [...stackIDs]
-  else selectedIDs.value = [...new Set([...selectedIDs.value, ...stackIDs])]
+  if (!selectedIDs.value.includes(aircraft.id)) selectedIDs.value = counterSelection(aircraft, stackIDs)
+  else if (selectionMode.value === 'type') selectedIDs.value = [...new Set([...selectedIDs.value, ...counterSelection(aircraft, stackIDs)])]
   draggingIDs.value = [...selectedIDs.value]
   if (event.dataTransfer && event.currentTarget instanceof HTMLElement) {
     event.dataTransfer.effectAllowed = 'move'

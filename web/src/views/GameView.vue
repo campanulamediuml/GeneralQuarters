@@ -13,6 +13,7 @@ const props = defineProps<{ roomID: string }>()
 const router = useRouter()
 const state = ref<GameView | null>(null)
 const selectedID = ref('')
+const shipDetailOpen = ref(false)
 const selectedAirTaskID = ref('')
 const menuCoord = ref('')
 const mergeSourceID = ref('')
@@ -21,6 +22,7 @@ const draftAssignments = ref<Record<string, string>>({})
 const activePanel = ref<'map' | 'rules' | 'settings' | 'aviation' | 'log'>('map')
 const counterSide = ref<'front' | 'back'>('front')
 const aviationFocusID = ref('')
+const aviationFleetID = ref('')
 const loading = ref(true)
 const actionBusy = ref(false)
 const error = ref('')
@@ -36,6 +38,11 @@ const fleets = computed(() => state.value?.fleets || [])
 const ownFleets = computed(() => fleets.value.filter((fleet) => fleet.faction === state.value?.you.faction))
 const selectedUnit = computed(() => ownUnits.value.find((unit) => unit.id === selectedID.value))
 const selectedFleet = computed(() => ownFleets.value.find((fleet) => fleet.id === selectedID.value || fleet.members.some((unit) => unit.id === selectedID.value)))
+const fleetPanelBottom = computed(() => {
+  if (!state.value || !selectedFleet.value) return false
+  const row = Number(selectedFleet.value.coord.slice(0, 2))
+  return row <= Math.ceil(state.value.map.rows / 2)
+})
 const selectedAirTask = computed(() => state.value?.aviation.tasks.find((task) => task.id === selectedAirTaskID.value))
 const distanceReference = computed(() => selectedAirTask.value?.distance_reference || selectedFleet.value?.distance_reference)
 const menuFleets = computed(() => groupFleets(ownUnits.value.filter((unit) => unit.coord === menuCoord.value).map((unit) => ({ ...unit, fleet_id: draftAssignments.value[unit.id] || unit.fleet_id })), []))
@@ -82,6 +89,7 @@ function connectSocket() {
 
 function selectMapUnit(unit: Unit) {
   selectedAirTaskID.value = ''
+  shipDetailOpen.value = false
   selectedID.value = unit.id
 }
 
@@ -89,23 +97,34 @@ function selectAircraft(aircraftID: string) {
   const task = state.value?.aviation.tasks.find((item) => item.id === aircraftID || item.aircraft_ids.includes(aircraftID))
   if (!task || task.phase === 'servicing' || task.phase === 'preparing') return
   selectedID.value = ''
+  shipDetailOpen.value = false
   menuCoord.value = ''
   selectedAirTaskID.value = task.id
   activePanel.value = 'map'
 }
 
+function openAviation(fleetID?: string) {
+  shipDetailOpen.value = false
+  aviationFleetID.value = fleetID || selectedFleet.value?.fleet_id || ownFleets.value.find((fleet) => fleet.members.some((unit) => unit.card.hangar_capacity > 0))?.fleet_id || ''
+  activePanel.value = 'aviation'
+}
+
 function selectFleetMember(unit: Unit) {
   selectedAirTaskID.value = ''
+  shipDetailOpen.value = false
   selectedID.value = unit.id
   const isCarrier = ['CV', 'CVL', 'CVE'].includes(unit.type)
   if (isCarrier || unit.card.hangar_capacity > 0) {
     aviationFocusID.value = unit.id
-    activePanel.value = 'aviation'
+    openAviation(unit.fleet_id || unit.id)
+  } else {
+    shipDetailOpen.value = true
   }
 }
 
 function selectHex(coord: string) {
   selectedAirTaskID.value = ''
+  shipDetailOpen.value = false
   const found = fleets.value.filter((fleet) => fleet.coord === coord)
   if (!found.length) {
     selectedID.value = ''
@@ -121,6 +140,7 @@ function selectHex(coord: string) {
 }
 
 function openManager(coord: string) {
+  shipDetailOpen.value = false
   menuCoord.value = coord
   mergeSourceID.value = ''
   movingMemberID.value = ''
@@ -258,7 +278,7 @@ onUnmounted(() => {
         <button :class="{ active: activePanel === 'rules' }" @click="activePanel = 'rules'"><span class="rail-icon">▤</span><b>规则书</b></button>
         <button :class="{ active: activePanel === 'map' }" @click="activePanel = 'map'"><span class="rail-icon">⬡</span><b>地图</b></button>
         <button :class="{ active: activePanel === 'settings' }" @click="activePanel = 'settings'"><span class="rail-icon">⌘</span><b>设置</b></button>
-        <button :class="{ active: activePanel === 'aviation' }" @click="activePanel = 'aviation'"><span class="rail-icon">△</span><b>航空界面</b></button>
+        <button :class="{ active: activePanel === 'aviation' }" @click="openAviation()"><span class="rail-icon">△</span><b>航空界面</b></button>
         <button :class="{ active: activePanel === 'log' }" @click="activePanel = 'log'"><span class="rail-icon">≡</span><b>日志信息</b></button>
       </nav>
       <div class="rail-spacer"></div>
@@ -281,44 +301,37 @@ onUnmounted(() => {
         </div>
         <p v-if="error" class="error-banner game-error" role="alert">{{ error }}</p>
 
-        <div v-if="activePanel === 'map'" class="game-layout">
+        <div v-if="activePanel === 'map'" class="game-layout map-command-layout">
           <section class="map-panel">
             <div class="map-toolbar"><div><span class="section-kicker">OPERATIONAL MAP</span><h1>{{ state.map.name }}</h1></div><div class="map-legend"><span><i class="legend-a"></i>A 阵营</span><span><i class="legend-b"></i>B 阵营</span><span><i class="legend-move"></i>可移动</span></div></div>
-            <section v-if="selectedFleet" class="fleet-workbench" :data-fleet-id="selectedFleet.fleet_id">
-              <header><div><span class="section-kicker">TASK FORCE · {{ selectedFleet.coord }}</span><h2>{{ selectedFleet.name }}</h2><small>{{ selectedFleet.count }}艘 · 点击舰船算子查看完整角色卡</small></div><div class="fleet-workbench-actions"><button @click="counterSide = counterSide === 'front' ? 'back' : 'front'">{{ counterSide === 'front' ? '查看兵牌背面' : '查看兵牌正面' }}</button><button @click="openManager(selectedFleet.coord)">舰队整编</button><button v-if="selectedFleet.members.some((unit) => ['CV', 'CVL', 'CVE'].includes(unit.type))" @click="activePanel = 'aviation'">航空作业</button><button aria-label="关闭舰队详情" @click="selectedID = ''">×</button></div></header>
-              <div class="fleet-counter-grid"><button v-for="member in selectedFleet.members" :key="member.id" class="fleet-counter-button" :class="{ active: selectedUnit?.id === member.id }" :data-ship-id="member.id" @click="selectFleetMember(member)"><ShipCounter :unit="member" :side="counterSide" /></button></div>
-            </section>
-            <div class="map-canvas"><HexMap :map="state.map" :fleets="fleets" :player-faction="state.you.faction" :selected-unit="selectedUnit" :orders="state.orders" :recon-tasks="state.aviation.tasks.filter((task) => task.kind === 'recon')" :distance-reference="distanceReference" @select-unit="selectMapUnit" @select-hex="selectHex" @manage-hex="openManager" @move="move" /></div>
+            <div class="map-canvas">
+              <HexMap :map="state.map" :fleets="fleets" :player-faction="state.you.faction" :selected-unit="selectedUnit" :orders="state.orders" :recon-tasks="state.aviation.tasks.filter((task) => task.kind === 'recon')" :distance-reference="distanceReference" @select-unit="selectMapUnit" @select-hex="selectHex" @manage-hex="openManager" @move="move" />
+              <section v-if="selectedFleet" class="fleet-workbench map-fleet-workbench" :class="{ 'fleet-panel-bottom': fleetPanelBottom }" :data-fleet-id="selectedFleet.fleet_id">
+                <header><div><span class="section-kicker">TASK FORCE · {{ selectedFleet.coord }}</span><h2>{{ selectedFleet.name }}</h2><small>{{ selectedFleet.count }}艘 · 点击舰船算子查看完整角色卡</small></div><div class="fleet-workbench-actions"><button @click="counterSide = counterSide === 'front' ? 'back' : 'front'">{{ counterSide === 'front' ? '查看兵牌背面' : '查看兵牌正面' }}</button><button @click="openManager(selectedFleet.coord)">舰队整编</button><button v-if="selectedFleet.members.some((unit) => ['CV', 'CVL', 'CVE'].includes(unit.type))" @click="openAviation(selectedFleet.fleet_id)">航空作业</button><button aria-label="关闭舰队详情" @click="selectedID = ''">×</button></div></header>
+                <div class="fleet-counter-grid"><button v-for="member in selectedFleet.members" :key="member.id" class="fleet-counter-button" :class="{ active: selectedUnit?.id === member.id }" :data-ship-id="member.id" @click="selectFleetMember(member)"><ShipCounter :unit="member" :side="counterSide" /></button></div>
+              </section>
+              <aside v-if="selectedUnit && shipDetailOpen" class="side-card selection-card map-selection-card">
+                <div class="side-card-head"><span class="section-kicker">SHIP DETAIL</span><button aria-label="关闭舰船详情" @click="shipDetailOpen = false">×</button></div>
+                <div class="selected-detail"><ShipCard :key="selectedUnit.id" :unit="selectedUnit" /></div>
+              </aside>
+              <details class="map-lobby-panel">
+                <summary><span>战局 / 房间</span><b>{{ readyCount }} / {{ state.players.length }} 就绪</b></summary>
+                <div class="map-lobby-content">
+                  <section class="side-card commander-card"><div class="section-kicker">YOUR COMMAND</div><div class="commander-line"><div class="faction-seal" :class="`seal-${state.you.faction.toLowerCase()}`">{{ state.you.faction }}</div><div><h2>{{ state.you.name }}</h2><span>{{ state.you.faction === 'A' ? '苍蓝舰队' : '赤红舰队' }} · {{ state.you.is_host ? '房主' : '参战玩家' }}</span></div></div><div class="room-code"><span>ROOM</span><code>{{ state.room_id }}</code></div></section>
+                  <section v-if="state.join_token" class="side-card invite-card"><div><span class="section-kicker">INVITE PLAYER B</span></div><button class="token-display" @click="copyToken"><code>{{ state.join_token }}</code><span>{{ copied ? '已复制' : '复制' }}</span></button></section>
+                  <section class="side-card orders-card"><div class="side-card-head"><span class="section-kicker">PENDING ORDERS</span><span>{{ state.orders.length }}</span></div><div v-if="state.orders.length" class="order-list"><div v-for="order in state.orders" :key="order.unit_id"><span>{{ unitName(order.unit_id) }}</span><code>{{ order.type === 'MERGE_FLEET' ? `整编 → ${unitName(order.target_unit_id || '')}` : order.type === 'REORGANIZE_HEX' ? `整编hex ${order.coord}` : `预定 → ${order.coord}` }}</code><button aria-label="取消命令" @click="clearOrder(order.unit_id || '')">×</button></div></div><p v-else class="empty-copy">尚未下达移动或整编命令</p></section>
+                  <section class="side-card players-card"><div class="side-card-head"><span class="section-kicker">PLAYERS</span></div><div v-for="player in state.players" :key="player.id" class="player-row"><span class="player-faction" :class="`seal-${player.faction.toLowerCase()}`">{{ player.faction }}</span><span>{{ player.name }}</span><i :class="{ online: player.connected }"></i><b :class="{ ready: player.ready }">{{ player.ready ? '已就绪' : '部署中' }}</b></div></section>
+                  <section class="side-card log-card"><div class="side-card-head"><span class="section-kicker">COMBAT LOG</span><button class="text-button" @click="activePanel = 'log'">全部日志</button></div><div class="event-list"><div v-for="event in orderedEvents.slice(0, 4)" :key="event.id" class="event-row"><span>T{{ String(event.turn).padStart(2, '0') }}</span><p>{{ event.text }}</p></div></div></section>
+                </div>
+              </details>
+            </div>
             <div class="map-help"><b>操作方式</b><span>拖动后立即移动</span><i>→</i><span>蓝条已移动，黄条可移动</span><i>→</i><span>点击多舰队hex可整编</span></div>
           </section>
-
-          <aside class="command-sidebar">
-            <section class="side-card commander-card">
-              <div class="section-kicker">YOUR COMMAND</div>
-              <div class="commander-line"><div class="faction-seal" :class="`seal-${state.you.faction.toLowerCase()}`">{{ state.you.faction }}</div><div><h2>{{ state.you.name }}</h2><span>{{ state.you.faction === 'A' ? '苍蓝舰队' : '赤红舰队' }} · {{ state.you.is_host ? '房主' : '参战玩家' }}</span></div></div>
-              <div class="room-code"><span>ROOM</span><code>{{ state.room_id }}</code></div>
-            </section>
-            <section v-if="state.join_token" class="side-card invite-card"><div><span class="section-kicker">INVITE PLAYER B</span><p>将邀请token发送给第二位玩家。</p></div><button class="token-display" @click="copyToken"><code>{{ state.join_token }}</code><span>{{ copied ? '已复制' : '复制' }}</span></button></section>
-
-            <section class="side-card selection-card">
-              <div class="side-card-head"><span class="section-kicker">SHIP DETAIL</span><span>{{ selectedFleet?.name || `${ownFleets.length} 个己方舰队` }}</span></div>
-              <div v-if="selectedUnit" class="selected-detail"><ShipCard :key="selectedUnit.id" :unit="selectedUnit" /></div>
-              <div v-else class="empty-selection"><span class="selection-cross">+</span><p>选择地图上的己方舰队<br />再点击舰船算子查看角色卡</p></div>
-            </section>
-
-            <section class="side-card orders-card">
-              <div class="side-card-head"><span class="section-kicker">PENDING ORDERS</span><span>{{ state.orders.length }}</span></div>
-              <div v-if="state.orders.length" class="order-list"><div v-for="order in state.orders" :key="order.unit_id"><span>{{ unitName(order.unit_id) }}</span><code>{{ order.type === 'MERGE_FLEET' ? `整编 → ${unitName(order.target_unit_id || '')}` : order.type === 'REORGANIZE_HEX' ? `整编hex ${order.coord}` : `预定 → ${order.coord}` }}</code><button aria-label="取消命令" @click="clearOrder(order.unit_id || '')">×</button></div></div>
-              <p v-else class="empty-copy">尚未下达移动或整编命令</p>
-            </section>
-            <section class="side-card players-card"><div class="side-card-head"><span class="section-kicker">PLAYERS</span></div><div v-for="player in state.players" :key="player.id" class="player-row"><span class="player-faction" :class="`seal-${player.faction.toLowerCase()}`">{{ player.faction }}</span><span>{{ player.name }}</span><i :class="{ online: player.connected }"></i><b :class="{ ready: player.ready }">{{ player.ready ? '已就绪' : '部署中' }}</b></div></section>
-            <section class="side-card log-card"><div class="side-card-head"><span class="section-kicker">COMBAT LOG</span><button class="text-button" @click="activePanel = 'log'">全部日志</button></div><div class="event-list"><div v-for="event in orderedEvents.slice(0, 8)" :key="event.id" class="event-row"><span>T{{ String(event.turn).padStart(2, '0') }}</span><p>{{ event.text }}</p></div></div></section>
-          </aside>
         </div>
 
         <section v-else-if="activePanel === 'rules'" class="workspace-page"><span class="section-kicker">RULEBOOK</span><h1>规则书与沙盒指南</h1><div class="document-grid"><article><h2>当前通信沙盒</h2><p>选择己方舰队，再把舰队拖到相邻绿色hex下达移动命令，点击目标hex不会移动。移动由服务器立即生效，同一舰队每回合只能移动一次；底条黄色表示仍可移动，蓝色表示本回合已经移动，右上角箭头表示舰队朝向。</p><p>同一hex存在多个舰队时，点击hex弹出舰队列表。选择舰队可查看成员，选择整编可将任意两个同阵营舰队合并，整编同样由服务器立即生效。</p></article><article><h2>坐标与地形</h2><p>hex使用ABCD坐标，AB为行、CD为列。当前只能拖动至相邻且可通行的hex，岛屿和暗礁不可进入，含航母的编队不可进入浅滩。蓝灰色虚线仅用于距离参考，不代表可移动。</p><p>正式航空、损管与剧本规则位于项目《规则书.md》，将随规则模块逐步接入。</p></article></div></section>
         <section v-else-if="activePanel === 'settings'" class="workspace-page"><span class="section-kicker">SETTINGS</span><h1>作战室设置</h1><div class="settings-grid"><div class="side-card"><h2>当前会话</h2><p>指挥官：{{ state.you.name }}</p><p>阵营：{{ state.you.faction }} · 房间：{{ state.room_id }}</p><p>连接方式：{{ socketStatus === 'online' ? 'WebSocket实时同步' : '15秒轮询' }}</p></div><div class="side-card"><h2>地图与资源</h2><p>坐标格式：ABCD（行 + 列）</p><p>地图与剧本从服务器持久化内容目录载入。</p><a class="secondary-link" href="/api/docs" target="_blank">查看API与AI扩展文档 ↗</a></div></div></section>
-        <AviationPanel v-else-if="activePanel === 'aviation'" :aviation="state.aviation" :units="ownUnits" :player-faction="state.you.faction" :focus-unit-id="aviationFocusID" :selected-aircraft-id="selectedAirTaskID" :busy="actionBusy" @command="airCommand" @select-aircraft="selectAircraft" />
+        <AviationPanel v-else-if="activePanel === 'aviation'" :aviation="state.aviation" :units="ownUnits" :fleet-id="aviationFleetID" :player-faction="state.you.faction" :focus-unit-id="aviationFocusID" :selected-aircraft-id="selectedAirTaskID" :busy="actionBusy" @command="airCommand" @select-aircraft="selectAircraft" />
         <section v-else class="workspace-page"><span class="section-kicker">EVENT LOG</span><h1>日志信息</h1><div class="full-log"><div v-for="event in orderedEvents" :key="event.id" class="full-log-row"><span>T{{ String(event.turn).padStart(2, '0') }}</span><code>#{{ event.id }}</code><p>{{ event.text }}</p><time>{{ new Date(event.created_at).toLocaleTimeString() }}</time></div></div></section>
       </template>
     </div>

@@ -204,7 +204,7 @@ components:
         target_unit_id: {type: string, description: MERGE_FLEET必填，目标舰队中的单位, example: a-dd-01}
         aircraft_id: {type: string, description: 单算子航空命令或任务ID, example: air-b-01}
         aircraft_ids: {type: array, minItems: 1, maxItems: 20, items: {type: string}, description: CAP和侦察须同舰同型；攻击编队可跨同舰队母舰并混合攻击机型}
-        task_id: {type: string, description: LAUNCH_RECON加入已有侦察组或LAUNCH_STRIKE加入已有攻击编队时必填；侦察组继承原组参数，已离场攻击编队不可加入, example: air-b-03}
+        task_id: {type: string, description: LAUNCH_RECON加入同舰队已有侦察组或LAUNCH_STRIKE加入同舰队已有攻击编队时必填；侦察组继承原组参数，已离场攻击编队不可加入, example: air-b-03}
         coord: {type: string, description: SET_MOVE和REORGANIZE_HEX必填，ABCD坐标, example: '0203'}
         heading: {type: string, enum: [E, SE, SW, W, NW, NE], description: LAUNCH_RECON必填，搜索航线中轴；侦察机、TBF鱼雷机和SB2C俯冲轰炸机可执行, example: W}
         sector_width: {type: integer, enum: [60, 120], description: LAUNCH_RECON必填；120度最终发现率减半, example: 60}

@@ -50,7 +50,7 @@ const viewBox = computed(() => `0 0 ${Math.sqrt(3) * size * (props.map.cols + 1)
 const selectedMoves = computed(() => new Set(props.selectedUnit?.legal_moves || []))
 const reconCells = computed(() => new Set(props.reconTasks.flatMap((task) => task.sector_hexes || [])))
 const reconCurrentCells = computed(() => new Set(props.reconTasks.flatMap((task) => task.current_ring_hexes || [])))
-const mapStyle = computed(() => ({ width: `${zoom.value * 100}%`, minWidth: `${620 * zoom.value}px`, maxHeight: 'none' }))
+const mapStyle = computed(() => ({ width: `${zoom.value * 100}%`, minWidth: `${620 * zoom.value}px`, maxHeight: zoom.value > 1 ? 'none' : '100%' }))
 const distanceByCoord = computed(() => new Map((props.distanceReference?.cells || []).map((cell) => [cell.coord, cell.distance])))
 
 function distanceAt(coord: string) {
