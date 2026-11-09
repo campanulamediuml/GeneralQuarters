@@ -16,6 +16,7 @@ const carriers = computed(() => props.aviation.carriers)
 const tasks = computed(() => props.aviation.tasks)
 const selectedCarrierID = ref('')
 const selectionMode = ref<'single' | 'type'>('single')
+const expandStacks = ref(false)
 const selectedIDs = ref<string[]>([])
 const draggingIDs = ref<string[]>([])
 const dragOver = ref('')
@@ -70,7 +71,7 @@ function selectCarrier(carrier: CarrierAirStatus) {
   selectionHint.value = ''
 }
 
-function selectCounter(aircraft: AirUnit) {
+function selectCounter(aircraft: AirUnit, stackIDs: string[] = [aircraft.id]) {
   if (!['hangar', 'service', 'deck', 'ready'].includes(aircraft.status)) {
     emit('selectAircraft', aircraft.id)
     return
@@ -80,7 +81,7 @@ function selectCounter(aircraft: AirUnit) {
   if (!carrier) return
   const group = selectionMode.value === 'type'
     ? carrier.aircraft.filter((item) => item.definition_id === aircraft.definition_id && item.status === aircraft.status).map((item) => item.id)
-    : [aircraft.id]
+    : stackIDs
   const allSelected = group.every((id) => selectedIDs.value.includes(id))
   if (selectionMode.value === 'single') {
     selectedIDs.value = allSelected ? [] : group
@@ -91,8 +92,12 @@ function selectCounter(aircraft: AirUnit) {
   }
 }
 
-function startDrag(aircraft: AirUnit, event: DragEvent) {
-  if (!selectedIDs.value.includes(aircraft.id)) selectedIDs.value = [aircraft.id]
+function startDrag(aircraft: AirUnit, event: DragEvent, stackIDs: string[] = [aircraft.id]) {
+  if (!selectedIDs.value.includes(aircraft.id)) {
+    selectedIDs.value = [...stackIDs]
+  } else {
+    selectedIDs.value = [...new Set([...selectedIDs.value, ...stackIDs])]
+  }
   draggingIDs.value = [...selectedIDs.value]
   if (event.dataTransfer && event.currentTarget instanceof HTMLElement) {
     event.dataTransfer.effectAllowed = 'move'
@@ -134,8 +139,8 @@ function emitBatch(type: AirCommandType, ids: string[]) {
   selectedIDs.value = []
 }
 
-function recover(aircraft: AirUnit) {
-  emit('command', 'RECOVER_AIR', [aircraft.id])
+function recover(aircraftIDs: string[]) {
+  emit('command', 'RECOVER_AIR', aircraftIDs)
 }
 
 function launchRecon() {
@@ -179,6 +184,21 @@ function aircraftAt(status: 'hangar' | 'deck' | 'airborne') {
   return aircraft.filter((item) => item.status === 'deck' || item.status === 'ready')
 }
 
+function aircraftStacks(status: 'hangar' | 'deck' | 'airborne') {
+  if (expandStacks.value) return aircraftAt(status).map((aircraft) => ({ aircraft, ids: [aircraft.id] }))
+  const stacks = new Map<string, { aircraft: AirUnit; ids: string[] }>()
+  for (const aircraft of aircraftAt(status)) {
+    const key = `${aircraft.definition_id}|${aircraft.status}|${aircraft.task_id || ''}`
+    const stack = stacks.get(key)
+    if (stack) {
+      stack.ids.push(aircraft.id)
+    } else {
+      stacks.set(key, { aircraft, ids: [aircraft.id] })
+    }
+  }
+  return [...stacks.values()]
+}
+
 function counterHint(aircraft: AirUnit) {
   if (aircraft.status === 'service') return aircraft.task_id ? '任务整备中 · 下回合自动准备' : '整备完成 · 下回合提升'
   if (aircraft.status === 'deck' || aircraft.status === 'ready') return aircraft.task_id ? '准备完成 · 下回合自动起飞' : '准备完成 · 可拖入任务立即起飞'
@@ -210,7 +230,7 @@ function operationName(carrier: CarrierAirStatus) {
           <article v-for="task in laneTasks(lane)" :key="task.id" class="air-task" :class="{ prioritized: task.priority === 1, 'recon-task': task.kind === 'recon' && !['servicing', 'preparing'].includes(task.phase), 'pending-air-task': ['servicing', 'preparing'].includes(task.phase) }" :data-task-id="task.id" :data-phase="task.phase" @click.stop="selectTask(task)">
             <div class="air-task-copy"><strong>{{ task.name }}</strong><span class="air-task-phase" :class="`phase-${task.phase}`">{{ taskPhase(task) }}</span><small>{{ taskSummary(task) }}</small></div>
             <div v-if="['servicing', 'preparing'].includes(task.phase)" class="air-task-counters" @click.stop>
-              <AircraftCounter v-for="aircraft in task.aircraft" :key="aircraft.id" :aircraft="aircraft" :player-faction="playerFaction" />
+              <AircraftCounter v-if="task.aircraft[0]" :aircraft="task.aircraft[0]" :stack-count="task.aircraft.length" :player-faction="playerFaction" />
             </div>
             <ReconSectorMap v-if="task.kind === 'recon' && task.sector_hexes?.length" :map="gameMap" :task="task" />
             <span class="task-priority">优先级 {{ task.priority }}</span>
@@ -234,7 +254,7 @@ function operationName(carrier: CarrierAirStatus) {
         <header><div><span class="unit-type-badge">{{ selectedCarrier.type }}</span><h2>{{ selectedCarrier.name }}</h2></div><div class="hangar-meter"><span>机库</span><strong>{{ selectedCarrier.hangar_used }} / {{ selectedCarrier.hangar_capacity }}</strong></div></header>
         <div class="carrier-operation"><span :class="`operation-${selectedCarrier.operation || 'idle'}`">{{ operationName(selectedCarrier) }}</span><small v-if="selectedCarrier.deck_capacity">本回合起飞 {{ selectedCarrier.launch_used }} / {{ selectedCarrier.deck_capacity }}</small><small v-else>{{ selectedCarrier.unit_id }}</small></div>
         <div class="air-selection-toolbar">
-          <span>选择模式</span><button :class="{ active: selectionMode === 'single' }" @click="selectionMode = 'single'; selectedIDs = []">单选</button><button :class="{ active: selectionMode === 'type' }" @click="selectionMode = 'type'; selectedIDs = []">同型全选</button><small>已选 {{ selectedIDs.length }} 个算子</small><button class="clear-selection" @click="selectedIDs = []">清除</button>
+          <span>选择模式</span><button :class="{ active: selectionMode === 'single' }" @click="selectionMode = 'single'; selectedIDs = []">单选</button><button :class="{ active: selectionMode === 'type' }" @click="selectionMode = 'type'; selectedIDs = []">同型全选</button><button :class="{ active: expandStacks }" @click="expandStacks = !expandStacks; selectedIDs = []">{{ expandStacks ? '合并叠加' : '展开叠加' }}</button><small>已选 {{ selectedIDs.length }} 个算子</small><button class="clear-selection" @click="selectedIDs = []">清除</button>
         </div>
         <p v-if="selectionHint" class="air-selection-hint" role="alert">{{ selectionHint }}</p>
 
@@ -242,9 +262,9 @@ function operationName(carrier: CarrierAirStatus) {
           <header><div><span class="section-kicker">{{ selectedCarrier.deck_capacity ? 'FLIGHT DECK' : 'LAUNCH READY' }}</span><h3>{{ selectedCarrier.deck_capacity ? '整备 / 飞行甲板' : '整备 / 起飞准备' }}</h3></div><strong v-if="selectedCarrier.deck_capacity">{{ selectedCarrier.deck_used }} / {{ selectedCarrier.deck_capacity }}</strong><strong v-else>{{ aircraftAt('deck').length }} 已准备</strong></header>
           <p>这里也可手动整备未分配任务的算子；已分配任务会随回合自动推进，无需重复拖放。</p>
           <div class="air-counter-grid">
-            <div v-for="aircraft in aircraftAt('deck')" :key="aircraft.id" class="air-counter-item" :data-aircraft-id="aircraft.id" :data-status="aircraft.status">
-              <AircraftCounter :aircraft="aircraft" :player-faction="playerFaction" :class="{ selected: selectedIDs.includes(aircraft.id) || selectedAircraftId === aircraft.id, selectable: true }" draggable="true" @click="selectCounter(aircraft)" @dragstart="startDrag(aircraft, $event)" @dragend="endDrag" />
-              <span class="air-no-action">{{ counterHint(aircraft) }}</span>
+            <div v-for="stack in aircraftStacks('deck')" :key="stack.aircraft.id" class="air-counter-item" :data-aircraft-id="stack.aircraft.id" :data-status="stack.aircraft.status" :data-stack-count="stack.ids.length">
+              <AircraftCounter :aircraft="stack.aircraft" :stack-count="stack.ids.length" :player-faction="playerFaction" :class="{ selected: stack.ids.some((id) => selectedIDs.includes(id)) || (selectedAircraftId && stack.ids.includes(selectedAircraftId)), selectable: true }" draggable="true" @click="selectCounter(stack.aircraft, stack.ids)" @dragstart="startDrag(stack.aircraft, $event, stack.ids)" @dragend="endDrag" />
+              <span class="air-no-action">{{ counterHint(stack.aircraft) }}</span>
             </div>
             <button v-if="aircraftAt('deck').length" class="return-hangar-button" @click="assignTarget('hangar')">将已选算子拉回机库，取消任务并重置整备</button>
             <span v-else class="empty-air-zone">拖入机库算子开始整备</span>
@@ -254,9 +274,9 @@ function operationName(carrier: CarrierAirStatus) {
         <section class="air-storage-zone hangar-zone" :class="{ 'drop-active': dragOver === 'hangar' }" data-drop-target="hangar" @click="assignTarget('hangar')" @dragover.prevent="dragOver = 'hangar'" @dragleave="dragOver = ''" @drop.prevent="assignTarget('hangar')">
           <header><div><span class="section-kicker">HANGAR</span><h3>机库</h3></div><strong>{{ selectedCarrier.hangar_used }} / {{ selectedCarrier.hangar_capacity }}</strong></header>
           <div class="air-counter-grid">
-            <div v-for="aircraft in aircraftAt('hangar')" :key="aircraft.id" class="air-counter-item" :data-aircraft-id="aircraft.id" :data-status="aircraft.status">
-              <AircraftCounter :aircraft="aircraft" :player-faction="playerFaction" :class="{ selected: selectedIDs.includes(aircraft.id) || selectedAircraftId === aircraft.id, selectable: true }" draggable="true" @click.stop="selectCounter(aircraft)" @dragstart="startDrag(aircraft, $event)" @dragend="endDrag" />
-              <span class="air-no-action">{{ counterHint(aircraft) }}</span>
+            <div v-for="stack in aircraftStacks('hangar')" :key="stack.aircraft.id" class="air-counter-item" :data-aircraft-id="stack.aircraft.id" :data-status="stack.aircraft.status" :data-stack-count="stack.ids.length">
+              <AircraftCounter :aircraft="stack.aircraft" :stack-count="stack.ids.length" :player-faction="playerFaction" :class="{ selected: stack.ids.some((id) => selectedIDs.includes(id)) || (selectedAircraftId && stack.ids.includes(selectedAircraftId)), selectable: true }" draggable="true" @click.stop="selectCounter(stack.aircraft, stack.ids)" @dragstart="startDrag(stack.aircraft, $event, stack.ids)" @dragend="endDrag" />
+              <span class="air-no-action">{{ counterHint(stack.aircraft) }}</span>
             </div>
             <p v-if="!aircraftAt('hangar').length" class="empty-hangar">机库空置</p>
           </div>
@@ -265,9 +285,9 @@ function operationName(carrier: CarrierAirStatus) {
         <section v-if="aircraftAt('airborne').length" class="air-storage-zone airborne-zone">
           <header><div><span class="section-kicker">AIRBORNE</span><h3>空中算子</h3></div><strong>{{ aircraftAt('airborne').length }}</strong></header>
           <div class="air-counter-grid">
-            <div v-for="aircraft in aircraftAt('airborne')" :key="aircraft.id" class="air-counter-item" :data-aircraft-id="aircraft.id" :data-status="aircraft.status">
-              <AircraftCounter :aircraft="aircraft" :player-faction="playerFaction" :class="{ selected: selectedAircraftId === aircraft.id, selectable: true }" @click="selectCounter(aircraft)" />
-              <button v-if="aircraft.status === 'cap'" :disabled="busy" @click.stop="recover(aircraft)">回收至机库</button><span v-else class="air-no-action">{{ aircraft.returning ? '正在返航' : aircraft.tracking_fleet_id ? '正在跟踪目标' : '扇面搜索中' }}</span>
+            <div v-for="stack in aircraftStacks('airborne')" :key="stack.aircraft.id" class="air-counter-item" :data-aircraft-id="stack.aircraft.id" :data-status="stack.aircraft.status" :data-stack-count="stack.ids.length">
+              <AircraftCounter :aircraft="stack.aircraft" :stack-count="stack.ids.length" :player-faction="playerFaction" :class="{ selected: selectedAircraftId && stack.ids.includes(selectedAircraftId), selectable: true }" @click="selectCounter(stack.aircraft)" />
+              <button v-if="stack.aircraft.status === 'cap'" :disabled="busy" @click.stop="recover(stack.ids)">回收至机库</button><span v-else class="air-no-action">{{ stack.aircraft.returning ? '正在返航' : stack.aircraft.tracking_fleet_id ? '正在跟踪目标' : '扇面搜索中' }}</span>
             </div>
           </div>
         </section>

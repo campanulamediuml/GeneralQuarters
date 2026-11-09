@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import type { AirUnit, Player } from '../types'
 
-const props = defineProps<{ aircraft: AirUnit; playerFaction: Player['faction'] }>()
+const props = defineProps<{ aircraft: AirUnit; playerFaction: Player['faction']; stackCount?: number }>()
 const friendly = computed(() => props.aircraft.faction === props.playerFaction)
 const range = computed(() => friendly.value ? props.aircraft.remaining_range : props.aircraft.max_range)
 const modelCode = computed(() => props.aircraft.model.split(' ')[0])
@@ -14,7 +14,8 @@ const modelCode = computed(() => props.aircraft.model.split(' ')[0])
     :class="[`air-${aircraft.status}`, `kind-${aircraft.kind}`, { seaplane: aircraft.seaplane }]"
     :data-range-kind="friendly ? 'remaining' : 'maximum'"
     :data-range-value="range"
-    :aria-label="`${aircraft.model}，对空${aircraft.air_combat}，对地${aircraft.anti_ground}，对舰${aircraft.anti_ship}，机体${aircraft.strength}，${friendly ? '剩余' : '最大'}航程${range}`"
+    :data-stack-count="stackCount || 1"
+    :aria-label="`${aircraft.model}${stackCount && stackCount > 1 ? `，${stackCount}个算子` : ''}，对空${aircraft.air_combat}，对地${aircraft.anti_ground}，对舰${aircraft.anti_ship}，机体${aircraft.strength}，${friendly ? '剩余' : '最大'}航程${range}`"
   >
     <div class="aircraft-ratings">
       <span title="对空能力">{{ aircraft.air_combat }}</span>
@@ -37,11 +38,12 @@ const modelCode = computed(() => props.aircraft.model.split(' ')[0])
       >{{ range }}</strong>
       <span class="aircraft-model" :title="aircraft.model">{{ modelCode }}</span>
     </div>
+    <span v-if="stackCount && stackCount > 1" class="aircraft-stack-count" :title="`${stackCount}个同型算子`">×{{ stackCount }}</span>
   </figure>
 </template>
 
 <style scoped>
-.air-counter{display:grid;grid-template-rows:18px 43px 22px;width:84px;height:85px;margin:0;overflow:hidden;border:1px solid #89aab5;border-radius:2px;background:linear-gradient(145deg,#d6e2e2,#9db6bd);color:#132a33;box-shadow:0 2px 4px #0005}
+.air-counter{position:relative;display:grid;grid-template-rows:18px 43px 22px;width:84px;height:85px;margin:0;overflow:hidden;border:1px solid #89aab5;border-radius:2px;background:linear-gradient(145deg,#d6e2e2,#9db6bd);color:#132a33;box-shadow:0 2px 4px #0005}
 .air-counter.seaplane{background:linear-gradient(145deg,#edba73,#bf7d38);border-color:#e5b675}
 .aircraft-ratings{display:grid;grid-template-columns:repeat(3,1fr);align-items:center;padding:0 4px;font:700 13px/1 'Rajdhani',sans-serif;text-align:center}
 .aircraft-body{display:grid;grid-template-columns:14px minmax(0,1fr) 14px;align-items:center;min-height:0}
@@ -55,4 +57,5 @@ const modelCode = computed(() => props.aircraft.model.split(' ')[0])
 .aircraft-range.low-range{background:#9c4036}
 .aircraft-model{overflow:hidden;padding-bottom:2px;font:700 9px/1 'Rajdhani',sans-serif;text-align:right;text-overflow:ellipsis;white-space:nowrap}
 .air-counter.air-cap,.air-counter.air-recon,.air-counter.air-deck,.air-counter.air-ready{border-color:#f0d58d}.air-counter.air-service{border-style:dashed;border-color:#d7bb7b}
+.aircraft-stack-count{position:absolute;right:3px;bottom:27px;z-index:2;min-width:25px;padding:3px 4px;border:1px solid #f0d58d;background:#142a31e8;color:#f0d58d;font:700 13px/1 'Rajdhani',sans-serif;text-align:center;box-shadow:0 1px 3px #0007}
 </style>
