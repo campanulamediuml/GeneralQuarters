@@ -244,12 +244,12 @@ func (s *Server) handleCommand(w http.ResponseWriter, r *http.Request, roomID st
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if order.Type == "SET_MOVE" || order.Type == "MERGE_FLEET" || order.Type == "REORGANIZE_HEX" || order.Type == "LAUNCH_CAP" || order.Type == "LAUNCH_RECON" || order.Type == "LAUNCH_STRIKE" || order.Type == "PREPARE_AIR" || order.Type == "RETURN_TO_HANGAR" || order.Type == "RECOVER_AIR" || order.Type == "PRIORITIZE_AIR_TASK" {
+	if order.Type == "SET_MOVE" || order.Type == "MERGE_FLEET" || order.Type == "REORGANIZE_HEX" || order.Type == "LAUNCH_CAP" || order.Type == "LAUNCH_RECON" || order.Type == "LAUNCH_STRIKE" || order.Type == "PREPARE_AIR" || order.Type == "RETURN_TO_HANGAR" || order.Type == "RECOVER_AIR" || order.Type == "PRIORITIZE_AIR_TASK" || order.Type == "SET_STRIKE_TARGET" {
 		var events []game.EngineEvent
 		switch order.Type {
 		case "SET_MOVE":
 			events = game.ApplyImmediateMove(&room.State, order)
-		case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE", "PREPARE_AIR", "RETURN_TO_HANGAR", "RECOVER_AIR", "PRIORITIZE_AIR_TASK":
+		case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE", "PREPARE_AIR", "RETURN_TO_HANGAR", "RECOVER_AIR", "PRIORITIZE_AIR_TASK", "SET_STRIKE_TARGET":
 			events = game.ApplyAirOrder(&room.State, order)
 		default:
 			events = game.ApplyImmediateOrganization(&room.State, order)

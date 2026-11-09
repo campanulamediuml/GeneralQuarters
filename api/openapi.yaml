@@ -199,7 +199,7 @@ components:
       properties:
         command_id: {type: string, maxLength: 128}
         base_version: {type: integer, format: int64}
-        type: {type: string, enum: [SET_MOVE, CLEAR_MOVE, MERGE_FLEET, REORGANIZE_HEX, LAUNCH_CAP, LAUNCH_RECON, LAUNCH_STRIKE, PREPARE_AIR, RETURN_TO_HANGAR, RECOVER_AIR, PRIORITIZE_AIR_TASK]}
+        type: {type: string, enum: [SET_MOVE, CLEAR_MOVE, MERGE_FLEET, REORGANIZE_HEX, LAUNCH_CAP, LAUNCH_RECON, LAUNCH_STRIKE, PREPARE_AIR, RETURN_TO_HANGAR, RECOVER_AIR, PRIORITIZE_AIR_TASK, SET_STRIKE_TARGET]}
         unit_id: {type: string, description: 舰船移动与整编命令必填, example: a-bb-01}
         target_unit_id: {type: string, description: MERGE_FLEET必填，目标舰队中的单位, example: a-dd-01}
         aircraft_id: {type: string, description: 单算子航空命令或任务ID, example: air-b-01}

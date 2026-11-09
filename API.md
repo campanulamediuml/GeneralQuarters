@@ -96,11 +96,12 @@
 - 航空命令可使用`aircraft_ids`提交1至20个算子，旧`aircraft_id`单算子格式继续兼容。CAP和侦察必须同母舰、同机型、同阶段；攻击编队可混合攻击机型并跨同一舰队的多艘母舰。所有设施、容量与任务状态均由服务端一次校验和结算。
 - `PREPARE_AIR`：已废弃并返回400。整备、提升、放飞必须绑定任务，客户端不能脱离任务直接切换算子阶段。
 - `RETURN_TO_HANGAR`：取消任务、优先级和任务参数。`service`立即重置为`hangar`；`deck/ready`转为`recovery`，等待本舰升降机下降后才进入`hangar`。`elevator`中的算子不能中途撤回。
-- `LAUNCH_CAP`：将战斗机分配至CAP任务。机库算子立即形成预备任务并进入`service`；已经在甲板的算子立即独立升空。CAP不等待攻击编队。
+- `LAUNCH_CAP`：将战斗机分配至CAP任务。机库算子立即形成预备任务并进入`service`；已经在甲板的算子立即独立升空。每支舰队共享`cap-<fleet_id>`任务组和一面优先级旗，CAP算子仍独立起飞，不等待攻击编队。
 - `LAUNCH_RECON`：将侦察机或攻击机分配至扇面搜索任务，额外提交`heading`和`sector_width`。允许`recon`、`torpedo_bomber`（TBF）和`dive_bomber`（SB2C），拒绝战斗机。例如`{"command_id":"01J...","base_version":1,"type":"LAUNCH_RECON","aircraft_id":"air-b-10","heading":"W","sector_width":60}`。航向为`E/SE/SW/W/NW/NE`，角度只能为60或120。`recon_radius`省略或为0时使用服务端`recon_radius_limit`；侦察算子独立起飞，不等待其他任务。每支舰队最多同时创建两个侦察组；向已有组加入飞机时提交`task_id`，同一舰队不同母舰的不同可搜索机型可以分批加入，并继承原组的航向、扇面及半径，而不是自动创建或轮流进入另一组。跨舰队加入会被拒绝，航空界面也只投影当前选中舰队的舰船和任务。
-- `LAUNCH_STRIKE`：由舰载俯冲轰炸机和鱼雷机建立攻击编队。新建时必须额外提交`"coord":"0202"`作为目标hex，服务端仅接受当前视野或情报中已知的敌方目标；把另一艘同舰队母舰的算子加入已有编队时提交`"task_id":"air-b-03"`并继承目标，已离场编队拒绝加入。部分算子先起飞时为`attack_holding`，任务为`assembling`，每等待一回合`remaining_range`减1；全部成员升空后统一改为`attack`并离场，每回合最多向目标飞行2 hex并逐格耗油，抵达后记录`attack_arrived`战报。任务和算子包含`target_coord`。当前不包含空袭伤害结算。
+- `LAUNCH_STRIKE`：由舰载俯冲轰炸机和鱼雷机建立攻击编队，可以先创建编队再设置目标。把另一艘同舰队母舰的算子加入已有编队时提交`"task_id":"air-b-03"`并继承目标，已离场编队拒绝加入。部分算子先起飞时为`attack_holding`，任务为`assembling`，每等待一回合`remaining_range`减1；全部成员升空后若未设目标继续等待，不会离场。
+- `SET_STRIKE_TARGET`：通过`aircraft_id`提交攻击`task_id`，通过`coord`提交目标hex，服务端仅接受当前视野或情报中已知的敌方目标。全部成员设置`target_coord`并立即重新判定离场。离场后每回合最多向目标飞行2 hex并逐格耗油，抵达后记录`attack_arrived`战报。任务和算子包含`target_coord`，当前不包含空袭伤害结算。
 - 任务创建后立即出现在`aviation.tasks`。通常第1回合为`servicing`，第2回合占用具体升降机并显示`lifting`，第3回合完成提升后由任务放飞并显示`launching`，随后为`active`。算子同时记录`elevator_id`；`preparing`表示已经在甲板但因容量或甲板作业而等待，`assembling`仅用于攻击编队。侦察参数在分配时持久化，扇面顶点使用实际起飞时的母舰位置。
-- `RECOVER_AIR`：将CAP算子回收到本舰甲板，状态改为`recovery`；后续回合一一占用升降机执行`lowering`，完成后才回到机库。甲板长度不足或同舰正在执行不相容作业时返回400。侦察机沿航线自动返航，使用同样的甲板与下降流程。
+- `RECOVER_AIR`：将CAP算子回收到各自母舰甲板，状态改为`recovery`；后续回合一一占用升降机执行`lowering`，完成后才回到机库。允许一次回收同舰队多艘母舰的CAP，服务端逐舰检查甲板容量、损伤和不相容作业。侦察机沿航线自动返航，使用同样的甲板与下降流程。
 - `PRIORITIZE_AIR_TASK`：将指定预备、等待或空中任务置为最高优先级，其他任务顺序由服务端调整；优先级参与各舰升降机调度。
 - 这些命令都立即生效并递增`version`。每艘航空舰在`Unit.deck`中持有独立`length/operation/elevators`，每部升降机持有`id/kind/capacity/status/task_id/aircraft_ids`。所有整备、设施调度、编队集合、机库与甲板数量、扇面hex、发现判定、情报、燃油与任务排序仅由Go服务端计算。新自动起飞的算子从下一回合开始耗油和移动，空中CAP、等待及离场攻击算子每回合剩余航程-1，非空中算子补满航程。
 

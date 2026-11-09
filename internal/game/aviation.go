@@ -61,9 +61,31 @@ func EnsureAviation(state *State) {
 		}
 		unit.Card.ElevatorCount = len(unit.Deck.Elevators)
 	}
+	capPriorities := map[string]int{}
+	for _, aircraft := range state.Aircraft {
+		if aircraft.TaskKind != "cap" {
+			continue
+		}
+		carrier := state.Units[aircraft.CarrierID]
+		if carrier == nil {
+			continue
+		}
+		taskID := "cap-" + FleetKey(carrier)
+		if priority := capPriorities[taskID]; priority == 0 || aircraft.Priority < priority {
+			capPriorities[taskID] = aircraft.Priority
+		}
+	}
 	for _, aircraft := range state.Aircraft {
 		if aircraft.Status != "elevator" {
 			aircraft.ElevatorID = ""
+		}
+		if aircraft.TaskKind == "cap" {
+			carrier := state.Units[aircraft.CarrierID]
+			if carrier != nil {
+				taskID := "cap-" + FleetKey(carrier)
+				aircraft.TaskID = taskID
+				aircraft.Priority = capPriorities[taskID]
+			}
 		}
 	}
 }
@@ -109,7 +131,7 @@ func aircraftForOrder(state State, faction string, order Order) ([]*AirUnit, *Un
 		}
 		seen[id] = true
 		aircraft := state.Aircraft[id]
-		if aircraft == nil && order.Type == "PRIORITIZE_AIR_TASK" && len(ids) == 1 {
+		if aircraft == nil && (order.Type == "PRIORITIZE_AIR_TASK" || order.Type == "SET_STRIKE_TARGET") && len(ids) == 1 {
 			for _, candidate := range state.Aircraft {
 				if candidate.TaskID == id && candidate.Faction == faction {
 					aircraft = candidate
@@ -122,7 +144,7 @@ func aircraftForOrder(state State, faction string, order Order) ([]*AirUnit, *Un
 		}
 		if carrierID == "" {
 			carrierID = aircraft.CarrierID
-		} else if order.Type != "LAUNCH_STRIKE" && aircraft.CarrierID != carrierID {
+		} else if order.Type != "LAUNCH_STRIKE" && order.Type != "RECOVER_AIR" && aircraft.CarrierID != carrierID {
 			return nil, nil, fmt.Errorf("该航空命令必须使用同一母舰的算子")
 		}
 		aircraftList = append(aircraftList, aircraft)
@@ -237,7 +259,7 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 				return fmt.Errorf("最多同时保留两个侦察组，请把飞机加入已有任务栏")
 			}
 		}
-		if order.Type == "LAUNCH_STRIKE" && order.TaskID == "" {
+		if order.Type == "LAUNCH_STRIKE" && order.TaskID == "" && order.Coord != "" {
 			if err := ValidateStrikeTarget(state, faction, order.Coord); err != nil {
 				return err
 			}
@@ -246,6 +268,11 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 			return validateLaunchCapacity(state, aircraftList)
 		}
 		return nil
+	case "SET_STRIKE_TARGET":
+		if len(aircraftList) != 1 || aircraftList[0].TaskKind != "attack" {
+			return fmt.Errorf("只有攻击编队可以设置目标")
+		}
+		return ValidateStrikeTarget(state, faction, order.Coord)
 	case "PREPARE_AIR":
 		return fmt.Errorf("整备和提升必须绑定航空任务，请把飞机拖入任务栏")
 	case "RETURN_TO_HANGAR":
@@ -259,16 +286,24 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 		}
 		return nil
 	case "RECOVER_AIR":
-		if carrier.Deck.Operation != "" {
-			return fmt.Errorf("该舰甲板本回合已经进行其他作业，不能再降落")
-		}
+		counts := map[string]int{}
 		for _, aircraft := range aircraftList {
 			if aircraft.Status != "cap" {
 				return fmt.Errorf("只有空中的CAP算子可以主动回收，侦察和攻击算子需要完成任务后返航")
 			}
+			counts[aircraft.CarrierID]++
 		}
-		if deckUsed(state, carrier.ID)+len(aircraftList) > carrier.Deck.Length {
-			return fmt.Errorf("飞行甲板没有足够空间接收降落算子")
+		for carrierID, count := range counts {
+			ship := state.Units[carrierID]
+			if ship == nil || ship.Deck == nil || ship.Deck.Operation != "" {
+				return fmt.Errorf("回收母舰甲板本回合已经进行其他作业，不能再降落")
+			}
+			if !AviationAvailable(ship) {
+				return fmt.Errorf("回收母舰损伤状态无法降落")
+			}
+			if deckUsed(state, carrierID)+count > ship.Deck.Length {
+				return fmt.Errorf("%s的飞行甲板没有足够空间接收降落算子", ship.Name)
+			}
 		}
 		return nil
 	case "PRIORITIZE_AIR_TASK":
@@ -359,12 +394,19 @@ func configureAirTask(state *State, aircraftList []*AirUnit, order Order) {
 	taskID := order.TaskID
 	priority := 0
 	var existingTask []*AirUnit
+	if taskID == "" && order.Type == "LAUNCH_CAP" {
+		taskID = "cap-" + FleetKey(state.Units[aircraftList[0].CarrierID])
+	}
 	if taskID == "" {
 		taskID = newAirTaskID(state, aircraftList)
 		priority = nextAirTaskPriority(state, aircraftList[0].Faction)
 	} else {
 		existingTask = taskAircraft(*state, taskID)
-		priority = existingTask[0].Priority
+		if len(existingTask) > 0 {
+			priority = existingTask[0].Priority
+		} else {
+			priority = nextAirTaskPriority(state, aircraftList[0].Faction)
+		}
 	}
 	taskKind := "cap"
 	if order.Type == "LAUNCH_RECON" {
@@ -431,6 +473,9 @@ func updateAttackFormation(state *State, taskID string) []EngineEvent {
 	}
 	if !ready {
 		return []EngineEvent{{Type: "attack_assembling", Audience: members[0].Faction, Text: fmt.Sprintf("攻击编队%d/%d个算子已升空，先起飞的飞机在舰队上空等待", airborneCount, len(members))}}
+	}
+	if members[0].TargetCoord == "" {
+		return []EngineEvent{{Type: "attack_waiting_target", Audience: members[0].Faction, Text: "攻击编队已全部升空，等待选择目标"}}
 	}
 	for _, aircraft := range members {
 		aircraft.Status = "attack"
@@ -512,15 +557,23 @@ func ApplyAirOrder(state *State, order Order) []EngineEvent {
 			aircraft.Status = "service"
 		}
 		return []EngineEvent{{Type: "air_task_assigned", Audience: carrier.Faction, Text: fmt.Sprintf("%d个算子加入%s任务并开始机库整备，后续提升由母舰升降机执行", len(aircraftList), aircraftList[0].TaskKind)}}
+	case "SET_STRIKE_TARGET":
+		taskID := aircraftList[0].TaskID
+		for _, aircraft := range taskAircraft(*state, taskID) {
+			aircraft.TargetCoord = order.Coord
+		}
+		events := []EngineEvent{{Type: "strike_target_set", Audience: carrier.Faction, Text: fmt.Sprintf("攻击编队目标设为%s", order.Coord)}}
+		return append(events, updateAttackFormation(state, taskID)...)
 	case "RECOVER_AIR":
 		for _, aircraft := range aircraftList {
 			aircraft.Status = "recovery"
 			aircraft.Launched = false
 			clearAirTask(aircraft)
-			carrier.Card.Aircraft++
+			mother := state.Units[aircraft.CarrierID]
+			mother.Card.Aircraft++
+			mother.Deck.Operation = "recover"
 		}
-		carrier.Deck.Operation = "recover"
-		return []EngineEvent{{Type: "air_recovered", Audience: carrier.Faction, Text: fmt.Sprintf("%d个CAP算子已降落在%s甲板，等待升降机下降", len(aircraftList), carrier.Name)}}
+		return []EngineEvent{{Type: "air_recovered", Audience: carrier.Faction, Text: fmt.Sprintf("%d个CAP算子已降落在各自母舰甲板，等待升降机下降", len(aircraftList))}}
 	case "PRIORITIZE_AIR_TASK":
 		selected := aircraftList[0]
 		selectedTask := selected.TaskID
@@ -551,7 +604,7 @@ func orderAircraftFaction(state State, order Order) string {
 			return aircraft.Faction
 		}
 	}
-	if order.Type == "PRIORITIZE_AIR_TASK" {
+	if order.Type == "PRIORITIZE_AIR_TASK" || order.Type == "SET_STRIKE_TARGET" {
 		for _, aircraft := range state.Aircraft {
 			if aircraft.TaskID == order.AircraftID {
 				return aircraft.Faction
@@ -810,6 +863,9 @@ func taskPhase(members []*AirUnit) string {
 			if aircraft.Launched {
 				launched = true
 			}
+		}
+		if allDeparted && members[0].TargetCoord == "" {
+			return "assembling"
 		}
 		if allDeparted {
 			if launched {

@@ -81,16 +81,16 @@ func TestCAPLaunchPriorityAndElevatorRecovery(t *testing.T) {
 		}
 		ApplyAirOrder(&state, order)
 	}
-	if state.Aircraft["air-b-01"].Priority != 1 || state.Aircraft["air-b-02"].Priority != 2 || state.Units["b-cv-01"].Card.Aircraft != 2 {
-		t.Fatal("CAP初始任务、优先级或载机数错误")
+	if state.Aircraft["air-b-01"].Priority != 1 || state.Aircraft["air-b-02"].Priority != 1 || state.Aircraft["air-b-01"].TaskID != "cap-TG-B" || state.Aircraft["air-b-02"].TaskID != "cap-TG-B" || state.Units["b-cv-01"].Card.Aircraft != 2 {
+		t.Fatal("CAP编组、优先级或载机数错误")
 	}
 	if err := ValidateAirOrder(state, "B", Order{Type: "RECOVER_AIR", AircraftID: "air-b-01"}); err == nil {
 		t.Fatal("同回合起飞后仍允许降落")
 	}
 	ApplyAirOrder(&state, Order{Type: "PRIORITIZE_AIR_TASK", AircraftID: "air-b-02"})
 	view := VisibleAviation(state, "B")
-	if len(view.Tasks) != 2 || view.Tasks[0].ID != "air-b-02" || view.Tasks[0].Priority != 1 {
-		t.Fatalf("任务旗子未由服务端调整顺序：%+v", view.Tasks)
+	if len(view.Tasks) != 1 || view.Tasks[0].ID != "cap-TG-B" || len(view.Tasks[0].Aircraft) != 2 || view.Tasks[0].Priority != 1 {
+		t.Fatalf("CAP没有合并为单任务单旗帜：%+v", view.Tasks)
 	}
 	AdvanceAviation(&state)
 	if state.Aircraft["air-b-01"].RemainingRange != 12 || state.Units["b-cv-01"].Deck.Operation != "" {
@@ -391,5 +391,26 @@ func TestReconGroupsAreScopedToFleet(t *testing.T) {
 	}
 	if !fleets["TG-B"] || !fleets["TG-B-BB"] {
 		t.Fatalf("侦察任务没有保留舰队归属：%+v", fleets)
+	}
+}
+
+func TestRecoverCAPAcrossCarriers(t *testing.T) {
+	state := sandboxState(t)
+	setAircraftReady(&state, "air-b-05", "air-b-07")
+	for _, id := range []string{"air-b-05", "air-b-07"} {
+		ApplyAirOrder(&state, Order{Type: "LAUNCH_CAP", AircraftID: id})
+	}
+	AdvanceAviation(&state)
+	order := Order{Type: "RECOVER_AIR", AircraftIDs: []string{"air-b-05", "air-b-07"}}
+	if err := ValidateAirOrder(state, "B", order); err != nil {
+		t.Fatalf("跨母舰CAP回收被拒绝：%v", err)
+	}
+	ApplyAirOrder(&state, order)
+	for _, id := range []string{"air-b-05", "air-b-07"} {
+		aircraft := state.Aircraft[id]
+		carrier := state.Units[aircraft.CarrierID]
+		if aircraft.Status != "recovery" || aircraft.TaskID != "" || carrier.Deck.Operation != "recover" {
+			t.Fatalf("跨母舰回收状态错误：%+v %+v", aircraft, carrier)
+		}
 	}
 }
