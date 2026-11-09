@@ -6,6 +6,60 @@ import (
 	"strings"
 )
 
+func EnsureAviation(state *State) {
+	for _, unit := range state.Units {
+		if unit.Card.HangarCapacity <= 0 {
+			unit.Deck = nil
+			continue
+		}
+		length := unit.Card.DeckCapacity
+		if length <= 0 {
+			length = 1
+		}
+		count := unit.Card.ElevatorCount
+		if count <= 0 {
+			count = 1
+		}
+		if unit.Deck == nil {
+			unit.Deck = &FlightDeck{Elevators: []*AircraftElevator{}}
+		}
+		if unit.Deck.Length <= 0 {
+			unit.Deck.Length = length
+		}
+		unit.Card.DeckCapacity = unit.Deck.Length
+		kind := "elevator"
+		capacity := 2
+		if !IsCarrier(unit) {
+			kind = "crane"
+			capacity = 1
+		}
+		for index := 0; index < count; index++ {
+			id := fmt.Sprintf("%s-elevator-%d", unit.ID, index+1)
+			if index >= len(unit.Deck.Elevators) {
+				unit.Deck.Elevators = append(unit.Deck.Elevators, &AircraftElevator{ID: id, AircraftIDs: []string{}})
+			}
+			elevator := unit.Deck.Elevators[index]
+			elevator.ID = id
+			elevator.Kind = kind
+			if elevator.Capacity <= 0 {
+				elevator.Capacity = capacity
+			}
+			if elevator.Status == "" {
+				elevator.Status = "idle"
+			}
+			if elevator.AircraftIDs == nil {
+				elevator.AircraftIDs = []string{}
+			}
+		}
+		unit.Card.ElevatorCount = len(unit.Deck.Elevators)
+	}
+	for _, aircraft := range state.Aircraft {
+		if aircraft.Status != "elevator" {
+			aircraft.ElevatorID = ""
+		}
+	}
+}
+
 func airOrderIDs(order Order) []string {
 	ids := append([]string(nil), order.AircraftIDs...)
 	if len(ids) == 0 && order.AircraftID != "" {
@@ -16,6 +70,7 @@ func airOrderIDs(order Order) []string {
 }
 
 func aircraftForOrder(state State, faction string, order Order) ([]*AirUnit, *Unit, error) {
+	EnsureAviation(&state)
 	ids := airOrderIDs(order)
 	if len(ids) == 0 || len(ids) > 20 {
 		return nil, nil, fmt.Errorf("航空命令必须包含1到20个航空算子")
@@ -42,13 +97,13 @@ func aircraftForOrder(state State, faction string, order Order) ([]*AirUnit, *Un
 		}
 		if carrierID == "" {
 			carrierID = aircraft.CarrierID
-		} else if aircraft.CarrierID != carrierID {
-			return nil, nil, fmt.Errorf("批量航空命令必须使用同一母舰的算子")
+		} else if order.Type != "LAUNCH_STRIKE" && aircraft.CarrierID != carrierID {
+			return nil, nil, fmt.Errorf("该航空命令必须使用同一母舰的算子")
 		}
 		aircraftList = append(aircraftList, aircraft)
 	}
 	carrier := state.Units[carrierID]
-	if carrier == nil || carrier.Faction != faction || carrier.Card.HangarCapacity <= 0 {
+	if carrier == nil || carrier.Faction != faction || carrier.Deck == nil {
 		return nil, nil, fmt.Errorf("母舰不存在或无法执行航空作业")
 	}
 	return aircraftList, carrier, nil
@@ -59,38 +114,41 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 	if err != nil {
 		return err
 	}
-	operation := state.CarrierOperations[carrier.ID]
 	switch order.Type {
-	case "LAUNCH_CAP", "LAUNCH_RECON":
-		if operation == "recover" || operation == "prepare" {
-			return fmt.Errorf("该母舰本回合已经进行其他航空作业，不能再分配或起飞")
+	case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE":
+		status := aircraftList[0].Status
+		if status != "hangar" && status != "service" && status != "deck" && status != "ready" {
+			return fmt.Errorf("只有机库、整备中或已完成提升的算子可以分配任务")
 		}
 		definitionID := aircraftList[0].DefinitionID
-		status := aircraftList[0].Status
-		readyStatus := "deck"
-		if aircraftList[0].Seaplane {
-			readyStatus = "ready"
-		}
-		if status != "hangar" && status != "service" && status != readyStatus {
-			return fmt.Errorf("只有机库、整备中或已完成起飞准备的算子可以分配任务")
-		}
-		if status == readyStatus {
-			if err := validateLaunchCapacity(state, aircraftList, carrier); err != nil {
-				return err
-			}
-		}
+		fleetID := FleetKey(carrier)
 		for _, aircraft := range aircraftList {
-			if aircraft.DefinitionID != definitionID {
-				return fmt.Errorf("同一航空任务必须使用同型算子")
-			}
 			if aircraft.Status != status {
-				return fmt.Errorf("同一航空任务的算子必须处于相同整备阶段")
+				return fmt.Errorf("同批分配的算子必须处于相同作业阶段")
+			}
+			if aircraft.TaskID != "" {
+				return fmt.Errorf("算子已经属于其他任务，请先取消原任务")
+			}
+			ship := state.Units[aircraft.CarrierID]
+			if ship == nil || ship.Faction != faction || ship.Deck == nil {
+				return fmt.Errorf("航空算子的母舰无法执行航空作业")
+			}
+			if order.Type != "LAUNCH_STRIKE" && aircraft.DefinitionID != definitionID {
+				return fmt.Errorf("CAP和侦察任务必须使用同型算子")
 			}
 			if order.Type == "LAUNCH_CAP" && aircraft.Kind != "fighter" {
 				return fmt.Errorf("只有战斗机可以执行CAP")
 			}
 			if order.Type == "LAUNCH_RECON" && !canSearch(*aircraft) {
 				return fmt.Errorf("战斗机不能执行扇面搜索，TBF、SB2C和侦察机可以执行搜索")
+			}
+			if order.Type == "LAUNCH_STRIKE" {
+				if aircraft.Seaplane || (aircraft.Kind != "dive_bomber" && aircraft.Kind != "torpedo_bomber") {
+					return fmt.Errorf("攻击编队只能由舰载俯冲轰炸机和鱼雷机组成")
+				}
+				if FleetKey(ship) != fleetID {
+					return fmt.Errorf("攻击编队的母舰必须属于同一舰队")
+				}
 			}
 		}
 		if order.Type == "LAUNCH_CAP" && !IsCarrier(carrier) {
@@ -112,51 +170,49 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 				return fmt.Errorf("舰载机只能从航母起飞")
 			}
 		}
-		return nil
-	case "PREPARE_AIR":
-		seaplane := aircraftList[0].Seaplane
-		if !seaplane && (!IsCarrier(carrier) || carrier.Card.DeckCapacity <= 0) {
-			return fmt.Errorf("该舰没有可用于舰载机整备的飞行甲板")
-		}
-		if operation != "" {
-			return fmt.Errorf("该母舰本回合已经进行航空作业")
-		}
-		status := aircraftList[0].Status
-		if status != "hangar" && status != "service" {
-			return fmt.Errorf("只有未整备或已完成机库整备的算子可以进入下一阶段")
-		}
-		for _, aircraft := range aircraftList {
-			if aircraft.Status != status || aircraft.Seaplane != seaplane {
-				return fmt.Errorf("同批整备算子必须处于相同阶段和类型")
+		if order.Type == "LAUNCH_STRIKE" && order.TaskID != "" {
+			members := taskAircraft(state, order.TaskID)
+			if len(members) == 0 || members[0].TaskKind != "attack" || members[0].Faction != faction {
+				return fmt.Errorf("要加入的攻击编队不存在")
 			}
-		}
-		if status == "service" && !seaplane {
-			used := 0
-			for _, aircraft := range state.Aircraft {
-				if aircraft.CarrierID == carrier.ID && aircraft.Status == "deck" {
-					used++
+			if FleetKey(state.Units[members[0].CarrierID]) != fleetID {
+				return fmt.Errorf("只能加入同一舰队的攻击编队")
+			}
+			for _, member := range members {
+				if member.Status == "attack" {
+					return fmt.Errorf("攻击编队已经离场，不能继续加入飞机")
 				}
 			}
-			if used+len(aircraftList) > carrier.Card.DeckCapacity {
-				return fmt.Errorf("飞行甲板没有足够停放容量")
-			}
+		} else if order.TaskID != "" {
+			return fmt.Errorf("只有攻击任务可以加入已有编队")
+		}
+		if status == "deck" || status == "ready" {
+			return validateLaunchCapacity(state, aircraftList)
 		}
 		return nil
+	case "PREPARE_AIR":
+		return fmt.Errorf("整备和提升必须绑定航空任务，请把飞机拖入任务栏")
 	case "RETURN_TO_HANGAR":
 		for _, aircraft := range aircraftList {
 			if aircraft.Status != "service" && aircraft.Status != "deck" && aircraft.Status != "ready" {
-				return fmt.Errorf("只有整备或起飞准备中的算子可以拉回机库")
+				return fmt.Errorf("升降机上的算子不能中途撤回，甲板回收算子必须等待下降完成")
+			}
+			if (aircraft.Status == "deck" || aircraft.Status == "ready") && carrier.Deck.Operation != "" {
+				return fmt.Errorf("该舰甲板正在起飞或回收，不能同时安排下降")
 			}
 		}
 		return nil
 	case "RECOVER_AIR":
-		if operation == "launch" || operation == "prepare" {
-			return fmt.Errorf("该母舰本回合已经进行其他航空作业，不能再降落")
+		if carrier.Deck.Operation != "" {
+			return fmt.Errorf("该舰甲板本回合已经进行其他作业，不能再降落")
 		}
 		for _, aircraft := range aircraftList {
 			if aircraft.Status != "cap" {
-				return fmt.Errorf("只有空中的CAP算子可以主动回收，侦察机需要完成返航")
+				return fmt.Errorf("只有空中的CAP算子可以主动回收，侦察和攻击算子需要完成任务后返航")
 			}
+		}
+		if deckUsed(state, carrier.ID)+len(aircraftList) > carrier.Deck.Length {
+			return fmt.Errorf("飞行甲板没有足够空间接收降落算子")
 		}
 		return nil
 	case "PRIORITIZE_AIR_TASK":
@@ -169,24 +225,38 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 	}
 }
 
-func validateLaunchCapacity(state State, aircraftList []*AirUnit, carrier *Unit) error {
+func deckUsed(state State, carrierID string) int {
 	used := 0
 	for _, aircraft := range state.Aircraft {
-		if aircraft.CarrierID == carrier.ID && aircraft.Launched {
+		if aircraft.CarrierID == carrierID && (aircraft.Status == "deck" || aircraft.Status == "ready" || aircraft.Status == "recovery") {
 			used++
 		}
 	}
-	if aircraftList[0].Seaplane {
-		if used+len(aircraftList) > 1 {
-			return fmt.Errorf("该舰船本回合水上飞机起飞容量已满")
+	return used
+}
+
+func validateLaunchCapacity(state State, aircraftList []*AirUnit) error {
+	groups := map[string][]*AirUnit{}
+	for _, aircraft := range aircraftList {
+		groups[aircraft.CarrierID] = append(groups[aircraft.CarrierID], aircraft)
+	}
+	for carrierID, group := range groups {
+		carrier := state.Units[carrierID]
+		if carrier == nil || carrier.Deck == nil || carrier.Deck.Length <= 0 {
+			return fmt.Errorf("母舰没有可用甲板")
 		}
-		return nil
-	}
-	if carrier.Card.DeckCapacity <= 0 {
-		return fmt.Errorf("该航母没有可用飞行甲板")
-	}
-	if used+len(aircraftList) > carrier.Card.DeckCapacity {
-		return fmt.Errorf("该航母本回合起飞容量已满")
+		if carrier.Deck.Operation == "recover" {
+			return fmt.Errorf("%s正在回收飞机，不能同时起飞", carrier.Name)
+		}
+		used := 0
+		for _, aircraft := range state.Aircraft {
+			if aircraft.CarrierID == carrierID && aircraft.Launched {
+				used++
+			}
+		}
+		if used+len(group) > carrier.Deck.Length {
+			return fmt.Errorf("%s本回合甲板起飞容量不足", carrier.Name)
+		}
 	}
 	return nil
 }
@@ -202,24 +272,13 @@ func nextAirTaskPriority(state *State, faction string) int {
 }
 
 func newAirTaskID(state *State, aircraftList []*AirUnit) string {
-	selected := map[string]bool{}
-	for _, aircraft := range aircraftList {
-		selected[aircraft.ID] = true
-	}
 	base := aircraftList[0].ID
 	for suffix := 1; ; suffix++ {
 		candidate := base
 		if suffix > 1 {
 			candidate = fmt.Sprintf("%s-%d", base, suffix)
 		}
-		conflict := false
-		for _, aircraft := range state.Aircraft {
-			if aircraft.TaskID == candidate && !selected[aircraft.ID] {
-				conflict = true
-				break
-			}
-		}
-		if !conflict {
+		if len(taskAircraft(*state, candidate)) == 0 {
 			return candidate
 		}
 	}
@@ -240,11 +299,19 @@ func clearAirTask(aircraft *AirUnit) {
 }
 
 func configureAirTask(state *State, aircraftList []*AirUnit, order Order) {
-	taskID := newAirTaskID(state, aircraftList)
-	priority := nextAirTaskPriority(state, aircraftList[0].Faction)
+	taskID := order.TaskID
+	priority := 0
+	if taskID == "" {
+		taskID = newAirTaskID(state, aircraftList)
+		priority = nextAirTaskPriority(state, aircraftList[0].Faction)
+	} else {
+		priority = taskAircraft(*state, taskID)[0].Priority
+	}
 	taskKind := "cap"
 	if order.Type == "LAUNCH_RECON" {
 		taskKind = "recon"
+	} else if order.Type == "LAUNCH_STRIKE" {
+		taskKind = "attack"
 	}
 	for _, aircraft := range aircraftList {
 		clearAirTask(aircraft)
@@ -262,86 +329,128 @@ func configureAirTask(state *State, aircraftList []*AirUnit, order Order) {
 	}
 }
 
-func launchAirTask(state *State, aircraftList []*AirUnit, carrier *Unit) []EngineEvent {
-	for _, aircraft := range aircraftList {
-		aircraft.Launched = true
-		aircraft.Status = aircraft.TaskKind
-		carrier.Card.Aircraft--
-		if aircraft.TaskKind == "recon" {
-			aircraft.OriginCoord = carrier.Coord
-			aircraft.Coord = carrier.Coord
-			aircraft.ReconDistance = 0
-			aircraft.Returning = false
-			aircraft.TrackingFleetID = ""
+func taskAircraft(state State, taskID string) []*AirUnit {
+	members := []*AirUnit{}
+	for _, aircraft := range state.Aircraft {
+		if aircraft.TaskID == taskID {
+			members = append(members, aircraft)
 		}
 	}
-	state.CarrierOperations[carrier.ID] = "launch"
-	leader := aircraftList[0]
-	if leader.TaskKind == "cap" {
-		return []EngineEvent{{Type: "cap_launched", Audience: carrier.Faction, Text: fmt.Sprintf("%s从%s升空%d个CAP算子", leader.Model, carrier.Name, len(aircraftList))}}
+	sort.Slice(members, func(i, j int) bool { return members[i].ID < members[j].ID })
+	return members
+}
+
+func airborne(aircraft *AirUnit) bool {
+	return aircraft.Status == "cap" || aircraft.Status == "recon" || aircraft.Status == "attack_holding" || aircraft.Status == "attack"
+}
+
+func updateAttackFormation(state *State, taskID string) []EngineEvent {
+	members := taskAircraft(*state, taskID)
+	if len(members) == 0 {
+		return nil
 	}
-	return []EngineEvent{{Type: "recon_launched", Audience: carrier.Faction, Text: fmt.Sprintf("%s从%s升空%d个侦察算子：%d° %s扇面，半径%d hex", leader.Model, carrier.Name, len(aircraftList), leader.SectorWidth, leader.Heading, leader.ReconRadius)}}
+	ready := true
+	airborneCount := 0
+	for _, aircraft := range members {
+		if airborne(aircraft) {
+			airborneCount++
+		}
+		if aircraft.Status != "attack_holding" && aircraft.Status != "attack" {
+			ready = false
+		}
+	}
+	if !ready {
+		return []EngineEvent{{Type: "attack_assembling", Audience: members[0].Faction, Text: fmt.Sprintf("攻击编队%d/%d个算子已升空，先起飞的飞机在舰队上空等待", airborneCount, len(members))}}
+	}
+	for _, aircraft := range members {
+		aircraft.Status = "attack"
+	}
+	return []EngineEvent{{Type: "attack_departed", Audience: members[0].Faction, Text: fmt.Sprintf("攻击编队%d个算子全部到齐，编队离开舰队", len(members))}}
+}
+
+func launchAirTask(state *State, aircraftList []*AirUnit) []EngineEvent {
+	groups := map[string][]*AirUnit{}
+	for _, aircraft := range aircraftList {
+		groups[aircraft.CarrierID] = append(groups[aircraft.CarrierID], aircraft)
+	}
+	carrierIDs := make([]string, 0, len(groups))
+	for carrierID := range groups {
+		carrierIDs = append(carrierIDs, carrierID)
+	}
+	sort.Strings(carrierIDs)
+	events := []EngineEvent{}
+	for _, carrierID := range carrierIDs {
+		group := groups[carrierID]
+		carrier := state.Units[carrierID]
+		for _, aircraft := range group {
+			aircraft.Launched = true
+			aircraft.Status = aircraft.TaskKind
+			if aircraft.TaskKind == "attack" {
+				aircraft.Status = "attack_holding"
+			}
+			aircraft.ElevatorID = ""
+			carrier.Card.Aircraft--
+			if aircraft.TaskKind == "recon" || aircraft.TaskKind == "attack" {
+				aircraft.OriginCoord = carrier.Coord
+				aircraft.Coord = carrier.Coord
+				aircraft.ReconDistance = 0
+				aircraft.Returning = false
+				aircraft.TrackingFleetID = ""
+			}
+		}
+		carrier.Deck.Operation = "launch"
+		leader := group[0]
+		events = append(events, EngineEvent{Type: "air_launched", Audience: carrier.Faction, Text: fmt.Sprintf("%s通过飞行甲板放飞%d个%s算子", carrier.Name, len(group), leader.Model)})
+	}
+	if aircraftList[0].TaskKind == "attack" {
+		events = append(events, updateAttackFormation(state, aircraftList[0].TaskID)...)
+	}
+	return events
 }
 
 func ApplyAirOrder(state *State, order Order) []EngineEvent {
-	if state.CarrierOperations == nil {
-		state.CarrierOperations = map[string]string{}
-	}
+	EnsureAviation(state)
 	aircraftList, carrier, err := aircraftForOrder(*state, orderAircraftFaction(*state, order), order)
 	if err != nil || len(aircraftList) == 0 || carrier == nil {
 		return nil
 	}
 	switch order.Type {
-	case "PREPARE_AIR":
-		nextStatus := "service"
-		message := fmt.Sprintf("%s完成%d个航空算子的机库整备", carrier.Name, len(aircraftList))
-		if aircraftList[0].Status == "service" {
-			nextStatus = "deck"
-			message = fmt.Sprintf("%s将%d个航空算子提升至飞行甲板", carrier.Name, len(aircraftList))
-			if aircraftList[0].Seaplane {
-				nextStatus = "ready"
-				message = fmt.Sprintf("%s完成%d个水上飞机算子的起飞准备", carrier.Name, len(aircraftList))
-			}
-		}
-		for _, aircraft := range aircraftList {
-			aircraft.Status = nextStatus
-			if aircraft.TaskKind == "" {
-				clearAirTask(aircraft)
-			}
-		}
-		state.CarrierOperations[carrier.ID] = "prepare"
-		return []EngineEvent{{Type: "air_prepared", Audience: carrier.Faction, Text: message}}
 	case "RETURN_TO_HANGAR":
+		lowered := 0
+		cancelled := 0
 		for _, aircraft := range aircraftList {
-			aircraft.Status = "hangar"
+			if aircraft.Status == "service" {
+				aircraft.Status = "hangar"
+				cancelled++
+			} else {
+				aircraft.Status = "recovery"
+				lowered++
+			}
 			clearAirTask(aircraft)
 		}
-		if state.CarrierOperations[carrier.ID] == "prepare" {
-			delete(state.CarrierOperations, carrier.ID)
+		if lowered > 0 {
+			carrier.Deck.Operation = "recover"
 		}
-		return []EngineEvent{{Type: "air_returned_to_hangar", Audience: carrier.Faction, Text: fmt.Sprintf("%s将%d个整备中算子拉回机库、取消任务并重置整备", carrier.Name, len(aircraftList))}}
-	case "LAUNCH_CAP", "LAUNCH_RECON":
+		return []EngineEvent{{Type: "air_returned_to_hangar", Audience: carrier.Faction, Text: fmt.Sprintf("%s取消%d个机库任务算子，%d个甲板算子等待升降机下降", carrier.Name, cancelled, lowered)}}
+	case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE":
 		status := aircraftList[0].Status
 		configureAirTask(state, aircraftList, order)
 		if status == "deck" || status == "ready" {
-			return launchAirTask(state, aircraftList, carrier)
+			return launchAirTask(state, aircraftList)
 		}
 		for _, aircraft := range aircraftList {
-			if aircraft.Status == "hangar" {
-				aircraft.Status = "service"
-			}
+			aircraft.Status = "service"
 		}
-		state.CarrierOperations[carrier.ID] = "prepare"
-		return []EngineEvent{{Type: "air_task_assigned", Audience: carrier.Faction, Text: fmt.Sprintf("%s将%d个算子加入%s任务，开始跨回合整备", carrier.Name, len(aircraftList), aircraftList[0].TaskKind)}}
+		return []EngineEvent{{Type: "air_task_assigned", Audience: carrier.Faction, Text: fmt.Sprintf("%d个算子加入%s任务并开始机库整备，后续提升由母舰升降机执行", len(aircraftList), aircraftList[0].TaskKind)}}
 	case "RECOVER_AIR":
 		for _, aircraft := range aircraftList {
-			aircraft.Status = "hangar"
+			aircraft.Status = "recovery"
 			aircraft.Launched = false
 			clearAirTask(aircraft)
 			carrier.Card.Aircraft++
 		}
-		state.CarrierOperations[carrier.ID] = "recover"
-		return []EngineEvent{{Type: "air_recovered", Audience: carrier.Faction, Text: fmt.Sprintf("%d个CAP算子已返回%s机库", len(aircraftList), carrier.Name)}}
+		carrier.Deck.Operation = "recover"
+		return []EngineEvent{{Type: "air_recovered", Audience: carrier.Faction, Text: fmt.Sprintf("%d个CAP算子已降落在%s甲板，等待升降机下降", len(aircraftList), carrier.Name)}}
 	case "PRIORITIZE_AIR_TASK":
 		selected := aircraftList[0]
 		selectedTask := selected.TaskID
@@ -382,81 +491,198 @@ func orderAircraftFaction(state State, order Order) string {
 	return ""
 }
 
-func advanceAssignedAirTasks(state *State) []EngineEvent {
-	groups := map[string][]*AirUnit{}
-	for _, aircraft := range state.Aircraft {
-		if aircraft.TaskID == "" || (aircraft.Status != "hangar" && aircraft.Status != "service" && aircraft.Status != "deck" && aircraft.Status != "ready") {
+func completeElevatorCycles(state *State) []EngineEvent {
+	events := []EngineEvent{}
+	for _, carrierID := range sortedUnitIDs(state.Units) {
+		carrier := state.Units[carrierID]
+		if carrier.Deck == nil {
 			continue
 		}
-		groups[aircraft.TaskID] = append(groups[aircraft.TaskID], aircraft)
+		for _, elevator := range carrier.Deck.Elevators {
+			if elevator.Status != "lifting" && elevator.Status != "lowering" {
+				continue
+			}
+			for _, id := range elevator.AircraftIDs {
+				aircraft := state.Aircraft[id]
+				if aircraft == nil {
+					continue
+				}
+				if elevator.Status == "lifting" {
+					aircraft.Status = "deck"
+					if aircraft.Seaplane {
+						aircraft.Status = "ready"
+					}
+				} else {
+					aircraft.Status = "hangar"
+				}
+				aircraft.ElevatorID = ""
+			}
+			action := "提升至甲板"
+			if elevator.Status == "lowering" {
+				action = "下降至机库"
+			}
+			events = append(events, EngineEvent{Type: "elevator_completed", Audience: carrier.Faction, Text: fmt.Sprintf("%s的%s完成%s：%d个算子", carrier.Name, elevator.ID, action, len(elevator.AircraftIDs))})
+			elevator.Status = "idle"
+			elevator.TaskID = ""
+			elevator.AircraftIDs = []string{}
+		}
+	}
+	return events
+}
+
+func sortedTaskGroups(state State, filter func(*AirUnit) bool) [][]*AirUnit {
+	groups := map[string][]*AirUnit{}
+	for _, aircraft := range state.Aircraft {
+		if aircraft.TaskID != "" && filter(aircraft) {
+			groups[aircraft.TaskID] = append(groups[aircraft.TaskID], aircraft)
+		}
 	}
 	taskIDs := make([]string, 0, len(groups))
 	for taskID := range groups {
 		taskIDs = append(taskIDs, taskID)
 	}
-	sort.Strings(taskIDs)
-	events := []EngineEvent{}
+	sort.Slice(taskIDs, func(i, j int) bool {
+		left, right := groups[taskIDs[i]][0], groups[taskIDs[j]][0]
+		if left.Priority == right.Priority {
+			return left.TaskID < right.TaskID
+		}
+		return left.Priority < right.Priority
+	})
+	result := make([][]*AirUnit, 0, len(taskIDs))
 	for _, taskID := range taskIDs {
-		aircraftList := groups[taskID]
-		sort.Slice(aircraftList, func(i, j int) bool { return aircraftList[i].ID < aircraftList[j].ID })
-		leader := aircraftList[0]
-		carrier := state.Units[leader.CarrierID]
-		if carrier == nil {
-			continue
+		sort.Slice(groups[taskID], func(i, j int) bool { return groups[taskID][i].ID < groups[taskID][j].ID })
+		result = append(result, groups[taskID])
+	}
+	return result
+}
+
+func launchReadyTasks(state *State) []EngineEvent {
+	events := []EngineEvent{}
+	groups := sortedTaskGroups(*state, func(aircraft *AirUnit) bool { return aircraft.Status == "deck" || aircraft.Status == "ready" })
+	for _, taskMembers := range groups {
+		byCarrier := map[string][]*AirUnit{}
+		for _, aircraft := range taskMembers {
+			byCarrier[aircraft.CarrierID] = append(byCarrier[aircraft.CarrierID], aircraft)
 		}
-		status := leader.Status
-		uniform := true
-		for _, aircraft := range aircraftList {
-			if aircraft.Status != status {
-				uniform = false
-				break
-			}
+		carrierIDs := make([]string, 0, len(byCarrier))
+		for carrierID := range byCarrier {
+			carrierIDs = append(carrierIDs, carrierID)
 		}
-		if !uniform {
-			continue
-		}
-		switch status {
-		case "hangar":
-			for _, aircraft := range aircraftList {
-				aircraft.Status = "service"
-			}
-			events = append(events, EngineEvent{Type: "air_prepared", Audience: leader.Faction, Text: fmt.Sprintf("%s完成%d个任务算子的机库整备", carrier.Name, len(aircraftList))})
-		case "service":
-			if !leader.Seaplane {
-				used := 0
-				for _, aircraft := range state.Aircraft {
-					if aircraft.CarrierID == carrier.ID && aircraft.Status == "deck" {
-						used++
-					}
-				}
-				if used+len(aircraftList) > carrier.Card.DeckCapacity {
-					events = append(events, EngineEvent{Type: "air_preparation_delayed", Audience: leader.Faction, Text: carrier.Name + "飞行甲板容量不足，任务继续等待整备"})
-					continue
-				}
-			}
-			for _, aircraft := range aircraftList {
-				aircraft.Status = "deck"
-				if aircraft.Seaplane {
-					aircraft.Status = "ready"
-				}
-			}
-			events = append(events, EngineEvent{Type: "air_prepared", Audience: leader.Faction, Text: fmt.Sprintf("%s完成%d个任务算子的起飞准备", carrier.Name, len(aircraftList))})
-		case "deck", "ready":
-			if err := validateLaunchCapacity(*state, aircraftList, carrier); err != nil {
-				events = append(events, EngineEvent{Type: "air_launch_delayed", Audience: leader.Faction, Text: carrier.Name + "本回合起飞容量不足，任务推迟起飞"})
+		sort.Strings(carrierIDs)
+		for _, carrierID := range carrierIDs {
+			group := byCarrier[carrierID]
+			if err := validateLaunchCapacity(*state, group); err != nil {
+				events = append(events, EngineEvent{Type: "air_launch_delayed", Audience: group[0].Faction, Text: err.Error() + "，任务在甲板等待"})
 				continue
 			}
-			events = append(events, launchAirTask(state, aircraftList, carrier)...)
+			events = append(events, launchAirTask(state, group)...)
+		}
+	}
+	return events
+}
+
+func scheduleElevators(state *State) []EngineEvent {
+	events := []EngineEvent{}
+	taskGroups := sortedTaskGroups(*state, func(aircraft *AirUnit) bool { return aircraft.Status == "service" })
+	for _, carrierID := range sortedUnitIDs(state.Units) {
+		carrier := state.Units[carrierID]
+		if carrier.Deck == nil {
+			continue
+		}
+		reserved := 0
+		delayed := false
+		for _, elevator := range carrier.Deck.Elevators {
+			if elevator.Status != "idle" {
+				continue
+			}
+			recovery := []*AirUnit{}
+			for _, aircraft := range state.Aircraft {
+				if aircraft.CarrierID == carrierID && aircraft.Status == "recovery" {
+					recovery = append(recovery, aircraft)
+				}
+			}
+			sort.Slice(recovery, func(i, j int) bool { return recovery[i].ID < recovery[j].ID })
+			if len(recovery) > 0 {
+				count := len(recovery)
+				if count > elevator.Capacity {
+					count = elevator.Capacity
+				}
+				selected := recovery[:count]
+				elevator.Status = "lowering"
+				elevator.TaskID = ""
+				elevator.AircraftIDs = []string{}
+				for _, aircraft := range selected {
+					aircraft.Status = "elevator"
+					aircraft.ElevatorID = elevator.ID
+					elevator.AircraftIDs = append(elevator.AircraftIDs, aircraft.ID)
+				}
+				events = append(events, EngineEvent{Type: "elevator_started", Audience: carrier.Faction, Text: fmt.Sprintf("%s的%s开始下降%d个回收算子", carrier.Name, elevator.ID, len(selected))})
+				continue
+			}
+			available := carrier.Deck.Length - deckUsed(*state, carrierID) - reserved
+			if available <= 0 {
+				delayed = true
+				continue
+			}
+			var selectedTask []*AirUnit
+			for _, taskMembers := range taskGroups {
+				candidates := []*AirUnit{}
+				for _, aircraft := range taskMembers {
+					if aircraft.CarrierID == carrierID && aircraft.Status == "service" {
+						candidates = append(candidates, aircraft)
+					}
+				}
+				if len(candidates) > 0 {
+					selectedTask = candidates
+					break
+				}
+			}
+			if len(selectedTask) == 0 {
+				continue
+			}
+			count := len(selectedTask)
+			if count > elevator.Capacity {
+				count = elevator.Capacity
+			}
+			if count > available {
+				count = available
+			}
+			selected := selectedTask[:count]
+			elevator.Status = "lifting"
+			elevator.TaskID = selected[0].TaskID
+			elevator.AircraftIDs = []string{}
+			for _, aircraft := range selected {
+				aircraft.Status = "elevator"
+				aircraft.ElevatorID = elevator.ID
+				elevator.AircraftIDs = append(elevator.AircraftIDs, aircraft.ID)
+			}
+			reserved += len(selected)
+			events = append(events, EngineEvent{Type: "elevator_started", Audience: carrier.Faction, Text: fmt.Sprintf("%s的%s开始提升%d个任务算子", carrier.Name, elevator.ID, len(selected))})
+		}
+		if delayed {
+			for _, taskMembers := range taskGroups {
+				for _, aircraft := range taskMembers {
+					if aircraft.CarrierID == carrierID && aircraft.Status == "service" {
+						events = append(events, EngineEvent{Type: "air_preparation_delayed", Audience: carrier.Faction, Text: carrier.Name + "甲板长度不足，整备完成的算子等待下一次提升"})
+						delayed = false
+						break
+					}
+				}
+				if !delayed {
+					break
+				}
+			}
 		}
 	}
 	return events
 }
 
 func AdvanceAviation(state *State) []EngineEvent {
-	if state.CarrierOperations == nil {
-		state.CarrierOperations = map[string]string{}
+	EnsureAviation(state)
+	for _, aircraft := range state.Aircraft {
+		aircraft.Launched = false
 	}
-	events := []EngineEvent{}
+	events := completeElevatorCycles(state)
 	ids := make([]string, 0, len(state.Aircraft))
 	for id := range state.Aircraft {
 		ids = append(ids, id)
@@ -464,35 +690,107 @@ func AdvanceAviation(state *State) []EngineEvent {
 	sort.Strings(ids)
 	for _, id := range ids {
 		aircraft := state.Aircraft[id]
-		aircraft.Launched = false
-		if aircraft.Status == "hangar" || aircraft.Status == "service" || aircraft.Status == "deck" || aircraft.Status == "ready" {
+		if !airborne(aircraft) {
 			aircraft.RemainingRange = aircraft.MaxRange
 			continue
 		}
-		if aircraft.Status == "cap" {
+		switch aircraft.Status {
+		case "cap", "attack_holding", "attack":
 			aircraft.RemainingRange--
-		} else if aircraft.Status == "recon" {
+		case "recon":
 			events = append(events, advanceRecon(state, aircraft)...)
-		} else {
-			continue
 		}
 		if aircraft.RemainingRange <= -5 {
 			events = append(events, EngineEvent{Type: "air_destroyed", Audience: aircraft.Faction, Text: aircraft.Model + "燃油耗尽，航空算子被摧毁"})
 			delete(state.Aircraft, id)
 		}
 	}
-	events = append(events, advanceAssignedAirTasks(state)...)
-	state.CarrierOperations = map[string]string{}
+	events = append(events, launchReadyTasks(state)...)
+	events = append(events, scheduleElevators(state)...)
+	for _, unit := range state.Units {
+		if unit.Deck != nil {
+			unit.Deck.Operation = ""
+		}
+	}
 	return events
 }
 
+func CanLandAircraft(state State, carrier *Unit) bool {
+	return carrier != nil && carrier.Deck != nil && carrier.Deck.Operation != "launch" && deckUsed(state, carrier.ID) < carrier.Deck.Length
+}
+
+func LandAircraft(state *State, aircraft *AirUnit, carrier *Unit) {
+	aircraft.Status = "recovery"
+	aircraft.Launched = false
+	clearAirTask(aircraft)
+	carrier.Card.Aircraft++
+	carrier.Deck.Operation = "recover"
+}
+
+func taskPhase(members []*AirUnit) string {
+	if members[0].TaskKind == "attack" {
+		allDeparted := true
+		launched := false
+		for _, aircraft := range members {
+			if aircraft.Status != "attack" {
+				allDeparted = false
+			}
+			if aircraft.Launched {
+				launched = true
+			}
+		}
+		if allDeparted {
+			if launched {
+				return "launching"
+			}
+			return "active"
+		}
+		for _, aircraft := range members {
+			if aircraft.Status == "attack_holding" {
+				return "assembling"
+			}
+		}
+	}
+	launched := false
+	airborneOnly := true
+	for _, aircraft := range members {
+		if !airborne(aircraft) {
+			airborneOnly = false
+		}
+		if aircraft.Launched {
+			launched = true
+		}
+		if aircraft.Status == "elevator" {
+			return "lifting"
+		}
+	}
+	if airborneOnly {
+		if launched {
+			return "launching"
+		}
+		return "active"
+	}
+	for _, aircraft := range members {
+		if aircraft.Status == "deck" || aircraft.Status == "ready" {
+			return "preparing"
+		}
+	}
+	return "servicing"
+}
+
 func VisibleAviation(state State, faction string) AviationView {
+	EnsureAviation(&state)
 	view := AviationView{Carriers: []CarrierAirStatus{}, Tasks: []AirTask{}}
 	for _, unit := range state.Units {
-		if unit.Faction != faction || unit.Card.HangarCapacity <= 0 {
+		if unit.Faction != faction || unit.Deck == nil {
 			continue
 		}
-		carrier := CarrierAirStatus{UnitID: unit.ID, Name: unit.Name, Type: unit.Type, HangarCapacity: unit.Card.HangarCapacity, DeckCapacity: unit.Card.DeckCapacity, Operation: state.CarrierOperations[unit.ID], Aircraft: []AirUnit{}}
+		carrier := CarrierAirStatus{UnitID: unit.ID, Name: unit.Name, Type: unit.Type, HangarCapacity: unit.Card.HangarCapacity, DeckLength: unit.Deck.Length, DeckCapacity: unit.Deck.Length, Operation: unit.Deck.Operation, Elevators: []AircraftElevator{}, Aircraft: []AirUnit{}}
+		for _, elevator := range unit.Deck.Elevators {
+			projection := *elevator
+			projection.AircraftIDs = append([]string{}, elevator.AircraftIDs...)
+			carrier.Elevators = append(carrier.Elevators, projection)
+		}
 		for _, aircraft := range state.Aircraft {
 			if aircraft.CarrierID != unit.ID {
 				continue
@@ -501,9 +799,9 @@ func VisibleAviation(state State, faction string) AviationView {
 				carrier.LaunchUsed++
 			}
 			switch aircraft.Status {
-			case "hangar", "service", "ready":
+			case "hangar", "service":
 				carrier.HangarUsed++
-			case "deck":
+			case "deck", "ready", "recovery":
 				carrier.DeckUsed++
 			}
 			projection := *aircraft
@@ -525,33 +823,36 @@ func VisibleAviation(state State, faction string) AviationView {
 		sort.Slice(aircraftList, func(i, j int) bool { return aircraftList[i].ID < aircraftList[j].ID })
 		leader := aircraftList[0]
 		kind := leader.TaskKind
-		if kind == "" {
-			kind = leader.Status
-		}
-		phase := "active"
-		switch leader.Status {
-		case "hangar", "service":
-			phase = "servicing"
-		case "deck", "ready":
-			phase = "preparing"
-		case "cap", "recon":
-			if leader.Launched {
-				phase = "launching"
-			}
-		}
-		airborne := leader.Status == "cap" || leader.Status == "recon"
-		task := AirTask{ID: taskID, Kind: kind, Phase: phase, CarrierID: leader.CarrierID, AircraftIDs: []string{}, Aircraft: []AirUnit{}, Priority: leader.Priority}
+		phase := taskPhase(aircraftList)
+		task := AirTask{ID: taskID, Kind: kind, Phase: phase, CarrierID: leader.CarrierID, CarrierIDs: []string{}, AircraftIDs: []string{}, Aircraft: []AirUnit{}, Priority: leader.Priority}
+		carrierSet := map[string]bool{}
 		for _, aircraft := range aircraftList {
 			task.AircraftIDs = append(task.AircraftIDs, aircraft.ID)
 			task.Aircraft = append(task.Aircraft, *aircraft)
+			if !carrierSet[aircraft.CarrierID] {
+				carrierSet[aircraft.CarrierID] = true
+				task.CarrierIDs = append(task.CarrierIDs, aircraft.CarrierID)
+			}
+			if airborne(aircraft) {
+				task.AirborneCount++
+			}
 		}
+		sort.Strings(task.CarrierIDs)
 		carrier := state.Units[leader.CarrierID]
-		if kind == "cap" {
+		if carrier != nil {
+			task.FleetID = FleetKey(carrier)
+		}
+		switch kind {
+		case "cap":
 			task.Name = "CAP · " + leader.Model
 			if carrier != nil {
 				task.CurrentCoord = carrier.Coord
 			}
-		} else {
+		case "attack":
+			task.Name = "攻击编队 · " + leader.Model
+			task.OriginCoord = leader.OriginCoord
+			task.CurrentCoord = leader.Coord
+		default:
 			task.Name = "扇面侦察 · " + leader.Model
 			task.OriginCoord = leader.OriginCoord
 			task.CurrentCoord = leader.Coord
@@ -561,7 +862,7 @@ func VisibleAviation(state State, faction string) AviationView {
 			task.ReconDistance = leader.ReconDistance
 			task.Returning = leader.Returning
 			task.TrackingFleetID = leader.TrackingFleetID
-			if airborne {
+			if leader.Status == "recon" {
 				task.SectorHexes = ReconSectorHexes(state.Map, leader.OriginCoord, leader.Heading, leader.SectorWidth, leader.ReconRadius)
 				task.CurrentRingHexes = ReconRingHexes(state.Map, leader.OriginCoord, leader.Heading, leader.SectorWidth, leader.ReconDistance)
 			}
@@ -569,7 +870,7 @@ func VisibleAviation(state State, faction string) AviationView {
 		if len(aircraftList) > 1 {
 			task.Name += fmt.Sprintf(" ×%d", len(aircraftList))
 		}
-		if airborne {
+		if task.AirborneCount > 0 && task.CurrentCoord != "" {
 			task.DistanceReference = BuildDistanceReference(state.Map, task.CurrentCoord, 8)
 		}
 		view.Tasks = append(view.Tasks, task)

@@ -97,21 +97,37 @@ type UnitCatalog struct {
 	Air     []AircraftDefinition `json:"aircraft"`
 }
 
+type AircraftElevator struct {
+	ID          string   `json:"id"`
+	Kind        string   `json:"kind"`
+	Capacity    int      `json:"capacity"`
+	Status      string   `json:"status"`
+	TaskID      string   `json:"task_id,omitempty"`
+	AircraftIDs []string `json:"aircraft_ids"`
+}
+
+type FlightDeck struct {
+	Length    int                 `json:"length"`
+	Operation string              `json:"operation"`
+	Elevators []*AircraftElevator `json:"elevators"`
+}
+
 type Unit struct {
-	ID           string   `json:"id"`
-	DefinitionID string   `json:"definition_id"`
-	FleetID      string   `json:"fleet_id"`
-	FleetName    string   `json:"fleet_name"`
-	Name         string   `json:"name"`
-	Type         string   `json:"type"`
-	Faction      string   `json:"faction"`
-	Coord        string   `json:"coord"`
-	Heading      string   `json:"heading"`
-	Strength     int      `json:"strength"`
-	MaxStrength  int      `json:"max_strength"`
-	Moved        bool     `json:"moved"`
-	Card         ShipCard `json:"card"`
-	LegalMoves   []string `json:"legal_moves,omitempty"`
+	ID           string      `json:"id"`
+	DefinitionID string      `json:"definition_id"`
+	FleetID      string      `json:"fleet_id"`
+	FleetName    string      `json:"fleet_name"`
+	Name         string      `json:"name"`
+	Type         string      `json:"type"`
+	Faction      string      `json:"faction"`
+	Coord        string      `json:"coord"`
+	Heading      string      `json:"heading"`
+	Strength     int         `json:"strength"`
+	MaxStrength  int         `json:"max_strength"`
+	Moved        bool        `json:"moved"`
+	Card         ShipCard    `json:"card"`
+	Deck         *FlightDeck `json:"deck,omitempty"`
+	LegalMoves   []string    `json:"legal_moves,omitempty"`
 }
 
 type DistanceHex struct {
@@ -160,6 +176,7 @@ type AirUnit struct {
 	AntiGround       int    `json:"anti_ground"`
 	Seaplane         bool   `json:"seaplane"`
 	Launched         bool   `json:"launched"`
+	ElevatorID       string `json:"elevator_id,omitempty"`
 	Priority         int    `json:"priority"`
 	TaskID           string `json:"task_id,omitempty"`
 	TaskKind         string `json:"task_kind,omitempty"`
@@ -180,8 +197,11 @@ type AirTask struct {
 	Phase             string             `json:"phase"`
 	Name              string             `json:"name"`
 	CarrierID         string             `json:"carrier_id"`
+	CarrierIDs        []string           `json:"carrier_ids"`
+	FleetID           string             `json:"fleet_id,omitempty"`
 	AircraftIDs       []string           `json:"aircraft_ids"`
 	Aircraft          []AirUnit          `json:"aircraft"`
+	AirborneCount     int                `json:"airborne_count"`
 	Priority          int                `json:"priority"`
 	OriginCoord       string             `json:"origin_coord,omitempty"`
 	CurrentCoord      string             `json:"current_coord,omitempty"`
@@ -202,16 +222,18 @@ type AviationView struct {
 }
 
 type CarrierAirStatus struct {
-	UnitID         string    `json:"unit_id"`
-	Name           string    `json:"name"`
-	Type           string    `json:"type"`
-	HangarUsed     int       `json:"hangar_used"`
-	HangarCapacity int       `json:"hangar_capacity"`
-	DeckCapacity   int       `json:"deck_capacity"`
-	DeckUsed       int       `json:"deck_used"`
-	LaunchUsed     int       `json:"launch_used"`
-	Operation      string    `json:"operation"`
-	Aircraft       []AirUnit `json:"aircraft"`
+	UnitID         string             `json:"unit_id"`
+	Name           string             `json:"name"`
+	Type           string             `json:"type"`
+	HangarUsed     int                `json:"hangar_used"`
+	HangarCapacity int                `json:"hangar_capacity"`
+	DeckLength     int                `json:"deck_length"`
+	DeckCapacity   int                `json:"deck_capacity"`
+	DeckUsed       int                `json:"deck_used"`
+	LaunchUsed     int                `json:"launch_used"`
+	Operation      string             `json:"operation"`
+	Elevators      []AircraftElevator `json:"elevators"`
+	Aircraft       []AirUnit          `json:"aircraft"`
 }
 
 type FleetContact struct {
@@ -224,16 +246,15 @@ type FleetContact struct {
 }
 
 type State struct {
-	ScenarioID        string                              `json:"scenario_id"`
-	ScenarioName      string                              `json:"scenario_name"`
-	Description       string                              `json:"description"`
-	Map               MapDefinition                       `json:"map"`
-	Units             map[string]*Unit                    `json:"units"`
-	Aircraft          map[string]*AirUnit                 `json:"aircraft,omitempty"`
-	CarrierOperations map[string]string                   `json:"carrier_operations,omitempty"`
-	Contacts          map[string]map[string]*FleetContact `json:"contacts,omitempty"`
-	RNGState          uint64                              `json:"rng_state"`
-	Definitions       map[string]string                   `json:"definition_versions"`
+	ScenarioID   string                              `json:"scenario_id"`
+	ScenarioName string                              `json:"scenario_name"`
+	Description  string                              `json:"description"`
+	Map          MapDefinition                       `json:"map"`
+	Units        map[string]*Unit                    `json:"units"`
+	Aircraft     map[string]*AirUnit                 `json:"aircraft,omitempty"`
+	Contacts     map[string]map[string]*FleetContact `json:"contacts,omitempty"`
+	RNGState     uint64                              `json:"rng_state"`
+	Definitions  map[string]string                   `json:"definition_versions"`
 }
 
 type Order struct {
@@ -242,6 +263,7 @@ type Order struct {
 	TargetUnitID string            `json:"target_unit_id,omitempty"`
 	AircraftID   string            `json:"aircraft_id,omitempty"`
 	AircraftIDs  []string          `json:"aircraft_ids,omitempty"`
+	TaskID       string            `json:"task_id,omitempty"`
 	Coord        string            `json:"coord,omitempty"`
 	Heading      string            `json:"heading,omitempty"`
 	SectorWidth  int               `json:"sector_width,omitempty"`

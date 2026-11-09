@@ -214,6 +214,7 @@ func (s *Store) Room(ctx context.Context, roomID string) (Room, error) {
 	if err := json.Unmarshal([]byte(stateJSON), &room.State); err != nil {
 		return room, err
 	}
+	game.EnsureAviation(&room.State)
 	return room, nil
 }
 

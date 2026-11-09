@@ -345,7 +345,7 @@ func TestSectorReconCommandPersistsAndAdvances(t *testing.T) {
 		turn   int
 		phase  string
 		status string
-	}{{2, "preparing", "deck"}, {3, "launching", "recon"}} {
+	}{{2, "lifting", "elevator"}, {3, "launching", "recon"}} {
 		var ready testView
 		if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": version, "ready": true}, &ready); status != http.StatusOK {
 			t.Fatal("A ready失败")

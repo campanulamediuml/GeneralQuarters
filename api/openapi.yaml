@@ -109,7 +109,7 @@ paths:
     post:
       tags: [Commands]
       summary: 提交立即生效的移动、整编或航空命令
-      description: command_id用于幂等重试，base_version用于拒绝过期操作。移动、整编、CAP和扇面侦察立即结算；扇面hex、发现判定和情报只由服务端计算。CLEAR_MOVE仅清理旧版协议的待结算命令。
+      description: command_id用于幂等重试，base_version用于拒绝过期操作。移动、整编和航空任务分配立即结算；升降机、甲板、攻击编组、扇面hex、发现判定和情报只由服务端计算。PREPARE_AIR已废弃，整备和提升必须绑定任务。CLEAR_MOVE仅清理旧版协议的待结算命令。
       parameters:
         - {$ref: '#/components/parameters/RoomID'}
       requestBody:
@@ -199,11 +199,12 @@ components:
       properties:
         command_id: {type: string, maxLength: 128}
         base_version: {type: integer, format: int64}
-        type: {type: string, enum: [SET_MOVE, CLEAR_MOVE, MERGE_FLEET, REORGANIZE_HEX, LAUNCH_CAP, LAUNCH_RECON, PREPARE_AIR, RETURN_TO_HANGAR, RECOVER_AIR, PRIORITIZE_AIR_TASK]}
+        type: {type: string, enum: [SET_MOVE, CLEAR_MOVE, MERGE_FLEET, REORGANIZE_HEX, LAUNCH_CAP, LAUNCH_RECON, LAUNCH_STRIKE, PREPARE_AIR, RETURN_TO_HANGAR, RECOVER_AIR, PRIORITIZE_AIR_TASK]}
         unit_id: {type: string, description: 舰船移动与整编命令必填, example: a-bb-01}
         target_unit_id: {type: string, description: MERGE_FLEET必填，目标舰队中的单位, example: a-dd-01}
         aircraft_id: {type: string, description: 单算子航空命令或任务ID, example: air-b-01}
-        aircraft_ids: {type: array, minItems: 1, maxItems: 20, items: {type: string}, description: 同一母舰的批量算子；起飞任务必须同型}
+        aircraft_ids: {type: array, minItems: 1, maxItems: 20, items: {type: string}, description: CAP和侦察须同舰同型；攻击编队可跨同舰队母舰并混合攻击机型}
+        task_id: {type: string, description: LAUNCH_STRIKE加入已有攻击编队时必填，已离场编队不可加入, example: air-b-03}
         coord: {type: string, description: SET_MOVE和REORGANIZE_HEX必填，ABCD坐标, example: '0203'}
         heading: {type: string, enum: [E, SE, SW, W, NW, NE], description: LAUNCH_RECON必填，搜索航线中轴；侦察机、TBF鱼雷机和SB2C俯冲轰炸机可执行, example: W}
         sector_width: {type: integer, enum: [60, 120], description: LAUNCH_RECON必填；120度最终发现率减半, example: 60}
@@ -244,6 +245,22 @@ components:
         cargo: {type: integer}
         armored_carrier: {type: boolean}
         historical_loss: {type: string, description: 历史沉没时间，可选}
+    AircraftElevator:
+      type: object
+      description: 挂在单舰甲板下的独立升降机对象，水机舰使用crane类型
+      properties:
+        id: {type: string, example: b-cv-01-elevator-1}
+        kind: {type: string, enum: [elevator, crane]}
+        capacity: {type: integer, description: 单次提升或下降的最大算子数}
+        status: {type: string, enum: [idle, lifting, lowering]}
+        task_id: {type: string}
+        aircraft_ids: {type: array, items: {type: string}}
+    FlightDeck:
+      type: object
+      properties:
+        length: {type: integer, description: 本舰甲板长度，同时限制停放和每回合起飞容量}
+        operation: {type: string, enum: ['', launch, recover]}
+        elevators: {type: array, items: {$ref: '#/components/schemas/AircraftElevator'}}
     Unit:
       type: object
       properties:
@@ -259,6 +276,7 @@ components:
         strength: {type: integer, description: 当前生命值}
         max_strength: {type: integer, description: 初始生命值}
         card: {$ref: '#/components/schemas/ShipCard'}
+        deck: {$ref: '#/components/schemas/FlightDeck', description: 仅具备航空作业能力的舰船持有}
         legal_moves:
           type: array
           description: 仅己方单位返回，由服务器计算
@@ -301,18 +319,19 @@ components:
         name: {type: string}
         model: {type: string}
         kind: {type: string, enum: [fighter, dive_bomber, torpedo_bomber, recon]}
-        status: {type: string, enum: [hangar, service, deck, ready, cap, recon], description: hangar未整备，service机库整备完成，deck甲板准备完成，ready水机起飞准备完成}
+        status: {type: string, enum: [hangar, service, elevator, deck, ready, recovery, cap, recon, attack_holding, attack], description: 依次表示机库、任务整备、升降机上、甲板、待回收、空中任务和攻击编队等待/离场}
         strength: {type: integer}
         max_range: {type: integer, description: 服务端包含副油箱后的最大航程}
-        remaining_range: {type: integer}
+        remaining_range: {type: integer, description: 攻击编队等待期间每回合减1}
         air_combat: {type: integer}
         anti_ship: {type: integer}
         anti_ground: {type: integer}
         seaplane: {type: boolean, description: true时界面使用橙色水机算子}
         launched: {type: boolean, description: 是否占用本回合起飞容量}
+        elevator_id: {type: string, description: status为elevator时指向本舰具体升降机}
         priority: {type: integer}
-        task_id: {type: string, description: 同一批量航空任务的共享ID，预备任务也会立即分配}
-        task_kind: {type: string, enum: [cap, recon], description: 已分配任务类型，算子尚未起飞时用于区分预备任务}
+        task_id: {type: string, description: 同一航空任务的共享ID，攻击编队可跨母舰共享}
+        task_kind: {type: string, enum: [cap, recon, attack], description: 已分配任务类型，算子尚未起飞时用于区分预备任务}
         origin_coord: {type: string, description: 侦察扇面顶点}
         coord: {type: string, description: 侦察机当前hex}
         heading: {type: string, enum: [E, SE, SW, W, NW, NE]}
@@ -327,12 +346,15 @@ components:
       properties:
         id: {type: string}
         kind: {type: string, enum: [cap, recon, asw, attack]}
-        phase: {type: string, enum: [servicing, preparing, launching, active], description: 服务端任务阶段，依次对应整备中、起飞准备中、起飞中、任务执行中}
+        phase: {type: string, enum: [servicing, lifting, preparing, launching, assembling, active], description: 整备、升降机提升、甲板等待、放飞、攻击编队等待和任务执行}
         name: {type: string}
-        carrier_id: {type: string}
+        carrier_id: {type: string, description: 任务首架算子的母舰}
+        carrier_ids: {type: array, items: {type: string}, description: 攻击编队可包含多艘母舰}
+        fleet_id: {type: string}
         aircraft_ids: {type: array, items: {type: string}}
         aircraft: {type: array, items: {$ref: '#/components/schemas/AirUnit'}}
-        priority: {type: integer, description: 1为最高优先级}
+        airborne_count: {type: integer, description: 已升空算子数，攻击编队全部到齐后才能离场}
+        priority: {type: integer, description: 1为最高优先级，参与升降机调度}
         origin_coord: {type: string}
         current_coord: {type: string}
         heading: {type: string, enum: [E, SE, SW, W, NW, NE]}
@@ -352,10 +374,12 @@ components:
         type: {type: string}
         hangar_used: {type: integer}
         hangar_capacity: {type: integer}
-        deck_capacity: {type: integer}
-        deck_used: {type: integer, description: 当前停放在甲板的算子数}
+        deck_length: {type: integer, description: 本舰甲板长度}
+        deck_capacity: {type: integer, description: 兼容字段，值同deck_length}
+        deck_used: {type: integer, description: 当前停放或等待回收的算子数}
         launch_used: {type: integer, description: 本回合已经起飞的算子数}
-        operation: {type: string, enum: ['', prepare, launch, recover]}
+        operation: {type: string, enum: ['', launch, recover]}
+        elevators: {type: array, items: {$ref: '#/components/schemas/AircraftElevator'}}
         aircraft: {type: array, items: {$ref: '#/components/schemas/AirUnit'}}
     AviationView:
       type: object

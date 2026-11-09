@@ -202,7 +202,7 @@ func advanceRecon(state *State, aircraft *AirUnit) []EngineEvent {
 	steps := reconSpeed(aircraft)
 	for steps > 0 {
 		if aircraft.Returning && aircraft.Coord == carrier.Coord {
-			if state.CarrierOperations[carrier.ID] != "launch" {
+			if CanLandAircraft(*state, carrier) {
 				return append(events, landRecon(state, aircraft, carrier))
 			}
 			aircraft.RemainingRange--
@@ -237,7 +237,7 @@ func advanceRecon(state *State, aircraft *AirUnit) []EngineEvent {
 			}
 		}
 	}
-	if aircraft.Returning && aircraft.Coord == carrier.Coord && state.CarrierOperations[carrier.ID] != "launch" {
+	if aircraft.Returning && aircraft.Coord == carrier.Coord && CanLandAircraft(*state, carrier) {
 		events = append(events, landRecon(state, aircraft, carrier))
 	}
 	return events
@@ -291,21 +291,8 @@ func nextCoordToward(gameMap MapDefinition, from, target string) string {
 }
 
 func landRecon(state *State, aircraft *AirUnit, carrier *Unit) EngineEvent {
-	aircraft.Status = "hangar"
-	aircraft.Priority = 0
-	aircraft.TaskID = ""
-	aircraft.TaskKind = ""
-	aircraft.OriginCoord = ""
-	aircraft.Coord = ""
-	aircraft.Heading = ""
-	aircraft.SectorWidth = 0
-	aircraft.ReconRadius = 0
-	aircraft.ReconDistance = 0
-	aircraft.Returning = false
-	aircraft.TrackingFleetID = ""
-	carrier.Card.Aircraft++
-	state.CarrierOperations[carrier.ID] = "recover"
-	return EngineEvent{Type: "recon_recovered", Audience: aircraft.Faction, Text: fmt.Sprintf("%s完成扇面侦察并返回%s", aircraft.Model, carrier.Name)}
+	LandAircraft(state, aircraft, carrier)
+	return EngineEvent{Type: "recon_recovered", Audience: aircraft.Faction, Text: fmt.Sprintf("%s完成扇面侦察并降落在%s甲板，等待升降机下降", aircraft.Model, carrier.Name)}
 }
 
 func searchReconRing(state *State, aircraft *AirUnit, ring int) []EngineEvent {

@@ -163,6 +163,8 @@ func TestReconDetectionContactAndReturn(t *testing.T) {
 	}
 	AdvanceAviation(&state)
 	AdvanceAviation(&state)
+	AdvanceAviation(&state)
+	AdvanceAviation(&state)
 	if aircraft.Status != "hangar" || aircraft.Coord != "" || aircraft.ReconRadius != 0 || aircraft.Returning {
 		t.Fatalf("返航后未自动落舰并清理任务：%+v", aircraft)
 	}

@@ -54,7 +54,7 @@ func readJSON(path string, target any) error {
 func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCatalog, seed uint64) (State, error) {
 	state := State{
 		ScenarioID: scenario.ID, ScenarioName: scenario.Name, Description: scenario.Description,
-		Map: gameMap, Units: map[string]*Unit{}, Aircraft: map[string]*AirUnit{}, CarrierOperations: map[string]string{}, Contacts: map[string]map[string]*FleetContact{}, RNGState: seed,
+		Map: gameMap, Units: map[string]*Unit{}, Aircraft: map[string]*AirUnit{}, Contacts: map[string]map[string]*FleetContact{}, RNGState: seed,
 		Definitions: map[string]string{"scenario": fmt.Sprint(scenario.Version), "map": fmt.Sprint(gameMap.Version), "units": fmt.Sprint(catalog.Version)},
 	}
 	definitions := map[string]UnitDefinition{}
@@ -149,6 +149,7 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		}
 		carrier.Card.Aircraft++
 	}
+	EnsureAviation(&state)
 	return state, nil
 }
 
@@ -239,7 +240,7 @@ func headingBetween(from, to string) string {
 }
 
 func ValidateOrder(state State, faction string, order Order) error {
-	if order.Type == "LAUNCH_CAP" || order.Type == "LAUNCH_RECON" || order.Type == "PREPARE_AIR" || order.Type == "RETURN_TO_HANGAR" || order.Type == "RECOVER_AIR" || order.Type == "PRIORITIZE_AIR_TASK" {
+	if order.Type == "LAUNCH_CAP" || order.Type == "LAUNCH_RECON" || order.Type == "LAUNCH_STRIKE" || order.Type == "PREPARE_AIR" || order.Type == "RETURN_TO_HANGAR" || order.Type == "RECOVER_AIR" || order.Type == "PRIORITIZE_AIR_TASK" {
 		return ValidateAirOrder(state, faction, order)
 	}
 	if order.Type == "REORGANIZE_HEX" {

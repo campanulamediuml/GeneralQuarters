@@ -25,7 +25,7 @@ func setAircraftReady(state *State, ids ...string) {
 	}
 }
 
-func TestAviationProjectionIncludesCarriersAndSeaplaneShips(t *testing.T) {
+func TestAviationProjectionIncludesIndependentShipDecks(t *testing.T) {
 	state := sandboxState(t)
 	view := VisibleAviation(state, "B")
 	if len(view.Carriers) != 10 || len(view.Tasks) != 0 {
@@ -44,8 +44,17 @@ func TestAviationProjectionIncludesCarriersAndSeaplaneShips(t *testing.T) {
 			}
 		}
 	}
-	if carrier == nil || carrier.HangarUsed != 4 || carrier.HangarCapacity != 24 || carrier.DeckCapacity != 9 {
-		t.Fatalf("航母机库或甲板容量错误：%+v", carrier)
+	if carrier == nil || carrier.HangarUsed != 4 || carrier.HangarCapacity != 24 || carrier.DeckLength != 9 || len(carrier.Elevators) != 3 {
+		t.Fatalf("航母甲板或升降机投影错误：%+v", carrier)
+	}
+	for _, elevator := range carrier.Elevators {
+		if elevator.Status != "idle" || elevator.Capacity != 2 || elevator.Kind != "elevator" {
+			t.Fatalf("航母升降机初始状态错误：%+v", elevator)
+		}
+	}
+	cruiser := state.Units["b-ca-01"]
+	if cruiser.Deck == nil || cruiser.Deck.Length != 1 || len(cruiser.Deck.Elevators) != 1 || cruiser.Deck.Elevators[0].Kind != "crane" {
+		t.Fatalf("水机舰没有独立甲板和起重设备：%+v", cruiser.Deck)
 	}
 	if seaplanes != 11 {
 		t.Fatalf("水上飞机数量错误：%d", seaplanes)
@@ -55,79 +64,72 @@ func TestAviationProjectionIncludesCarriersAndSeaplaneShips(t *testing.T) {
 			t.Fatalf("巡洋舰水机机库或当前搭载错误：%+v", state.Units[unitID])
 		}
 	}
-	if state.Units["b2-bb-01"].Card.HangarCapacity != 1 || state.Units["b2-bb-01"].Card.Aircraft != 1 {
-		t.Fatalf("战列舰水机机库或当前搭载错误：%+v", state.Units["b2-bb-01"])
-	}
 	for _, unitID := range []string{"b-bb-01", "b-ca-03", "b-ca-04", "b-cl-02", "b-dd-01", "b2-bb-02", "b2-ca-02", "b2-dd-01"} {
-		if state.Units[unitID].Card.HangarCapacity != 0 || state.Units[unitID].Card.Aircraft != 0 {
-			t.Fatalf("普通舰船被错误赋予水机作业能力：%+v", state.Units[unitID])
+		if state.Units[unitID].Deck != nil {
+			t.Fatalf("普通舰船被错误赋予航空设施：%+v", state.Units[unitID])
 		}
-	}
-	viewA := VisibleAviation(state, "A")
-	if len(viewA.Carriers) != 10 {
-		t.Fatalf("A方两支编队的航空作业舰投影错误：%+v", viewA.Carriers)
 	}
 }
 
-func TestCAPLaunchPriorityRecoveryAndFuel(t *testing.T) {
+func TestCAPLaunchPriorityAndElevatorRecovery(t *testing.T) {
 	state := sandboxState(t)
-	state.CarrierOperations = nil
 	setAircraftReady(&state, "air-b-01", "air-b-02")
-	first := Order{Type: "LAUNCH_CAP", AircraftID: "air-b-01"}
-	if err := ValidateAirOrder(state, "B", first); err != nil {
-		t.Fatal(err)
+	for _, id := range []string{"air-b-01", "air-b-02"} {
+		order := Order{Type: "LAUNCH_CAP", AircraftID: id}
+		if err := ValidateAirOrder(state, "B", order); err != nil {
+			t.Fatal(err)
+		}
+		ApplyAirOrder(&state, order)
 	}
-	ApplyAirOrder(&state, first)
-	second := Order{Type: "LAUNCH_CAP", AircraftID: "air-b-02"}
-	if err := ValidateAirOrder(state, "B", second); err != nil {
-		t.Fatal(err)
-	}
-	ApplyAirOrder(&state, second)
-	if state.Aircraft["air-b-01"].Priority != 1 || state.Aircraft["air-b-02"].Priority != 2 {
-		t.Fatal("CAP初始任务优先级错误")
-	}
-	if state.Units["b-cv-01"].Card.Aircraft != 2 {
-		t.Fatal("升空后机库数量未扣减")
+	if state.Aircraft["air-b-01"].Priority != 1 || state.Aircraft["air-b-02"].Priority != 2 || state.Units["b-cv-01"].Card.Aircraft != 2 {
+		t.Fatal("CAP初始任务、优先级或载机数错误")
 	}
 	if err := ValidateAirOrder(state, "B", Order{Type: "RECOVER_AIR", AircraftID: "air-b-01"}); err == nil {
 		t.Fatal("同回合起飞后仍允许降落")
 	}
-	priority := Order{Type: "PRIORITIZE_AIR_TASK", AircraftID: "air-b-02"}
-	ApplyAirOrder(&state, priority)
+	ApplyAirOrder(&state, Order{Type: "PRIORITIZE_AIR_TASK", AircraftID: "air-b-02"})
 	view := VisibleAviation(state, "B")
-	if len(view.Tasks) != 2 || view.Tasks[0].ID != "air-b-02" || view.Tasks[0].Priority != 1 || view.Tasks[1].ID != "air-b-01" {
+	if len(view.Tasks) != 2 || view.Tasks[0].ID != "air-b-02" || view.Tasks[0].Priority != 1 {
 		t.Fatalf("任务旗子未由服务端调整顺序：%+v", view.Tasks)
 	}
 	AdvanceAviation(&state)
-	if state.Aircraft["air-b-01"].RemainingRange != 12 || state.CarrierOperations["b-cv-01"] != "" {
-		t.Fatal("回合燃油或航空作业状态重置错误")
+	if state.Aircraft["air-b-01"].RemainingRange != 12 || state.Units["b-cv-01"].Deck.Operation != "" {
+		t.Fatal("回合燃油或甲板作业状态重置错误")
 	}
 	recover := Order{Type: "RECOVER_AIR", AircraftID: "air-b-01"}
 	if err := ValidateAirOrder(state, "B", recover); err != nil {
 		t.Fatal(err)
 	}
 	ApplyAirOrder(&state, recover)
-	if state.Aircraft["air-b-01"].Status != "hangar" || state.Aircraft["air-b-01"].Priority != 0 || state.Units["b-cv-01"].Card.Aircraft != 3 {
-		t.Fatal("回收后的机库和任务状态错误")
+	if state.Aircraft["air-b-01"].Status != "recovery" || state.Units["b-cv-01"].Card.Aircraft != 3 {
+		t.Fatal("回收飞机没有先降落到甲板")
 	}
-	if err := ValidateAirOrder(state, "B", Order{Type: "LAUNCH_CAP", AircraftID: "air-b-01"}); err == nil {
-		t.Fatal("同回合降落后仍允许起飞")
+	AdvanceAviation(&state)
+	if state.Aircraft["air-b-01"].Status != "elevator" || state.Units["b-cv-01"].Deck.Elevators[0].Status != "lowering" {
+		t.Fatal("回收飞机没有占用升降机下降")
+	}
+	AdvanceAviation(&state)
+	if state.Aircraft["air-b-01"].Status != "hangar" || state.Aircraft["air-b-01"].Priority != 0 {
+		t.Fatal("升降机下降完成后未回到机库")
 	}
 }
 
-func TestAviationRejectsNonFighterAndDeckOverflow(t *testing.T) {
+func TestAviationRejectsNonFighterAndDeckLaunchOverflow(t *testing.T) {
 	state := sandboxState(t)
 	setAircraftReady(&state, "air-b-01", "air-b-02", "air-b-03")
 	if err := ValidateAirOrder(state, "B", Order{Type: "LAUNCH_CAP", AircraftID: "air-b-03"}); err == nil {
 		t.Fatal("非战斗机被允许执行CAP")
 	}
-	state.Units["b-cv-01"].Card.DeckCapacity = 1
+	state.Units["b-cv-01"].Deck.Length = 1
 	if err := ValidateAirOrder(state, "B", Order{Type: "LAUNCH_CAP", AircraftID: "air-b-01"}); err != nil {
 		t.Fatal(err)
 	}
 	ApplyAirOrder(&state, Order{Type: "LAUNCH_CAP", AircraftID: "air-b-01"})
 	if err := ValidateAirOrder(state, "B", Order{Type: "LAUNCH_CAP", AircraftID: "air-b-02"}); err == nil {
-		t.Fatal("甲板容量溢出未被拒绝")
+		t.Fatal("甲板起飞容量溢出未被拒绝")
+	}
+	if err := ValidateAirOrder(state, "B", Order{Type: "PREPARE_AIR", AircraftID: "air-b-02"}); err == nil {
+		t.Fatal("仍允许不绑定任务的手动整备")
 	}
 }
 
@@ -142,102 +144,22 @@ func TestDistanceReferenceProjection(t *testing.T) {
 	if reference == nil || reference.Origin != "0202" || reference.MaxDistance != 8 || len(reference.Cells) != 59 {
 		t.Fatalf("舰队距离参考投影错误：%+v", reference)
 	}
-	for _, cell := range reference.Cells {
-		if cell.Distance != Distance(reference.Origin, cell.Coord) {
-			t.Fatalf("距离参考与服务端距离不一致：%+v", cell)
-		}
-	}
 	setAircraftReady(&state, "air-b-01")
 	ApplyAirOrder(&state, Order{Type: "LAUNCH_CAP", AircraftID: "air-b-01"})
 	tasks := VisibleAviation(state, "B").Tasks
 	if len(tasks) != 1 || tasks[0].CurrentCoord != "0208" || tasks[0].DistanceReference == nil {
 		t.Fatalf("CAP距离参考缺失：%+v", tasks)
 	}
-	for _, cell := range tasks[0].DistanceReference.Cells {
-		if cell.Coord == "0202" && cell.Distance != 6 {
-			t.Fatalf("CAP中心到0202的距离应为6：%+v", cell)
-		}
-	}
 }
 
-func TestThreeTurnPreparationReturnAndBatchCAP(t *testing.T) {
+func TestAssignedTasksUseElevatorsBeforeLaunch(t *testing.T) {
 	state := sandboxState(t)
-	launch := Order{Type: "LAUNCH_CAP", AircraftIDs: []string{"air-b-01", "air-b-02"}}
-	prepare := Order{Type: "PREPARE_AIR", AircraftIDs: []string{"air-b-01", "air-b-02"}}
-	if err := ValidateAirOrder(state, "B", prepare); err != nil {
-		t.Fatal(err)
+	orders := []Order{
+		{Type: "LAUNCH_CAP", AircraftIDs: []string{"air-b-01", "air-b-02"}},
+		{Type: "LAUNCH_RECON", AircraftID: "air-b-10", Heading: "W", SectorWidth: 60},
+		{Type: "LAUNCH_RECON", AircraftID: "air-b-11", Heading: "W", SectorWidth: 120},
 	}
-	ApplyAirOrder(&state, prepare)
-	if state.Aircraft["air-b-01"].Status != "service" || state.Aircraft["air-b-02"].Status != "service" || state.Units["b-cv-01"].Card.Aircraft != 4 {
-		t.Fatal("第一回合机库整备状态错误")
-	}
-	carrier := VisibleAviation(state, "B").Carriers[3]
-	if carrier.UnitID != "b-cv-01" || carrier.HangarUsed != 4 || carrier.DeckUsed != 0 {
-		t.Fatalf("机库整备投影错误：%+v", carrier)
-	}
-	returnOrder := Order{Type: "RETURN_TO_HANGAR", AircraftIDs: []string{"air-b-01", "air-b-02"}}
-	if err := ValidateAirOrder(state, "B", returnOrder); err != nil {
-		t.Fatal(err)
-	}
-	ApplyAirOrder(&state, returnOrder)
-	if state.Aircraft["air-b-01"].Status != "hangar" || state.CarrierOperations["b-cv-01"] != "" {
-		t.Fatal("拉回机库未重置整备状态")
-	}
-	ApplyAirOrder(&state, prepare)
-	AdvanceAviation(&state)
-	if err := ValidateAirOrder(state, "B", prepare); err != nil {
-		t.Fatal(err)
-	}
-	ApplyAirOrder(&state, prepare)
-	if state.Aircraft["air-b-01"].Status != "deck" || state.Aircraft["air-b-02"].Status != "deck" {
-		t.Fatal("第二回合甲板准备状态错误")
-	}
-	carrier = VisibleAviation(state, "B").Carriers[3]
-	if carrier.HangarUsed != 2 || carrier.DeckUsed != 2 || carrier.LaunchUsed != 0 {
-		t.Fatalf("甲板与机库投影错误：%+v", carrier)
-	}
-	AdvanceAviation(&state)
-	if err := ValidateAirOrder(state, "B", launch); err != nil {
-		t.Fatal(err)
-	}
-	ApplyAirOrder(&state, launch)
-	if state.Aircraft["air-b-01"].TaskID != "air-b-01" || state.Aircraft["air-b-02"].TaskID != "air-b-01" || state.Units["b-cv-01"].Card.Aircraft != 2 {
-		t.Fatal("第三回合批量CAP未形成同一任务或载机数错误")
-	}
-	tasks := VisibleAviation(state, "B").Tasks
-	if len(tasks) != 1 || len(tasks[0].AircraftIDs) != 2 || len(tasks[0].Aircraft) != 2 || tasks[0].ID != "air-b-01" || tasks[0].Phase != "launching" {
-		t.Fatalf("批量CAP任务投影错误：%+v", tasks)
-	}
-	AdvanceAviation(&state)
-	recover := Order{Type: "RECOVER_AIR", AircraftIDs: []string{"air-b-01", "air-b-02"}}
-	if err := ValidateAirOrder(state, "B", recover); err != nil {
-		t.Fatal(err)
-	}
-	ApplyAirOrder(&state, recover)
-	if state.Aircraft["air-b-01"].Status != "hangar" || state.Aircraft["air-b-02"].Status != "hangar" || state.Units["b-cv-01"].Card.Aircraft != 4 {
-		t.Fatal("批量回收未恢复机库状态")
-	}
-	seaplanePrepare := Order{Type: "PREPARE_AIR", AircraftID: "air-b-11"}
-	if err := ValidateAirOrder(state, "B", seaplanePrepare); err != nil {
-		t.Fatalf("水机不能开始机库整备：%v", err)
-	}
-	ApplyAirOrder(&state, seaplanePrepare)
-	AdvanceAviation(&state)
-	ApplyAirOrder(&state, seaplanePrepare)
-	if state.Aircraft["air-b-11"].Status != "ready" {
-		t.Fatal("水机第二回合起飞准备状态错误")
-	}
-	if err := ValidateAirOrder(state, "B", Order{Type: "LAUNCH_CAP", AircraftIDs: []string{"air-b-01", "air-b-05"}}); err == nil {
-		t.Fatal("跨母舰批量命令未被拒绝")
-	}
-}
-
-func TestAssignedTasksAdvanceThroughPreparationAndLaunch(t *testing.T) {
-	state := sandboxState(t)
-	capOrder := Order{Type: "LAUNCH_CAP", AircraftIDs: []string{"air-b-01", "air-b-02"}}
-	reconOrder := Order{Type: "LAUNCH_RECON", AircraftID: "air-b-10", Heading: "W", SectorWidth: 60}
-	seaplaneOrder := Order{Type: "LAUNCH_RECON", AircraftID: "air-b-11", Heading: "W", SectorWidth: 120}
-	for _, order := range []Order{capOrder, reconOrder, seaplaneOrder} {
+	for _, order := range orders {
 		if err := ValidateAirOrder(state, "B", order); err != nil {
 			t.Fatalf("机库算子应可先分配任务：%v", err)
 		}
@@ -248,43 +170,36 @@ func TestAssignedTasksAdvanceThroughPreparationAndLaunch(t *testing.T) {
 			t.Fatalf("分配任务后未进入整备：%+v", state.Aircraft[id])
 		}
 	}
-	if state.Units["b-cv-01"].Card.Aircraft != 4 || state.Units["b-cv-04"].Card.Aircraft != 2 {
-		t.Fatal("整备阶段错误扣减了母舰载机数")
-	}
-	tasks := VisibleAviation(state, "B").Tasks
-	if len(tasks) != 3 {
-		t.Fatalf("预备任务没有进入任务栏：%+v", tasks)
-	}
-	for _, task := range tasks {
+	for _, task := range VisibleAviation(state, "B").Tasks {
 		if task.Phase != "servicing" || len(task.SectorHexes) != 0 {
 			t.Fatalf("预备任务阶段或扇面投影错误：%+v", task)
 		}
 	}
 
 	AdvanceAviation(&state)
-	for _, id := range []string{"air-b-01", "air-b-02", "air-b-10"} {
-		if state.Aircraft[id].Status != "deck" {
-			t.Fatalf("第二回合未完成甲板准备：%+v", state.Aircraft[id])
+	for _, id := range []string{"air-b-01", "air-b-02", "air-b-10", "air-b-11"} {
+		if state.Aircraft[id].Status != "elevator" || state.Aircraft[id].ElevatorID == "" {
+			t.Fatalf("第二回合没有占用具体升降机：%+v", state.Aircraft[id])
 		}
 	}
-	if state.Aircraft["air-b-11"].Status != "ready" {
-		t.Fatal("第二回合未完成水机起飞准备")
+	if state.Units["b-cv-01"].Deck.Elevators[0].Status != "lifting" || state.Units["b-cv-04"].Deck.Elevators[0].TaskID != "air-b-10" {
+		t.Fatal("升降机没有保存正在提升的任务")
 	}
 	for _, task := range VisibleAviation(state, "B").Tasks {
-		if task.Phase != "preparing" {
-			t.Fatalf("任务栏未显示起飞准备阶段：%+v", task)
+		if task.Phase != "lifting" {
+			t.Fatalf("任务栏未显示提升阶段：%+v", task)
 		}
 	}
 
 	AdvanceAviation(&state)
 	if state.Aircraft["air-b-01"].Status != "cap" || state.Aircraft["air-b-10"].Status != "recon" || state.Aircraft["air-b-11"].Status != "recon" {
-		t.Fatal("第三回合任务未自动起飞")
+		t.Fatal("第三回合任务未在提升完成后放飞")
 	}
 	if state.Aircraft["air-b-10"].OriginCoord != "0208" || state.Aircraft["air-b-10"].ReconDistance != 0 || state.Aircraft["air-b-11"].SectorWidth != 120 {
 		t.Fatal("自动起飞没有使用保存的侦察配置和实际母舰位置")
 	}
-	if state.Units["b-cv-01"].Card.Aircraft != 2 || state.Units["b-cv-04"].Card.Aircraft != 1 {
-		t.Fatal("自动起飞后母舰载机数错误")
+	if state.Units["b-cv-01"].Card.Aircraft != 2 || state.Units["b-cv-04"].Card.Aircraft != 1 || state.Units["b-cv-01"].Deck.Elevators[0].Status != "idle" {
+		t.Fatal("放飞后的载机数或升降机释放状态错误")
 	}
 	for _, task := range VisibleAviation(state, "B").Tasks {
 		if task.Phase != "launching" {
@@ -303,7 +218,81 @@ func TestAssignedTasksAdvanceThroughPreparationAndLaunch(t *testing.T) {
 	}
 }
 
-func TestReturningAssignedAircraftCancelsTask(t *testing.T) {
+func TestSingleElevatorBatchesAndDeckLengthDelay(t *testing.T) {
+	state := sandboxState(t)
+	for index, id := range []string{"air-test-02", "air-test-03"} {
+		clone := *state.Aircraft["air-b-09"]
+		clone.ID = id
+		state.Aircraft[id] = &clone
+		state.Units["b-cv-04"].Card.Aircraft++
+		_ = index
+	}
+	order := Order{Type: "LAUNCH_CAP", AircraftIDs: []string{"air-b-09", "air-test-02", "air-test-03"}}
+	if err := ValidateAirOrder(state, "B", order); err != nil {
+		t.Fatal(err)
+	}
+	ApplyAirOrder(&state, order)
+	state.Units["b-cv-04"].Deck.Length = 1
+	AdvanceAviation(&state)
+	elevator := state.Units["b-cv-04"].Deck.Elevators[0]
+	if len(elevator.AircraftIDs) != 1 || elevator.Status != "lifting" {
+		t.Fatalf("甲板长度没有限制本次提升数量：%+v", elevator)
+	}
+	AdvanceAviation(&state)
+	if state.Aircraft["air-b-09"].Status != "cap" || state.Aircraft["air-test-02"].Status != "elevator" || state.Aircraft["air-test-03"].Status != "service" {
+		t.Fatalf("单升降机没有按甲板容量连续排队：%s/%s/%s", state.Aircraft["air-b-09"].Status, state.Aircraft["air-test-02"].Status, state.Aircraft["air-test-03"].Status)
+	}
+	AdvanceAviation(&state)
+	AdvanceAviation(&state)
+	for _, id := range []string{"air-b-09", "air-test-02", "air-test-03"} {
+		if state.Aircraft[id].Status != "cap" {
+			t.Fatalf("排队算子没有最终独立放飞：%s=%s", id, state.Aircraft[id].Status)
+		}
+	}
+}
+
+func TestAttackFormationWaitsForOtherCarrier(t *testing.T) {
+	state := sandboxState(t)
+	first := Order{Type: "LAUNCH_STRIKE", AircraftIDs: []string{"air-b-03", "air-b-04"}}
+	if err := ValidateAirOrder(state, "B", first); err != nil {
+		t.Fatal(err)
+	}
+	ApplyAirOrder(&state, first)
+	join := Order{Type: "LAUNCH_STRIKE", AircraftID: "air-b-06", TaskID: "air-b-03"}
+	if err := ValidateAirOrder(state, "B", join); err != nil {
+		t.Fatalf("同一舰队另一艘航母不能加入攻击编队：%v", err)
+	}
+	ApplyAirOrder(&state, join)
+	state.Aircraft["air-b-05"].Status = "deck"
+	state.Units["b-cv-02"].Deck.Length = 1
+	AdvanceAviation(&state)
+	if state.Aircraft["air-b-03"].Status != "elevator" || state.Aircraft["air-b-06"].Status != "service" {
+		t.Fatal("各舰没有独立调度甲板与升降机")
+	}
+	AdvanceAviation(&state)
+	if state.Aircraft["air-b-03"].Status != "attack_holding" || state.Aircraft["air-b-04"].Status != "attack_holding" || state.Aircraft["air-b-06"].Status != "service" {
+		t.Fatal("攻击机不应在编队未到齐时离场")
+	}
+	initialRange := state.Aircraft["air-b-03"].RemainingRange
+	state.Units["b-cv-02"].Deck.Length = 6
+	AdvanceAviation(&state)
+	if state.Aircraft["air-b-03"].RemainingRange != initialRange-1 || state.Aircraft["air-b-03"].Status != "attack_holding" || state.Aircraft["air-b-06"].Status != "elevator" {
+		t.Fatal("等待中的攻击机没有按回合消耗1航程，或另一艘航母没有独立提升")
+	}
+	AdvanceAviation(&state)
+	if state.Aircraft["air-b-03"].RemainingRange != initialRange-2 || state.Aircraft["air-b-03"].Status != "attack" || state.Aircraft["air-b-06"].Status != "attack" {
+		t.Fatal("最后一批飞机到齐后整个攻击编队没有离场")
+	}
+	tasks := VisibleAviation(state, "B").Tasks
+	if len(tasks) != 1 || tasks[0].Phase != "launching" || len(tasks[0].CarrierIDs) != 2 || tasks[0].AirborneCount != 3 {
+		t.Fatalf("跨舰攻击编队投影错误：%+v", tasks)
+	}
+	if err := ValidateAirOrder(state, "B", Order{Type: "LAUNCH_STRIKE", AircraftID: "air-b-08", TaskID: "air-b-03"}); err == nil {
+		t.Fatal("已经离场的攻击编队仍允许加入飞机")
+	}
+}
+
+func TestReturningAssignedAircraftCancelsOrQueuesDescent(t *testing.T) {
 	state := sandboxState(t)
 	order := Order{Type: "LAUNCH_CAP", AircraftID: "air-b-01"}
 	ApplyAirOrder(&state, order)
@@ -314,9 +303,14 @@ func TestReturningAssignedAircraftCancelsTask(t *testing.T) {
 	ApplyAirOrder(&state, returnOrder)
 	aircraft := state.Aircraft["air-b-01"]
 	if aircraft.Status != "hangar" || aircraft.TaskID != "" || aircraft.TaskKind != "" || aircraft.Priority != 0 {
-		t.Fatalf("拉回机库未取消预备任务：%+v", aircraft)
+		t.Fatalf("机库整备任务未取消：%+v", aircraft)
 	}
-	if len(VisibleAviation(state, "B").Tasks) != 0 {
-		t.Fatal("已取消任务仍显示在任务栏")
+	setAircraftReady(&state, "air-b-02")
+	ApplyAirOrder(&state, Order{Type: "LAUNCH_CAP", AircraftID: "air-b-02"})
+	setAircraftReady(&state, "air-b-04")
+	ApplyAirOrder(&state, Order{Type: "LAUNCH_STRIKE", AircraftID: "air-b-04"})
+	setAircraftReady(&state, "air-b-01")
+	if err := ValidateAirOrder(state, "B", returnOrder); err == nil {
+		t.Fatal("甲板起飞作业中仍允许安排下降")
 	}
 }

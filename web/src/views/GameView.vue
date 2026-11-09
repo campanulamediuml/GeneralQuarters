@@ -193,7 +193,7 @@ async function applyReorganization() {
   }
 }
 
-async function airCommand(type: 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'PREPARE_AIR' | 'RETURN_TO_HANGAR' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK', aircraftIDs: string[], options?: { heading?: ReconHeading; sector_width?: 60 | 120; recon_radius?: number }) {
+async function airCommand(type: 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' | 'RETURN_TO_HANGAR' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK', aircraftIDs: string[], options?: { heading?: ReconHeading; sector_width?: 60 | 120; recon_radius?: number; task_id?: string }) {
   if (!state.value || actionBusy.value) return
   actionBusy.value = true
   try {

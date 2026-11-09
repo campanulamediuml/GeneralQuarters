@@ -37,6 +37,21 @@ export interface ShipCard {
   historical_loss?: string
 }
 
+export interface AircraftElevator {
+  id: string
+  kind: 'elevator' | 'crane'
+  capacity: number
+  status: 'idle' | 'lifting' | 'lowering'
+  task_id?: string
+  aircraft_ids: string[]
+}
+
+export interface FlightDeck {
+  length: number
+  operation: '' | 'launch' | 'recover'
+  elevators: AircraftElevator[]
+}
+
 export interface Unit {
   id: string
   definition_id: string
@@ -51,6 +66,7 @@ export interface Unit {
   strength: number
   max_strength: number
   card: ShipCard
+  deck?: FlightDeck
   legal_moves?: string[]
 }
 
@@ -64,7 +80,7 @@ export interface AirUnit {
   name: string
   model: string
   kind: 'fighter' | 'dive_bomber' | 'torpedo_bomber' | 'recon'
-  status: 'hangar' | 'service' | 'deck' | 'ready' | 'cap' | 'recon'
+  status: 'hangar' | 'service' | 'elevator' | 'deck' | 'ready' | 'recovery' | 'cap' | 'recon' | 'attack_holding' | 'attack'
   strength: number
   max_range: number
   remaining_range: number
@@ -73,9 +89,10 @@ export interface AirUnit {
   anti_ground: number
   seaplane: boolean
   launched: boolean
+  elevator_id?: string
   priority: number
   task_id?: string
-  task_kind?: 'cap' | 'recon'
+  task_kind?: 'cap' | 'recon' | 'attack'
   origin_coord?: string
   coord?: string
   heading?: ReconHeading
@@ -101,11 +118,14 @@ export interface DistanceReference {
 export interface AirTask {
   id: string
   kind: 'cap' | 'recon' | 'asw' | 'attack'
-  phase: 'servicing' | 'preparing' | 'launching' | 'active'
+  phase: 'servicing' | 'lifting' | 'preparing' | 'launching' | 'assembling' | 'active'
   name: string
   carrier_id: string
+  carrier_ids: string[]
+  fleet_id?: string
   aircraft_ids: string[]
   aircraft: AirUnit[]
+  airborne_count: number
   priority: number
   origin_coord?: string
   current_coord?: string
@@ -126,10 +146,12 @@ export interface CarrierAirStatus {
   type: string
   hangar_used: number
   hangar_capacity: number
+  deck_length: number
   deck_capacity: number
   deck_used: number
   launch_used: number
-  operation: '' | 'prepare' | 'launch' | 'recover'
+  operation: '' | 'launch' | 'recover'
+  elevators: AircraftElevator[]
   aircraft: AirUnit[]
 }
 
@@ -148,11 +170,12 @@ export interface Player {
 }
 
 export interface Order {
-  type: 'SET_MOVE' | 'CLEAR_MOVE' | 'MERGE_FLEET' | 'REORGANIZE_HEX' | 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'PREPARE_AIR' | 'RETURN_TO_HANGAR' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK'
+  type: 'SET_MOVE' | 'CLEAR_MOVE' | 'MERGE_FLEET' | 'REORGANIZE_HEX' | 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' | 'PREPARE_AIR' | 'RETURN_TO_HANGAR' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK'
   unit_id?: string
   target_unit_id?: string
   aircraft_id?: string
   aircraft_ids?: string[]
+  task_id?: string
   coord?: string
   heading?: ReconHeading
   sector_width?: 60 | 120

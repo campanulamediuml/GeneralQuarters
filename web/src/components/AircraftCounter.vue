@@ -56,6 +56,6 @@ const modelCode = computed(() => props.aircraft.model.split(' ')[0])
 .aircraft-range.carrier-based{background:#187caf}
 .aircraft-range.low-range{background:#9c4036}
 .aircraft-model{overflow:hidden;padding-bottom:2px;font:700 9px/1 'Rajdhani',sans-serif;text-align:right;text-overflow:ellipsis;white-space:nowrap}
-.air-counter.air-cap,.air-counter.air-recon,.air-counter.air-deck,.air-counter.air-ready{border-color:#f0d58d}.air-counter.air-service{border-style:dashed;border-color:#d7bb7b}
+.air-counter.air-cap,.air-counter.air-recon,.air-counter.air-deck,.air-counter.air-ready,.air-counter.air-attack,.air-counter.air-attack_holding{border-color:#f0d58d}.air-counter.air-service,.air-counter.air-elevator{border-style:dashed;border-color:#d7bb7b}.air-counter.air-recovery{border-color:#7ec8db}
 .aircraft-stack-count{position:absolute;right:3px;bottom:27px;z-index:2;min-width:25px;padding:3px 4px;border:1px solid #f0d58d;background:#142a31e8;color:#f0d58d;font:700 13px/1 'Rajdhani',sans-serif;text-align:center;box-shadow:0 1px 3px #0007}
 </style>
