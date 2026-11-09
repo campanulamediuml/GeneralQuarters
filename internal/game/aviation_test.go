@@ -314,3 +314,50 @@ func TestReturningAssignedAircraftCancelsOrQueuesDescent(t *testing.T) {
 		t.Fatal("甲板起飞作业中仍允许安排下降")
 	}
 }
+
+func TestReconGroupsAcceptDifferentAircraftAndRepeatedJoins(t *testing.T) {
+	state := sandboxState(t)
+	setAircraftReady(&state, "air-b-03", "air-b-04", "air-b-08", "air-b-10")
+	first := Order{Type: "LAUNCH_RECON", AircraftID: "air-b-03", Heading: "W", SectorWidth: 60}
+	if err := ValidateAirOrder(state, "B", first); err != nil {
+		t.Fatal(err)
+	}
+	ApplyAirOrder(&state, first)
+	join := Order{Type: "LAUNCH_RECON", AircraftID: "air-b-04", TaskID: "air-b-03", Heading: "E", SectorWidth: 120}
+	if err := ValidateAirOrder(state, "B", join); err != nil {
+		t.Fatalf("不同可搜索机型不能加入同一侦察组：%v", err)
+	}
+	ApplyAirOrder(&state, join)
+	for _, id := range []string{"air-b-03", "air-b-04"} {
+		aircraft := state.Aircraft[id]
+		if aircraft.TaskID != "air-b-03" || aircraft.Heading != "W" || aircraft.SectorWidth != 60 {
+			t.Fatalf("加入侦察组后没有共享任务ID和原组参数：%+v", aircraft)
+		}
+	}
+	second := Order{Type: "LAUNCH_RECON", AircraftID: "air-b-08", Heading: "W", SectorWidth: 120}
+	if err := ValidateAirOrder(state, "B", second); err != nil {
+		t.Fatal(err)
+	}
+	ApplyAirOrder(&state, second)
+	if err := ValidateAirOrder(state, "B", Order{Type: "LAUNCH_RECON", AircraftID: "air-b-10", Heading: "W", SectorWidth: 60}); err == nil {
+		t.Fatal("已有两个侦察组时仍允许创建第三组")
+	}
+	AdvanceAviation(&state)
+	joinAirborne := Order{Type: "LAUNCH_RECON", AircraftID: "air-b-10", TaskID: "air-b-03", Heading: "W", SectorWidth: 60}
+	if err := ValidateAirOrder(state, "B", joinAirborne); err != nil {
+		t.Fatalf("已升空侦察组不能接受后续飞机：%v", err)
+	}
+	ApplyAirOrder(&state, joinAirborne)
+	if state.Aircraft["air-b-10"].TaskID != "air-b-03" || state.Aircraft["air-b-10"].Status != "recon" {
+		t.Fatalf("后续飞机没有直接加入已升空侦察组：%+v", state.Aircraft["air-b-10"])
+	}
+	tasks := VisibleAviation(state, "B").Tasks
+	if len(tasks) != 2 {
+		t.Fatalf("侦察组数量错误：%+v", tasks)
+	}
+	for _, task := range tasks {
+		if task.ID == "air-b-03" && (len(task.Aircraft) != 3 || task.AirborneCount != 3 || task.Phase != "launching") {
+			t.Fatalf("混合侦察组升空投影错误：%+v", task)
+		}
+	}
+}

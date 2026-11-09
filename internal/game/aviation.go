@@ -170,21 +170,43 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 				return fmt.Errorf("舰载机只能从航母起飞")
 			}
 		}
-		if order.Type == "LAUNCH_STRIKE" && order.TaskID != "" {
+		if order.TaskID != "" {
 			members := taskAircraft(state, order.TaskID)
-			if len(members) == 0 || members[0].TaskKind != "attack" || members[0].Faction != faction {
-				return fmt.Errorf("要加入的攻击编队不存在")
+			if len(members) == 0 || members[0].Faction != faction {
+				return fmt.Errorf("要加入的航空任务不存在")
 			}
-			if FleetKey(state.Units[members[0].CarrierID]) != fleetID {
-				return fmt.Errorf("只能加入同一舰队的攻击编队")
+			if members[0].TaskKind != "recon" && members[0].TaskKind != "attack" {
+				return fmt.Errorf("只有侦察组和攻击编队可以接受新算子")
 			}
-			for _, member := range members {
-				if member.Status == "attack" {
-					return fmt.Errorf("攻击编队已经离场，不能继续加入飞机")
+			if order.Type == "LAUNCH_RECON" && members[0].TaskKind != "recon" {
+				return fmt.Errorf("要加入的侦察组不存在")
+			}
+			if order.Type == "LAUNCH_STRIKE" {
+				if members[0].TaskKind != "attack" {
+					return fmt.Errorf("要加入的攻击编队不存在")
+				}
+				if FleetKey(state.Units[members[0].CarrierID]) != fleetID {
+					return fmt.Errorf("只能加入同一舰队的攻击编队")
+				}
+				for _, member := range members {
+					if member.Status == "attack" {
+						return fmt.Errorf("攻击编队已经离场，不能继续加入飞机")
+					}
 				}
 			}
-		} else if order.TaskID != "" {
-			return fmt.Errorf("只有攻击任务可以加入已有编队")
+			if order.Type == "LAUNCH_CAP" {
+				return fmt.Errorf("CAP算子各自独立，不能加入侦察组或攻击编队")
+			}
+		} else if order.Type == "LAUNCH_RECON" {
+			groups := map[string]bool{}
+			for _, aircraft := range state.Aircraft {
+				if aircraft.Faction == faction && aircraft.TaskKind == "recon" && aircraft.TaskID != "" {
+					groups[aircraft.TaskID] = true
+				}
+			}
+			if len(groups) >= 2 {
+				return fmt.Errorf("最多同时保留两个侦察组，请把飞机加入已有任务栏")
+			}
 		}
 		if status == "deck" || status == "ready" {
 			return validateLaunchCapacity(state, aircraftList)
@@ -301,17 +323,24 @@ func clearAirTask(aircraft *AirUnit) {
 func configureAirTask(state *State, aircraftList []*AirUnit, order Order) {
 	taskID := order.TaskID
 	priority := 0
+	var existingTask []*AirUnit
 	if taskID == "" {
 		taskID = newAirTaskID(state, aircraftList)
 		priority = nextAirTaskPriority(state, aircraftList[0].Faction)
 	} else {
-		priority = taskAircraft(*state, taskID)[0].Priority
+		existingTask = taskAircraft(*state, taskID)
+		priority = existingTask[0].Priority
 	}
 	taskKind := "cap"
 	if order.Type == "LAUNCH_RECON" {
 		taskKind = "recon"
 	} else if order.Type == "LAUNCH_STRIKE" {
 		taskKind = "attack"
+	}
+	if taskKind == "recon" && len(existingTask) > 0 {
+		order.Heading = existingTask[0].Heading
+		order.SectorWidth = existingTask[0].SectorWidth
+		order.ReconRadius = existingTask[0].ReconRadius
 	}
 	for _, aircraft := range aircraftList {
 		clearAirTask(aircraft)
@@ -853,18 +882,25 @@ func VisibleAviation(state State, faction string) AviationView {
 			task.OriginCoord = leader.OriginCoord
 			task.CurrentCoord = leader.Coord
 		default:
+			reconLeader := leader
+			for _, aircraft := range aircraftList {
+				if aircraft.Status == "recon" {
+					reconLeader = aircraft
+					break
+				}
+			}
 			task.Name = "扇面侦察 · " + leader.Model
-			task.OriginCoord = leader.OriginCoord
-			task.CurrentCoord = leader.Coord
-			task.Heading = leader.Heading
-			task.SectorWidth = leader.SectorWidth
-			task.ReconRadius = leader.ReconRadius
-			task.ReconDistance = leader.ReconDistance
-			task.Returning = leader.Returning
-			task.TrackingFleetID = leader.TrackingFleetID
-			if leader.Status == "recon" {
-				task.SectorHexes = ReconSectorHexes(state.Map, leader.OriginCoord, leader.Heading, leader.SectorWidth, leader.ReconRadius)
-				task.CurrentRingHexes = ReconRingHexes(state.Map, leader.OriginCoord, leader.Heading, leader.SectorWidth, leader.ReconDistance)
+			task.OriginCoord = reconLeader.OriginCoord
+			task.CurrentCoord = reconLeader.Coord
+			task.Heading = reconLeader.Heading
+			task.SectorWidth = reconLeader.SectorWidth
+			task.ReconRadius = reconLeader.ReconRadius
+			task.ReconDistance = reconLeader.ReconDistance
+			task.Returning = reconLeader.Returning
+			task.TrackingFleetID = reconLeader.TrackingFleetID
+			if reconLeader.Status == "recon" {
+				task.SectorHexes = ReconSectorHexes(state.Map, reconLeader.OriginCoord, reconLeader.Heading, reconLeader.SectorWidth, reconLeader.ReconRadius)
+				task.CurrentRingHexes = ReconRingHexes(state.Map, reconLeader.OriginCoord, reconLeader.Heading, reconLeader.SectorWidth, reconLeader.ReconDistance)
 			}
 		}
 		if len(aircraftList) > 1 {

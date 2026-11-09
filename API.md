@@ -97,7 +97,7 @@
 - `PREPARE_AIR`：已废弃并返回400。整备、提升、放飞必须绑定任务，客户端不能脱离任务直接切换算子阶段。
 - `RETURN_TO_HANGAR`：取消任务、优先级和任务参数。`service`立即重置为`hangar`；`deck/ready`转为`recovery`，等待本舰升降机下降后才进入`hangar`。`elevator`中的算子不能中途撤回。
 - `LAUNCH_CAP`：将战斗机分配至CAP任务。机库算子立即形成预备任务并进入`service`；已经在甲板的算子立即独立升空。CAP不等待攻击编队。
-- `LAUNCH_RECON`：将侦察机或攻击机分配至扇面搜索任务，额外提交`heading`和`sector_width`。允许`recon`、`torpedo_bomber`（TBF）和`dive_bomber`（SB2C），拒绝战斗机。例如`{"command_id":"01J...","base_version":1,"type":"LAUNCH_RECON","aircraft_id":"air-b-10","heading":"W","sector_width":60}`。航向为`E/SE/SW/W/NW/NE`，角度只能为60或120。`recon_radius`省略或为0时使用服务端`recon_radius_limit`；侦察算子独立起飞，不等待其他任务。
+- `LAUNCH_RECON`：将侦察机或攻击机分配至扇面搜索任务，额外提交`heading`和`sector_width`。允许`recon`、`torpedo_bomber`（TBF）和`dive_bomber`（SB2C），拒绝战斗机。例如`{"command_id":"01J...","base_version":1,"type":"LAUNCH_RECON","aircraft_id":"air-b-10","heading":"W","sector_width":60}`。航向为`E/SE/SW/W/NW/NE`，角度只能为60或120。`recon_radius`省略或为0时使用服务端`recon_radius_limit`；侦察算子独立起飞，不等待其他任务。最多同时创建两个侦察组；向已有组加入飞机时提交`task_id`，不同可搜索机型和不同母舰的飞机可以分批加入，并继承原组的航向、扇面及半径，而不是自动创建或轮流进入另一组。
 - `LAUNCH_STRIKE`：由舰载俯冲轰炸机和鱼雷机建立攻击编队。把另一艘同舰队母舰的算子加入已有编队时额外提交`"task_id":"air-b-03"`；已离场编队拒绝加入。部分算子先起飞时为`attack_holding`，任务为`assembling`，每等待一回合`remaining_range`减1；全部成员升空后统一改为`attack`并离场。当前不包含攻击目标分配和空袭结算。
 - 任务创建后立即出现在`aviation.tasks`。通常第1回合为`servicing`，第2回合占用具体升降机并显示`lifting`，第3回合完成提升后由任务放飞并显示`launching`，随后为`active`。算子同时记录`elevator_id`；`preparing`表示已经在甲板但因容量或甲板作业而等待，`assembling`仅用于攻击编队。侦察参数在分配时持久化，扇面顶点使用实际起飞时的母舰位置。
 - `RECOVER_AIR`：将CAP算子回收到本舰甲板，状态改为`recovery`；后续回合一一占用升降机执行`lowering`，完成后才回到机库。甲板长度不足或同舰正在执行不相容作业时返回400。侦察机沿航线自动返航，使用同样的甲板与下降流程。
