@@ -134,15 +134,8 @@ function emitBatch(type: AirCommandType, ids: string[]) {
   selectedIDs.value = []
 }
 
-function action(aircraft: AirUnit) {
-  if (aircraft.status === 'cap') emit('command', 'RECOVER_AIR', [aircraft.id])
-  else if (aircraft.kind === 'fighter') emitBatch('LAUNCH_CAP', [aircraft.id])
-}
-
-function openRecon(aircraft: AirUnit) {
-  reconAircraftIDs.value = [aircraft.id]
-  reconHeading.value = 'W'
-  reconWidth.value = 60
+function recover(aircraft: AirUnit) {
+  emit('command', 'RECOVER_AIR', [aircraft.id])
 }
 
 function launchRecon() {
@@ -181,7 +174,12 @@ function operationName(carrier: CarrierAirStatus) {
 <template>
   <section class="workspace-page aviation-workspace">
     <div class="aviation-title"><div><span class="section-kicker">AVIATION COMMAND</span><h1>航空指挥界面</h1></div><span>拖拽分配 / 批量编组</span></div>
-    <p class="aviation-intro">选择一艘作业舰，将机库算子拖入飞行甲板提前整备，或拖入CAP、侦察任务栏直接起飞。也可先选中算子，再点击目标栏。所有批量命令由服务端一次结算。</p>
+    <p class="aviation-intro">选择一艘作业舰，将机库算子拖入飞行甲板提前整备，或拖入CAP、侦察任务栏直接起飞。拖动时也可使用屏幕顶部的任务投放条。所有批量命令由服务端一次结算。</p>
+
+    <div v-if="draggingIDs.length" class="task-drag-dock" aria-label="航空任务投放条">
+      <span>拖入任务</span>
+      <button v-for="lane in lanes" :key="lane.id" :class="{ 'drop-active': dragOver === `dock-${lane.id}` }" :data-dock-target="lane.id" @dragover.prevent="dragOver = `dock-${lane.id}`" @dragleave="dragOver = ''" @drop.prevent="assignTarget(lane.id)">{{ lane.name }}</button>
+    </div>
 
     <div class="air-task-lanes">
       <section v-for="lane in lanes" :key="lane.id" class="air-task-lane" :class="{ 'drop-active': dragOver === lane.id }" :data-lane-id="lane.id" @click="assignTarget(lane.id)" @dragover.prevent="dragOver = lane.id" @dragleave="dragOver = ''" @drop.prevent="assignTarget(lane.id)">
@@ -221,7 +219,7 @@ function operationName(carrier: CarrierAirStatus) {
           <div class="air-counter-grid">
             <div v-for="aircraft in aircraftAt('deck')" :key="aircraft.id" class="air-counter-item" :data-aircraft-id="aircraft.id" :data-status="aircraft.status">
               <AircraftCounter :aircraft="aircraft" :player-faction="playerFaction" :class="{ selected: selectedIDs.includes(aircraft.id) || selectedAircraftId === aircraft.id, selectable: true }" draggable="true" @click="selectCounter(aircraft)" @dragstart="startDrag(aircraft, $event)" @dragend="endDrag" />
-              <button v-if="aircraft.kind === 'fighter'" :disabled="busy" @click.stop="action(aircraft)">CAP 起飞</button><button v-else-if="aircraft.kind === 'recon'" :disabled="busy" @click.stop="openRecon(aircraft)">扇面侦察</button><span v-else class="air-no-action">待命</span>
+              <span class="air-no-action">拖至任务栏</span>
             </div>
             <button v-if="selectedCarrier.deck_used" class="return-hangar-button" @click="assignTarget('hangar')">将已选甲板算子拉回机库</button>
             <span v-else class="empty-air-zone">甲板空置</span>
@@ -233,7 +231,7 @@ function operationName(carrier: CarrierAirStatus) {
           <div class="air-counter-grid">
             <div v-for="aircraft in aircraftAt('hangar')" :key="aircraft.id" class="air-counter-item" :data-aircraft-id="aircraft.id" :data-status="aircraft.status">
               <AircraftCounter :aircraft="aircraft" :player-faction="playerFaction" :class="{ selected: selectedIDs.includes(aircraft.id) || selectedAircraftId === aircraft.id, selectable: true }" draggable="true" @click.stop="selectCounter(aircraft)" @dragstart="startDrag(aircraft, $event)" @dragend="endDrag" />
-              <button v-if="aircraft.kind === 'fighter'" :disabled="busy" @click.stop="action(aircraft)">CAP 升空</button><button v-else-if="aircraft.kind === 'recon'" :disabled="busy" @click.stop="openRecon(aircraft)">扇面侦察</button><span v-else class="air-no-action">待命</span>
+              <span class="air-no-action">拖至任务栏</span>
             </div>
             <p v-if="!aircraftAt('hangar').length" class="empty-hangar">机库空置</p>
           </div>
@@ -244,7 +242,7 @@ function operationName(carrier: CarrierAirStatus) {
           <div class="air-counter-grid">
             <div v-for="aircraft in aircraftAt('airborne')" :key="aircraft.id" class="air-counter-item" :data-aircraft-id="aircraft.id" :data-status="aircraft.status">
               <AircraftCounter :aircraft="aircraft" :player-faction="playerFaction" :class="{ selected: selectedAircraftId === aircraft.id, selectable: true }" @click="selectCounter(aircraft)" />
-              <button v-if="aircraft.status === 'cap'" :disabled="busy" @click.stop="action(aircraft)">回收至机库</button><span v-else class="air-no-action">{{ aircraft.returning ? '正在返航' : aircraft.tracking_fleet_id ? '正在跟踪目标' : '扇面搜索中' }}</span>
+              <button v-if="aircraft.status === 'cap'" :disabled="busy" @click.stop="recover(aircraft)">回收至机库</button><span v-else class="air-no-action">{{ aircraft.returning ? '正在返航' : aircraft.tracking_fleet_id ? '正在跟踪目标' : '扇面搜索中' }}</span>
             </div>
           </div>
         </section>

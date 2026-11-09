@@ -97,7 +97,7 @@ function selectFleetMember(unit: Unit) {
   selectedAirTaskID.value = ''
   selectedID.value = unit.id
   const isCarrier = ['CV', 'CVL', 'CVE'].includes(unit.type)
-  if (!isCarrier && unit.card.aircraft > 0) {
+  if (isCarrier || unit.card.hangar_capacity > 0) {
     aviationFocusID.value = unit.id
     activePanel.value = 'aviation'
   }
