@@ -311,7 +311,8 @@ components:
         seaplane: {type: boolean, description: true时界面使用橙色水机算子}
         launched: {type: boolean, description: 是否占用本回合起飞容量}
         priority: {type: integer}
-        task_id: {type: string, description: 同一批量航空任务的共享ID}
+        task_id: {type: string, description: 同一批量航空任务的共享ID，预备任务也会立即分配}
+        task_kind: {type: string, enum: [cap, recon], description: 已分配任务类型，算子尚未起飞时用于区分预备任务}
         origin_coord: {type: string, description: 侦察扇面顶点}
         coord: {type: string, description: 侦察机当前hex}
         heading: {type: string, enum: [E, SE, SW, W, NW, NE]}
@@ -326,6 +327,7 @@ components:
       properties:
         id: {type: string}
         kind: {type: string, enum: [cap, recon, asw, attack]}
+        phase: {type: string, enum: [servicing, preparing, launching, active], description: 服务端任务阶段，依次对应整备中、起飞准备中、起飞中、任务执行中}
         name: {type: string}
         carrier_id: {type: string}
         aircraft_ids: {type: array, items: {type: string}}

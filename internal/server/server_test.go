@@ -321,44 +321,52 @@ func TestSectorReconCommandPersistsAndAdvances(t *testing.T) {
 		t.Fatal("加入房间失败")
 	}
 	version := int64(1)
-	for _, commandID := range []string{"recon-prepare-1", "recon-prepare-2"} {
-		prepare := map[string]any{"command_id": commandID, "base_version": version, "type": "PREPARE_AIR", "aircraft_id": "air-b-10"}
-		if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/commands", prepare, nil); status != http.StatusOK {
-			t.Fatalf("侦察整备命令%s状态码%d", commandID, status)
-		}
-		version++
-		var advanced testView
-		if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": version, "ready": true}, &advanced); status != http.StatusOK {
-			t.Fatal("整备期间A ready失败")
-		}
-		if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": version, "ready": true}, &advanced); status != http.StatusOK {
-			t.Fatal("整备期间B ready失败")
-		}
-		version++
-	}
 	command := map[string]any{
 		"command_id": "recon-sector-1", "base_version": version, "type": "LAUNCH_RECON", "aircraft_id": "air-b-10",
 		"heading": "W", "sector_width": 60, "recon_radius": 6,
 	}
 	if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/commands", command, nil); status != http.StatusOK {
-		t.Fatalf("扇面侦察命令状态码%d", status)
+		t.Fatalf("机库算子分配侦察任务被拒绝")
 	}
 	version++
-	var launched testView
-	if status := b.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &launched); status != http.StatusOK {
-		t.Fatal("读取侦察任务失败")
+	var assigned testView
+	if status := b.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &assigned); status != http.StatusOK {
+		t.Fatal("读取预备侦察任务失败")
 	}
-	if launched.Version != version || len(launched.Aviation.Tasks) != 1 {
-		t.Fatalf("侦察任务未立即生效：%+v", launched)
-	}
-	task := launched.Aviation.Tasks[0]
-	if task.Kind != "recon" || task.Heading != "W" || task.SectorWidth != 60 || task.ReconRadius != 6 || len(task.SectorHexes) == 0 {
-		t.Fatalf("服务端扇面投影错误：%+v", task)
+	if assigned.Version != version || len(assigned.Aviation.Tasks) != 1 || assigned.Aviation.Tasks[0].Phase != "servicing" || assigned.Aviation.Tasks[0].ReconRadius != 6 {
+		t.Fatalf("侦察任务未立即进入整备：%+v", assigned)
 	}
 	room, err := database.Room(t.Context(), created.RoomID)
-	if err != nil || room.State.Aircraft["air-b-10"].Status != "recon" || room.State.Aircraft["air-b-10"].ReconRadius != 6 {
-		t.Fatalf("侦察任务未持久化：%+v %v", room.State.Aircraft["air-b-10"], err)
+	if err != nil || room.State.Aircraft["air-b-10"].Status != "service" || room.State.Aircraft["air-b-10"].TaskKind != "recon" || room.State.Aircraft["air-b-10"].ReconRadius != 6 {
+		t.Fatalf("预备侦察任务未持久化：%+v %v", room.State.Aircraft["air-b-10"], err)
 	}
+
+	for _, expected := range []struct {
+		turn   int
+		phase  string
+		status string
+	}{{2, "preparing", "deck"}, {3, "launching", "recon"}} {
+		var ready testView
+		if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": version, "ready": true}, &ready); status != http.StatusOK {
+			t.Fatal("A ready失败")
+		}
+		if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": version, "ready": true}, &ready); status != http.StatusOK {
+			t.Fatal("B ready失败")
+		}
+		version++
+		if ready.Turn != expected.turn || len(ready.Aviation.Tasks) != 1 || ready.Aviation.Tasks[0].Phase != expected.phase || ready.Aviation.Tasks[0].Aircraft[0].Status != expected.status {
+			t.Fatalf("第%d回合航空阶段错误：%+v", expected.turn, ready.Aviation.Tasks)
+		}
+	}
+	launched := assigned
+	if status := b.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &launched); status != http.StatusOK {
+		t.Fatal("读取自动起飞任务失败")
+	}
+	task := launched.Aviation.Tasks[0]
+	if task.Kind != "recon" || task.Heading != "W" || task.SectorWidth != 60 || task.ReconDistance != 0 || len(task.SectorHexes) == 0 {
+		t.Fatalf("自动起飞扇面投影错误：%+v", task)
+	}
+
 	var ready testView
 	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": version, "ready": true}, &ready); status != http.StatusOK {
 		t.Fatal("A ready失败")
@@ -366,8 +374,8 @@ func TestSectorReconCommandPersistsAndAdvances(t *testing.T) {
 	if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": version, "ready": true}, &ready); status != http.StatusOK {
 		t.Fatal("B ready失败")
 	}
-	if ready.Turn != 4 || len(ready.Aviation.Tasks) != 1 || ready.Aviation.Tasks[0].ReconDistance != 2 || ready.Aviation.Tasks[0].CurrentCoord != "0206" {
-		t.Fatalf("回合结算没有推进侦察航线：%+v", ready.Aviation.Tasks)
+	if ready.Turn != 4 || len(ready.Aviation.Tasks) != 1 || ready.Aviation.Tasks[0].Phase != "active" || ready.Aviation.Tasks[0].ReconDistance != 2 || ready.Aviation.Tasks[0].CurrentCoord != "0206" {
+		t.Fatalf("自动起飞后没有推进侦察航线：%+v", ready.Aviation.Tasks)
 	}
 	persisted, err := store.Open(dbPath)
 	if err != nil {

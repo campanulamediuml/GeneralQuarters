@@ -75,6 +75,7 @@ export interface AirUnit {
   launched: boolean
   priority: number
   task_id?: string
+  task_kind?: 'cap' | 'recon'
   origin_coord?: string
   coord?: string
   heading?: ReconHeading
@@ -100,6 +101,7 @@ export interface DistanceReference {
 export interface AirTask {
   id: string
   kind: 'cap' | 'recon' | 'asw' | 'attack'
+  phase: 'servicing' | 'preparing' | 'launching' | 'active'
   name: string
   carrier_id: string
   aircraft_ids: string[]

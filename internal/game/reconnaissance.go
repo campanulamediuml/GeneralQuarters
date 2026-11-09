@@ -290,6 +290,7 @@ func landRecon(state *State, aircraft *AirUnit, carrier *Unit) EngineEvent {
 	aircraft.Status = "hangar"
 	aircraft.Priority = 0
 	aircraft.TaskID = ""
+	aircraft.TaskKind = ""
 	aircraft.OriginCoord = ""
 	aircraft.Coord = ""
 	aircraft.Heading = ""

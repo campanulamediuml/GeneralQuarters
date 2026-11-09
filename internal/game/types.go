@@ -162,6 +162,7 @@ type AirUnit struct {
 	Launched         bool   `json:"launched"`
 	Priority         int    `json:"priority"`
 	TaskID           string `json:"task_id,omitempty"`
+	TaskKind         string `json:"task_kind,omitempty"`
 	OriginCoord      string `json:"origin_coord,omitempty"`
 	Coord            string `json:"coord,omitempty"`
 	Heading          string `json:"heading,omitempty"`
@@ -176,6 +177,7 @@ type AirUnit struct {
 type AirTask struct {
 	ID                string             `json:"id"`
 	Kind              string             `json:"kind"`
+	Phase             string             `json:"phase"`
 	Name              string             `json:"name"`
 	CarrierID         string             `json:"carrier_id"`
 	AircraftIDs       []string           `json:"aircraft_ids"`

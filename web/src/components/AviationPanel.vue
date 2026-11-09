@@ -145,10 +145,25 @@ function launchRecon() {
   selectedIDs.value = []
 }
 
+function taskPhase(task: (typeof tasks.value)[number]) {
+  if (task.phase === 'servicing') return '整备中'
+  if (task.phase === 'preparing') return '起飞准备中'
+  if (task.phase === 'launching') return '起飞中'
+  return '任务执行中'
+}
+
 function taskSummary(task: (typeof tasks.value)[number]) {
-  if (task.kind !== 'recon') return `${task.carrier_id} · ${task.aircraft_ids.length} 算子`
+  const carrier = carriers.value.find((item) => item.unit_id === task.carrier_id)?.name || task.carrier_id
+  if (task.kind !== 'recon') return `${carrier} · ${task.aircraft_ids.length} 算子`
+  if (task.phase === 'servicing' || task.phase === 'preparing') {
+    return `${carrier} · ${task.sector_width}° ${task.heading} · 半径 ${task.recon_radius}`
+  }
   const phase = task.tracking_fleet_id ? '持续跟踪' : task.returning ? '返航搜索' : `第 ${task.recon_distance || 0} 距离圈`
   return `${task.sector_width}° ${task.heading} · 半径 ${task.recon_radius} · ${phase}`
+}
+
+function selectTask(task: (typeof tasks.value)[number]) {
+  if (task.phase === 'launching' || task.phase === 'active') emit('selectAircraft', task.id)
 }
 
 function laneTasks(lane: TaskLane) {
@@ -165,9 +180,9 @@ function aircraftAt(status: 'hangar' | 'deck' | 'airborne') {
 }
 
 function counterHint(aircraft: AirUnit) {
-  if (aircraft.status === 'service') return '整备完成 · 下回合提升'
-  if (aircraft.status === 'deck' || aircraft.status === 'ready') return '准备完成 · 下回合任务'
-  return '拖至整备区'
+  if (aircraft.status === 'service') return aircraft.task_id ? '任务整备中 · 下回合自动准备' : '整备完成 · 下回合提升'
+  if (aircraft.status === 'deck' || aircraft.status === 'ready') return aircraft.task_id ? '准备完成 · 下回合自动起飞' : '准备完成 · 可拖入任务立即起飞'
+  return '拖至任务栏开始整备'
 }
 
 function operationName(carrier: CarrierAirStatus) {
@@ -180,8 +195,8 @@ function operationName(carrier: CarrierAirStatus) {
 
 <template>
   <section class="workspace-page aviation-workspace">
-    <div class="aviation-title"><div><span class="section-kicker">AVIATION COMMAND</span><h1>航空指挥界面</h1></div><span>三回合整备 / 拖拽分配</span></div>
-    <p class="aviation-intro">第1回合拖入整备区完成机库整备，第2回合再次拖入完成甲板或水机起飞准备，第3回合才能拖入CAP、侦察等任务栏起飞。拖动时可使用屏幕顶部的任务投放条。</p>
+    <div class="aviation-title"><div><span class="section-kicker">AVIATION COMMAND</span><h1>航空指挥界面</h1></div><span>任务分配 / 跨回合自动作业</span></div>
+    <p class="aviation-intro">把机库算子直接拖入CAP或侦察任务：本回合显示整备中，下回合显示起飞准备中，第三回合由服务器自动起飞。已备好、位于甲板或水机待命状态的算子拖入后立即起飞。拖动时可使用屏幕顶部的任务投放条。</p>
 
     <div v-if="draggingIDs.length" class="task-drag-dock" aria-label="航空任务投放条">
       <span>拖入任务</span>
@@ -192,9 +207,12 @@ function operationName(carrier: CarrierAirStatus) {
       <section v-for="lane in lanes" :key="lane.id" class="air-task-lane" :class="{ 'drop-active': dragOver === lane.id }" :data-lane-id="lane.id" @click="assignTarget(lane.id)" @dragover.prevent="dragOver = lane.id" @dragleave="dragOver = ''" @drop.prevent="assignTarget(lane.id)">
         <header><span>{{ lane.name }}</span><small>{{ laneTasks(lane).length }} 项</small></header>
         <div v-if="laneTasks(lane).length" class="air-task-list">
-          <article v-for="task in laneTasks(lane)" :key="task.id" class="air-task" :class="{ prioritized: task.priority === 1, 'recon-task': task.kind === 'recon' }" :data-task-id="task.id" @click.stop="emit('selectAircraft', task.aircraft_ids[0])">
-            <div class="air-task-copy"><strong>{{ task.name }}</strong><small>{{ taskSummary(task) }}</small></div>
-            <ReconSectorMap v-if="task.kind === 'recon'" :map="gameMap" :task="task" />
+          <article v-for="task in laneTasks(lane)" :key="task.id" class="air-task" :class="{ prioritized: task.priority === 1, 'recon-task': task.kind === 'recon' && !['servicing', 'preparing'].includes(task.phase), 'pending-air-task': ['servicing', 'preparing'].includes(task.phase) }" :data-task-id="task.id" :data-phase="task.phase" @click.stop="selectTask(task)">
+            <div class="air-task-copy"><strong>{{ task.name }}</strong><span class="air-task-phase" :class="`phase-${task.phase}`">{{ taskPhase(task) }}</span><small>{{ taskSummary(task) }}</small></div>
+            <div v-if="['servicing', 'preparing'].includes(task.phase)" class="air-task-counters" @click.stop>
+              <AircraftCounter v-for="aircraft in task.aircraft" :key="aircraft.id" :aircraft="aircraft" :player-faction="playerFaction" />
+            </div>
+            <ReconSectorMap v-if="task.kind === 'recon' && task.sector_hexes?.length" :map="gameMap" :task="task" />
             <span class="task-priority">优先级 {{ task.priority }}</span>
             <button class="task-flag" :class="{ active: task.priority === 1 }" :aria-label="`将${task.name}设为最高优先级`" :disabled="busy" @click.stop="emit('command', 'PRIORITIZE_AIR_TASK', [task.id])">⚑</button>
           </article>
@@ -222,13 +240,13 @@ function operationName(carrier: CarrierAirStatus) {
 
         <section class="air-storage-zone flight-deck-zone" :class="{ 'drop-active': dragOver === 'deck' }" data-drop-target="deck" @dragover.prevent="dragOver = 'deck'" @dragleave="dragOver = ''" @drop.prevent="assignTarget('deck')">
           <header><div><span class="section-kicker">{{ selectedCarrier.deck_capacity ? 'FLIGHT DECK' : 'LAUNCH READY' }}</span><h3>{{ selectedCarrier.deck_capacity ? '整备 / 飞行甲板' : '整备 / 起飞准备' }}</h3></div><strong v-if="selectedCarrier.deck_capacity">{{ selectedCarrier.deck_used }} / {{ selectedCarrier.deck_capacity }}</strong><strong v-else>{{ aircraftAt('deck').length }} 已准备</strong></header>
-          <p>第1回合拖入机库算子完成整备；第2回合将整备算子再次拖入，完成起飞准备。</p>
+          <p>这里也可手动整备未分配任务的算子；已分配任务会随回合自动推进，无需重复拖放。</p>
           <div class="air-counter-grid">
             <div v-for="aircraft in aircraftAt('deck')" :key="aircraft.id" class="air-counter-item" :data-aircraft-id="aircraft.id" :data-status="aircraft.status">
               <AircraftCounter :aircraft="aircraft" :player-faction="playerFaction" :class="{ selected: selectedIDs.includes(aircraft.id) || selectedAircraftId === aircraft.id, selectable: true }" draggable="true" @click="selectCounter(aircraft)" @dragstart="startDrag(aircraft, $event)" @dragend="endDrag" />
               <span class="air-no-action">{{ counterHint(aircraft) }}</span>
             </div>
-            <button v-if="aircraftAt('deck').length" class="return-hangar-button" @click="assignTarget('hangar')">将已选算子拉回机库并重置整备</button>
+            <button v-if="aircraftAt('deck').length" class="return-hangar-button" @click="assignTarget('hangar')">将已选算子拉回机库，取消任务并重置整备</button>
             <span v-else class="empty-air-zone">拖入机库算子开始整备</span>
           </div>
         </section>
@@ -259,7 +277,7 @@ function operationName(carrier: CarrierAirStatus) {
     <div v-if="reconAircraft" class="recon-dialog" @click.self="reconAircraftIDs = []">
       <section class="recon-modal" role="dialog" aria-modal="true" aria-label="配置扇面侦察">
         <header><div><span class="section-kicker">SECTOR RECONNAISSANCE</span><h2>配置扇面侦察</h2></div><button aria-label="关闭" @click="reconAircraftIDs = []">×</button></header>
-        <p>{{ reconAircraft.model }} · {{ reconAircraftIDs.length }}个算子。确认配置并点击“起飞执行扇面侦察”才会提交起飞；只有已完成机库整备和甲板／水机起飞准备的算子才能升空。扇面中轴决定航线，飞机进入每个距离圈时由服务器进行发现判定。</p>
+        <p>{{ reconAircraft.model }} · {{ reconAircraftIDs.length }}个算子。确认后立即进入侦察任务栏；未备好的算子依次完成整备、起飞准备并自动起飞，已备好的算子立即起飞。服务器保存扇面配置，并以实际起飞时的母舰位置为顶点进行发现判定。</p>
         <fieldset class="recon-heading-picker"><legend>预定侦察航向</legend><button v-for="heading in headings" :key="heading.id" :class="{ active: reconHeading === heading.id }" :aria-label="`${heading.id} ${heading.name}`" @click="reconHeading = heading.id"><span>{{ heading.arrow }}</span><b>{{ heading.id }}</b><small>{{ heading.name }}</small></button></fieldset>
         <div class="recon-options">
           <fieldset><legend>扇面角度</legend><div class="segmented-control"><button :class="{ active: reconWidth === 60 }" @click="reconWidth = 60">60°<small>标准发现率</small></button><button :class="{ active: reconWidth === 120 }" @click="reconWidth = 120">120°<small>发现率减半</small></button></div></fieldset>
@@ -274,8 +292,8 @@ function operationName(carrier: CarrierAirStatus) {
           </svg>
           <div><b>预览方向</b><span>{{ reconHeading }} · {{ reconWidth }}°</span><small>实际覆盖hex由服务端在起飞后计算</small></div>
         </div>
-        <div class="recon-brief"><span>顶点</span><strong>母舰当前位置</strong><i>→</i><span>航线</span><strong>{{ reconHeading }}</strong><i>→</i><span>扇面</span><strong>{{ reconWidth }}° / {{ reconAircraft.recon_radius_limit }} hex</strong></div>
-        <footer><button class="reset-button" @click="reconAircraftIDs = []">取消</button><button class="apply-button" :disabled="busy" @click="launchRecon">起飞执行扇面侦察</button></footer>
+        <div class="recon-brief"><span>顶点</span><strong>实际起飞时的母舰位置</strong><i>→</i><span>航线</span><strong>{{ reconHeading }}</strong><i>→</i><span>扇面</span><strong>{{ reconWidth }}° / {{ reconAircraft.recon_radius_limit }} hex</strong></div>
+        <footer><button class="reset-button" @click="reconAircraftIDs = []">取消</button><button class="apply-button" :disabled="busy" @click="launchRecon">{{ ['deck', 'ready'].includes(reconAircraft.status) ? '起飞执行扇面侦察' : '加入侦察任务' }}</button></footer>
       </section>
     </div>
   </section>

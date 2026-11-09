@@ -86,10 +86,11 @@ function selectMapUnit(unit: Unit) {
 }
 
 function selectAircraft(aircraftID: string) {
-  if (!state.value?.aviation.tasks.some((task) => task.id === aircraftID)) return
+  const task = state.value?.aviation.tasks.find((item) => item.id === aircraftID || item.aircraft_ids.includes(aircraftID))
+  if (!task || task.phase === 'servicing' || task.phase === 'preparing') return
   selectedID.value = ''
   menuCoord.value = ''
-  selectedAirTaskID.value = aircraftID
+  selectedAirTaskID.value = task.id
   activePanel.value = 'map'
 }
 

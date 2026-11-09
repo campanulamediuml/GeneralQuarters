@@ -48,3 +48,5 @@
 @media(max-width:900px){.task-drag-dock{left:112px;grid-template-columns:repeat(4,minmax(90px,1fr));max-height:calc(100vh - 24px);overflow:auto}.task-drag-dock>span{display:none}}
 
 .hex-cell.distance-reference:not(.legal) polygon{fill:#173d4a66;stroke:#4f8295;stroke-dasharray:4 3}.hex-cell.distance-outer:not(.legal) polygon{stroke:#79aabd;stroke-width:1.8}.distance-label circle{fill:#173e4bdd;stroke:#79aabd}.distance-label text{fill:#d1e5ed}
+
+.air-task.pending-air-task{align-items:flex-start;flex-wrap:wrap;padding-bottom:30px;cursor:default}.air-task:not(.pending-air-task){cursor:pointer}.air-task-copy .air-task-phase{align-self:flex-start;padding:2px 6px;border:1px solid #58727a;color:#b9cdcb;font-size:9px}.air-task-copy .phase-servicing{border-color:#a6894e;color:#e0c47f}.air-task-copy .phase-preparing{border-color:#5c91a4;color:#9fd6e4}.air-task-copy .phase-launching{border-color:#d7bb7b;color:#f0d58d}.air-task>div.air-task-counters{display:flex;flex:1 0 100%;flex-direction:row;flex-wrap:wrap;gap:8px;padding-top:8px;border-top:1px solid #304a52}.air-task.pending-air-task .task-priority{position:absolute;left:12px;bottom:9px;margin:0}
