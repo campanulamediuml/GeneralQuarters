@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="General Quarters">
+  <rect width="512" height="512" rx="96" fill="#0a171b"/>
+  <rect x="10" y="10" width="492" height="492" rx="88" fill="none" stroke="#29474f" stroke-width="8"/>
+  <path d="M256 66 420 160v192l-164 94-164-94V160Z" fill="#10282f" stroke="#d7bb7b" stroke-width="14" stroke-linejoin="round"/>
+  <path d="m184 160 30-10-38 132-30 10zm70-20 30-10-38 132-30 10zm70 36 30-10-38 132-30 10z" fill="#d7bb7b"/>
+  <path d="M126 326h260l-38 44H164z" fill="#8fc6d3"/>
+  <path d="M164 312h158v14H154zm102-42h54v42h-54zm12-22h10v22h-10z" fill="#8fc6d3"/>
+  <path d="M132 396c30-14 54-14 84 0s54 14 84 0 54-14 80 0" fill="none" stroke="#4f8797" stroke-width="10" stroke-linecap="round"/>
+</svg>

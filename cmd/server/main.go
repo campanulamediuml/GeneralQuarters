@@ -136,6 +136,9 @@ func registerSPA(mux *http.ServeMux) {
 		path := strings.TrimPrefix(r.URL.Path, "/")
 		if path != "" {
 			if _, err := fs.Stat(dist, path); err == nil {
+				if strings.HasSuffix(path, ".webmanifest") {
+					w.Header().Set("Content-Type", "application/manifest+json")
+				}
 				files.ServeHTTP(w, r)
 				return
 			}

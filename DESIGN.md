@@ -162,6 +162,10 @@ WebSocket只发送无敏感内容的变更类型。客户端收到通知后获�
 
 模型无权直接修改状态、投掷骰子或读取其他阵营隐藏信息。密钥只存在服务器环境，不进入浏览器、内容包或事件日志。自然语言与结构化命令之间必须经过校验层，解析失败应请求澄清或保持原命令。
 
+## 浏览器与 PWA 图标
+
+统一图标资源位于`web/public/icons`，包含SVG、32px favicon、180px Apple触摸图标、192/512px PWA图标和独立maskable安全遮罩版本。`web/index.html`声明浏览器图标、Apple触摸图标和`manifest.webmanifest`；manifest使用深色主题、`standalone`显示模式和根路径作用域。当前只提供安装外观，不注册Service Worker，不承诺离线运行。
+
 ## 接口文档
 
 OpenAPI源文件位于`api/openapi.yaml`，运行时可访问`/api/v1/openapi.yaml`。人类可读协议、WebSocket事件、错误格式和AI扩展约定见`API.md`，在线入口为`/api/docs`。
