@@ -38,6 +38,7 @@ const fleets = computed(() => state.value?.fleets || [])
 const ownFleets = computed(() => fleets.value.filter((fleet) => fleet.faction === state.value?.you.faction))
 const selectedUnit = computed(() => ownUnits.value.find((unit) => unit.id === selectedID.value))
 const selectedFleet = computed(() => ownFleets.value.find((fleet) => fleet.id === selectedID.value || fleet.members.some((unit) => unit.id === selectedID.value)))
+const canOpenAviation = computed(() => Boolean(selectedFleet.value?.members.some((unit) => unit.card.hangar_capacity > 0)))
 const fleetPanelBottom = computed(() => {
   if (!state.value || !selectedFleet.value) return false
   const row = Number(selectedFleet.value.coord.slice(0, 2))
@@ -104,8 +105,10 @@ function selectAircraft(aircraftID: string) {
 }
 
 function openAviation(fleetID?: string) {
+  const targetFleetID = fleetID || selectedFleet.value?.fleet_id || ''
+  if (!targetFleetID) return
   shipDetailOpen.value = false
-  aviationFleetID.value = fleetID || selectedFleet.value?.fleet_id || ownFleets.value.find((fleet) => fleet.members.some((unit) => unit.card.hangar_capacity > 0))?.fleet_id || ''
+  aviationFleetID.value = targetFleetID
   activePanel.value = 'aviation'
 }
 
@@ -278,7 +281,7 @@ onUnmounted(() => {
         <button :class="{ active: activePanel === 'rules' }" @click="activePanel = 'rules'"><span class="rail-icon">▤</span><b>规则书</b></button>
         <button :class="{ active: activePanel === 'map' }" @click="activePanel = 'map'"><span class="rail-icon">⬡</span><b>地图</b></button>
         <button :class="{ active: activePanel === 'settings' }" @click="activePanel = 'settings'"><span class="rail-icon">⌘</span><b>设置</b></button>
-        <button :class="{ active: activePanel === 'aviation' }" @click="openAviation()"><span class="rail-icon">△</span><b>航空界面</b></button>
+        <button :class="{ active: activePanel === 'aviation' }" :disabled="!canOpenAviation" :title="canOpenAviation ? '进入当前舰队航空界面' : '先在地图选择具备航空能力的舰队'" @click="openAviation()"><span class="rail-icon">△</span><b>航空界面</b></button>
         <button :class="{ active: activePanel === 'log' }" @click="activePanel = 'log'"><span class="rail-icon">≡</span><b>日志信息</b></button>
       </nav>
       <div class="rail-spacer"></div>

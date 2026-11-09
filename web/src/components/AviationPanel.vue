@@ -106,6 +106,8 @@ function selectCounter(aircraft: AirUnit, stackIDs: string[] = [aircraft.id]) {
   }
 }
 
+let dragPreview: HTMLElement | undefined
+
 function startDrag(aircraft: AirUnit, event: DragEvent, stackIDs: string[] = [aircraft.id]) {
   if (!selectedIDs.value.includes(aircraft.id)) selectedIDs.value = counterSelection(aircraft, stackIDs)
   else if (selectionMode.value === 'type') selectedIDs.value = [...new Set([...selectedIDs.value, ...counterSelection(aircraft, stackIDs)])]
@@ -113,11 +115,23 @@ function startDrag(aircraft: AirUnit, event: DragEvent, stackIDs: string[] = [ai
   if (event.dataTransfer && event.currentTarget instanceof HTMLElement) {
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('text/plain', draggingIDs.value.join(','))
-    event.dataTransfer.setDragImage(event.currentTarget, 40, 40)
+    dragPreview?.remove()
+    dragPreview = event.currentTarget.cloneNode(true) as HTMLElement
+    dragPreview.classList.add('air-drag-preview')
+    dragPreview.setAttribute('data-stack-count', String(draggingIDs.value.length))
+    const bounds = event.currentTarget.getBoundingClientRect()
+    dragPreview.style.cssText = `position:fixed;left:-1000px;top:0;width:${bounds.width}px;height:${bounds.height}px;pointer-events:none`
+    const count = dragPreview.querySelector('.aircraft-stack-count')
+    if (draggingIDs.value.length === 1) count?.remove()
+    else if (count) count.textContent = `×${draggingIDs.value.length}`
+    document.body.appendChild(dragPreview)
+    event.dataTransfer.setDragImage(dragPreview, 40, 40)
   }
 }
 
 function endDrag() {
+  dragPreview?.remove()
+  dragPreview = undefined
   draggingIDs.value = []
   dragOver.value = ''
 }

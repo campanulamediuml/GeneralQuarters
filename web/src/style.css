@@ -73,3 +73,5 @@
 .map-canvas:has(.map-fleet-workbench) .map-zoom-controls{top:auto;bottom:10px}
 
 .map-fleet-workbench.fleet-panel-bottom{top:auto;bottom:10px}.map-canvas:has(.fleet-panel-bottom) .map-zoom-controls{top:10px;bottom:auto}.map-canvas:has(.fleet-panel-bottom) .map-lobby-panel{top:10px;bottom:auto}.map-canvas:has(.fleet-panel-bottom) .map-selection-card{top:10px;bottom:auto}
+
+.rail-menu button:disabled{opacity:.35;cursor:not-allowed;border-left-color:transparent;background:transparent;color:#536b70}.rail-menu button:disabled:hover{background:transparent;color:#536b70}
