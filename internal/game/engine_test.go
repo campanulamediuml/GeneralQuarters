@@ -50,7 +50,7 @@ func TestScenarioValidationAndMovement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(catalog.Units) != 9 || len(state.Units) != 62 || len(state.Aircraft) != 32 {
+	if len(catalog.Units) != 9 || len(state.Units) != 62 || len(state.Aircraft) != 42 {
 		t.Fatalf("沙盒部署数量错误：definitions=%d units=%d aircraft=%d", len(catalog.Units), len(state.Units), len(state.Aircraft))
 	}
 	fleetA := VisibleFleets(state, "A")
@@ -101,6 +101,29 @@ func TestScenarioValidationAndMovement(t *testing.T) {
 	state.Units["a-bb-01"].Coord = "0405"
 	if err := ValidateOrder(state, "A", Order{Type: "SET_MOVE", UnitID: unit.ID, Coord: "0506"}); err == nil {
 		t.Fatal("允许进入暗礁")
+	}
+	unit.Coord = "0303"
+	if err := ValidateOrder(state, "A", Order{Type: "SET_MOVE", UnitID: unit.ID, Coord: "0404"}); err != nil {
+		t.Fatalf("非航母编队不能进入浅滩：%v", err)
+	}
+	carrierLeader := state.Units["b-bb-01"]
+	carrierLeader.Coord = "0303"
+	for _, coord := range LegalMoves(state, carrierLeader) {
+		if coord == "0404" {
+			t.Fatal("含航母编队收到浅滩合法移动高亮")
+		}
+	}
+	if err := ValidateOrder(state, "B", Order{Type: "SET_MOVE", UnitID: carrierLeader.ID, Coord: "0404"}); err == nil {
+		t.Fatal("含航母编队通过非航母首领进入浅滩")
+	}
+	for _, coord := range LegalMoves(state, state.Units["a2-cv-01"]) {
+		if coord == "0703" {
+			t.Fatal("航母初始位置附近的浅滩被标记为可移动")
+		}
+	}
+	carrierDeployment := ScenarioDefinition{ID: "carrier-shoal", Map: "_sandbox", Deployments: []Deployment{{ID: "cv", Unit: "cv", Faction: "B", Coord: "0404"}}}
+	if _, err := NewState(carrierDeployment, gameMap, catalog, 42); err == nil {
+		t.Fatal("允许把航母初始部署在浅滩")
 	}
 }
 

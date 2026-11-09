@@ -252,7 +252,7 @@ function operationName(carrier: CarrierAirStatus) {
     <div v-if="reconAircraft" class="recon-dialog" @click.self="reconAircraftIDs = []">
       <section class="recon-modal" role="dialog" aria-modal="true" aria-label="配置扇面侦察">
         <header><div><span class="section-kicker">SECTOR RECONNAISSANCE</span><h2>配置扇面侦察</h2></div><button aria-label="关闭" @click="reconAircraftIDs = []">×</button></header>
-        <p>{{ reconAircraft.model }} · {{ reconAircraftIDs.length }}个算子从母舰当前位置起飞。扇面中轴决定航线，飞机进入每个距离圈时由服务器进行发现判定。</p>
+        <p>{{ reconAircraft.model }} · {{ reconAircraftIDs.length }}个算子仍在机库，确认下方配置并点击“起飞执行扇面侦察”后才会转为空中算子。扇面中轴决定航线，飞机进入每个距离圈时由服务器进行发现判定。</p>
         <fieldset class="recon-heading-picker"><legend>预定侦察航向</legend><button v-for="heading in headings" :key="heading.id" :class="{ active: reconHeading === heading.id }" :aria-label="`${heading.id} ${heading.name}`" @click="reconHeading = heading.id"><span>{{ heading.arrow }}</span><b>{{ heading.id }}</b><small>{{ heading.name }}</small></button></fieldset>
         <div class="recon-options">
           <fieldset><legend>扇面角度</legend><div class="segmented-control"><button :class="{ active: reconWidth === 60 }" @click="reconWidth = 60">60°<small>标准发现率</small></button><button :class="{ active: reconWidth === 120 }" @click="reconWidth = 120">120°<small>发现率减半</small></button></div></fieldset>

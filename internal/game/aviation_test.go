@@ -37,13 +37,16 @@ func TestAviationProjectionIncludesCarriersAndSeaplaneShips(t *testing.T) {
 	if carrier == nil || carrier.HangarUsed != 4 || carrier.HangarCapacity != 24 || carrier.DeckCapacity != 9 {
 		t.Fatalf("航母机库或甲板容量错误：%+v", carrier)
 	}
-	if seaplanes != 6 {
+	if seaplanes != 11 {
 		t.Fatalf("水上飞机数量错误：%d", seaplanes)
 	}
-	for _, unitID := range []string{"b-ca-01", "b-ca-02", "b-cl-01", "b2-bb-01", "b2-ca-01", "b2-cl-01"} {
-		if state.Units[unitID].Card.HangarCapacity != 1 || state.Units[unitID].Card.Aircraft != 1 {
-			t.Fatalf("指定水机舰能力或当前搭载错误：%+v", state.Units[unitID])
+	for _, unitID := range []string{"b-ca-01", "b-ca-02", "b-cl-01", "b2-ca-01", "b2-cl-01"} {
+		if state.Units[unitID].Card.HangarCapacity != 2 || state.Units[unitID].Card.Aircraft != 2 {
+			t.Fatalf("巡洋舰水机机库或当前搭载错误：%+v", state.Units[unitID])
 		}
+	}
+	if state.Units["b2-bb-01"].Card.HangarCapacity != 1 || state.Units["b2-bb-01"].Card.Aircraft != 1 {
+		t.Fatalf("战列舰水机机库或当前搭载错误：%+v", state.Units["b2-bb-01"])
 	}
 	for _, unitID := range []string{"b-bb-01", "b-ca-03", "b-ca-04", "b-cl-02", "b-dd-01", "b2-bb-02", "b2-ca-02", "b2-dd-01"} {
 		if state.Units[unitID].Card.HangarCapacity != 0 || state.Units[unitID].Card.Aircraft != 0 {

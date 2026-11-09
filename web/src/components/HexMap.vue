@@ -96,8 +96,7 @@ function moveOrder(fleet: FleetGroup) {
 }
 
 function clickHex(coord: string) {
-  if (selectedMoves.value.has(coord)) emit('move', coord)
-  else emit('selectHex', coord)
+  emit('selectHex', coord)
 }
 
 function startDrag(unit: FleetGroup, event: PointerEvent) {

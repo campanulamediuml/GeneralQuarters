@@ -46,3 +46,5 @@
 
 .task-drag-dock{position:fixed;z-index:90;top:12px;left:120px;right:16px;display:grid;grid-template-columns:82px repeat(7,minmax(100px,1fr));gap:6px;padding:9px;border:1px solid var(--gold);background:#0c1c22f5;box-shadow:0 12px 35px #000b}.task-drag-dock>span{display:grid;place-items:center;color:var(--gold);font-size:10px}.task-drag-dock>button{min-height:48px;padding:6px;border:1px solid #45636c;background:#17323a;color:#c6d6d2;font-size:10px}.task-drag-dock>button.drop-active{border-color:#8de0ad;background:#275b45;color:#e1f4e8;box-shadow:inset 0 0 0 2px #8de0ad44}
 @media(max-width:900px){.task-drag-dock{left:112px;grid-template-columns:repeat(4,minmax(90px,1fr));max-height:calc(100vh - 24px);overflow:auto}.task-drag-dock>span{display:none}}
+
+.hex-cell.distance-reference:not(.legal) polygon{fill:#173d4a66;stroke:#4f8295;stroke-dasharray:4 3}.hex-cell.distance-outer:not(.legal) polygon{stroke:#79aabd;stroke-width:1.8}.distance-label circle{fill:#173e4bdd;stroke:#79aabd}.distance-label text{fill:#d1e5ed}

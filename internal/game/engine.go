@@ -81,7 +81,8 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		if definition.Strength <= 0 {
 			return state, fmt.Errorf("单位%s生命值必须大于0", definition.ID)
 		}
-		if !inBounds(gameMap, deployment.Coord) || terrainAt(gameMap, deployment.Coord) == "island" || terrainAt(gameMap, deployment.Coord) == "reef" {
+		terrain := terrainAt(gameMap, deployment.Coord)
+		if !inBounds(gameMap, deployment.Coord) || terrain == "island" || terrain == "reef" || (terrain == "shoal" && isCarrierType(definition.Type)) {
 			return state, fmt.Errorf("部署%s坐标不可通行", deployment.ID)
 		}
 		fleetID := deployment.FleetID
@@ -151,8 +152,12 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 	return state, nil
 }
 
+func isCarrierType(unitType string) bool {
+	return unitType == "CV" || unitType == "CVL" || unitType == "CVE"
+}
+
 func IsCarrier(unit *Unit) bool {
-	return unit != nil && (unit.Type == "CV" || unit.Type == "CVL" || unit.Type == "CVE")
+	return unit != nil && isCarrierType(unit.Type)
 }
 
 func inBounds(gameMap MapDefinition, coord string) bool {
@@ -176,9 +181,16 @@ func LegalMoves(state State, unit *Unit) []string {
 	if unit.Moved {
 		return []string{}
 	}
+	carrierFleet := false
 	for _, member := range state.Units {
-		if FleetKey(member) == FleetKey(unit) && member.Moved {
+		if FleetKey(member) != FleetKey(unit) {
+			continue
+		}
+		if member.Moved {
 			return []string{}
+		}
+		if IsCarrier(member) {
+			carrierFleet = true
 		}
 	}
 	moves := []string{}
@@ -187,9 +199,10 @@ func LegalMoves(state State, unit *Unit) []string {
 			continue
 		}
 		terrain := terrainAt(state.Map, coord)
-		if terrain != "island" && terrain != "reef" {
-			moves = append(moves, coord)
+		if terrain == "island" || terrain == "reef" || (terrain == "shoal" && carrierFleet) {
+			continue
 		}
+		moves = append(moves, coord)
 	}
 	return moves
 }
