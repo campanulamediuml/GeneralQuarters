@@ -453,6 +453,7 @@ func recordContact(state *State, observer, fleetID string, members []Unit) int {
 	}
 	contact.Faction = members[0].Faction
 	contact.Coord = members[0].Coord
+	contact.Heading = members[0].Heading
 	contact.Count = len(members)
 	contact.Members = make([]Unit, len(members))
 	copy(contact.Members, members)
@@ -464,25 +465,26 @@ func recordContact(state *State, observer, fleetID string, members []Unit) int {
 
 func projectedContactUnits(contact FleetContact) []Unit {
 	level := contact.Level
-	if level >= 3 && len(contact.Members) > 0 {
+	heading := contact.Heading
+	if heading == "" {
+		heading = "NE"
+	}
+	if level >= 4 && len(contact.Members) > 0 {
 		units := make([]Unit, len(contact.Members))
 		copy(units, contact.Members)
 		for index := range units {
-			units[index].FleetName = fmt.Sprintf("侦察接触 · 情报%d", level)
+			units[index].FleetName = "侦察接触 · 情报4"
+			units[index].ContactLevel = 4
 			units[index].LegalMoves = nil
 		}
 		return units
 	}
 	units := make([]Unit, 0, contact.Count)
 	for index := 0; index < contact.Count; index++ {
-		unit := Unit{
+		units = append(units, Unit{
 			ID: fmt.Sprintf("contact-%s-%02d", contact.FleetID, index+1), FleetID: contact.FleetID,
-			FleetName: fmt.Sprintf("侦察接触 · 情报%d", level), Name: "未知舰船", Faction: contact.Faction, Coord: contact.Coord, Heading: "NE",
-		}
-		if level >= 2 && index < len(contact.Members) {
-			unit.Type = contact.Members[index].Type
-		}
-		units = append(units, unit)
+			FleetName: fmt.Sprintf("侦察接触 · 情报%d", level), Name: "未知舰船", Faction: contact.Faction, Coord: contact.Coord, Heading: heading, ContactLevel: level,
+		})
 	}
 	return units
 }

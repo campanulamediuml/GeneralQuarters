@@ -275,6 +275,7 @@ function elevatorName(elevator: AircraftElevator) {
 function elevatorStatus(elevator: AircraftElevator) {
   if (elevator.status === 'lifting') return '提升中'
   if (elevator.status === 'lowering') return '下降中'
+  if (elevator.status === 'damaged') return '损坏'
   return '空闲'
 }
 </script>

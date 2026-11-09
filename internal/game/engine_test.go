@@ -175,8 +175,15 @@ func TestManualFleetMergeAndFleetMovement(t *testing.T) {
 	if FleetKey(state.Units["a1"]) != "a1" || FleetKey(state.Units["a2"]) != "a1" {
 		t.Fatal("整编未统一fleet_id")
 	}
+	if state.Units["a1"].Coord != "0101" || state.Units["a2"].Coord != "0101" || state.Units["a1"].MoveCooldown != 3 {
+		t.Fatal("整编后没有锁定3回合移动")
+	}
+	for turn := 0; turn < 3; turn++ {
+		ResolveOrders(&state, nil)
+	}
+	ApplyImmediateMove(&state, Order{Type: "SET_MOVE", UnitID: "a1", Coord: "0102"})
 	if state.Units["a1"].Coord != "0102" || state.Units["a2"].Coord != "0102" {
-		t.Fatal("编队成员未一起移动")
+		t.Fatal("冷却结束后编队成员未一起移动")
 	}
 	found := false
 	for _, event := range events {

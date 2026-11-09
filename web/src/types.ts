@@ -41,7 +41,7 @@ export interface AircraftElevator {
   id: string
   kind: 'elevator' | 'crane'
   capacity: number
-  status: 'idle' | 'lifting' | 'lowering'
+  status: 'idle' | 'lifting' | 'lowering' | 'damaged'
   task_id?: string
   aircraft_ids: string[]
 }
@@ -50,6 +50,21 @@ export interface FlightDeck {
   length: number
   operation: '' | 'launch' | 'recover'
   elevators: AircraftElevator[]
+}
+
+export interface ShipDamage {
+  fire?: 'small' | 'burning'
+  flooding?: number[]
+  disabled?: boolean
+  tilt?: boolean
+  oil_leak?: boolean
+  deck_damaged?: boolean
+  deck_destroyed?: boolean
+  elevator_damage?: number
+  torpedo_disabled?: boolean
+  surface_radar_disabled?: boolean
+  air_radar_disabled?: boolean
+  sonar_disabled?: boolean
 }
 
 export interface Unit {
@@ -63,9 +78,13 @@ export interface Unit {
   coord: string
   heading?: 'E' | 'SE' | 'SW' | 'W' | 'NW' | 'NE'
   moved?: boolean
+  move_cooldown?: number
+  confusion?: number
+  contact_level?: 1 | 2 | 3 | 4
   strength: number
   max_strength: number
   card: ShipCard
+  damage?: ShipDamage
   deck?: FlightDeck
   legal_moves?: string[]
 }

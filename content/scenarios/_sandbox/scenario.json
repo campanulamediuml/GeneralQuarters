@@ -1,8 +1,11 @@
 {
   "id": "_sandbox",
-  "version": 6,
+  "version": 7,
   "name": "灰海接触",
   "map": "_sandbox",
+  "year": 1942,
+  "night": false,
+  "doctrines": {"A": "us", "B": "japan"},
   "description": "双方各拥有一支14艘的战列舰队和一支17艘的航母机动舰队。每艘配备水机的巡洋舰搭载2个SOC侦察算子，战列舰搭载1个；航母编队另含完整航空测试算子。参数仅用于功能测试。",
   "deployments": [
     {"id":"a-bb-01","unit":"bb","faction":"A","name":"苍岭","coord":"0202","fleet_id":"TG-A","fleet_name":"第一战列舰队","hangar_capacity":1},

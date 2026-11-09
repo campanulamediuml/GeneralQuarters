@@ -54,6 +54,7 @@ func readJSON(path string, target any) error {
 func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCatalog, seed uint64) (State, error) {
 	state := State{
 		ScenarioID: scenario.ID, ScenarioName: scenario.Name, Description: scenario.Description,
+		Year: scenario.Year, Night: scenario.Night, Doctrines: scenario.Doctrines,
 		Map: gameMap, Units: map[string]*Unit{}, Aircraft: map[string]*AirUnit{}, Contacts: map[string]map[string]*FleetContact{}, RNGState: seed,
 		Definitions: map[string]string{"scenario": fmt.Sprint(scenario.Version), "map": fmt.Sprint(gameMap.Version), "units": fmt.Sprint(catalog.Version)},
 	}
@@ -179,7 +180,7 @@ func LegalMoves(state State, unit *Unit) []string {
 	if unit == nil {
 		return nil
 	}
-	if unit.Moved {
+	if unit.Moved || unit.MoveCooldown > 0 {
 		return []string{}
 	}
 	carrierFleet := false
@@ -187,7 +188,7 @@ func LegalMoves(state State, unit *Unit) []string {
 		if FleetKey(member) != FleetKey(unit) {
 			continue
 		}
-		if member.Moved {
+		if member.Moved || member.MoveCooldown > 0 {
 			return []string{}
 		}
 		if IsCarrier(member) {
@@ -257,6 +258,9 @@ func ValidateOrder(state State, faction string, order Order) error {
 		if unit.Moved {
 			return fmt.Errorf("该舰队本回合已经移动")
 		}
+		if cooldown := FleetMoveCooldown(state, FleetKey(unit)); cooldown > 0 {
+			return fmt.Errorf("该舰队还需等待%d回合才能移动", cooldown)
+		}
 		if !inBounds(state.Map, order.Coord) {
 			return fmt.Errorf("目标坐标不在地图内")
 		}
@@ -277,6 +281,9 @@ func ValidateOrder(state State, faction string, order Order) error {
 		if FleetKey(unit) == FleetKey(target) {
 			return fmt.Errorf("这两个单位已经属于同一舰队")
 		}
+		if FleetConfusion(state, FleetKey(unit)) > 0 || FleetConfusion(state, FleetKey(target)) > 0 {
+			return fmt.Errorf("交战后混乱的舰队无法整编")
+		}
 		return nil
 	default:
 		return fmt.Errorf("不支持的命令类型")
@@ -287,6 +294,9 @@ func validateReorganization(state State, faction string, order Order) error {
 	expected := map[string]bool{}
 	for _, unit := range state.Units {
 		if unit.Faction == faction && unit.Coord == order.Coord {
+			if unit.Confusion > 0 {
+				return fmt.Errorf("交战后混乱的舰队无法整编")
+			}
 			expected[unit.ID] = true
 		}
 	}
@@ -308,6 +318,7 @@ func validateReorganization(state State, faction string, order Order) error {
 
 func ApplyImmediateMove(state *State, order Order) []EngineEvent {
 	leader := state.Units[order.UnitID]
+	interval := FleetMoveInterval(*state, leader)
 	events := []EngineEvent{}
 	for _, unit := range state.Units {
 		if FleetKey(unit) != FleetKey(leader) {
@@ -317,9 +328,10 @@ func ApplyImmediateMove(state *State, order Order) []EngineEvent {
 		unit.Coord = order.Coord
 		unit.Heading = headingBetween(from, order.Coord)
 		unit.Moved = true
-		events = append(events, EngineEvent{Type: "unit_moved", Audience: unit.Faction, Text: fmt.Sprintf("%s从%s移动至%s", unit.Name, from, order.Coord)})
+		unit.MoveCooldown = interval
+		events = append(events, EngineEvent{Type: "unit_moved", Audience: unit.Faction, Text: fmt.Sprintf("%s从%s移动至%s，%d回合后可再次移动", unit.Name, from, order.Coord, interval)})
 	}
-	return append(events, resolveContacts(state)...)
+	return append(events, detectContacts(state)...)
 }
 
 func ApplyImmediateOrganization(state *State, order Order) []EngineEvent {
@@ -346,8 +358,9 @@ func ApplyImmediateOrganization(state *State, order Order) []EngineEvent {
 			if state.Units[unitID].FleetName == "" {
 				state.Units[unitID].FleetName = fleetID
 			}
+			LockFleetMovement(state, fleetID, 3)
 		}
-		return []EngineEvent{{Type: "fleet_reorganized", Audience: faction, Text: order.Coord + "内舰队编成已更新"}}
+		return []EngineEvent{{Type: "fleet_reorganized", Audience: faction, Text: order.Coord + "内舰队编成已更新，3回合内无法移动"}}
 	}
 	if order.Type == "MERGE_FLEET" {
 		source := state.Units[order.UnitID]
@@ -358,16 +371,16 @@ func ApplyImmediateOrganization(state *State, order Order) []EngineEvent {
 				unit.FleetID = fleetID
 			}
 		}
-		return []EngineEvent{{Type: "fleet_merged", Audience: source.Faction, Text: fmt.Sprintf("%s与%s在%s完成整编", source.Name, target.Name, source.Coord)}}
+		LockFleetMovement(state, fleetID, 3)
+		return []EngineEvent{{Type: "fleet_merged", Audience: source.Faction, Text: fmt.Sprintf("%s与%s在%s完成整编，3回合内无法移动", source.Name, target.Name, source.Coord)}}
 	}
 	return nil
 }
 
 func ResolveOrders(state *State, orders []Order) []EngineEvent {
-	for _, unit := range state.Units {
-		unit.Moved = false
-	}
-	events := AdvanceAviation(state)
+	AdvanceMovementCooldown(state)
+	events := AdvanceShipConditions(state)
+	events = append(events, AdvanceAviation(state)...)
 	for _, order := range orders {
 		if order.Type != "REORGANIZE_HEX" {
 			continue
@@ -384,8 +397,9 @@ func ResolveOrders(state *State, orders []Order) []EngineEvent {
 		}
 		for unitID, fleetID := range order.Assignments {
 			state.Units[unitID].FleetID = fleetID
+			LockFleetMovement(state, fleetID, 3)
 		}
-		events = append(events, EngineEvent{Type: "fleet_reorganized", Audience: faction, Text: order.Coord + "内舰队编成已更新"})
+		events = append(events, EngineEvent{Type: "fleet_reorganized", Audience: faction, Text: order.Coord + "内舰队编成已更新，3回合内无法移动"})
 	}
 	for _, order := range orders {
 		if order.Type != "MERGE_FLEET" {
@@ -402,7 +416,8 @@ func ResolveOrders(state *State, orders []Order) []EngineEvent {
 				unit.FleetID = fleetID
 			}
 		}
-		events = append(events, EngineEvent{Type: "fleet_merged", Audience: source.Faction, Text: fmt.Sprintf("%s与%s在%s完成整编", source.Name, target.Name, source.Coord)})
+		LockFleetMovement(state, fleetID, 3)
+		events = append(events, EngineEvent{Type: "fleet_merged", Audience: source.Faction, Text: fmt.Sprintf("%s与%s在%s完成整编，3回合内无法移动", source.Name, target.Name, source.Coord)})
 	}
 	moves := map[string]string{}
 	for _, order := range orders {
@@ -426,69 +441,18 @@ func ResolveOrders(state *State, orders []Order) []EngineEvent {
 			continue
 		}
 		unit := state.Units[id]
+		if unit.MoveCooldown > 0 {
+			events = append(events, EngineEvent{Type: "movement_delayed", Audience: unit.Faction, Text: fmt.Sprintf("%s还需等待%d回合才能移动", unit.Name, unit.MoveCooldown)})
+			continue
+		}
 		from := unit.Coord
 		unit.Coord = coord
 		unit.Heading = headingBetween(from, coord)
-		events = append(events, EngineEvent{Type: "unit_moved", Audience: unit.Faction, Text: fmt.Sprintf("%s从%s移动至%s", unit.Name, from, coord)})
+		unit.Moved = true
+		unit.MoveCooldown = FleetMoveInterval(*state, unit)
+		events = append(events, EngineEvent{Type: "unit_moved", Audience: unit.Faction, Text: fmt.Sprintf("%s从%s移动至%s，%d回合后可再次移动", unit.Name, from, coord, unit.MoveCooldown)})
 	}
 	return append(events, resolveContacts(state)...)
-}
-
-func resolveContacts(state *State) []EngineEvent {
-	events := []EngineEvent{}
-	coords := map[string]bool{}
-	for _, unit := range state.Units {
-		coords[unit.Coord] = true
-	}
-	coordList := make([]string, 0, len(coords))
-	for coord := range coords {
-		coordList = append(coordList, coord)
-	}
-	sort.Strings(coordList)
-	for _, coord := range coordList {
-		var combatants []*Unit
-		factions := map[string]bool{}
-		for _, unit := range state.Units {
-			if unit.Coord == coord {
-				combatants = append(combatants, unit)
-				factions[unit.Faction] = true
-			}
-		}
-		if len(factions) < 2 {
-			continue
-		}
-		sort.Slice(combatants, func(i, j int) bool { return combatants[i].ID < combatants[j].ID })
-		events = append(events, EngineEvent{Type: "contact", Audience: "all", Text: "双方在" + coord + "发生接触，服务器开始测试炮战"})
-		damage := map[string]int{}
-		for _, attacker := range combatants {
-			var targets []*Unit
-			for _, target := range combatants {
-				if target.Faction != attacker.Faction {
-					targets = append(targets, target)
-				}
-			}
-			if len(targets) == 0 {
-				continue
-			}
-			target := targets[nextUint64(&state.RNGState)%uint64(len(targets))]
-			roll := int(nextUint64(&state.RNGState)%6) + 1
-			if roll >= 4 {
-				damage[target.ID]++
-				events = append(events, EngineEvent{Type: "hit", Audience: "all", Text: fmt.Sprintf("%s炮击%s：d6=%d，命中", attacker.Name, target.Name, roll)})
-			} else {
-				events = append(events, EngineEvent{Type: "miss", Audience: "all", Text: fmt.Sprintf("%s炮击%s：d6=%d，未命中", attacker.Name, target.Name, roll)})
-			}
-		}
-		for id, amount := range damage {
-			unit := state.Units[id]
-			unit.Strength -= amount
-			if unit.Strength <= 0 {
-				events = append(events, EngineEvent{Type: "unit_destroyed", Audience: "all", Text: unit.Name + "在测试炮战中被摧毁"})
-				delete(state.Units, id)
-			}
-		}
-	}
-	return events
 }
 
 func VisibleUnits(state State, faction string) []Unit {
@@ -541,6 +505,9 @@ func VisibleFleets(state State, faction string) []FleetGroup {
 		fleet := FleetGroup{ID: leader.ID, FleetID: id, FleetName: leader.FleetName, Name: leader.Name, Type: leader.Type, Faction: leader.Faction, Coord: leader.Coord, Heading: leader.Heading, Count: len(members), Members: members, LegalMoves: leader.LegalMoves}
 		if fleet.Faction == faction {
 			fleet.DistanceReference = BuildDistanceReference(state.Map, fleet.Coord, 8)
+			fleet.MoveInterval = FleetMoveInterval(state, &leader)
+			fleet.MoveCooldown = FleetMoveCooldown(state, id)
+			fleet.Confusion = FleetConfusion(state, id)
 		}
 		if leader.FleetName != "" {
 			fleet.Name = leader.FleetName
@@ -551,6 +518,19 @@ func VisibleFleets(state State, faction string) []FleetGroup {
 			fleet.Strength += unit.Strength
 			fleet.MaxStrength += unit.MaxStrength
 			fleet.Moved = fleet.Moved || unit.Moved
+			if unit.ContactLevel > fleet.ContactLevel {
+				fleet.ContactLevel = unit.ContactLevel
+			}
+		}
+		if fleet.ContactLevel > 0 {
+			switch {
+			case fleet.Count <= 4:
+				fleet.ContactSize = "small"
+			case fleet.Count <= 9:
+				fleet.ContactSize = "medium"
+			default:
+				fleet.ContactSize = "large"
+			}
 		}
 		fleets = append(fleets, fleet)
 	}

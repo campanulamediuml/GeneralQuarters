@@ -6,6 +6,25 @@ const props = defineProps<{ unit: Unit }>()
 const isCarrier = computed(() => ['CV', 'CVL', 'CVE'].includes(props.unit.type))
 const healthPercent = computed(() => Math.max(0, Math.min(100, props.unit.strength / props.unit.max_strength * 100)))
 const speedNames = { normal: '常速', fast: '快速', slow: '慢速', very_slow: '极慢' }
+const damageLabels = computed(() => {
+  const damage = props.unit.damage
+  if (!damage) return []
+  const labels: string[] = []
+  if (damage.fire === 'small') labels.push('小型火灾')
+  if (damage.fire === 'burning') labels.push('起火燃烧')
+  if (damage.flooding?.length) labels.push(`进水 ${damage.flooding.length} 层`)
+  if (damage.disabled) labels.push('失去动力')
+  if (damage.tilt) labels.push('倾斜')
+  if (damage.oil_leak) labels.push('漏油')
+  if (damage.deck_destroyed) labels.push('飞行甲板摧毁')
+  else if (damage.deck_damaged) labels.push('飞行甲板损伤')
+  if (damage.elevator_damage) labels.push(`升降机损坏 ${damage.elevator_damage} 部`)
+  if (damage.torpedo_disabled) labels.push('鱼雷发射器毁坏')
+  if (damage.surface_radar_disabled) labels.push('对海雷达损坏')
+  if (damage.air_radar_disabled) labels.push('对空雷达损坏')
+  if (damage.sonar_disabled) labels.push('声呐损坏')
+  return labels
+})
 
 function number(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(1)
@@ -49,6 +68,8 @@ function number(value: number) {
       <div v-if="unit.card.depth_charges"><dt>深水炸弹</dt><dd>{{ unit.card.depth_charges }} 组</dd></div>
       <div v-if="unit.card.cargo"><dt>货物</dt><dd>{{ unit.card.cargo }}</dd></div>
     </dl>
+
+    <section v-if="damageLabels.length" class="ship-damage-report"><strong>当前损伤</strong><div><span v-for="label in damageLabels" :key="label">{{ label }}</span></div></section>
 
     <div v-if="isCarrier" class="carrier-systems">
       <span>航空作业</span>

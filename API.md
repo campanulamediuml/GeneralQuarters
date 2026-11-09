@@ -56,7 +56,7 @@
 }
 ```
 
-`coord`必须位于该单位服务器返回的`legal_moves`中。移动由服务器立即生效并递增`version`，不生成待结算移动命令；同一舰队每回合只能移动一次，只要任一成员已移动，整个编队就不能再次移动。`CLEAR_MOVE`仅用于取消旧版协议遗留的待结算移动命令，包含`command_id`、`base_version`、`type`和`unit_id`。
+`coord`必须位于该单位服务器返回的`legal_moves`中。到达可移动时机后，移动由服务器立即生效并递增`version`，不生成待结算移动命令；普通/快速舰队随后冷却3回合，纯高速驱逐舰2回合，慢速5回合，极慢10回合，失去动力24回合。全队按最慢航速计算，进水降低航速档位；冷却在回合结算开始递减，未归零时返回空的`legal_moves`并拒绝移动。`CLEAR_MOVE`仅用于取消旧版协议遗留的待结算移动命令，包含`command_id`、`base_version`、`type`和`unit_id`。整编后同样锁定3回合，交战后混乱的舰队不能整编。
 
 ### 整编舰队
 
@@ -112,14 +112,16 @@
 
 响应为最新私有快照。所有当前玩家ready后，服务器同步完成结算并提升`turn`与`version`。单人沙盒中唯一玩家ready即可结算。已ready玩家提交新命令时自动取消自己的ready。
 
+同hex水面舰队在结算时交战：按权重选目标，每点火炮独立判定，并处理突袭、鱼雷、DCT损伤和混乱。战报包含目标、命中率和命中数量，损伤写入单位`damage`并持久化；沉没舰船及其航空算子移除。回合开始递减移动冷却和旧混乱，处理到期的火灾、进水与甲板修复，新损伤不在同回合提前修复。
+
 ## 私有快照
 
 `state`响应包含：
 
 - `scenario`、`map`、`turn`、`version`、`status`；
 - `you`和`players`；
-- 当前阵营可见的`units`；己方单位额外包含`legal_moves`。每艘舰船包含`definition_id`、当前/初始生命值和服务端生成的`card`角色卡，字段涵盖火炮、防空、损管、雷达、航速、鱼雷、航空设施、货物等；
-- 服务端生成的`fleets`舰队投影，包含`fleet_id`、成员列表、数量、总强度、朝向、移动状态、合法移动和`distance_reference`；距离参考由`origin/max_distance/cells`组成，每个cell包含服务端计算的`coord/distance`；
+- 当前阵营可见的`units`；己方单位额外包含`legal_moves`。每艘舰船包含`definition_id`、当前/初始生命值、服务端生成的`card`角色卡、`move_cooldown`、`confusion`和当前`damage`，字段涵盖火炮、防空、损管、雷达、航速、鱼雷、航空设施、货物、火灾、进水及设备损伤等；
+- 服务端生成的`fleets`舰队投影，包含`fleet_id`、成员列表、数量、总强度、朝向、`move_interval/move_cooldown`、混乱、合法移动和`distance_reference`；距离参考由`origin/max_distance/cells`组成，每个cell包含服务端计算的`coord/distance`。情报目标额外包含`contact_level/contact_size`：1级仅规模文字、2级舰队剪影、3级编队剪影、4级具体舰船卡，低等级不返回具体舰船属性；
 - `aviation.carriers`：全部航空作业舰，包含机库占用/容量、`deck_length/deck_used`、甲板作业类型、独立的`elevators`对象数组和航空算子；`aviation.tasks`：按服务端优先级排序的任务，包含`phase`、`carrier_ids`、`fleet_id`、`airborne_count`及完整算子列表。空中任务包含以当前位置为中心的`distance_reference`，侦察任务额外包含扇面与航线字段，客户端只渲染这些服务器结果；
 - 仅自己的`orders`；
 - 按受众过滤的`events`；

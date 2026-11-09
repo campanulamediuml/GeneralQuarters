@@ -39,13 +39,16 @@ type AirDeployment struct {
 }
 
 type ScenarioDefinition struct {
-	ID             string          `json:"id"`
-	Version        int             `json:"version"`
-	Name           string          `json:"name"`
-	Map            string          `json:"map"`
-	Description    string          `json:"description"`
-	Deployments    []Deployment    `json:"deployments"`
-	AirDeployments []AirDeployment `json:"air_deployments"`
+	ID             string            `json:"id"`
+	Version        int               `json:"version"`
+	Name           string            `json:"name"`
+	Map            string            `json:"map"`
+	Description    string            `json:"description"`
+	Year           int               `json:"year,omitempty"`
+	Night          bool              `json:"night,omitempty"`
+	Doctrines      map[string]string `json:"doctrines,omitempty"`
+	Deployments    []Deployment      `json:"deployments"`
+	AirDeployments []AirDeployment   `json:"air_deployments"`
 }
 
 type UnitDefinition struct {
@@ -112,6 +115,21 @@ type FlightDeck struct {
 	Elevators []*AircraftElevator `json:"elevators"`
 }
 
+type ShipDamage struct {
+	Fire                 string `json:"fire,omitempty"`
+	Flooding             []int  `json:"flooding,omitempty"`
+	Disabled             bool   `json:"disabled,omitempty"`
+	Tilt                 bool   `json:"tilt,omitempty"`
+	OilLeak              bool   `json:"oil_leak,omitempty"`
+	DeckDamaged          bool   `json:"deck_damaged,omitempty"`
+	DeckDestroyed        bool   `json:"deck_destroyed,omitempty"`
+	ElevatorDamage       int    `json:"elevator_damage,omitempty"`
+	TorpedoDisabled      bool   `json:"torpedo_disabled,omitempty"`
+	SurfaceRadarDisabled bool   `json:"surface_radar_disabled,omitempty"`
+	AirRadarDisabled     bool   `json:"air_radar_disabled,omitempty"`
+	SonarDisabled        bool   `json:"sonar_disabled,omitempty"`
+}
+
 type Unit struct {
 	ID           string      `json:"id"`
 	DefinitionID string      `json:"definition_id"`
@@ -125,7 +143,11 @@ type Unit struct {
 	Strength     int         `json:"strength"`
 	MaxStrength  int         `json:"max_strength"`
 	Moved        bool        `json:"moved"`
+	MoveCooldown int         `json:"move_cooldown,omitempty"`
+	Confusion    int         `json:"confusion,omitempty"`
+	ContactLevel int         `json:"contact_level,omitempty"`
 	Card         ShipCard    `json:"card"`
+	Damage       *ShipDamage `json:"damage,omitempty"`
 	Deck         *FlightDeck `json:"deck,omitempty"`
 	LegalMoves   []string    `json:"legal_moves,omitempty"`
 }
@@ -153,6 +175,11 @@ type FleetGroup struct {
 	Strength          int                `json:"strength"`
 	MaxStrength       int                `json:"max_strength"`
 	Moved             bool               `json:"moved"`
+	MoveCooldown      int                `json:"move_cooldown,omitempty"`
+	MoveInterval      int                `json:"move_interval"`
+	Confusion         int                `json:"confusion,omitempty"`
+	ContactLevel      int                `json:"contact_level,omitempty"`
+	ContactSize       string             `json:"contact_size,omitempty"`
 	LegalMoves        []string           `json:"legal_moves,omitempty"`
 	Count             int                `json:"count"`
 	Members           []Unit             `json:"members"`
@@ -241,6 +268,7 @@ type FleetContact struct {
 	Faction string `json:"faction"`
 	Level   int    `json:"level"`
 	Coord   string `json:"coord"`
+	Heading string `json:"heading,omitempty"`
 	Count   int    `json:"count"`
 	Members []Unit `json:"members,omitempty"`
 }
@@ -249,6 +277,9 @@ type State struct {
 	ScenarioID   string                              `json:"scenario_id"`
 	ScenarioName string                              `json:"scenario_name"`
 	Description  string                              `json:"description"`
+	Year         int                                 `json:"year,omitempty"`
+	Night        bool                                `json:"night,omitempty"`
+	Doctrines    map[string]string                   `json:"doctrines,omitempty"`
 	Map          MapDefinition                       `json:"map"`
 	Units        map[string]*Unit                    `json:"units"`
 	Aircraft     map[string]*AirUnit                 `json:"aircraft,omitempty"`

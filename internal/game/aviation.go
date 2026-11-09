@@ -33,6 +33,7 @@ func EnsureAviation(state *State) {
 			kind = "crane"
 			capacity = 1
 		}
+		damage := EnsureDamage(unit)
 		for index := 0; index < count; index++ {
 			id := fmt.Sprintf("%s-elevator-%d", unit.ID, index+1)
 			if index >= len(unit.Deck.Elevators) {
@@ -50,6 +51,13 @@ func EnsureAviation(state *State) {
 			if elevator.AircraftIDs == nil {
 				elevator.AircraftIDs = []string{}
 			}
+			if index < damage.ElevatorDamage {
+				elevator.Status = "damaged"
+				elevator.TaskID = ""
+				elevator.AircraftIDs = []string{}
+			} else if elevator.Status == "damaged" {
+				elevator.Status = "idle"
+			}
 		}
 		unit.Card.ElevatorCount = len(unit.Deck.Elevators)
 	}
@@ -58,6 +66,23 @@ func EnsureAviation(state *State) {
 			aircraft.ElevatorID = ""
 		}
 	}
+}
+
+func AviationAvailable(unit *Unit) bool {
+	if unit == nil || unit.Deck == nil {
+		return false
+	}
+	damage := EnsureDamage(unit)
+	if damage.Disabled || damage.Tilt || damage.Fire != "" || damage.DeckDamaged || damage.DeckDestroyed {
+		return false
+	}
+	available := 0
+	for _, elevator := range unit.Deck.Elevators {
+		if elevator.Status != "damaged" {
+			available++
+		}
+	}
+	return available > 0
 }
 
 func airOrderIDs(order Order) []string {
@@ -103,8 +128,8 @@ func aircraftForOrder(state State, faction string, order Order) ([]*AirUnit, *Un
 		aircraftList = append(aircraftList, aircraft)
 	}
 	carrier := state.Units[carrierID]
-	if carrier == nil || carrier.Faction != faction || carrier.Deck == nil {
-		return nil, nil, fmt.Errorf("母舰不存在或无法执行航空作业")
+	if carrier == nil || carrier.Faction != faction || !AviationAvailable(carrier) {
+		return nil, nil, fmt.Errorf("母舰不存在或损伤状态无法执行航空作业")
 	}
 	return aircraftList, carrier, nil
 }
@@ -130,8 +155,8 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 				return fmt.Errorf("算子已经属于其他任务，请先取消原任务")
 			}
 			ship := state.Units[aircraft.CarrierID]
-			if ship == nil || ship.Faction != faction || ship.Deck == nil {
-				return fmt.Errorf("航空算子的母舰无法执行航空作业")
+			if ship == nil || ship.Faction != faction || !AviationAvailable(ship) {
+				return fmt.Errorf("航空算子的母舰损伤状态无法执行航空作业")
 			}
 			if order.Type != "LAUNCH_STRIKE" && aircraft.DefinitionID != definitionID {
 				return fmt.Errorf("CAP和侦察任务必须使用同型算子")
@@ -268,8 +293,8 @@ func validateLaunchCapacity(state State, aircraftList []*AirUnit) error {
 	}
 	for carrierID, group := range groups {
 		carrier := state.Units[carrierID]
-		if carrier == nil || carrier.Deck == nil || carrier.Deck.Length <= 0 {
-			return fmt.Errorf("母舰没有可用甲板")
+		if carrier == nil || carrier.Deck == nil || carrier.Deck.Length <= 0 || !AviationAvailable(carrier) {
+			return fmt.Errorf("母舰没有可用甲板或航空设施受损")
 		}
 		if carrier.Deck.Operation == "recover" {
 			return fmt.Errorf("%s正在回收飞机，不能同时起飞", carrier.Name)
@@ -619,7 +644,7 @@ func scheduleElevators(state *State) []EngineEvent {
 	taskGroups := sortedTaskGroups(*state, func(aircraft *AirUnit) bool { return aircraft.Status == "service" })
 	for _, carrierID := range sortedUnitIDs(state.Units) {
 		carrier := state.Units[carrierID]
-		if carrier.Deck == nil {
+		if !AviationAvailable(carrier) {
 			continue
 		}
 		reserved := 0
@@ -749,7 +774,7 @@ func AdvanceAviation(state *State) []EngineEvent {
 }
 
 func CanLandAircraft(state State, carrier *Unit) bool {
-	return carrier != nil && carrier.Deck != nil && carrier.Deck.Operation != "launch" && deckUsed(state, carrier.ID) < carrier.Deck.Length
+	return AviationAvailable(carrier) && carrier.Deck.Operation != "launch" && deckUsed(state, carrier.ID) < carrier.Deck.Length
 }
 
 func LandAircraft(state *State, aircraft *AirUnit, carrier *Unit) {

@@ -179,6 +179,10 @@ onUnmounted(cancelDrag)
 function headingAngle(heading?: string) {
   return { E: 90, SE: 150, SW: 210, W: 270, NW: 300, NE: 30 }[heading || 'NE'] ?? 30
 }
+
+function contactSizeName(size?: 'small' | 'medium' | 'large') {
+  return { small: '小型舰队', medium: '中型舰队', large: '大型舰队' }[size || 'medium']
+}
 </script>
 
 <template>
@@ -203,7 +207,7 @@ function headingAngle(heading?: string) {
         v-for="(unit, index) in fleetsAt(hex.coord)"
         :key="unit.fleet_id"
         class="map-unit"
-        :class="[`faction-${unit.faction.toLowerCase()}`, { selected: selectedUnit?.fleet_id === unit.fleet_id, draggable: unit.faction === playerFaction && !unit.moved, moved: unit.moved, planned: Boolean(moveOrder(unit)), 'drag-source': dragging && draggedUnit?.id === unit.id }]"
+        :class="[`faction-${unit.faction.toLowerCase()}`, `contact-${unit.contact_level || 0}`, { selected: selectedUnit?.fleet_id === unit.fleet_id, draggable: unit.faction === playerFaction && (unit.legal_moves?.length || 0) > 0, moved: unit.moved || (unit.move_cooldown || 0) > 0, planned: Boolean(moveOrder(unit)), 'drag-source': dragging && draggedUnit?.id === unit.id }]"
         :data-unit-id="unit.id"
         :data-fleet-id="unit.fleet_id"
         :data-display-coord="unit.coord"
@@ -214,12 +218,21 @@ function headingAngle(heading?: string) {
       >
         <rect x="-26" y="-18" width="52" height="36" rx="3" />
         <path class="unit-stripe" d="M-26 11h52v7h-52z" />
-        <g v-if="unit.count > 1" class="fleet-silhouettes"><path d="M-21 5h42l-6 5h-29zM-5 0H6v5H-5zM-2-5H1V0H-2z" /><path d="M-21 5h42l-6 5h-29zM-5 0H6v5H-5zM-2-5H1V0H-2z" transform="translate(0 -7)" /></g>
-        <text v-else class="unit-type" text-anchor="middle" y="4">{{ unit.type }}</text>
-        <text class="unit-strength" x="-20" y="-7">{{ unit.count }}</text>
+        <template v-if="unit.contact_level && unit.contact_level < 4">
+          <text v-if="unit.contact_level === 1" class="contact-size-label" text-anchor="middle" y="5">{{ contactSizeName(unit.contact_size) }}</text>
+          <g v-else-if="unit.contact_level === 2" class="fleet-silhouettes"><path d="M-21 5h42l-6 5h-29zM-5 0H6v5H-5zM-2-5H1V0H-2z" /></g>
+          <g v-else class="fleet-silhouettes"><path d="M-21 5h42l-6 5h-29zM-5 0H6v5H-5zM-2-5H1V0H-2z" /><path d="M-21 5h42l-6 5h-29zM-5 0H6v5H-5zM-2-5H1V0H-2z" transform="translate(0 -7)" /></g>
+        </template>
+        <template v-else>
+          <g v-if="unit.count > 1" class="fleet-silhouettes"><path d="M-21 5h42l-6 5h-29zM-5 0H6v5H-5zM-2-5H1V0H-2z" /><path d="M-21 5h42l-6 5h-29zM-5 0H6v5H-5zM-2-5H1V0H-2z" transform="translate(0 -7)" /></g>
+          <text v-else class="unit-type" text-anchor="middle" y="4">{{ unit.type }}</text>
+          <text class="unit-strength" x="-20" y="-7">{{ unit.count }}</text>
+        </template>
         <text class="unit-heading" :transform="`rotate(${headingAngle(unit.heading)} 19 -7)`" x="19" y="-7">▲</text>
-        <text class="unit-name" text-anchor="middle" y="34">{{ unit.name }}</text>
-        <text v-if="moveOrder(unit)" class="unit-order" text-anchor="middle" y="48">预定 {{ unit.coord }}</text>
+        <text class="unit-name" text-anchor="middle" y="34">{{ unit.contact_level ? `情报${unit.contact_level}` : unit.name }}</text>
+        <text v-if="unit.contact_level && unit.contact_level < 4" class="unit-order" text-anchor="middle" y="48">最后已知</text>
+        <text v-else-if="moveOrder(unit)" class="unit-order" text-anchor="middle" y="48">预定 {{ unit.coord }}</text>
+        <text v-else-if="(unit.move_cooldown || 0) > 0" class="unit-order" text-anchor="middle" y="48">{{ unit.move_cooldown }}回合后可移动</text>
         <text v-else-if="unit.moved" class="unit-order" text-anchor="middle" y="48">已移动</text>
       </g>
     </g>

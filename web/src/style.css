@@ -75,3 +75,9 @@
 .map-fleet-workbench.fleet-panel-bottom{top:auto;bottom:10px}.map-canvas:has(.fleet-panel-bottom) .map-zoom-controls{top:10px;bottom:auto}.map-canvas:has(.fleet-panel-bottom) .map-lobby-panel{top:10px;bottom:auto}.map-canvas:has(.fleet-panel-bottom) .map-selection-card{top:10px;bottom:auto}
 
 .rail-menu button:disabled{opacity:.35;cursor:not-allowed;border-left-color:transparent;background:transparent;color:#536b70}.rail-menu button:disabled:hover{background:transparent;color:#536b70}
+
+.map-unit.contact-1 rect{fill:#d9a5ad;stroke:#f1d2d5}.map-unit.contact-2 rect{fill:#c97082;stroke:#e5a4af}.map-unit.contact-3 rect{fill:#b6374b;stroke:#e17c88}.map-unit.contact-1 .fleet-silhouettes,.map-unit.contact-2 .fleet-silhouettes,.map-unit.contact-3 .fleet-silhouettes{fill:#4b2029}.contact-size-label{fill:#4b2029;font:700 8px 'Noto Sans SC',sans-serif;pointer-events:none}.map-unit.contact-1 .unit-name,.map-unit.contact-2 .unit-name,.map-unit.contact-3 .unit-name{fill:#f1d2d5}
+
+.fleet-ready{color:var(--mint);font-weight:500}.fleet-cooling{color:#79b7d0;font-weight:500}.ship-damage-report{padding:9px 12px;border-top:1px solid #6e493f;background:#4a2a2555}.ship-damage-report>strong{color:#e6a08a;font-size:9px}.ship-damage-report>div{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}.ship-damage-report span{padding:2px 5px;border:1px solid #8b5d50;color:#e6b2a2;font-size:8px}
+
+.elevator-card.elevator-damaged{border-color:#8b5d50;background:#3c2724}.elevator-card.elevator-damaged>header span{border-color:#b77968;color:#e6a08a}

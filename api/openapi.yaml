@@ -252,7 +252,7 @@ components:
         id: {type: string, example: b-cv-01-elevator-1}
         kind: {type: string, enum: [elevator, crane]}
         capacity: {type: integer, description: 单次提升或下降的最大算子数}
-        status: {type: string, enum: [idle, lifting, lowering]}
+        status: {type: string, enum: [idle, lifting, lowering, damaged]}
         task_id: {type: string}
         aircraft_ids: {type: array, items: {type: string}}
     FlightDeck:
@@ -261,6 +261,22 @@ components:
         length: {type: integer, description: 本舰甲板长度，同时限制停放和每回合起飞容量}
         operation: {type: string, enum: ['', launch, recover]}
         elevators: {type: array, items: {$ref: '#/components/schemas/AircraftElevator'}}
+    ShipDamage:
+      type: object
+      description: 服务端持久化的当前舰船损伤，客户端只读
+      properties:
+        fire: {type: string, enum: [small, burning]}
+        flooding: {type: array, items: {type: integer}, description: 每层进水的剩余修复等待回合}
+        disabled: {type: boolean}
+        tilt: {type: boolean}
+        oil_leak: {type: boolean}
+        deck_damaged: {type: boolean}
+        deck_destroyed: {type: boolean}
+        elevator_damage: {type: integer}
+        torpedo_disabled: {type: boolean}
+        surface_radar_disabled: {type: boolean}
+        air_radar_disabled: {type: boolean}
+        sonar_disabled: {type: boolean}
     Unit:
       type: object
       properties:
@@ -273,6 +289,10 @@ components:
         coord: {type: string, example: '0202'}
         heading: {type: string, enum: [E, SE, SW, W, NW, NE]}
         moved: {type: boolean, description: 本回合是否已经移动}
+        move_cooldown: {type: integer, description: 距离下次可移动的剩余回合数，普通/快速3、纯高速DD2、慢速5、极慢10、失去动力24}
+        confusion: {type: integer, description: 交战混乱值，回合开始衰减；大于0时禁止整编}
+        contact_level: {type: integer, enum: [1, 2, 3, 4], description: 情报卡片等级；仅4级包含具体舰船属性}
+        damage: {$ref: '#/components/schemas/ShipDamage'}
         strength: {type: integer, description: 当前生命值}
         max_strength: {type: integer, description: 初始生命值}
         card: {$ref: '#/components/schemas/ShipCard'}
@@ -308,6 +328,11 @@ components:
             strength: {type: integer, description: 服务端汇总的当前总强度}
             max_strength: {type: integer, description: 服务端汇总的最大总强度}
             moved: {type: boolean, description: 舰队本回合是否已经移动}
+            move_interval: {type: integer, description: 按全队最慢航速计算的移动间隔}
+            move_cooldown: {type: integer, description: 全队剩余移动冷却回合}
+            confusion: {type: integer, description: 全队交战混乱值}
+            contact_level: {type: integer, enum: [1, 2, 3, 4]}
+            contact_size: {type: string, enum: [small, medium, large], description: 一级情报规模文字；1-4艘small、5-9艘medium、10艘以上large}
             distance_reference: {$ref: '#/components/schemas/DistanceReference'}
     AirUnit:
       type: object
