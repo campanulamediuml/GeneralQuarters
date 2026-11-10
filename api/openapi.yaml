@@ -367,6 +367,23 @@ components:
         recon_radius_limit: {type: integer, description: 服务端按返航燃料给出的最大可选半径}
         returning: {type: boolean}
         tracking_fleet_id: {type: string}
+    ReconSector:
+      type: object
+      description: 单个侦察机算子的独立位置和搜索范围；未升空算子使用母舰当前位置且不生成扇面
+      properties:
+        aircraft_id: {type: string}
+        status: {type: string}
+        origin_coord: {type: string, description: 已升空时为实际起飞hex，未升空时为母舰当前hex}
+        current_coord: {type: string}
+        heading: {type: string, enum: [E, SE, SW, W, NW, NE]}
+        sector_width: {type: integer, enum: [60, 120]}
+        recon_radius: {type: integer}
+        recon_distance: {type: integer}
+        returning: {type: boolean}
+        tracking_fleet_id: {type: string}
+        sector_hexes: {type: array, items: {type: string}, description: 该算子独立计算的完整扇面}
+        current_ring_hexes: {type: array, items: {type: string}, description: 该算子独立计算的当前搜索圈}
+        distance_reference: {$ref: '#/components/schemas/DistanceReference'}
     AirTask:
       type: object
       properties:
@@ -391,7 +408,8 @@ components:
         returning: {type: boolean}
         tracking_fleet_id: {type: string}
         sector_hexes: {type: array, items: {type: string}, description: 服务端计算的完整扇面覆盖}
-        current_ring_hexes: {type: array, items: {type: string}, description: 服务端计算的当前距离圈覆盖}
+        current_ring_hexes: {type: array, items: {type: string}, description: 任务代表算子的当前距离圈，兼容字段}
+        recon_sectors: {type: array, items: {$ref: '#/components/schemas/ReconSector'}, description: 每架侦察机各自的扇面、搜索圈和实时位置，大地图使用此字段}
         distance_reference: {$ref: '#/components/schemas/DistanceReference'}
     CarrierAirStatus:
       type: object

@@ -219,6 +219,22 @@ type AirUnit struct {
 	TrackingFleetID  string `json:"tracking_fleet_id,omitempty"`
 }
 
+type ReconSector struct {
+	AircraftID        string             `json:"aircraft_id"`
+	Status            string             `json:"status"`
+	OriginCoord       string             `json:"origin_coord,omitempty"`
+	CurrentCoord      string             `json:"current_coord,omitempty"`
+	Heading           string             `json:"heading,omitempty"`
+	SectorWidth       int                `json:"sector_width,omitempty"`
+	ReconRadius       int                `json:"recon_radius,omitempty"`
+	ReconDistance     int                `json:"recon_distance,omitempty"`
+	Returning         bool               `json:"returning,omitempty"`
+	TrackingFleetID   string             `json:"tracking_fleet_id,omitempty"`
+	SectorHexes       []string           `json:"sector_hexes,omitempty"`
+	CurrentRingHexes  []string           `json:"current_ring_hexes,omitempty"`
+	DistanceReference *DistanceReference `json:"distance_reference,omitempty"`
+}
+
 type AirTask struct {
 	ID                string             `json:"id"`
 	Kind              string             `json:"kind"`
@@ -242,6 +258,7 @@ type AirTask struct {
 	TrackingFleetID   string             `json:"tracking_fleet_id,omitempty"`
 	SectorHexes       []string           `json:"sector_hexes,omitempty"`
 	CurrentRingHexes  []string           `json:"current_ring_hexes,omitempty"`
+	ReconSectors      []ReconSector      `json:"recon_sectors,omitempty"`
 	DistanceReference *DistanceReference `json:"distance_reference,omitempty"`
 }
 

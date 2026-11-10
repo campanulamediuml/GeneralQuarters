@@ -112,6 +112,64 @@ func TestLaunchReconValidationAndProjection(t *testing.T) {
 	}
 }
 
+func TestReconSectorsArePerAircraftAndEmbarkedPositionFollowsCarrier(t *testing.T) {
+	state := sandboxState(t)
+	setAircraftReady(&state, "air-b-03")
+	first := Order{Type: "LAUNCH_RECON", AircraftID: "air-b-03", Heading: "W", SectorWidth: 60}
+	ApplyAirOrder(&state, first)
+	firstCarrier := state.Units[state.Aircraft["air-b-03"].CarrierID]
+	firstCarrier.Coord = "0308"
+	firstCarrier.Deck.Operation = ""
+	setAircraftReady(&state, "air-b-04")
+	second := Order{Type: "LAUNCH_RECON", AircraftID: "air-b-04", TaskID: "air-b-03", Heading: "W", SectorWidth: 60}
+	ApplyAirOrder(&state, second)
+	ApplyAirOrder(&state, Order{Type: "LAUNCH_RECON", AircraftID: "air-b-10", Heading: "W", SectorWidth: 120})
+	movingCarrier := state.Units[state.Aircraft["air-b-10"].CarrierID]
+	destination := LegalMoves(state, movingCarrier)[0]
+	ApplyImmediateMove(&state, Order{Type: "SET_MOVE", UnitID: movingCarrier.ID, Coord: destination})
+
+	if state.Aircraft["air-b-10"].Coord != destination {
+		t.Fatalf("舰上侦察机没有跟随母舰：%+v", state.Aircraft["air-b-10"])
+	}
+	if state.Aircraft["air-b-03"].Coord != "0208" || state.Aircraft["air-b-04"].Coord != "0308" {
+		t.Fatalf("已升空侦察机被错误跟随母舰：%s / %s", state.Aircraft["air-b-03"].Coord, state.Aircraft["air-b-04"].Coord)
+	}
+	view := VisibleAviation(state, "B")
+	if len(view.Tasks) != 2 {
+		t.Fatalf("侦察任务数量错误：%+v", view.Tasks)
+	}
+	var joined *AirTask
+	var embarked *AirTask
+	for index := range view.Tasks {
+		task := &view.Tasks[index]
+		if task.ID == "air-b-03" {
+			joined = task
+		} else {
+			embarked = task
+		}
+	}
+	if joined == nil || len(joined.ReconSectors) != 2 {
+		t.Fatalf("同组侦察机没有逐机投影：%+v", joined)
+	}
+	origins := map[string]string{}
+	for _, sector := range joined.ReconSectors {
+		origins[sector.AircraftID] = sector.OriginCoord
+		if len(sector.SectorHexes) == 0 || sector.CurrentCoord != sector.OriginCoord || sector.DistanceReference == nil {
+			t.Fatalf("独立侦察扇面或位置缺失：%+v", sector)
+		}
+	}
+	if origins["air-b-03"] != "0208" || origins["air-b-04"] != "0308" {
+		t.Fatalf("逐机扇面顶点错误：%+v", origins)
+	}
+	if embarked == nil || len(embarked.ReconSectors) != 1 {
+		t.Fatalf("舰上侦察机投影缺失：%+v", embarked)
+	}
+	pending := embarked.ReconSectors[0]
+	if pending.Status != "service" || pending.CurrentCoord != destination || pending.OriginCoord != destination || len(pending.SectorHexes) != 0 {
+		t.Fatalf("舰上侦察机没有使用母舰当前位置：%+v", pending)
+	}
+}
+
 func TestReconDetectionContactAndReturn(t *testing.T) {
 	state := sandboxState(t)
 	setAircraftReady(&state, "air-b-10", "air-b-11")
@@ -165,7 +223,7 @@ func TestReconDetectionContactAndReturn(t *testing.T) {
 	AdvanceAviation(&state)
 	AdvanceAviation(&state)
 	AdvanceAviation(&state)
-	if aircraft.Status != "hangar" || aircraft.Coord != "" || aircraft.ReconRadius != 0 || aircraft.Returning {
+	if aircraft.Status != "hangar" || aircraft.Coord != state.Units[aircraft.CarrierID].Coord || aircraft.ReconRadius != 0 || aircraft.Returning {
 		t.Fatalf("返航后未自动落舰并清理任务：%+v", aircraft)
 	}
 	if state.Units["b-cv-04"].Card.Aircraft != 2 {

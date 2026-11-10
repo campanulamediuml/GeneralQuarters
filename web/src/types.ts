@@ -135,6 +135,22 @@ export interface DistanceReference {
   cells: DistanceHex[]
 }
 
+export interface ReconSector {
+  aircraft_id: string
+  status: AirUnit['status']
+  origin_coord?: string
+  current_coord?: string
+  heading?: ReconHeading
+  sector_width?: 60 | 120
+  recon_radius?: number
+  recon_distance?: number
+  returning?: boolean
+  tracking_fleet_id?: string
+  sector_hexes?: string[]
+  current_ring_hexes?: string[]
+  distance_reference?: DistanceReference
+}
+
 export interface AirTask {
   id: string
   kind: 'cap' | 'recon' | 'asw' | 'attack'
@@ -158,6 +174,7 @@ export interface AirTask {
   tracking_fleet_id?: string
   sector_hexes?: string[]
   current_ring_hexes?: string[]
+  recon_sectors?: ReconSector[]
   distance_reference?: DistanceReference
 }
 

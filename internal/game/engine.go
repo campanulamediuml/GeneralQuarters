@@ -331,6 +331,7 @@ func ApplyImmediateMove(state *State, order Order) []EngineEvent {
 		unit.MoveCooldown = interval
 		events = append(events, EngineEvent{Type: "unit_moved", Audience: unit.Faction, Text: fmt.Sprintf("%s从%s移动至%s，%d回合后可再次移动", unit.Name, from, order.Coord, interval)})
 	}
+	syncEmbarkedAircraft(state)
 	return append(events, detectContacts(state)...)
 }
 
@@ -452,6 +453,7 @@ func ResolveOrders(state *State, orders []Order) []EngineEvent {
 		unit.MoveCooldown = FleetMoveInterval(*state, unit)
 		events = append(events, EngineEvent{Type: "unit_moved", Audience: unit.Faction, Text: fmt.Sprintf("%s从%s移动至%s，%d回合后可再次移动", unit.Name, from, coord, unit.MoveCooldown)})
 	}
+	syncEmbarkedAircraft(state)
 	return append(events, resolveContacts(state)...)
 }
 

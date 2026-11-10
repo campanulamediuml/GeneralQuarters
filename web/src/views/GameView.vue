@@ -51,8 +51,9 @@ const fleetPanelBottom = computed(() => {
   const row = Number(selectedFleet.value.coord.slice(0, 2))
   return row <= Math.ceil(state.value.map.rows / 2)
 })
-const selectedAirTask = computed(() => state.value?.aviation.tasks.find((task) => task.id === selectedAirTaskID.value))
-const distanceReference = computed(() => selectedAirTask.value?.distance_reference || selectedFleet.value?.distance_reference)
+const selectedAirTask = computed(() => state.value?.aviation.tasks.find((task) => task.id === selectedAirTaskID.value || task.aircraft_ids.includes(selectedAirTaskID.value)))
+const selectedReconSector = computed(() => selectedAirTask.value?.recon_sectors?.find((sector) => sector.aircraft_id === selectedAirTaskID.value))
+const distanceReference = computed(() => selectedReconSector.value?.distance_reference || selectedAirTask.value?.distance_reference || selectedFleet.value?.distance_reference)
 const menuFleets = computed(() => groupFleets(ownUnits.value.filter((unit) => unit.coord === menuCoord.value).map((unit) => ({ ...unit, fleet_id: draftAssignments.value[unit.id] || unit.fleet_id })), []))
 const mergeSource = computed(() => menuFleets.value.find((fleet) => fleet.fleet_id === mergeSourceID.value))
 const orderedEvents = computed(() => [...(state.value?.events || [])].reverse())
@@ -111,7 +112,7 @@ function selectAircraft(aircraftID: string) {
   selectedID.value = ''
   shipDetailOpen.value = false
   menuCoord.value = ''
-  selectedAirTaskID.value = task.id
+  selectedAirTaskID.value = aircraftID
   activePanel.value = 'map'
 }
 

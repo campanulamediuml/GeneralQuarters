@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref } from 'vue'
-import type { AirTask, DistanceReference, GameMap, Order, Unit } from '../types'
+import type { AirTask, DistanceReference, GameMap, Order, ReconSector, Unit } from '../types'
 import { fleetOrder, type FleetGroup } from '../fleet'
 
 const props = defineProps<{
@@ -48,9 +48,23 @@ const hexes = computed(() => {
 
 const viewBox = computed(() => `0 0 ${Math.sqrt(3) * size * (props.map.cols + 1)} ${size * (1.5 * props.map.rows + 0.7)}`)
 const selectedMoves = computed(() => new Set(props.selectedUnit?.legal_moves || []))
-const reconCells = computed(() => new Set(props.reconTasks.flatMap((task) => task.sector_hexes || [])))
-const reconCurrentCells = computed(() => new Set(props.reconTasks.flatMap((task) => task.current_ring_hexes || [])))
+const reconSectors = computed<ReconSector[]>(() => props.reconTasks.flatMap((task) => task.recon_sectors || []))
+const reconCells = computed(() => new Set(reconSectors.value.flatMap((sector) => sector.sector_hexes || [])))
+const reconCurrentCells = computed(() => new Set(reconSectors.value.flatMap((sector) => sector.current_ring_hexes || [])))
 const mapStyle = computed(() => ({ width: `${zoom.value * 100}%`, minWidth: `${620 * zoom.value}px`, maxHeight: zoom.value > 1 ? 'none' : '100%' }))
+
+function reconAircraftAt(coord: string) {
+  return reconSectors.value.filter((sector) => sector.current_coord === coord)
+}
+
+function reconCurrentAircraftAt(coord: string) {
+  return reconSectors.value.filter((sector) => sector.current_ring_hexes?.includes(coord)).map((sector) => sector.aircraft_id).join(',')
+}
+
+function reconPosition(coord: string, index: number, total: number) {
+  const point = center(coord)
+  return { x: point.x + (index - (total - 1) / 2) * 14, y: point.y - 30 - index * 7 }
+}
 const distanceByCoord = computed(() => new Map((props.distanceReference?.cells || []).map((cell) => [cell.coord, cell.distance])))
 
 function distanceAt(coord: string) {
@@ -192,7 +206,7 @@ function contactSizeName(size?: 'small' | 'medium' | 'large') {
     <button aria-label="放大地图" @click="adjustZoom(0.2)">+</button>
   </div>
   <svg ref="mapElement" class="hex-map" :viewBox="viewBox" :style="mapStyle" :data-zoom="zoom.toFixed(1)" role="img" aria-label="沙盒海图">
-    <g v-for="hex in hexes" :key="hex.coord" class="hex-cell" :data-coord="hex.coord" :data-distance="distanceAt(hex.coord) >= 0 ? distanceAt(hex.coord) : undefined" :class="[`terrain-${hex.terrain}`, { legal: selectedMoves.has(hex.coord), 'drop-hover': dropHover === hex.coord, 'recon-sector': reconCells.has(hex.coord), 'recon-current': reconCurrentCells.has(hex.coord), 'distance-reference': distanceAt(hex.coord) > 0 && distanceAt(hex.coord) <= 2, 'distance-outer': distanceAt(hex.coord) === 2, 'distance-origin': distanceAt(hex.coord) === 0 }]" @click="clickHex(hex.coord)">
+    <g v-for="hex in hexes" :key="hex.coord" class="hex-cell" :data-coord="hex.coord" :data-distance="distanceAt(hex.coord) >= 0 ? distanceAt(hex.coord) : undefined" :data-recon-current-aircraft="reconCurrentAircraftAt(hex.coord) || undefined" :class="[`terrain-${hex.terrain}`, { legal: selectedMoves.has(hex.coord), 'drop-hover': dropHover === hex.coord, 'recon-sector': reconCells.has(hex.coord), 'recon-current': reconCurrentCells.has(hex.coord), 'distance-reference': distanceAt(hex.coord) > 0 && distanceAt(hex.coord) <= 2, 'distance-outer': distanceAt(hex.coord) === 2, 'distance-origin': distanceAt(hex.coord) === 0 }]" @click="clickHex(hex.coord)">
       <polygon :points="points(hex.x, hex.y)" />
       <text class="coord-label" :x="hex.x" :y="hex.y - 23">{{ hex.coord }}</text>
       <text v-if="hex.name" class="terrain-label" :x="hex.x" :y="hex.y + 27">{{ hex.name }}</text>
@@ -234,6 +248,23 @@ function contactSizeName(size?: 'small' | 'medium' | 'large') {
         <text v-else-if="moveOrder(unit)" class="unit-order" text-anchor="middle" y="48">预定 {{ unit.coord }}</text>
         <text v-else-if="(unit.move_cooldown || 0) > 0" class="unit-order" text-anchor="middle" y="48">{{ unit.move_cooldown }}回合后可移动</text>
         <text v-else-if="unit.moved" class="unit-order" text-anchor="middle" y="48">已移动</text>
+      </g>
+    </g>
+    <g v-for="hex in hexes" :key="`recon-aircraft-${hex.coord}`">
+      <g
+        v-for="(sector, index) in reconAircraftAt(hex.coord)"
+        :key="sector.aircraft_id"
+        class="map-recon-aircraft"
+        :class="{ embarked: sector.status !== 'recon' }"
+        :data-aircraft-id="sector.aircraft_id"
+        :data-status="sector.status"
+        :data-display-coord="sector.current_coord"
+        :transform="`translate(${reconPosition(hex.coord, index, reconAircraftAt(hex.coord).length).x}, ${reconPosition(hex.coord, index, reconAircraftAt(hex.coord).length).y})`"
+      >
+        <circle r="8" />
+        <path d="M-6 3 0-7 6 3 0 1Z" />
+        <text x="10" y="3">{{ sector.status === 'recon' ? '侦察' : '舰上' }}</text>
+        <title>{{ sector.aircraft_id }} · {{ sector.status === 'recon' ? `第${sector.recon_distance || 0}距离圈` : '随母舰移动' }}</title>
       </g>
     </g>
     <g v-if="dragging && draggedUnit" ref="ghostElement" class="map-unit drag-ghost" :class="`faction-${draggedUnit.faction.toLowerCase()}`" transform="translate(-1000, -1000)">

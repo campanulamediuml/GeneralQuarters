@@ -119,3 +119,5 @@
 .air-task-content .strike-target-card{padding:2px 4px}
 .air-task-content .strike-target-control>button{padding:3px;font-size:7px}
 @media(max-width:600px){.air-task-content{flex-basis:100px;padding:4px}.mission-grid .air-task.with-air-task-counters{gap:4px;padding:4px}.air-task-content .recon-task-dial svg{flex-basis:24px;width:24px;height:24px}}
+
+.map-recon-aircraft{pointer-events:none}.map-recon-aircraft circle{fill:#d7bb7b;stroke:#14252a;stroke-width:1.2}.map-recon-aircraft path{fill:#173b49;stroke:#173b49;stroke-width:1}.map-recon-aircraft text{fill:#f0d58d;font:7px 'Noto Sans SC',sans-serif;paint-order:stroke;stroke:#0b1b20;stroke-width:2px;stroke-linejoin:round}.map-recon-aircraft.embarked circle{fill:#78959a;stroke-dasharray:2 2}.map-recon-aircraft.embarked text{fill:#a9c2c4}

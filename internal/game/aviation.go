@@ -6,6 +6,17 @@ import (
 	"strings"
 )
 
+func syncEmbarkedAircraft(state *State) {
+	for _, aircraft := range state.Aircraft {
+		if airborne(aircraft) {
+			continue
+		}
+		if carrier := state.Units[aircraft.CarrierID]; carrier != nil {
+			aircraft.Coord = carrier.Coord
+		}
+	}
+}
+
 func EnsureAviation(state *State) {
 	for _, unit := range state.Units {
 		if unit.Card.HangarCapacity <= 0 {
@@ -88,6 +99,7 @@ func EnsureAviation(state *State) {
 			}
 		}
 	}
+	syncEmbarkedAircraft(state)
 }
 
 func AviationAvailable(unit *Unit) bool {
@@ -544,6 +556,7 @@ func launchAirTask(state *State, aircraftList []*AirUnit) []EngineEvent {
 
 func ApplyAirOrder(state *State, order Order) []EngineEvent {
 	EnsureAviation(state)
+	defer syncEmbarkedAircraft(state)
 	aircraftList, carrier, err := aircraftForOrder(*state, orderAircraftFaction(*state, order), order)
 	if err != nil || len(aircraftList) == 0 || carrier == nil {
 		return nil
@@ -859,6 +872,7 @@ func AdvanceAviation(state *State) []EngineEvent {
 			unit.Deck.Operation = ""
 		}
 	}
+	syncEmbarkedAircraft(state)
 	return events
 }
 
@@ -926,6 +940,32 @@ func taskPhase(members []*AirUnit) string {
 		}
 	}
 	return "servicing"
+}
+
+func projectReconSector(state State, aircraft *AirUnit) ReconSector {
+	origin := aircraft.OriginCoord
+	current := aircraft.Coord
+	if aircraft.Status != "recon" {
+		if carrier := state.Units[aircraft.CarrierID]; carrier != nil {
+			current = carrier.Coord
+			if origin == "" {
+				origin = current
+			}
+		}
+	}
+	sector := ReconSector{
+		AircraftID: aircraft.ID, Status: aircraft.Status, OriginCoord: origin, CurrentCoord: current,
+		Heading: aircraft.Heading, SectorWidth: aircraft.SectorWidth, ReconRadius: aircraft.ReconRadius,
+		ReconDistance: aircraft.ReconDistance, Returning: aircraft.Returning, TrackingFleetID: aircraft.TrackingFleetID,
+	}
+	if aircraft.Status == "recon" {
+		sector.SectorHexes = ReconSectorHexes(state.Map, origin, aircraft.Heading, aircraft.SectorWidth, aircraft.ReconRadius)
+		sector.CurrentRingHexes = ReconRingHexes(state.Map, origin, aircraft.Heading, aircraft.SectorWidth, aircraft.ReconDistance)
+		if current != "" {
+			sector.DistanceReference = BuildDistanceReference(state.Map, current, 8)
+		}
+	}
+	return sector
 }
 
 func VisibleAviation(state State, faction string) AviationView {
@@ -1004,6 +1044,10 @@ func VisibleAviation(state State, faction string) AviationView {
 			task.CurrentCoord = leader.Coord
 			task.TargetCoord = leader.TargetCoord
 		default:
+			task.ReconSectors = []ReconSector{}
+			for _, aircraft := range aircraftList {
+				task.ReconSectors = append(task.ReconSectors, projectReconSector(state, aircraft))
+			}
 			reconLeader := leader
 			for _, aircraft := range aircraftList {
 				if aircraft.Status == "recon" {
