@@ -218,6 +218,60 @@ func TestAssignedTasksUseElevatorsBeforeLaunch(t *testing.T) {
 	}
 }
 
+func TestCapAndReconJoiningLaterKeepIndependentStages(t *testing.T) {
+	tests := []struct {
+		name        string
+		firstID     string
+		secondID    string
+		firstOrder  Order
+		secondOrder Order
+		airborne    string
+	}{
+		{
+			name: "CAP", firstID: "air-b-01", secondID: "air-b-02", airborne: "cap",
+			firstOrder:  Order{Type: "LAUNCH_CAP", AircraftID: "air-b-01"},
+			secondOrder: Order{Type: "LAUNCH_CAP", AircraftID: "air-b-02"},
+		},
+		{
+			name: "侦察", firstID: "air-b-03", secondID: "air-b-04", airborne: "recon",
+			firstOrder:  Order{Type: "LAUNCH_RECON", AircraftID: "air-b-03", Heading: "W", SectorWidth: 60},
+			secondOrder: Order{Type: "LAUNCH_RECON", AircraftID: "air-b-04", TaskID: "air-b-03", Heading: "W", SectorWidth: 60},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			state := sandboxState(t)
+			if err := ValidateAirOrder(state, "B", test.firstOrder); err != nil {
+				t.Fatal(err)
+			}
+			ApplyAirOrder(&state, test.firstOrder)
+			AdvanceAviation(&state)
+			if state.Aircraft[test.firstID].Status != "elevator" {
+				t.Fatalf("第一架未进入提升：%+v", state.Aircraft[test.firstID])
+			}
+			if err := ValidateAirOrder(state, "B", test.secondOrder); err != nil {
+				t.Fatal(err)
+			}
+			ApplyAirOrder(&state, test.secondOrder)
+			if state.Aircraft[test.firstID].Status != "elevator" || state.Aircraft[test.secondID].Status != "service" {
+				t.Fatalf("第二回合加入时阶段被合并：第一架=%s 第二架=%s", state.Aircraft[test.firstID].Status, state.Aircraft[test.secondID].Status)
+			}
+			AdvanceAviation(&state)
+			if state.Aircraft[test.firstID].Status != test.airborne || state.Aircraft[test.secondID].Status != "elevator" {
+				t.Fatalf("第一架放飞时带走了第二架：第一架=%s 第二架=%s", state.Aircraft[test.firstID].Status, state.Aircraft[test.secondID].Status)
+			}
+			tasks := VisibleAviation(state, "B").Tasks
+			if len(tasks) != 1 || tasks[0].AirborneCount != 1 || tasks[0].Phase != "lifting" {
+				t.Fatalf("分批任务投影没有保留部分升空和提升中：%+v", tasks)
+			}
+			AdvanceAviation(&state)
+			if state.Aircraft[test.secondID].Status != test.airborne {
+				t.Fatalf("第二架没有在自己的提升完成后放飞：%+v", state.Aircraft[test.secondID])
+			}
+		})
+	}
+}
+
 func TestSingleElevatorBatchesAndDeckLengthDelay(t *testing.T) {
 	state := sandboxState(t)
 	for index, id := range []string{"air-test-02", "air-test-03"} {
