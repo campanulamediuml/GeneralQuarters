@@ -317,6 +317,31 @@ func TestReturningAssignedAircraftCancelsOrQueuesDescent(t *testing.T) {
 	}
 }
 
+func TestRepeatedJoinOfCurrentTaskIsIdempotent(t *testing.T) {
+	state := sandboxState(t)
+	order := Order{Type: "LAUNCH_RECON", AircraftID: "air-b-10", Heading: "W", SectorWidth: 60}
+	if err := ValidateAirOrder(state, "B", order); err != nil {
+		t.Fatal(err)
+	}
+	ApplyAirOrder(&state, order)
+	before := *state.Aircraft["air-b-10"]
+	repeated := order
+	repeated.TaskID = "air-b-10"
+	repeated.Heading = "E"
+	repeated.SectorWidth = 120
+	if err := ValidateAirOrder(state, "B", repeated); err != nil {
+		t.Fatalf("重复加入当前任务不应报错：%v", err)
+	}
+	events := ApplyAirOrder(&state, repeated)
+	after := *state.Aircraft["air-b-10"]
+	if after != before {
+		t.Fatalf("重复加入当前任务改变了状态：之前=%+v 之后=%+v", before, after)
+	}
+	if len(events) != 1 || events[0].Type != "air_task_unchanged" {
+		t.Fatalf("重复加入当前任务没有返回幂等结果：%+v", events)
+	}
+}
+
 func TestReconGroupsAcceptDifferentAircraftAndRepeatedJoins(t *testing.T) {
 	state := sandboxState(t)
 	setAircraftReady(&state, "air-b-03", "air-b-04", "air-b-08", "air-b-10")

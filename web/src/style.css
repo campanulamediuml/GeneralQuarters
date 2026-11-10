@@ -84,4 +84,38 @@
 
 .strike-target-picker{display:flex;flex-direction:column;gap:8px}.strike-target-picker select{width:100%;padding:12px;border:1px solid #4a6870;background:#0c1d23;color:#d7bb7b;font:600 14px 'Noto Sans SC',sans-serif}.strike-target-picker select:disabled{opacity:.75;cursor:not-allowed}.strike-target-picker small{color:#718d92;font-size:9px;line-height:1.6}
 
-.strike-map-target{display:flex;align-items:center;gap:10px;padding:6px 10px;border:1px solid var(--gold);background:#3b392b;color:var(--gold);font-size:10px}.strike-map-target button{padding:3px 8px;border:1px solid #8a774c;background:#142b33;color:#d7e0da;font-size:9px}.strike-target-control{grid-column:1/-1;display:flex;align-items:center;gap:6px;min-width:0}.strike-target-control>button{flex:0 0 auto;padding:4px 7px;border:1px solid #9a8350;background:#37352a;color:var(--gold);font-size:8px}.strike-target-card{display:flex;align-items:center;gap:5px;min-width:0;flex:1;padding:3px 6px;border:1px solid #4d676e;background:#10262d}.strike-target-card>span{color:var(--gold);font-size:15px}.strike-target-card>div{display:flex;flex-direction:column;min-width:0}.strike-target-card strong{overflow:hidden;font-size:8px;text-overflow:ellipsis;white-space:nowrap}.strike-target-card small{color:#87a3a6;font-size:7px}.mission-grid .air-task-list{overflow:hidden}.mission-grid .air-task-counters{overflow:visible}.mission-grid .air-task-counters .air-counter{width:64px;height:65px;grid-template-rows:14px 32px 17px}.mission-grid .air-task-counters .aircraft-ratings{font-size:10px}.mission-grid .air-task-counters .aircraft-body{grid-template-columns:11px minmax(0,1fr) 11px}.mission-grid .air-task-counters .aircraft-symbol{height:30px}.mission-grid .air-task-counters .aircraft-strength{padding-top:1px;font-size:9px}.mission-grid .air-task-counters .aircraft-loadout{padding-top:1px;font-size:8px}.mission-grid .air-task-counters .aircraft-footer{grid-template-columns:20px minmax(0,1fr);padding:0 3px 2px}.mission-grid .air-task-counters .aircraft-range{width:20px;height:15px;font-size:11px}.mission-grid .air-task-counters .aircraft-model{font-size:7px}.mission-grid .air-task-counters .aircraft-stack-count{bottom:21px;min-width:20px;padding:2px;font-size:10px}.mission-grid .air-task-counters>div{flex:0 0 64px;width:64px}.mission-grid .air-task-counters>div>small{min-height:14px;font-size:6px}.mission-grid .air-task-counters>div>button{width:64px;font-size:6px}
+.strike-map-target{display:flex;align-items:center;gap:10px;padding:6px 10px;border:1px solid var(--gold);background:#3b392b;color:var(--gold);font-size:10px}.strike-map-target button{padding:3px 8px;border:1px solid #8a774c;background:#142b33;color:#d7e0da;font-size:9px}.strike-target-control{grid-column:1/-1;display:flex;align-items:center;gap:6px;min-width:0}.strike-target-control>button{flex:0 0 auto;padding:4px 7px;border:1px solid #9a8350;background:#37352a;color:var(--gold);font-size:8px}.strike-target-card{display:flex;align-items:center;gap:5px;min-width:0;flex:1;padding:3px 6px;border:1px solid #4d676e;background:#10262d}.strike-target-card>span{color:var(--gold);font-size:15px}.strike-target-card>div{display:flex;flex-direction:column;min-width:0}.strike-target-card strong{overflow:hidden;font-size:8px;text-overflow:ellipsis;white-space:nowrap}.strike-target-card small{color:#87a3a6;font-size:7px}
+.mission-grid .air-task-list{overflow:hidden}
+.mission-grid .air-task.with-air-task-counters{display:flex;align-items:stretch;gap:6px;min-height:82px;padding:5px;flex-wrap:nowrap}
+.mission-grid .air-task.recon-task{min-height:82px}
+.mission-grid .air-task>div.air-task-counters{flex:1 1 auto;align-items:flex-start;gap:5px;min-width:0;padding:0 0 3px;border-top:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scrollbar-color:#48646c #10252b}
+.mission-grid .air-task-counters .air-counter{width:52px;height:53px;grid-template-rows:12px 24px 15px}
+.mission-grid .air-task-counters .aircraft-ratings{padding:0 2px;font-size:9px}
+.mission-grid .air-task-counters .aircraft-body{grid-template-columns:9px minmax(0,1fr) 9px}
+.mission-grid .air-task-counters .aircraft-symbol{height:23px}
+.mission-grid .air-task-counters .aircraft-strength{padding-top:1px;font-size:8px}
+.mission-grid .air-task-counters .aircraft-loadout{padding-top:1px;font-size:7px}
+.mission-grid .air-task-counters .aircraft-footer{grid-template-columns:17px minmax(0,1fr);gap:2px;padding:0 2px 2px}
+.mission-grid .air-task-counters .aircraft-range{width:17px;height:13px;font-size:9px}
+.mission-grid .air-task-counters .aircraft-model{padding-bottom:1px;font-size:6px}
+.mission-grid .air-task-counters .aircraft-stack-count{right:2px;bottom:18px;min-width:18px;padding:2px;font-size:8px}
+.mission-grid .air-task-counters>div{flex:0 0 52px;width:52px}
+.mission-grid .air-task-counters>div>small{min-height:12px;font-size:6px}
+.mission-grid .air-task-counters>div>button{width:52px;font-size:6px}
+.air-task-content{position:relative;display:flex;flex:0 0 112px;flex-direction:column;gap:3px;min-width:0;padding:5px;border:1px solid #3b565e;background:#10262d}
+.mission-grid .air-task-content .air-task-copy{min-width:0;gap:3px}
+.mission-grid .air-task-content .air-task-copy strong{padding-right:17px;font-size:9px}
+.mission-grid .air-task-content .air-task-copy small{font-size:7px}
+.mission-grid .air-task-content .air-task-copy .air-task-phase{font-size:7px}
+.air-task-content .task-flag{top:3px;right:3px;bottom:auto;width:18px;height:18px;font-size:12px}
+.air-task-content .task-priority{position:absolute;right:4px;bottom:3px;margin:0;font-size:6px}
+.mission-grid .air-task.recon-task .task-priority{left:auto;right:4px;bottom:3px}
+.air-task-content .recon-task-dial{display:flex!important;flex-direction:row!important;align-items:center;gap:4px;width:auto;min-width:0;margin-top:auto}
+.air-task-content .recon-task-dial svg{flex:0 0 28px;width:28px;height:28px}
+.air-task-content .recon-task-dial>div{display:flex;flex-direction:column;gap:1px}
+.air-task-content .recon-task-dial b{font-size:10px}
+.air-task-content .recon-task-dial small{font-size:6px}
+.air-task-content .strike-target-control{display:flex;flex-direction:column;align-items:stretch;gap:3px;margin-top:auto}
+.air-task-content .strike-target-card{padding:2px 4px}
+.air-task-content .strike-target-control>button{padding:3px;font-size:7px}
+@media(max-width:600px){.air-task-content{flex-basis:100px;padding:4px}.mission-grid .air-task.with-air-task-counters{gap:4px;padding:4px}.air-task-content .recon-task-dial svg{flex-basis:24px;width:24px;height:24px}}

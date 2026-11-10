@@ -156,6 +156,22 @@ func aircraftForOrder(state State, faction string, order Order) ([]*AirUnit, *Un
 	return aircraftList, carrier, nil
 }
 
+func sameTaskAssignment(aircraftList []*AirUnit, order Order) bool {
+	if order.TaskID == "" || (order.Type != "LAUNCH_RECON" && order.Type != "LAUNCH_STRIKE") {
+		return false
+	}
+	taskKind := "recon"
+	if order.Type == "LAUNCH_STRIKE" {
+		taskKind = "attack"
+	}
+	for _, aircraft := range aircraftList {
+		if aircraft.TaskID != order.TaskID || aircraft.TaskKind != taskKind {
+			return false
+		}
+	}
+	return len(aircraftList) > 0
+}
+
 func ValidateAirOrder(state State, faction string, order Order) error {
 	aircraftList, carrier, err := aircraftForOrder(state, faction, order)
 	if err != nil {
@@ -163,6 +179,9 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 	}
 	switch order.Type {
 	case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE":
+		if sameTaskAssignment(aircraftList, order) {
+			return nil
+		}
 		status := aircraftList[0].Status
 		if status != "hangar" && status != "service" && status != "deck" && status != "ready" {
 			return fmt.Errorf("只有机库、整备中或已完成提升的算子可以分配任务")
@@ -548,6 +567,9 @@ func ApplyAirOrder(state *State, order Order) []EngineEvent {
 		}
 		return []EngineEvent{{Type: "air_returned_to_hangar", Audience: carrier.Faction, Text: fmt.Sprintf("%s取消%d个机库任务算子，%d个甲板算子等待升降机下降", carrier.Name, cancelled, lowered)}}
 	case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE":
+		if sameTaskAssignment(aircraftList, order) {
+			return []EngineEvent{{Type: "air_task_unchanged", Audience: carrier.Faction, Text: "算子已在当前任务中，无需重复加入"}}
+		}
 		status := aircraftList[0].Status
 		configureAirTask(state, aircraftList, order)
 		if status == "deck" || status == "ready" {

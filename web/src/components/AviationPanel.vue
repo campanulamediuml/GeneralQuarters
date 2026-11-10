@@ -191,16 +191,20 @@ function taskPhase(task: AirTask) {
   return '任务执行中'
 }
 
-function carrierNames(task: AirTask) {
-  return task.carrier_ids.map((id) => carriers.value.find((item) => item.unit_id === id)?.name || id).join(' / ')
+function taskTitle(task: AirTask) {
+  if (task.kind === 'recon') return '扇面侦察'
+  if (task.kind === 'attack') return '攻击编队'
+  if (task.kind === 'cap') return 'CAP'
+  return task.name
 }
 
 function taskSummary(task: AirTask) {
-  if (task.kind === 'attack') return `目标 ${task.target_coord || '未设置'} · ${carrierNames(task)} · ${task.airborne_count}/${task.aircraft_ids.length} 已升空 · ${task.current_coord || '母舰'}`
-  if (task.kind !== 'recon') return `${carrierNames(task)} · ${task.aircraft_ids.length} 算子`
-  if (['servicing', 'lifting', 'preparing'].includes(task.phase)) return `${carrierNames(task)} · ${task.sector_width}° ${task.heading} · 半径 ${task.recon_radius} · ${task.airborne_count}/${task.aircraft_ids.length} 已升空`
-  const phase = task.tracking_fleet_id ? '持续跟踪' : task.returning ? '返航搜索' : `第 ${task.recon_distance || 0} 距离圈`
-  return `${task.sector_width}° ${task.heading} · 半径 ${task.recon_radius} · ${phase}`
+  if (task.kind === 'attack') return `${task.airborne_count}/${task.aircraft_ids.length} 已升空 · ${task.current_coord || '母舰'}`
+  if (task.kind === 'cap') return `${task.airborne_count}/${task.aircraft_ids.length} 已升空`
+  if (['servicing', 'lifting', 'preparing'].includes(task.phase)) return `${task.airborne_count}/${task.aircraft_ids.length} 已升空`
+  if (task.tracking_fleet_id) return '持续跟踪'
+  if (task.returning) return '返航搜索'
+  return `第 ${task.recon_distance || 0} 距离圈`
 }
 
 function targetLabel(task: AirTask) {
@@ -265,6 +269,12 @@ function counterHint(aircraft: AirUnit) {
   return '拖至任务栏开始整备'
 }
 
+function hangarCounterHint(aircraft: AirUnit) {
+  if (!aircraft.task_id) return counterHint(aircraft)
+  const task = tasks.value.find((item) => item.id === aircraft.task_id)
+  return `已加入${task ? taskTitle(task) : '航空任务'} · 整备中`
+}
+
 function operationName(carrier: CarrierAirStatus) {
   if (carrier.operation === 'launch') return '甲板：放飞作业'
   if (carrier.operation === 'recover') return '甲板：回收作业'
@@ -292,16 +302,7 @@ function operationName(carrier: CarrierAirStatus) {
       <section v-for="lane in lanes" :key="lane.id" class="air-task-lane" :class="[`mission-${lane.id}`, { 'drop-active': dragOver === lane.id }]" :data-lane-id="lane.id" @click="assignTarget(lane.id)" @dragover.prevent="dragOver = lane.id" @dragleave="dragOver = ''" @drop.prevent="assignTarget(lane.id)">
         <header><span>{{ lane.name }}</span><small>{{ laneTasks(lane).length }} 项</small></header>
         <div v-if="laneTasks(lane).length" class="air-task-list">
-          <article v-for="task in laneTasks(lane)" :key="task.id" class="air-task with-air-task-counters" :class="{ prioritized: task.priority === 1 }" :data-task-id="task.id" :data-phase="task.phase" @click.stop="selectTask(task)" @dragover.prevent.stop="dragOver = `task-${task.id}`" @dragleave="dragOver = ''" @drop.prevent.stop="dropOnTask(task, lane)">
-            <div class="air-task-copy"><strong>{{ task.name }}</strong><span class="air-task-phase" :class="`phase-${task.phase}`">{{ taskPhase(task) }}</span><small>{{ taskSummary(task) }}</small></div>
-            <div v-if="task.kind === 'attack'" class="strike-target-control">
-              <div v-if="task.target_coord" class="strike-target-card"><span>⬡</span><div><strong>{{ targetLabel(task) }}</strong><small>目标 {{ task.target_coord }}</small></div></div>
-              <button @click.stop="emit('selectTarget', task.id)">{{ task.target_coord ? '更换目标' : '选择目标' }}</button>
-            </div>
-            <div v-if="task.kind === 'recon'" class="recon-task-dial" :data-sector-width="task.sector_width">
-              <svg viewBox="0 0 100 100" aria-hidden="true"><g :transform="`rotate(${headingRotation[task.heading || 'W']} 50 50)`"><path :d="task.sector_width === 60 ? 'M50 50 L84.64 30 A40 40 0 0 1 84.64 70 Z' : 'M50 50 L70 5.36 A40 40 0 0 1 70 94.64 Z'" /></g><circle cx="50" cy="50" r="40" /><circle cx="50" cy="50" r="3" /></svg>
-              <div><b>{{ task.sector_width }}°</b><small>{{ task.heading }} · {{ task.recon_radius }} hex</small></div>
-            </div>
+          <article v-for="task in laneTasks(lane)" :key="task.id" class="air-task with-air-task-counters" :class="{ prioritized: task.priority === 1, 'recon-task': task.kind === 'recon' }" :data-task-id="task.id" :data-phase="task.phase" @click.stop="selectTask(task)" @dragover.prevent.stop="dragOver = `task-${task.id}`" @dragleave="dragOver = ''" @drop.prevent.stop="dropOnTask(task, lane)">
             <div class="air-task-counters" @click.stop>
               <div v-for="stack in taskAircraftStacks(task)" :key="`${stack.aircraft.id}-${stack.aircraft.status}`" :data-task-aircraft-id="stack.aircraft.id" :data-status="stack.aircraft.status">
                 <AircraftCounter :aircraft="stack.aircraft" :stack-count="stack.ids.length" :player-faction="playerFaction" :class="{ selected: selectedAircraftId && stack.ids.includes(selectedAircraftId) }" :draggable="['service', 'deck', 'ready'].includes(stack.aircraft.status)" @click="selectCounter(stack.aircraft)" @dragstart="['service', 'deck', 'ready'].includes(stack.aircraft.status) && startDrag(stack.aircraft, $event, stack.ids)" @dragend="endDrag" />
@@ -309,8 +310,19 @@ function operationName(carrier: CarrierAirStatus) {
                 <button v-if="stack.aircraft.status === 'cap'" :disabled="busy" @click.stop="recover(stack.ids)">着舰并排队下降</button>
               </div>
             </div>
-            <span class="task-priority">P{{ task.priority }}</span>
-            <button class="task-flag" :class="{ active: task.priority === 1 }" :aria-label="`将${task.name}设为最高优先级`" :disabled="busy" @click.stop="emit('command', 'PRIORITIZE_AIR_TASK', [task.id])">⚑</button>
+            <aside class="air-task-content">
+              <div class="air-task-copy"><strong>{{ taskTitle(task) }}</strong><span class="air-task-phase" :class="`phase-${task.phase}`">{{ taskPhase(task) }}</span><small>{{ taskSummary(task) }}</small></div>
+              <div v-if="task.kind === 'attack'" class="strike-target-control">
+                <div class="strike-target-card"><span>⬡</span><div><strong>{{ task.target_coord ? targetLabel(task) : '目标 未设置' }}</strong><small>{{ task.target_coord ? `目标 ${task.target_coord}` : '选择敌方舰队或hex' }}</small></div></div>
+                <button @click.stop="emit('selectTarget', task.id)">{{ task.target_coord ? '更换目标' : '选择目标' }}</button>
+              </div>
+              <div v-if="task.kind === 'recon'" class="recon-task-dial" :data-sector-width="task.sector_width">
+                <svg viewBox="0 0 100 100" aria-hidden="true"><g :transform="`rotate(${headingRotation[task.heading || 'W']} 50 50)`"><path :d="task.sector_width === 60 ? 'M50 50 L84.64 30 A40 40 0 0 1 84.64 70 Z' : 'M50 50 L70 5.36 A40 40 0 0 1 70 94.64 Z'" /></g><circle cx="50" cy="50" r="40" /><circle cx="50" cy="50" r="3" /></svg>
+                <div><b>{{ task.sector_width }}°</b><small>{{ task.heading }} · {{ task.recon_radius }} hex</small></div>
+              </div>
+              <span class="task-priority">P{{ task.priority }}</span>
+              <button class="task-flag" :class="{ active: task.priority === 1 }" :aria-label="`将${taskTitle(task)}设为最高优先级`" :disabled="busy" @click.stop="emit('command', 'PRIORITIZE_AIR_TASK', [task.id])">⚑</button>
+            </aside>
           </article>
         </div>
         <p v-else>{{ lane.kind === 'attack' ? '拖入飞机建立编队' : '拖入飞机分配任务' }}</p>
@@ -338,8 +350,8 @@ function operationName(carrier: CarrierAirStatus) {
         <header><div><span class="section-kicker">HANGAR</span><h3>机库 / 任务整备</h3></div><strong>{{ selectedCarrier.hangar_used }} / {{ selectedCarrier.hangar_capacity }}</strong></header>
         <div class="air-counter-grid">
           <div v-for="stack in aircraftStacks('hangar')" :key="stack.aircraft.id" class="air-counter-item" :data-aircraft-id="stack.aircraft.id" :data-status="stack.aircraft.status" :data-stack-count="stack.ids.length">
-            <AircraftCounter :aircraft="stack.aircraft" :stack-count="stack.ids.length" :player-faction="playerFaction" :class="{ selected: stack.ids.some((id) => selectedIDs.includes(id)), selectable: true }" draggable="true" @click.stop="selectCounter(stack.aircraft, stack.ids)" @dragstart="startDrag(stack.aircraft, $event, stack.ids)" @dragend="endDrag" />
-            <span class="air-no-action">{{ counterHint(stack.aircraft) }}</span>
+            <AircraftCounter :aircraft="stack.aircraft" :stack-count="stack.ids.length" :player-faction="playerFaction" :class="{ selected: stack.ids.some((id) => selectedIDs.includes(id)), selectable: !stack.aircraft.task_id }" :draggable="!stack.aircraft.task_id" @click.stop="!stack.aircraft.task_id && selectCounter(stack.aircraft, stack.ids)" @dragstart="!stack.aircraft.task_id && startDrag(stack.aircraft, $event, stack.ids)" @dragend="endDrag" />
+            <span class="air-no-action">{{ hangarCounterHint(stack.aircraft) }}</span>
           </div>
           <p v-if="!aircraftAt('hangar').length" class="empty-hangar">机库空置</p>
         </div>
