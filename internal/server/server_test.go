@@ -18,15 +18,16 @@ import (
 )
 
 type testView struct {
-	Turn      int               `json:"turn"`
-	Version   int64             `json:"version"`
-	Units     []game.Unit       `json:"units"`
-	Fleets    []game.FleetGroup `json:"fleets"`
-	Aviation  game.AviationView `json:"aviation"`
-	You       store.Player      `json:"you"`
-	Players   []store.Player    `json:"players"`
-	Orders    []game.Order      `json:"orders"`
-	JoinToken string            `json:"join_token"`
+	Turn       int                    `json:"turn"`
+	Version    int64                  `json:"version"`
+	Units      []game.Unit            `json:"units"`
+	Fleets     []game.FleetGroup      `json:"fleets"`
+	Aviation   game.AviationView      `json:"aviation"`
+	AirCombats []game.AirCombatReport `json:"air_combats"`
+	You        store.Player           `json:"you"`
+	Players    []store.Player         `json:"players"`
+	Orders     []game.Order           `json:"orders"`
+	JoinToken  string                 `json:"join_token"`
 }
 
 type testClient struct {

@@ -10,6 +10,7 @@ const props = defineProps<{
   selectedUnit?: Unit
   orders: Order[]
   reconTasks: AirTask[]
+  airTasks: AirTask[]
   distanceReference?: DistanceReference
 }>()
 
@@ -51,6 +52,7 @@ const selectedMoves = computed(() => new Set(props.selectedUnit?.legal_moves || 
 const reconSectors = computed<ReconSector[]>(() => props.reconTasks.flatMap((task) => task.recon_sectors || []))
 const reconCells = computed(() => new Set(reconSectors.value.flatMap((sector) => sector.sector_hexes || [])))
 const reconCurrentCells = computed(() => new Set(reconSectors.value.flatMap((sector) => sector.current_ring_hexes || [])))
+const flightTasks = computed(() => props.airTasks.filter((task) => (task.kind === 'attack' || task.kind === 'transfer') && task.airborne_count > 0 && task.current_coord))
 const mapStyle = computed(() => ({ width: `${zoom.value * 100}%`, minWidth: `${620 * zoom.value}px`, maxHeight: zoom.value > 1 ? 'none' : '100%' }))
 
 function reconAircraftAt(coord: string) {
@@ -64,6 +66,24 @@ function reconCurrentAircraftAt(coord: string) {
 function reconPosition(coord: string, index: number, total: number) {
   const point = center(coord)
   return { x: point.x + (index - (total - 1) / 2) * 14, y: point.y - 30 - index * 7 }
+}
+
+function flightTasksAt(coord: string) {
+  return flightTasks.value.filter((task) => task.current_coord === coord)
+}
+
+function flightPosition(coord: string, index: number, total: number) {
+  const point = center(coord)
+  return { x: point.x + (index - (total - 1) / 2) * 30, y: point.y - 52 - index * 8 }
+}
+
+function flightRange(task: AirTask) {
+  const ranges = task.aircraft.filter((aircraft) => ['attack', 'attack_holding'].includes(aircraft.status)).map((aircraft) => aircraft.remaining_range)
+  return ranges.length ? Math.min(...ranges) : task.aircraft[0]?.remaining_range || 0
+}
+
+function flightModels(task: AirTask) {
+  return [...new Set(task.aircraft.map((aircraft) => aircraft.model))].join(' / ')
 }
 const distanceByCoord = computed(() => new Map((props.distanceReference?.cells || []).map((cell) => [cell.coord, cell.distance])))
 
@@ -265,6 +285,26 @@ function contactSizeName(size?: 'small' | 'medium' | 'large') {
         <path d="M-6 3 0-7 6 3 0 1Z" />
         <text x="10" y="3">{{ sector.status === 'recon' ? '侦察' : '舰上' }}</text>
         <title>{{ sector.aircraft_id }} · {{ sector.status === 'recon' ? `第${sector.recon_distance || 0}距离圈` : '随母舰移动' }}</title>
+      </g>
+    </g>
+    <g v-for="hex in hexes" :key="`flight-task-${hex.coord}`">
+      <g
+        v-for="(task, index) in flightTasksAt(hex.coord)"
+        :key="task.id"
+        class="map-flight-task"
+        :class="task.kind"
+        :data-flight-task-id="task.id"
+        :data-task-kind="task.kind"
+        :data-display-coord="task.current_coord"
+        :data-target-coord="task.target_coord"
+        :transform="`translate(${flightPosition(hex.coord, index, flightTasksAt(hex.coord).length).x}, ${flightPosition(hex.coord, index, flightTasksAt(hex.coord).length).y})`"
+      >
+        <rect x="-24" y="-15" width="48" height="30" rx="3" />
+        <path class="flight-task-symbol" d="M-3-11h6l2 8 15 7v4L5 5 4 11l6 3v3l-10-2-10 2v-3l6-3-1-6-15 3V4L-5-3Z" />
+        <text x="30" y="-3">{{ task.kind === 'attack' ? '攻击' : '转场' }} {{ task.airborne_count }}/{{ task.aircraft_ids.length }}</text>
+        <text class="flight-task-range" x="30" y="10">航程 {{ flightRange(task) }}</text>
+        <text class="flight-task-coord" y="27">{{ task.current_coord }} → {{ task.target_coord || '等待目标' }}</text>
+        <title>{{ flightModels(task) }} · {{ task.airborne_count }}/{{ task.aircraft_ids.length }} 已升空 · 当前 {{ task.current_coord }} · 目标 {{ task.target_coord || '未设置' }} · 剩余航程 {{ flightRange(task) }}</title>
       </g>
     </g>
     <g v-if="dragging && draggedUnit" ref="ghostElement" class="map-unit drag-ghost" :class="`faction-${draggedUnit.faction.toLowerCase()}`" transform="translate(-1000, -1000)">

@@ -217,6 +217,9 @@ type AirUnit struct {
 	ReconRadiusLimit int    `json:"recon_radius_limit,omitempty"`
 	Returning        bool   `json:"returning,omitempty"`
 	TrackingFleetID  string `json:"tracking_fleet_id,omitempty"`
+	Confusion        bool   `json:"confusion,omitempty"`
+	Damaged          bool   `json:"damaged,omitempty"`
+	Maintenance      int    `json:"maintenance,omitempty"`
 }
 
 type ReconSector struct {
@@ -247,6 +250,7 @@ type AirTask struct {
 	Aircraft          []AirUnit          `json:"aircraft"`
 	AirborneCount     int                `json:"airborne_count"`
 	Priority          int                `json:"priority"`
+	QueuePosition     int                `json:"queue_position"`
 	OriginCoord       string             `json:"origin_coord,omitempty"`
 	CurrentCoord      string             `json:"current_coord,omitempty"`
 	TargetCoord       string             `json:"target_coord,omitempty"`
@@ -292,6 +296,23 @@ type FleetContact struct {
 	Members []Unit `json:"members,omitempty"`
 }
 
+type AirCombatReport struct {
+	ID              string   `json:"id"`
+	Coord           string   `json:"coord"`
+	AttackerFaction string   `json:"attacker_faction"`
+	DefenderFaction string   `json:"defender_faction"`
+	AttackerModels  []string `json:"attacker_models"`
+	DefenderModels  []string `json:"defender_models"`
+	AttackerCount   int      `json:"attacker_count"`
+	DefenderCount   int      `json:"defender_count"`
+	AttackerLosses  int      `json:"attacker_losses"`
+	DefenderLosses  int      `json:"defender_losses"`
+	AAHits          int      `json:"aa_hits"`
+	StrikeHits      int      `json:"strike_hits"`
+	Winner          string   `json:"winner"`
+	Summary         string   `json:"summary"`
+}
+
 type State struct {
 	ScenarioID   string                              `json:"scenario_id"`
 	ScenarioName string                              `json:"scenario_name"`
@@ -303,6 +324,7 @@ type State struct {
 	Units        map[string]*Unit                    `json:"units"`
 	Aircraft     map[string]*AirUnit                 `json:"aircraft,omitempty"`
 	Contacts     map[string]map[string]*FleetContact `json:"contacts,omitempty"`
+	AirCombats   []AirCombatReport                   `json:"air_combats,omitempty"`
 	RNGState     uint64                              `json:"rng_state"`
 	Definitions  map[string]string                   `json:"definition_versions"`
 }

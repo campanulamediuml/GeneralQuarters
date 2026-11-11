@@ -494,6 +494,23 @@ func VisibleUnits(state State, faction string) []Unit {
 	return units
 }
 
+func shipTypeRank(unitType string) int {
+	order := map[string]int{"CV": 0, "CVL": 1, "CVE": 2, "BB": 3, "BC": 4, "CA": 5, "CL": 6, "DD": 7, "TRS": 8}
+	if rank, ok := order[unitType]; ok {
+		return rank
+	}
+	return len(order)
+}
+
+func sortUnitCards(units []Unit) {
+	sort.Slice(units, func(i, j int) bool {
+		if shipTypeRank(units[i].Type) == shipTypeRank(units[j].Type) {
+			return units[i].ID < units[j].ID
+		}
+		return shipTypeRank(units[i].Type) < shipTypeRank(units[j].Type)
+	})
+}
+
 func VisibleFleets(state State, faction string) []FleetGroup {
 	groups := map[string][]Unit{}
 	for _, unit := range VisibleUnits(state, faction) {
@@ -502,7 +519,7 @@ func VisibleFleets(state State, faction string) []FleetGroup {
 	}
 	fleets := []FleetGroup{}
 	for id, members := range groups {
-		sort.Slice(members, func(i, j int) bool { return members[i].ID < members[j].ID })
+		sortUnitCards(members)
 		leader := members[0]
 		fleet := FleetGroup{ID: leader.ID, FleetID: id, FleetName: leader.FleetName, Name: leader.Name, Type: leader.Type, Faction: leader.Faction, Coord: leader.Coord, Heading: leader.Heading, Count: len(members), Members: members, LegalMoves: leader.LegalMoves}
 		if fleet.Faction == faction {

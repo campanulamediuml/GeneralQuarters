@@ -365,8 +365,9 @@ func (s *Server) writeState(w http.ResponseWriter, r *http.Request, roomID strin
 		"room_id": room.ID, "status": room.Status, "turn": room.Turn, "version": room.Version,
 		"scenario": map[string]any{"id": room.State.ScenarioID, "name": room.State.ScenarioName, "description": room.State.Description},
 		"map":      room.State.Map, "units": game.VisibleUnits(room.State, player.Faction), "fleets": game.VisibleFleets(room.State, player.Faction),
-		"aviation": game.VisibleAviation(room.State, player.Faction),
-		"you":      player, "players": players, "orders": ownOrders, "events": events,
+		"aviation":    game.VisibleAviation(room.State, player.Faction),
+		"air_combats": game.VisibleAirCombats(room.State, player.Faction),
+		"you":         player, "players": players, "orders": ownOrders, "events": events,
 		"server_time": time.Now().UTC(),
 	}
 	if player.IsHost {

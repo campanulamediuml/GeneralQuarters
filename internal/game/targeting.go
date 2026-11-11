@@ -18,18 +18,32 @@ func ValidateStrikeTarget(state State, faction, coord string) error {
 }
 
 func advanceAttack(state *State, aircraft *AirUnit) []EngineEvent {
+	if aircraft.Returning {
+		return advanceAircraftReturn(state, aircraft)
+	}
+	members := []*AirUnit{aircraft}
+	if aircraft.TaskID != "" {
+		members = taskAircraft(*state, aircraft.TaskID)
+	}
 	if aircraft.TargetCoord == "" {
-		aircraft.RemainingRange--
+		for _, member := range members {
+			member.RemainingRange--
+		}
 		return nil
 	}
 	arrived := aircraft.Coord == aircraft.TargetCoord
-	for steps := 0; steps < 2 && aircraft.Coord != aircraft.TargetCoord; steps++ {
-		next := nextCoordToward(state.Map, aircraft.Coord, aircraft.TargetCoord)
-		if next == "" {
-			break
+	for _, member := range members {
+		for steps := 0; steps < 2 && member.Coord != member.TargetCoord; steps++ {
+			next := nextCoordToward(state.Map, member.Coord, member.TargetCoord)
+			if next == "" {
+				break
+			}
+			member.Coord = next
+			member.RemainingRange--
 		}
-		aircraft.Coord = next
-		aircraft.RemainingRange--
+	}
+	if aircraft.TaskID != "" && aircraft.Coord == aircraft.TargetCoord {
+		return resolveAirStrike(state, aircraft.TaskID, aircraft.TargetCoord)
 	}
 	if !arrived && aircraft.Coord == aircraft.TargetCoord {
 		return []EngineEvent{{Type: "attack_arrived", Audience: aircraft.Faction, Text: fmt.Sprintf("%s抵达%s目标上空，等待后续空袭结算", aircraft.Model, aircraft.TargetCoord)}}

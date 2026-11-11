@@ -36,7 +36,6 @@ const lanes: TaskLane[] = [
   { id: 'strike-2', name: '打击任务 II', kind: 'attack', slot: 1 },
   { id: 'asw', name: '反潜巡逻', kind: 'asw' },
   { id: 'cap', name: 'CAP', kind: 'cap' },
-  { id: 'escort', name: '空中掩护', kind: 'escort' },
 ]
 const headings: { id: ReconHeading; arrow: string; name: string }[] = [
   { id: 'NE', arrow: '↗', name: '东北' },
@@ -49,7 +48,6 @@ const headings: { id: ReconHeading; arrow: string; name: string }[] = [
 const headingRotation: Record<ReconHeading, number> = { E: 0, SE: 60, SW: 120, W: 180, NW: 240, NE: 300 }
 const selectedCarrier = computed(() => carriers.value.find((carrier) => carrier.unit_id === selectedCarrierID.value))
 const selectedUnit = computed(() => props.units.find((unit) => unit.id === selectedCarrierID.value))
-const joinableAttackTasks = computed(() => tasks.value.filter((task) => task.kind === 'attack' && !['launching', 'active'].includes(task.phase)))
 const reconTask = computed(() => tasks.value.find((task) => task.id === reconTaskID.value && task.kind === 'recon'))
 const reconAircraft = computed(() => {
   for (const carrier of carriers.value) {
@@ -147,7 +145,11 @@ function assignTarget(target: string, taskID = '') {
   selectionHint.value = ''
   if (target === 'hangar') emitBatch('RETURN_TO_HANGAR', ids)
   else if (target === 'cap') emitBatch('LAUNCH_CAP', ids)
-  else if (target.startsWith('strike-')) emitBatch('LAUNCH_STRIKE', ids, taskID ? { task_id: taskID } : undefined)
+  else if (target.startsWith('strike-')) {
+    const lane = lanes.find((item) => item.id === target)
+    const existing = taskID ? tasks.value.find((task) => task.id === taskID) : lane ? laneTasks(lane).find((task) => !['launching', 'active'].includes(task.phase)) : undefined
+    emitBatch('LAUNCH_STRIKE', ids, existing ? { task_id: existing.id } : undefined)
+  }
   else if (target.startsWith('recon-')) {
     const lane = lanes.find((item) => item.id === target)
     const existing = taskID ? tasks.value.find((task) => task.id === taskID) : lane ? laneTasks(lane)[0] : undefined
@@ -291,12 +293,6 @@ function operationName(carrier: CarrierAirStatus) {
     </header>
     <p v-if="selectionHint" class="air-selection-hint" role="alert">{{ selectionHint }}</p>
 
-    <div v-if="draggingIDs.length" class="task-drag-dock" aria-label="航空任务投放条">
-      <span>拖入任务</span>
-      <button v-for="lane in lanes" :key="lane.id" :class="{ 'drop-active': dragOver === `dock-${lane.id}` }" :data-dock-target="lane.id" @dragover.prevent="dragOver = `dock-${lane.id}`" @dragleave="dragOver = ''" @drop.prevent="assignTarget(lane.id)">{{ lane.name }}</button>
-      <button v-for="task in joinableAttackTasks" :key="`join-${task.id}`" class="dock-attack-join" :class="{ 'drop-active': dragOver === `dock-${task.id}` }" :data-dock-task-id="task.id" @dragover.prevent="dragOver = `dock-${task.id}`" @dragleave="dragOver = ''" @drop.prevent="assignTarget('strike-1', task.id)">加入 {{ task.name }}</button>
-    </div>
-
     <div v-if="!carriers.length" class="aviation-placeholder"><span>△</span><h2>当前舰队没有航空作业舰</h2><p>在剧本中部署航母或搭载水上飞机的舰船。</p></div>
     <div v-else class="air-task-lanes mission-grid">
       <section v-for="lane in lanes" :key="lane.id" class="air-task-lane" :class="[`mission-${lane.id}`, { 'drop-active': dragOver === lane.id }]" :data-lane-id="lane.id" @click="assignTarget(lane.id)" @dragover.prevent="dragOver = lane.id" @dragleave="dragOver = ''" @drop.prevent="assignTarget(lane.id)">
@@ -314,18 +310,25 @@ function operationName(carrier: CarrierAirStatus) {
               <div class="air-task-copy"><strong>{{ taskTitle(task) }}</strong><span class="air-task-phase" :class="`phase-${task.phase}`">{{ taskPhase(task) }}</span><small>{{ taskSummary(task) }}</small></div>
               <div v-if="task.kind === 'attack'" class="strike-target-control">
                 <div class="strike-target-card"><span>⬡</span><div><strong>{{ task.target_coord ? targetLabel(task) : '目标 未设置' }}</strong><small>{{ task.target_coord ? `目标 ${task.target_coord}` : '选择敌方舰队或hex' }}</small></div></div>
-                <button @click.stop="emit('selectTarget', task.id)">{{ task.target_coord ? '更换目标' : '选择目标' }}</button>
+                <button :aria-label="task.target_coord ? '更换目标' : '选择目标'" @click.stop="emit('selectTarget', task.id)">{{ task.target_coord ? '更换' : '选择' }}</button>
               </div>
               <div v-if="task.kind === 'recon'" class="recon-task-dial" :data-sector-width="task.sector_width">
                 <svg viewBox="0 0 100 100" aria-hidden="true"><g :transform="`rotate(${headingRotation[task.heading || 'W']} 50 50)`"><path :d="task.sector_width === 60 ? 'M50 50 L84.64 30 A40 40 0 0 1 84.64 70 Z' : 'M50 50 L70 5.36 A40 40 0 0 1 70 94.64 Z'" /></g><circle cx="50" cy="50" r="40" /><circle cx="50" cy="50" r="3" /></svg>
                 <div><b>{{ task.sector_width }}°</b><small>{{ task.heading }} · {{ task.recon_radius }} hex</small></div>
               </div>
               <span class="task-priority">P{{ task.priority }}</span>
+              <span class="task-queue">队列 {{ task.queue_position }}</span>
               <button class="task-flag" :class="{ active: task.priority === 1 }" :aria-label="`将${taskTitle(task)}设为最高优先级`" :disabled="busy" @click.stop="emit('command', 'PRIORITIZE_AIR_TASK', [task.id])">⚑</button>
             </aside>
           </article>
         </div>
-        <p v-else>{{ lane.kind === 'attack' ? '拖入飞机建立编队' : '拖入飞机分配任务' }}</p>
+        <div v-else class="mission-empty">
+          <svg v-if="lane.kind === 'recon'" viewBox="0 0 80 80" aria-hidden="true"><circle cx="40" cy="40" r="29" /><path class="empty-sector" d="M40 40 L63 27 A27 27 0 0 1 63 53 Z" /><path d="M40 11V18M40 62V69M11 40H18M62 40H69" /></svg>
+          <svg v-else-if="lane.kind === 'attack'" viewBox="0 0 80 80" aria-hidden="true"><path d="M40 9 67 24 67 56 40 71 13 56 13 24Z" /><path d="M40 22V58M25 40H55" /></svg>
+          <svg v-else viewBox="0 0 80 80" aria-hidden="true"><path d="M36 10h8l3 22 23 12v6l-24-6-2 12 9 5v4l-13-3-13 3v-4l9-5-2-12-24 6v-6l23-12Z" /></svg>
+          <p>{{ lane.kind === 'attack' ? '拖入飞机建立编队' : '拖入飞机分配任务' }}</p>
+          <small v-if="lane.kind === 'recon'">60° · 自动侦察航程</small>
+        </div>
       </section>
 
       <section v-if="selectedCarrier" class="air-storage-zone flight-deck-zone mission-deck" data-deck-zone>

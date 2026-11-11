@@ -204,6 +204,9 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 			if aircraft.Status != status {
 				return fmt.Errorf("同批分配的算子必须处于相同作业阶段")
 			}
+			if aircraft.Damaged || aircraft.Maintenance > 0 {
+				return fmt.Errorf("损伤或检修中的算子必须完成修复后才能分配任务")
+			}
 			if aircraft.TaskID != "" {
 				return fmt.Errorf("算子已经属于其他任务，请先取消原任务")
 			}
@@ -221,8 +224,8 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 				return fmt.Errorf("战斗机不能执行扇面搜索，TBF、SB2C和侦察机可以执行搜索")
 			}
 			if order.Type == "LAUNCH_STRIKE" {
-				if aircraft.Seaplane || (aircraft.Kind != "dive_bomber" && aircraft.Kind != "torpedo_bomber") {
-					return fmt.Errorf("攻击编队只能由舰载俯冲轰炸机和鱼雷机组成")
+				if aircraft.Seaplane || (aircraft.Kind != "dive_bomber" && aircraft.Kind != "torpedo_bomber" && aircraft.Kind != "fighter") {
+					return fmt.Errorf("攻击编队只能由舰载轰炸机和护航战斗机组成")
 				}
 				if FleetKey(ship) != fleetID {
 					return fmt.Errorf("攻击编队的母舰必须属于同一舰队")
@@ -846,21 +849,46 @@ func AdvanceAviation(state *State) []EngineEvent {
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
+	processedAttacks := map[string]bool{}
 	for _, id := range ids {
 		aircraft := state.Aircraft[id]
 		if !airborne(aircraft) {
+			if aircraft.Maintenance > 0 {
+				aircraft.Maintenance--
+			}
+			if aircraft.Damaged && aircraft.Status == "hangar" {
+				chance := 10.0
+				if aircraft.Faction == "B" {
+					chance = 3
+				}
+				if probabilityRoll(&state.RNGState) < chance {
+					aircraft.Damaged = false
+					events = append(events, EngineEvent{Type: "aircraft_repaired", Audience: aircraft.Faction, Text: aircraft.Model + "损伤修复完成，可以重新分配任务"})
+				}
+			}
 			aircraft.RemainingRange = aircraft.MaxRange
 			continue
 		}
 		switch aircraft.Status {
-		case "cap", "attack_holding":
+		case "cap":
+			if aircraft.Returning {
+				events = append(events, advanceAircraftReturn(state, aircraft)...)
+			} else {
+				aircraft.RemainingRange--
+			}
+		case "attack_holding":
 			aircraft.RemainingRange--
 		case "attack":
-			events = append(events, advanceAttack(state, aircraft)...)
+			if aircraft.Returning {
+				events = append(events, advanceAircraftReturn(state, aircraft)...)
+			} else if !processedAttacks[aircraft.TaskID] {
+				events = append(events, advanceAttack(state, aircraft)...)
+				processedAttacks[aircraft.TaskID] = true
+			}
 		case "recon":
 			events = append(events, advanceRecon(state, aircraft)...)
 		}
-		if aircraft.RemainingRange <= -5 {
+		if state.Aircraft[id] != nil && aircraft.RemainingRange <= -5 {
 			events = append(events, EngineEvent{Type: "air_destroyed", Audience: aircraft.Faction, Text: aircraft.Model + "燃油耗尽，航空算子被摧毁"})
 			delete(state.Aircraft, id)
 		}
@@ -1077,12 +1105,20 @@ func VisibleAviation(state State, faction string) AviationView {
 		}
 		view.Tasks = append(view.Tasks, task)
 	}
-	sort.Slice(view.Carriers, func(i, j int) bool { return view.Carriers[i].UnitID < view.Carriers[j].UnitID })
+	sort.Slice(view.Carriers, func(i, j int) bool {
+		if shipTypeRank(view.Carriers[i].Type) == shipTypeRank(view.Carriers[j].Type) {
+			return view.Carriers[i].UnitID < view.Carriers[j].UnitID
+		}
+		return shipTypeRank(view.Carriers[i].Type) < shipTypeRank(view.Carriers[j].Type)
+	})
 	sort.Slice(view.Tasks, func(i, j int) bool {
 		if view.Tasks[i].Priority == view.Tasks[j].Priority {
 			return view.Tasks[i].ID < view.Tasks[j].ID
 		}
 		return view.Tasks[i].Priority < view.Tasks[j].Priority
 	})
+	for index := range view.Tasks {
+		view.Tasks[index].QueuePosition = index + 1
+	}
 	return view
 }

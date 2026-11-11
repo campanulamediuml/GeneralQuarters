@@ -388,7 +388,7 @@ components:
       type: object
       properties:
         id: {type: string}
-        kind: {type: string, enum: [cap, recon, asw, attack]}
+        kind: {type: string, enum: [cap, recon, asw, attack, transfer]}
         phase: {type: string, enum: [servicing, lifting, preparing, launching, assembling, active], description: 整备、升降机提升、甲板等待、放飞、攻击编队等待和任务执行}
         name: {type: string}
         carrier_id: {type: string, description: 任务首架算子的母舰}
@@ -398,6 +398,7 @@ components:
         aircraft: {type: array, items: {$ref: '#/components/schemas/AirUnit'}}
         airborne_count: {type: integer, description: 已升空算子数，攻击编队全部到齐后才能离场}
         priority: {type: integer, description: 1为最高优先级，参与升降机调度}
+        queue_position: {type: integer, description: 服务端排序后的连续队列位置}
         origin_coord: {type: string}
         current_coord: {type: string}
         target_coord: {type: string, description: 攻击编队目标hex，新建时由服务端校验已侦测目标}
@@ -440,6 +441,23 @@ components:
         type: {type: string}
         text: {type: string}
         created_at: {type: string, format: date-time}
+    AirCombatReport:
+      type: object
+      properties:
+        id: {type: string}
+        coord: {type: string}
+        attacker_faction: {type: string, enum: [A, B]}
+        defender_faction: {type: string, enum: [A, B]}
+        attacker_models: {type: array, items: {type: string}}
+        defender_models: {type: array, items: {type: string}}
+        attacker_count: {type: integer}
+        defender_count: {type: integer}
+        attacker_losses: {type: integer}
+        defender_losses: {type: integer}
+        aa_hits: {type: integer}
+        strike_hits: {type: integer}
+        winner: {type: string, enum: [A, B, draw]}
+        summary: {type: string}
     GameView:
       type: object
       properties:
@@ -462,6 +480,7 @@ components:
           description: 服务端按fleet_id生成的权威舰队投影，地图直接渲染此字段
           items: {$ref: '#/components/schemas/FleetGroup'}
         aviation: {$ref: '#/components/schemas/AviationView'}
+        air_combats: {type: array, items: {$ref: '#/components/schemas/AirCombatReport'}, description: 当前阵营可见的权威空战报告}
         you: {$ref: '#/components/schemas/Player'}
         players:
           type: array

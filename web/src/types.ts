@@ -111,7 +111,7 @@ export interface AirUnit {
   elevator_id?: string
   priority: number
   task_id?: string
-  task_kind?: 'cap' | 'recon' | 'attack'
+  task_kind?: 'cap' | 'recon' | 'attack' | 'transfer'
   origin_coord?: string
   coord?: string
   target_coord?: string
@@ -122,6 +122,9 @@ export interface AirUnit {
   recon_radius_limit?: number
   returning?: boolean
   tracking_fleet_id?: string
+  confusion?: boolean
+  damaged?: boolean
+  maintenance?: number
 }
 
 export interface DistanceHex {
@@ -153,7 +156,7 @@ export interface ReconSector {
 
 export interface AirTask {
   id: string
-  kind: 'cap' | 'recon' | 'asw' | 'attack'
+  kind: 'cap' | 'recon' | 'asw' | 'attack' | 'transfer'
   phase: 'servicing' | 'lifting' | 'preparing' | 'launching' | 'assembling' | 'active'
   name: string
   carrier_id: string
@@ -163,6 +166,7 @@ export interface AirTask {
   aircraft: AirUnit[]
   airborne_count: number
   priority: number
+  queue_position: number
   origin_coord?: string
   current_coord?: string
   target_coord?: string
@@ -231,6 +235,23 @@ export interface GameEvent {
   created_at: string
 }
 
+export interface AirCombatReport {
+  id: string
+  coord: string
+  attacker_faction: Player['faction']
+  defender_faction: Player['faction']
+  attacker_models: string[]
+  defender_models: string[]
+  attacker_count: number
+  defender_count: number
+  attacker_losses: number
+  defender_losses: number
+  aa_hits: number
+  strike_hits: number
+  winner: Player['faction'] | 'draw'
+  summary: string
+}
+
 export interface GameView {
   room_id: string
   status: string
@@ -241,6 +262,7 @@ export interface GameView {
   units: Unit[]
   fleets: FleetGroup[]
   aviation: AviationView
+  air_combats: AirCombatReport[]
   you: Player
   players: Player[]
   orders: Order[]

@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -253,5 +254,24 @@ func TestVisibleFleetsAuthoritativeProjection(t *testing.T) {
 	}
 	if moves := LegalMoves(state, state.Units["a2"]); len(moves) != 0 {
 		t.Fatalf("已移动编队的未移动成员仍收到合法目标：%v", moves)
+	}
+}
+
+func TestVisibleFleetsSortsShipCardsByType(t *testing.T) {
+	types := []string{"TRS", "DD", "CL", "CA", "BC", "BB", "CVE", "CVL", "CV"}
+	state := State{Map: MapDefinition{Rows: 3, Cols: 3}, Units: map[string]*Unit{}}
+	for index, unitType := range types {
+		id := fmt.Sprintf("ship-%02d", index)
+		state.Units[id] = &Unit{ID: id, FleetID: "fleet", Type: unitType, Faction: "A", Coord: "0101", Strength: 1, MaxStrength: 1}
+	}
+	fleets := VisibleFleets(state, "A")
+	if len(fleets) != 1 {
+		t.Fatalf("舰队投影数量错误：%+v", fleets)
+	}
+	want := []string{"CV", "CVL", "CVE", "BB", "BC", "CA", "CL", "DD", "TRS"}
+	for index, unit := range fleets[0].Members {
+		if unit.Type != want[index] {
+			t.Fatalf("舰船算子顺序错误：第%d位是%s，期望%s", index, unit.Type, want[index])
+		}
 	}
 }

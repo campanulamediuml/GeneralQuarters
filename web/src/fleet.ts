@@ -29,7 +29,11 @@ export function groupFleets(units: Unit[], orders: Order[]) {
   }
   const fleets: FleetGroup[] = []
   for (const [id, members] of groups) {
-    members.sort((a, b) => a.id.localeCompare(b.id))
+    const typeOrder = ['CV', 'CVL', 'CVE', 'BB', 'BC', 'CA', 'CL', 'DD', 'TRS']
+    members.sort((a, b) => {
+      const typeRank = typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type)
+      return typeRank || a.id.localeCompare(b.id)
+    })
     const leader = members[0]
     const fleet: FleetGroup = {
       ...leader,

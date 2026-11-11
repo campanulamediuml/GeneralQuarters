@@ -2,12 +2,13 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api'
-import type { GameView, ReconHeading, StrikeTarget, Unit } from '../types'
+import type { AirCombatReport, GameView, ReconHeading, StrikeTarget, Unit } from '../types'
 import { groupFleets } from '../fleet'
 import HexMap from '../components/HexMap.vue'
 import ShipCard from '../components/ShipCard.vue'
 import ShipCounter from '../components/ShipCounter.vue'
 import AviationPanel from '../components/AviationPanel.vue'
+import AirCombatPanel from '../components/AirCombatPanel.vue'
 
 const props = defineProps<{ roomID: string }>()
 const router = useRouter()
@@ -17,10 +18,12 @@ const shipDetailOpen = ref(false)
 const selectedAirTaskID = ref('')
 const strikeTargetTaskID = ref('')
 const menuCoord = ref('')
+const fleetChoiceCoord = ref('')
 const mergeSourceID = ref('')
 const movingMemberID = ref('')
 const draftAssignments = ref<Record<string, string>>({})
-const activePanel = ref<'map' | 'rules' | 'settings' | 'aviation' | 'log'>('map')
+const activePanel = ref<'map' | 'rules' | 'settings' | 'aviation' | 'airCombat' | 'log'>('map')
+const activeAirCombat = ref<AirCombatReport | null>(null)
 const counterSide = ref<'front' | 'back'>('front')
 const aviationFocusID = ref('')
 const aviationFleetID = ref('')
@@ -33,6 +36,7 @@ let socket: WebSocket | undefined
 let poll: ReturnType<typeof setInterval> | undefined
 let refreshTimer: ReturnType<typeof setTimeout> | undefined
 let stateRequest = 0
+let lastAirCombatID = ''
 
 const ownUnits = computed(() => state.value?.units.filter((unit) => unit.faction === state.value?.you.faction) || [])
 const fleets = computed(() => state.value?.fleets || [])
@@ -54,10 +58,26 @@ const fleetPanelBottom = computed(() => {
 const selectedAirTask = computed(() => state.value?.aviation.tasks.find((task) => task.id === selectedAirTaskID.value || task.aircraft_ids.includes(selectedAirTaskID.value)))
 const selectedReconSector = computed(() => selectedAirTask.value?.recon_sectors?.find((sector) => sector.aircraft_id === selectedAirTaskID.value))
 const distanceReference = computed(() => selectedReconSector.value?.distance_reference || selectedAirTask.value?.distance_reference || selectedFleet.value?.distance_reference)
+const fleetChoices = computed(() => ownFleets.value.filter((fleet) => fleet.coord === fleetChoiceCoord.value))
 const menuFleets = computed(() => groupFleets(ownUnits.value.filter((unit) => unit.coord === menuCoord.value).map((unit) => ({ ...unit, fleet_id: draftAssignments.value[unit.id] || unit.fleet_id })), []))
 const mergeSource = computed(() => menuFleets.value.find((fleet) => fleet.fleet_id === mergeSourceID.value))
 const orderedEvents = computed(() => [...(state.value?.events || [])].reverse())
 const readyCount = computed(() => state.value?.players.filter((player) => player.ready).length || 0)
+
+function checkAirCombat(next: GameView, initial = false) {
+  const reports = next.air_combats || []
+  const latest = reports[reports.length - 1]
+  if (!latest) return false
+  if (initial) {
+    lastAirCombatID = latest.id
+    return false
+  }
+  if (latest.id === lastAirCombatID) return false
+  lastAirCombatID = latest.id
+  activeAirCombat.value = latest
+  activePanel.value = 'airCombat'
+  return true
+}
 
 async function loadState(initial = false) {
   const requestID = ++stateRequest
@@ -71,6 +91,7 @@ async function loadState(initial = false) {
       menuCoord.value = ''
       mergeSourceID.value = ''
     }
+    checkAirCombat(next, initial)
     state.value = next
   } catch (cause) {
     if (requestID !== stateRequest) return
@@ -173,7 +194,22 @@ function selectHex(coord: string) {
     menuCoord.value = ''
     return
   }
-  openManager(coord)
+  openFleetChoices(coord)
+}
+
+function openFleetChoices(coord: string) {
+  shipDetailOpen.value = false
+  fleetChoiceCoord.value = coord
+  const choices = ownFleets.value.filter((fleet) => fleet.coord === coord)
+  if (choices.length === 1) chooseFleet(choices[0].id)
+}
+
+function chooseFleet(fleetID: string) {
+  selectedID.value = fleetID
+  selectedAirTaskID.value = ''
+  shipDetailOpen.value = false
+  fleetChoiceCoord.value = ''
+  menuCoord.value = ''
 }
 
 function openManager(coord: string) {
@@ -271,11 +307,12 @@ async function toggleReady() {
   try {
     const next = await api.ready(props.roomID, state.value.version, !state.value.you.ready)
     if (requestID !== stateRequest) return
+    const combatStarted = checkAirCombat(next)
     state.value = next
     selectedID.value = ''
     selectedAirTaskID.value = ''
     menuCoord.value = ''
-    activePanel.value = 'map'
+    activePanel.value = combatStarted ? 'airCombat' : 'map'
   } catch (cause) {
     if (requestID === stateRequest) error.value = cause instanceof Error ? cause.message : '准备状态失败'
   } finally {
@@ -308,7 +345,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="game-shell command-layout" :data-version="state?.version || 0">
+  <main class="game-shell command-layout" :class="{ 'aviation-mode': activePanel === 'aviation' || activePanel === 'airCombat' }" :data-version="state?.version || 0">
     <aside class="left-rail">
       <button class="rail-brand" aria-label="返回首页" @click="router.push('/')"><span>GQ</span><small>COMMAND</small></button>
       <nav class="rail-menu">
@@ -342,7 +379,7 @@ onUnmounted(() => {
           <section class="map-panel">
             <div class="map-toolbar"><div><span class="section-kicker">OPERATIONAL MAP</span><h1>{{ state.map.name }}</h1></div><div v-if="strikeTargetTaskID" class="strike-map-target"><span>选择打击目标：{{ strikeTargetTaskID }} · 点击目标hex</span><button @click="cancelStrikeTarget">取消</button></div><div class="map-legend"><span><i class="legend-a"></i>A 阵营</span><span><i class="legend-b"></i>B 阵营</span><span><i class="legend-move"></i>可移动</span></div></div>
             <div class="map-canvas">
-              <HexMap :map="state.map" :fleets="fleets" :player-faction="state.you.faction" :selected-unit="selectedUnit" :orders="state.orders" :recon-tasks="state.aviation.tasks.filter((task) => task.kind === 'recon')" :distance-reference="distanceReference" @select-unit="selectMapUnit" @select-hex="selectHex" @manage-hex="openManager" @move="move" />
+              <HexMap :map="state.map" :fleets="fleets" :player-faction="state.you.faction" :selected-unit="selectedUnit" :orders="state.orders" :recon-tasks="state.aviation.tasks.filter((task) => task.kind === 'recon')" :air-tasks="state.aviation.tasks" :distance-reference="distanceReference" @select-unit="selectMapUnit" @select-hex="selectHex" @manage-hex="openFleetChoices" @move="move" />
               <section v-if="selectedFleet" class="fleet-workbench map-fleet-workbench" :class="{ 'fleet-panel-bottom': fleetPanelBottom }" :data-fleet-id="selectedFleet.fleet_id">
                 <header><div><span class="section-kicker">TASK FORCE · {{ selectedFleet.coord }}</span><h2>{{ selectedFleet.name }}</h2><small>{{ selectedFleet.count }}艘 · {{ selectedFleet.move_interval }}回合一格 · <b :class="selectedFleet.move_cooldown ? 'fleet-cooling' : 'fleet-ready'">{{ selectedFleet.move_cooldown ? `还需${selectedFleet.move_cooldown}回合` : '可移动' }}</b> · 点击舰船算子查看角色卡</small></div><div class="fleet-workbench-actions"><button @click="counterSide = counterSide === 'front' ? 'back' : 'front'">{{ counterSide === 'front' ? '查看兵牌背面' : '查看兵牌正面' }}</button><button @click="openManager(selectedFleet.coord)">舰队整编</button><button v-if="selectedFleet.members.some((unit) => ['CV', 'CVL', 'CVE'].includes(unit.type))" @click="openAviation(selectedFleet.fleet_id)">航空作业</button><button aria-label="关闭舰队详情" @click="selectedID = ''">×</button></div></header>
                 <div class="fleet-counter-grid"><button v-for="member in selectedFleet.members" :key="member.id" class="fleet-counter-button" :class="{ active: selectedUnit?.id === member.id }" :data-ship-id="member.id" @click="selectFleetMember(member)"><ShipCounter :unit="member" :side="counterSide" /></button></div>
@@ -369,8 +406,22 @@ onUnmounted(() => {
         <section v-else-if="activePanel === 'rules'" class="workspace-page"><span class="section-kicker">RULEBOOK</span><h1>规则书与沙盒指南</h1><div class="document-grid"><article><h2>当前通信沙盒</h2><p>选择己方舰队，再把舰队拖到相邻绿色hex下达移动命令，点击目标hex不会移动。到达可移动时机后由服务器立即生效，普通/快速舰队移动后等待3回合，纯高速驱逐舰2回合，慢速5回合；底条黄色表示可移动，蓝色表示已移动或冷却中，右上角箭头表示舰队朝向。</p><p>同一hex存在多个舰队时，点击hex弹出舰队列表。选择舰队可查看成员，选择整编可将任意两个同阵营舰队合并，整编同样由服务器立即生效。</p></article><article><h2>坐标与地形</h2><p>hex使用ABCD坐标，AB为行、CD为列。当前只能拖动至相邻且可通行的hex，岛屿和暗礁不可进入，含航母的编队不可进入浅滩。蓝灰色虚线仅用于距离参考，不代表可移动。</p><p>正式航空、损管与剧本规则位于项目《规则书.md》，将随规则模块逐步接入。</p></article></div></section>
         <section v-else-if="activePanel === 'settings'" class="workspace-page"><span class="section-kicker">SETTINGS</span><h1>作战室设置</h1><div class="settings-grid"><div class="side-card"><h2>当前会话</h2><p>指挥官：{{ state.you.name }}</p><p>阵营：{{ state.you.faction }} · 房间：{{ state.room_id }}</p><p>连接方式：{{ socketStatus === 'online' ? 'WebSocket实时同步' : '15秒轮询' }}</p></div><div class="side-card"><h2>地图与资源</h2><p>坐标格式：ABCD（行 + 列）</p><p>地图与剧本从服务器持久化内容目录载入。</p><a class="secondary-link" href="/api/docs" target="_blank">查看API与AI扩展文档 ↗</a></div></div></section>
         <AviationPanel v-else-if="activePanel === 'aviation'" :aviation="state.aviation" :units="ownUnits" :fleet-id="aviationFleetID" :targets="strikeTargets" :player-faction="state.you.faction" :focus-unit-id="aviationFocusID" :selected-aircraft-id="selectedAirTaskID" :busy="actionBusy" @command="airCommand" @select-aircraft="selectAircraft" @select-target="chooseStrikeTarget" />
+        <AirCombatPanel v-else-if="activePanel === 'airCombat' && activeAirCombat" :report="activeAirCombat" @close="activePanel = 'map'" />
         <section v-else class="workspace-page"><span class="section-kicker">EVENT LOG</span><h1>日志信息</h1><div class="full-log"><div v-for="event in orderedEvents" :key="event.id" class="full-log-row"><span>T{{ String(event.turn).padStart(2, '0') }}</span><code>#{{ event.id }}</code><p>{{ event.text }}</p><time>{{ new Date(event.created_at).toLocaleTimeString() }}</time></div></div></section>
       </template>
+    </div>
+
+    <div v-if="fleetChoiceCoord && fleetChoices.length > 1" class="fleet-dialog" @click.self="fleetChoiceCoord = ''">
+      <section class="fleet-modal fleet-selector" role="dialog" aria-modal="true" aria-label="选择舰队">
+        <header><div><span class="section-kicker">HEX {{ fleetChoiceCoord }} · FLEET SELECT</span><h2>选择舰队</h2></div><button aria-label="关闭" @click="fleetChoiceCoord = ''">×</button></header>
+        <p class="manager-hint">该hex存在多支舰队。选择一个舰队选项卡后，才会在海图上显示对应的舰队细节。</p>
+        <div class="fleet-choice-list">
+          <button v-for="fleet in fleetChoices" :key="fleet.fleet_id" class="fleet-choice-main" :data-fleet-choice-id="fleet.fleet_id" @click="chooseFleet(fleet.id)">
+            <span class="unit-type-badge">{{ fleet.type }}</span>
+            <span><strong>{{ fleet.name }}</strong><small>{{ fleet.count }}艘 · 强度{{ fleet.strength }}/{{ fleet.max_strength }} · {{ fleet.coord }}</small></span>
+          </button>
+        </div>
+      </section>
     </div>
 
     <div v-if="menuCoord" class="fleet-dialog" @click.self="closeManager">
