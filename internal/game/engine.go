@@ -14,17 +14,38 @@ func LoadScenario(contentDir, scenarioID string) (ScenarioDefinition, MapDefinit
 	var scenario ScenarioDefinition
 	var gameMap MapDefinition
 	var catalog UnitCatalog
-	if scenarioID != "_sandbox" {
-		return scenario, gameMap, catalog, fmt.Errorf("剧本不存在")
+	if scenarioID == "" {
+		scenarioID = "_sandbox"
 	}
+	// 剧本目录是开放的：目录名就是剧本 ID，地图和单位库由剧本自己指定，
+	// 这样加一个测试剧本不需要改任何 Go 代码。
 	if err := readJSON(filepath.Join(contentDir, "scenarios", scenarioID, "scenario.json"), &scenario); err != nil {
-		return scenario, gameMap, catalog, err
+		return scenario, gameMap, catalog, fmt.Errorf("剧本%s不存在：%w", scenarioID, err)
+	}
+	if scenario.Map == "" {
+		scenario.Map = scenarioID
 	}
 	if err := readJSON(filepath.Join(contentDir, "maps", scenario.Map, "map.json"), &gameMap); err != nil {
 		return scenario, gameMap, catalog, err
 	}
-	if err := readJSON(filepath.Join(contentDir, "units", "sandbox.json"), &catalog); err != nil {
+	unitsID := scenario.Units
+	if unitsID == "" {
+		unitsID = "sandbox"
+	}
+	if err := readJSON(filepath.Join(contentDir, "units", unitsID+".json"), &catalog); err != nil {
 		return scenario, gameMap, catalog, err
+	}
+	needsShips := false
+	for _, deployment := range scenario.Deployments {
+		if deployment.Ship != "" {
+			needsShips = true
+			break
+		}
+	}
+	if needsShips {
+		if ships, err := loadShipCards(filepath.Join(contentDir, "units", "ships")); err == nil {
+			catalog.Units = append(catalog.Units, ships...)
+		}
 	}
 	if gameMap.Rows < 1 || gameMap.Rows > 99 || gameMap.Cols < 1 || gameMap.Cols > 99 {
 		return scenario, gameMap, catalog, fmt.Errorf("地图行列必须在1到99之间")
@@ -38,6 +59,26 @@ func LoadScenario(contentDir, scenarioID string) (ScenarioDefinition, MapDefinit
 		seenCells[cell.Coord] = true
 	}
 	return scenario, gameMap, catalog, nil
+}
+
+// loadShipCards 读取 units/ships/*.json：每艘舰一份完整卡，id 是舰名标识（lexington、shokaku…）。
+func loadShipCards(dir string) ([]UnitDefinition, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	ships := []UnitDefinition{}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+			continue
+		}
+		var ship UnitDefinition
+		if err := readJSON(filepath.Join(dir, entry.Name()), &ship); err != nil {
+			return nil, err
+		}
+		ships = append(ships, ship)
+	}
+	return ships, nil
 }
 
 func readJSON(path string, target any) error {
@@ -54,13 +95,28 @@ func readJSON(path string, target any) error {
 func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCatalog, seed uint64) (State, error) {
 	state := State{
 		ScenarioID: scenario.ID, ScenarioName: scenario.Name, Description: scenario.Description,
-		Year: scenario.Year, Night: scenario.Night, Doctrines: scenario.Doctrines,
+		Year: scenario.Year, Night: scenario.Night, Wind: scenario.Wind, Doctrines: scenario.Doctrines,
 		Map: gameMap, Units: map[string]*Unit{}, Aircraft: map[string]*AirUnit{}, Contacts: map[string]map[string]*FleetContact{}, RNGState: seed,
 		Definitions: map[string]string{"scenario": fmt.Sprint(scenario.Version), "map": fmt.Sprint(gameMap.Version), "units": fmt.Sprint(catalog.Version)},
+		Objectives:  scenario.Objectives, MaxTurns: scenario.MaxTurns, Turn: 1, Timeline: scenario.Timeline,
+		// 昼夜循环靠这两个字段推进：此前只写了 Timeline 却没把开局时刻/每天回合数带进状态，
+		// 结果是剧本配了时间线，引擎里 TurnsPerDay 仍然是 0，永远停在剧本固定的 night 值。
+		DayHours: scenario.DayHours, TurnsPerDay: scenario.TurnsPerDay,
 	}
-	definitions := map[string]UnitDefinition{}
-	for _, definition := range catalog.Units {
-		definitions[definition.ID] = definition
+	// timeline.turn_minutes 是单回合时长的唯一真相：20 分钟一回合就是每天 72 回合。
+	if scenario.Timeline != nil && scenario.Timeline.TurnMinutes > 0 {
+		state.TurnsPerDay = 1440 / scenario.Timeline.TurnMinutes
+	}
+	// 开局天色必须按时钟算，不能沿用剧本里那个静态 night 字段。
+	// 以前状态里 Night 初始是 false，而珊瑚海开局是 00:00——第一回合结算时
+	// 引擎以为"刚入夜"，于是播了一条假的"夜幕降临"，顺手把玩家这一刻下的
+	// CAP/侦察命令当成夜间待发任务收进机库（任务直接没了，05:20 也不会起飞）。
+	if state.TurnsPerDay > 0 {
+		state.Night = state.nightAt(clockAt(state))
+	}
+	definitions, err := indexUnitDefinitions(catalog)
+	if err != nil {
+		return state, err
 	}
 	fleetHomes := map[string]Deployment{}
 	for _, deployment := range scenario.Deployments {
@@ -70,9 +126,14 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		if _, exists := state.Units[deployment.ID]; exists {
 			return state, fmt.Errorf("部署ID重复：%s", deployment.ID)
 		}
-		definition, ok := definitions[deployment.Unit]
+		// 优先具名舰卡（ship: "lexington"），没有就回退到舰级模板（unit: "cv"）。
+		lookupID := deployment.Unit
+		if deployment.Ship != "" {
+			lookupID = deployment.Ship
+		}
+		definition, ok := definitions.lookup(deployment.Faction, lookupID)
 		if !ok {
-			return state, fmt.Errorf("单位定义不存在：%s", deployment.Unit)
+			return state, fmt.Errorf("单位定义不存在：%s", lookupID)
 		}
 		switch definition.Type {
 		case "BB", "BC", "CA", "CL", "DD", "CV", "CVL", "TRS", "CVE":
@@ -82,9 +143,29 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		if definition.Strength <= 0 {
 			return state, fmt.Errorf("单位%s生命值必须大于0", definition.ID)
 		}
-		terrain := terrainAt(gameMap, deployment.Coord)
-		if !inBounds(gameMap, deployment.Coord) || terrain == "island" || terrain == "reef" || (terrain == "shoal" && isCarrierType(definition.Type)) {
-			return state, fmt.Errorf("部署%s坐标不可通行", deployment.ID)
+		// 出生点：写了 coord 就用固定点位；写了 coords 就在候选区里按种子随机，
+		// 同一舰队的所有舰船必须落在同一个 hex。
+		coord := deployment.Coord
+		if coord == "" {
+			candidates := deployment.Coords
+			if len(candidates) == 0 && deployment.Box != nil {
+				candidates = boxCoords(gameMap, *deployment.Box, isCarrierType(definition.Type))
+			}
+			if len(candidates) == 0 {
+				return state, fmt.Errorf("部署%s没有指定坐标", deployment.ID)
+			}
+			if home, exists := fleetHomes[deployment.FleetID]; exists && home.Coord != "" {
+				coord = home.Coord
+			} else if len(candidates) == 1 {
+				coord = candidates[0]
+			} else {
+				coord = candidates[nextUint64(&state.RNGState)%uint64(len(candidates))]
+			}
+		}
+		terrain := terrainAt(gameMap, coord)
+		// 剧本规则：只有含 CV/CVL/CVE 的舰队不能进入机场格（陆地 hex）；暗礁不可通行，浅滩仅限制航母。
+		if !inBounds(gameMap, coord) || terrain == "reef" || (terrain == "shoal" && isCarrierType(definition.Type)) || (terrain == "island" && isCarrierType(definition.Type)) {
+			return state, fmt.Errorf("部署%s坐标不可通行：%s", deployment.ID, coord)
 		}
 		fleetID := deployment.FleetID
 		if fleetID == "" {
@@ -94,11 +175,17 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		if fleetName == "" {
 			fleetName = fleetID
 		}
-		if home, exists := fleetHomes[fleetID]; exists && (home.Faction != deployment.Faction || home.Coord != deployment.Coord) {
+		if home, exists := fleetHomes[fleetID]; exists && (home.Faction != deployment.Faction || home.Coord != coord) {
 			return state, fmt.Errorf("舰队%s的初始成员必须属于同一阵营和hex", fleetID)
 		}
-		fleetHomes[fleetID] = deployment
+		home := deployment
+		home.Coord = coord
+		fleetHomes[fleetID] = home
 		card := definition.Card
+		// 剪影路径随卡下发：前端不再靠舰名硬编码映射。
+		if card.Picture == "" {
+			card.Picture = definition.Picture
+		}
 		card.Aircraft = 0
 		if deployment.HangarCapacity < 0 {
 			return state, fmt.Errorf("部署%s机库容量不能为负数", deployment.ID)
@@ -114,18 +201,72 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		if deployment.HangarCapacity > 0 {
 			card.HangarCapacity = deployment.HangarCapacity
 		}
-		card.Gunnery = int(math.Round(card.MainGunCaliber * float64(card.MainGunCount) / 9))
+		// 炮击值以单位库为准：JSON 里写了 gunnery 就用写的，没写才按口径×炮塔数折算，
+		// 这样单舰（或整类）参数都能在 content/units/*.json 里直接调。
+		if card.Gunnery == 0 {
+			card.Gunnery = int(math.Round(card.MainGunCaliber * float64(card.MainGunCount) / 9))
+		}
 		if card.SpeedClass == "" {
 			card.SpeedClass = "normal"
 		}
+		strength := definition.Strength
+		if o := deployment.Overrides; o != nil {
+			if o.Strength != nil {
+				if *o.Strength < 1 {
+					return state, fmt.Errorf("部署%s强度必须至少为1", deployment.ID)
+				}
+				strength = *o.Strength
+			}
+			if o.DeckLength != nil {
+				if *o.DeckLength < 0 {
+					return state, fmt.Errorf("部署%s甲板长度不能为负数", deployment.ID)
+				}
+				// 甲板长度是"基础值"，实际长度仍按风向与朝向修正（规则书 846–849 行）。
+				card.DeckCapacity = *o.DeckLength
+			}
+			if o.HangarCapacity != nil {
+				card.HangarCapacity = *o.HangarCapacity
+			}
+			if o.ElevatorCount != nil {
+				card.ElevatorCount = *o.ElevatorCount
+			}
+			if o.HeavyAA != nil {
+				card.HeavyAA = *o.HeavyAA
+			}
+			if o.LightAA != nil {
+				card.LightAA = *o.LightAA
+			}
+			if o.MainGunCount != nil {
+				card.MainGunCount = *o.MainGunCount
+			}
+			if o.MainGunCaliber != nil {
+				card.MainGunCaliber = float64(*o.MainGunCaliber)
+			}
+			if o.DamageControl != nil {
+				card.DamageControl = *o.DamageControl
+			}
+			if o.SpeedClass != nil {
+				card.SpeedClass = *o.SpeedClass
+			}
+			if o.Gunnery != nil {
+				card.Gunnery = *o.Gunnery
+			}
+			if o.ArmoredCarrier != nil {
+				card.ArmoredCarrier = *o.ArmoredCarrier
+			}
+		}
 		state.Units[deployment.ID] = &Unit{
 			ID: deployment.ID, DefinitionID: definition.ID, FleetID: fleetID, FleetName: fleetName, Name: deployment.Name, Type: definition.Type, Faction: deployment.Faction,
-			Coord: deployment.Coord, Heading: "NE", Strength: definition.Strength, MaxStrength: definition.Strength, Card: card,
+			Coord: coord, Heading: "NE", Strength: strength, MaxStrength: strength, Card: card,
 		}
+		if state.InitialShipCounts == nil {
+			state.InitialShipCounts = map[string]int{}
+		}
+		state.InitialShipCounts[deployment.Faction]++
 	}
-	airDefinitions := map[string]AircraftDefinition{}
-	for _, definition := range catalog.Air {
-		airDefinitions[definition.ID] = definition
+	airDefinitions, err := indexAircraftDefinitions(catalog)
+	if err != nil {
+		return state, err
 	}
 	for _, deployment := range scenario.AirDeployments {
 		if _, exists := state.Aircraft[deployment.ID]; exists {
@@ -135,23 +276,224 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		if carrier == nil || carrier.Card.HangarCapacity <= 0 {
 			return state, fmt.Errorf("航空部署%s的载机舰无效", deployment.ID)
 		}
-		definition, ok := airDefinitions[deployment.Unit]
+		definition, ok := airDefinitions.lookup(carrier.Faction, deployment.Unit)
 		if !ok {
 			return state, fmt.Errorf("航空单位定义不存在：%s", deployment.Unit)
 		}
 		if carrier.Card.Aircraft >= carrier.Card.HangarCapacity {
 			return state, fmt.Errorf("载机舰%s的机库容量不足", carrier.ID)
 		}
-		maxRange := int(math.Round(float64(definition.Range) * 1.3))
+		// 挂副油箱是默认配置：航程 = 机内 + 副油箱（+30%），两部分分开记账，
+		// 这样空战后抛弃副油箱就能准确扣掉它还没烧掉的那部分里程（规则书 48 行）。
+		// 机库待命时按机种给一个合法的默认挂载（不是 air+tank），
+		// 否则侦察机/轰炸机一开始就处于"挂不了的组合"；真正出击时再按任务换成对应挂载。
+		initialLoadout := DefaultLoadout(definition.Kind, definition.Seaplane, "cap", StrikeTargetShip)
+		fuel := MountedFuel(definition.Range, initialLoadout)
+		airCombat, antiShip := elitePilotBonus(state, carrier.Faction, definition.Kind, definition.AirCombat, definition.AntiShip)
 		state.Aircraft[deployment.ID] = &AirUnit{
 			ID: deployment.ID, DefinitionID: definition.ID, CarrierID: carrier.ID, Faction: carrier.Faction,
 			Name: definition.Name, Model: definition.Model, Kind: definition.Kind, Status: "hangar", Strength: definition.Strength,
-			MaxRange: maxRange, RemainingRange: maxRange, AirCombat: definition.AirCombat, AntiShip: definition.AntiShip, AntiGround: definition.AntiGround, Seaplane: definition.Seaplane,
+			BaseRange: definition.Range, Loadout: initialLoadout,
+			MaxRange: fuel.Available(), Fuel: fuel, RemainingRange: fuel.Available(), AirCombat: airCombat, AntiShip: antiShip, AntiGround: definition.AntiGround, Seaplane: definition.Seaplane, AirfieldOnly: definition.AirfieldOnly,
 		}
 		carrier.Card.Aircraft++
 	}
+	if err := deployAirfields(&state, scenario, airDefinitions, gameMap); err != nil {
+		return state, err
+	}
 	EnsureAviation(&state)
+	// 开局就要按当前风向与朝向算一次甲板长度：否则第一回合快照里 heading 已经是
+	// 初始朝向，deck_length 却还是没修正的 base，玩家按它规划会差 2 架。
+	RefreshDeckLengths(&state)
 	return state, nil
+}
+
+// elitePilotBonus 是"开战初期精锐飞行员"的机型修正：
+// 1942 年及以前，日军 D3A/B5N 对舰攻击 +1，零战空战 +1。
+// 这是飞行员的素质加成，不该写进机型档案（那样 1944 年的同一机型也会带着这 +1）。
+func elitePilotBonus(state State, faction, kind string, airCombat, antiShip int) (int, int) {
+	if state.Doctrines[faction] != "japan" || state.Year <= 0 || state.Year > 1942 {
+		return airCombat, antiShip
+	}
+	switch kind {
+	case "fighter":
+		airCombat++
+	case "dive_bomber", "torpedo_bomber":
+		antiShip++
+	}
+	return airCombat, antiShip
+}
+
+// deployAirfields 把剧本里的机场和地面飞机落到状态里，并做与舰船部署一致的内容校验。
+func deployAirfields(state *State, scenario ScenarioDefinition, airDefinitions aircraftDefinitionIndex, gameMap MapDefinition) error {
+	if len(scenario.Airfields) == 0 {
+		return nil
+	}
+	if state.Airfields == nil {
+		state.Airfields = map[string]*Airfield{}
+	}
+	if state.GroundAir == nil {
+		state.GroundAir = map[string]*AirfieldAirUnit{}
+	}
+	for _, definition := range scenario.Airfields {
+		if definition.Faction != "A" && definition.Faction != "B" {
+			return fmt.Errorf("机场%s阵营无效", definition.ID)
+		}
+		if _, exists := state.Airfields[definition.ID]; exists {
+			return fmt.Errorf("机场ID重复：%s", definition.ID)
+		}
+		if !inBounds(gameMap, definition.Coord) {
+			return fmt.Errorf("机场%s坐标不在地图内", definition.ID)
+		}
+		// 常规机场必须在陆地（岛/浅滩）上；水上飞机基地本来就锚泊在海上，允许建在水面。
+		if definition.Type != AirfieldSeaplane {
+			switch terrainAt(gameMap, definition.Coord) {
+			case "island", "shoal":
+			default:
+				return fmt.Errorf("机场%s必须部署在陆地hex上", definition.ID)
+			}
+		} else if terrainAt(gameMap, definition.Coord) == "reef" {
+			return fmt.Errorf("水上飞机基地%s不能设在暗礁上", definition.ID)
+		}
+		if definition.Runways < 1 || definition.Runways > 9 {
+			return fmt.Errorf("机场%s跑道数量必须在1到9之间", definition.ID)
+		}
+		switch definition.Type {
+		case AirfieldField, AirfieldHeavy, AirfieldMajor, AirfieldSeaplane:
+		default:
+			return fmt.Errorf("机场%s类型无效：%s", definition.ID, definition.Type)
+		}
+		airfield := &Airfield{
+			ID: definition.ID, Faction: definition.Faction, Name: definition.Name, Coord: definition.Coord,
+			Type: definition.Type, Runways: definition.Runways, MaxStrength: definition.Runways * 5,
+			Radar: definition.Radar, HeavyAA: definition.HeavyAA, LightAA: definition.LightAA, Coastal: definition.Coastal,
+		}
+		airfield.Strength = airfield.MaxStrength
+		state.Airfields[definition.ID] = airfield
+		for _, aircraftID := range definition.Aircraft {
+			if _, exists := state.GroundAir[aircraftID]; exists {
+				return fmt.Errorf("地面航空部署ID重复：%s", aircraftID)
+			}
+			// 剧本里可写机库编号（如 af-a-fighter-1），也可直接写机种定义（如 fighter）。
+			// 编号匹配方式：逐个 "-" 切段，从最后一��往前找一个机种定义名。
+			aircraftDef, ok := airDefinitions.resolve(airfield.Faction, aircraftID)
+			if !ok {
+				return fmt.Errorf("地面航空单位定义不存在：%s", aircraftID)
+			}
+			if !airfield.HardensFor(aircraftDef.Kind) {
+				return fmt.Errorf("机场%s（%s）无法起降%s", definition.ID, definition.Type, aircraftDef.Kind)
+			}
+			initialGroundLoadout := DefaultLoadout(aircraftDef.Kind, false, "cap", StrikeTargetShip)
+			fuel := MountedFuel(aircraftDef.Range, initialGroundLoadout)
+			groundAirCombat, groundAntiShip := elitePilotBonus(*state, airfield.Faction, aircraftDef.Kind, aircraftDef.AirCombat, aircraftDef.AntiShip)
+			state.GroundAir[aircraftID] = &AirfieldAirUnit{
+				ID: aircraftID, DefinitionID: aircraftDef.ID, AirfieldID: airfield.ID, Faction: airfield.Faction,
+				Model: aircraftDef.Model, Kind: aircraftDef.Kind, Status: "hangar", Strength: aircraftDef.Strength,
+				BaseRange: aircraftDef.Range, Loadout: initialGroundLoadout,
+				MaxRange: fuel.Available(), RemainingRange: fuel.Available(),
+				AirCombat: groundAirCombat, AntiShip: groundAntiShip, AntiGround: aircraftDef.AntiGround,
+				AirfieldOnly: aircraftDef.AirfieldOnly,
+				// 侦察半径按"不含备用油"的航程折半：备用油只够回家，不能用来搜索（规则书 69 行）。
+				ReconRadiusLimit: max(1, fuel.Available()/2),
+			}
+		}
+	}
+	return nil
+}
+
+// unitDefinitionIndex 把舰船目录按阵营拆开。同一个 ID（如 cv）在美日两侧是
+// 不同的角色卡，同 ID 会出现在多个阵营下，所以查定义必须带上阵营。
+type unitDefinitionIndex struct {
+	byFaction map[string]map[string]UnitDefinition
+	generic   map[string]UnitDefinition
+}
+
+func indexUnitDefinitions(catalog UnitCatalog) (unitDefinitionIndex, error) {
+	index := unitDefinitionIndex{byFaction: map[string]map[string]UnitDefinition{}, generic: map[string]UnitDefinition{}}
+	for _, definition := range catalog.Units {
+		if definition.Faction == "" {
+			if _, exists := index.generic[definition.ID]; exists {
+				return index, fmt.Errorf("单位定义重复：%s", definition.ID)
+			}
+			index.generic[definition.ID] = definition
+			continue
+		}
+		byID := index.byFaction[definition.Faction]
+		if byID == nil {
+			byID = map[string]UnitDefinition{}
+			index.byFaction[definition.Faction] = byID
+		}
+		if _, exists := byID[definition.ID]; exists {
+			return index, fmt.Errorf("单位定义重复：%s/%s", definition.Faction, definition.ID)
+		}
+		byID[definition.ID] = definition
+	}
+	return index, nil
+}
+
+// lookup 先取阵营专用定义，再退回通用定义。
+func (index unitDefinitionIndex) lookup(faction, id string) (UnitDefinition, bool) {
+	if byID, ok := index.byFaction[faction]; ok {
+		if definition, ok := byID[id]; ok {
+			return definition, true
+		}
+	}
+	definition, ok := index.generic[id]
+	return definition, ok
+}
+
+// aircraftDefinitionIndex 是机型的阵营索引，查法与舰船一致。
+type aircraftDefinitionIndex struct {
+	byFaction map[string]map[string]AircraftDefinition
+	generic   map[string]AircraftDefinition
+}
+
+func indexAircraftDefinitions(catalog UnitCatalog) (aircraftDefinitionIndex, error) {
+	index := aircraftDefinitionIndex{byFaction: map[string]map[string]AircraftDefinition{}, generic: map[string]AircraftDefinition{}}
+	for _, definition := range catalog.Air {
+		if definition.Faction == "" {
+			if _, exists := index.generic[definition.ID]; exists {
+				return index, fmt.Errorf("航空单位定义重复：%s", definition.ID)
+			}
+			index.generic[definition.ID] = definition
+			continue
+		}
+		byID := index.byFaction[definition.Faction]
+		if byID == nil {
+			byID = map[string]AircraftDefinition{}
+			index.byFaction[definition.Faction] = byID
+		}
+		if _, exists := byID[definition.ID]; exists {
+			return index, fmt.Errorf("航空单位定义重复：%s/%s", definition.Faction, definition.ID)
+		}
+		byID[definition.ID] = definition
+	}
+	return index, nil
+}
+
+func (index aircraftDefinitionIndex) lookup(faction, id string) (AircraftDefinition, bool) {
+	if byID, ok := index.byFaction[faction]; ok {
+		if definition, ok := byID[id]; ok {
+			return definition, true
+		}
+	}
+	definition, ok := index.generic[id]
+	return definition, ok
+}
+
+// resolve 支持两种剧本写法："fighter" 直接命中机种定义；
+// "af-a-fighter-1" 这类机库编号则把 "-" 之间任意一段当作机种去匹配。
+func (index aircraftDefinitionIndex) resolve(faction, id string) (AircraftDefinition, bool) {
+	if definition, ok := index.lookup(faction, id); ok {
+		return definition, true
+	}
+	parts := strings.Split(id, "-")
+	for position := len(parts) - 1; position >= 0; position-- {
+		if definition, ok := index.lookup(faction, parts[position]); ok {
+			return definition, true
+		}
+	}
+	return AircraftDefinition{}, false
 }
 
 func isCarrierType(unitType string) bool {
@@ -160,6 +502,16 @@ func isCarrierType(unitType string) bool {
 
 func IsCarrier(unit *Unit) bool {
 	return unit != nil && isCarrierType(unit.Type)
+}
+
+// CarrierEquivalentType 把 CVL/CVE 归并为 CV（规则书 119 行）：除甲板容量等自身属性外，
+// 目标选择、炮战和空袭结算都按 CV 处理。此前只有炮战的目标权重做了归一，
+// 空袭目标权重和轻防空加成仍然直接比较 "CV"，导致轻航母被当成 DD/CL 级目标。
+func CarrierEquivalentType(unitType string) string {
+	if unitType == "CVL" || unitType == "CVE" {
+		return "CV"
+	}
+	return unitType
 }
 
 func inBounds(gameMap MapDefinition, coord string) bool {
@@ -176,20 +528,37 @@ func terrainAt(gameMap MapDefinition, coord string) string {
 	return "water"
 }
 
+// MovementBlocked 判断舰队本回合是否还能移动。
+// 冷却每回合结算开始只减 1，减到 0 之前该舰队任何成员都不能移动；
+// 因此 LegalMoves 与 ValidateOrder 必须共用这一判断，不能在两处各写一份。
+func MovementBlocked(state State, unit *Unit) bool {
+	if unit == nil {
+		return true
+	}
+	for _, member := range state.Units {
+		if FleetKey(member) == FleetKey(unit) && (member.Moved || member.MoveCooldown > 0) {
+			return true
+		}
+	}
+	return false
+}
+
+// MovesBlocked 只判断"这艘船自己还能不能动"（含冷却），不含地形限制。
+func MovesBlocked(state State, unit *Unit) bool {
+	return unit == nil || unit.MoveCooldown > 0
+}
+
 func LegalMoves(state State, unit *Unit) []string {
 	if unit == nil {
 		return nil
 	}
-	if unit.Moved || unit.MoveCooldown > 0 {
+	if MovementBlocked(state, unit) {
 		return []string{}
 	}
 	carrierFleet := false
 	for _, member := range state.Units {
 		if FleetKey(member) != FleetKey(unit) {
 			continue
-		}
-		if member.Moved || member.MoveCooldown > 0 {
-			return []string{}
 		}
 		if IsCarrier(member) {
 			carrierFleet = true
@@ -200,13 +569,25 @@ func LegalMoves(state State, unit *Unit) []string {
 		if !inBounds(state.Map, coord) {
 			continue
 		}
-		terrain := terrainAt(state.Map, coord)
-		if terrain == "island" || terrain == "reef" || (terrain == "shoal" && carrierFleet) {
+		if !fleetCanEnter(state, coord, carrierFleet) {
 			continue
 		}
 		moves = append(moves, coord)
 	}
 	return moves
+}
+
+// fleetCanEnter 判断舰队能否进入某 hex（剧本规则）：
+// 含 CV/CVL/CVE 的舰队不能进入陆地 hex（机场格）与浅滩；纯水面舰队可以靠岸补给上岸轰，但暗礁一律不可通行。
+func fleetCanEnter(state State, coord string, carrierFleet bool) bool {
+	terrain := terrainAt(state.Map, coord)
+	if terrain == "reef" {
+		return false
+	}
+	if carrierFleet && (terrain == "island" || terrain == "shoal") {
+		return false
+	}
+	return true
 }
 
 func FleetKey(unit *Unit) string {
@@ -240,12 +621,77 @@ func headingBetween(from, to string) string {
 	return "SE"
 }
 
+// boxCoords 把矩形出生区展开成可用候选 hex：跳过越界、暗礁，以及航母不能进入的
+// 陆地与浅滩。无航母的舰队可以用浅滩格，所以"能否进浅滩"由调用方按舰型决定。
+func boxCoords(gameMap MapDefinition, box DeployBox, carrier bool) []string {
+	rowMin, rowMax := min(box.RowMin, box.RowMax), max(box.RowMin, box.RowMax)
+	colMin, colMax := min(box.ColMin, box.ColMax), max(box.ColMin, box.ColMax)
+	coords := []string{}
+	for row := rowMin; row <= rowMax; row++ {
+		for col := colMin; col <= colMax; col++ {
+			coord := Coord(row, col)
+			if !inBounds(gameMap, coord) {
+				continue
+			}
+			switch terrainAt(gameMap, coord) {
+			case "reef":
+				continue
+			case "island", "shoal":
+				if carrier {
+					continue
+				}
+			}
+			coords = append(coords, coord)
+		}
+	}
+	return coords
+}
+
+// groundAirView 把舰载侦察算子投影成机场算子形态，用于复用机场发现逻辑。
+func groundAirView(aircraft *AirUnit) *AirfieldAirUnit {
+	return &AirfieldAirUnit{ID: aircraft.ID, Faction: aircraft.Faction, Model: aircraft.Model, Kind: aircraft.Kind, Heading: aircraft.Heading, SectorWidth: aircraft.SectorWidth, OriginCoord: aircraft.OriginCoord}
+}
+
 func ValidateOrder(state State, faction string, order Order) error {
-	if order.Type == "LAUNCH_CAP" || order.Type == "LAUNCH_RECON" || order.Type == "LAUNCH_STRIKE" || order.Type == "PREPARE_AIR" || order.Type == "RETURN_TO_HANGAR" || order.Type == "RECOVER_AIR" || order.Type == "PRIORITIZE_AIR_TASK" || order.Type == "SET_STRIKE_TARGET" {
+	// 无线电命令按任务 ID 挂载、也带 TaskID，必须在航空命令分派之前拦下来，
+	// 否则会掉进 ValidateAirOrder 的 default 分支。
+	if isRadioOrder(order.Type) {
+		return validateRadioOrder(state, faction, order)
+	}
+	if needsAirValidation(order.Type) {
+		if isAirfieldTask(order.TaskID) || airOrderIsGround(state, order) {
+			return ValidateGroundAirOrder(state, order)
+		}
+		return ValidateAirOrder(state, faction, order)
+	}
+	if isAirOrderType(order.Type) {
 		return ValidateAirOrder(state, faction, order)
 	}
 	if order.Type == "REORGANIZE_HEX" {
 		return validateReorganization(state, faction, order)
+	}
+	if order.Type == "SET_HEADING" {
+		return validateHeadingOrder(state, faction, order)
+	}
+	if order.Type == "SET_LOADOUT" {
+		return validateLoadoutOrder(state, faction, order)
+	}
+	if order.Type == "SET_AUTO_NAV" {
+		return validateNavOrder(state, faction, order)
+	}
+	if order.Type == "SET_ENGAGEMENT" {
+		unit := state.Units[order.UnitID]
+		if unit == nil || unit.Faction != faction {
+			return fmt.Errorf("舰队不存在或不属于当前玩家")
+		}
+		if FleetHasCarrier(state, FleetKey(unit)) {
+			return fmt.Errorf("含航母的舰队固定为消极避战，不能改为主动交战")
+		}
+		switch EngagementSetting(order.Engagement) {
+		case "", "aggressive", "advantage", "avoid":
+			return nil
+		}
+		return fmt.Errorf("未知的交战设置")
 	}
 	unit, ok := state.Units[order.UnitID]
 	if !ok || unit.Faction != faction {
@@ -255,11 +701,8 @@ func ValidateOrder(state State, faction string, order Order) error {
 	case "CLEAR_MOVE":
 		return nil
 	case "SET_MOVE":
-		if unit.Moved {
-			return fmt.Errorf("该舰队本回合已经移动")
-		}
-		if cooldown := FleetMoveCooldown(state, FleetKey(unit)); cooldown > 0 {
-			return fmt.Errorf("该舰队还需等待%d回合才能移动", cooldown)
+		if MovementBlocked(state, unit) {
+			return fmt.Errorf("该舰队本回合已经移动或仍在冷却")
 		}
 		if !inBounds(state.Map, order.Coord) {
 			return fmt.Errorf("目标坐标不在地图内")
@@ -317,8 +760,20 @@ func validateReorganization(state State, faction string, order Order) error {
 }
 
 func ApplyImmediateMove(state *State, order Order) []EngineEvent {
+	// 立即下达的移动是"本回合规划"：冷却留到回合结算时再往下减，
+	// 否则规划移动的那一回合就会把 3 回合冷却吃掉 1 回合。
 	leader := state.Units[order.UnitID]
+	if leader == nil {
+		return nil
+	}
+	if MovesBlocked(*state, leader) {
+		return nil
+	}
+	// 没在冷却里走上面的分支；规划移动时只置标志，冷却真正开始递减放到回合结算。
+	state.DeferCooldown = true
 	interval := FleetMoveInterval(*state, leader)
+	qwe := FleetMoveCooldown(*state, FleetKey(leader))
+	_ = qwe
 	events := []EngineEvent{}
 	for _, unit := range state.Units {
 		if FleetKey(unit) != FleetKey(leader) {
@@ -328,11 +783,18 @@ func ApplyImmediateMove(state *State, order Order) []EngineEvent {
 		unit.Coord = order.Coord
 		unit.Heading = headingBetween(from, order.Coord)
 		unit.Moved = true
-		unit.MoveCooldown = interval
+		if interval > unit.MoveCooldown {
+			unit.MoveCooldown = interval
+		}
 		events = append(events, EngineEvent{Type: "unit_moved", Audience: unit.Faction, Text: fmt.Sprintf("%s从%s移动至%s，%d回合后可再次移动", unit.Name, from, order.Coord, interval)})
 	}
+	// 移动后岸轰停留计时重新开始
+	clearFleetStay(state, FleetKey(leader))
 	syncEmbarkedAircraft(state)
-	return append(events, detectContacts(state)...)
+	events = append(events, detectContacts(state)...)
+	events = append(events, advanceTowardEdge(state)...)
+	trackFleetStay(state)
+	return events
 }
 
 func ApplyImmediateOrganization(state *State, order Order) []EngineEvent {
@@ -378,10 +840,74 @@ func ApplyImmediateOrganization(state *State, order Order) []EngineEvent {
 	return nil
 }
 
+// isAirOrderType 是航母与机场共用的一批航空命令类型。
+func isAirOrderType(orderType string) bool {
+	switch orderType {
+	case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_COVER", "LAUNCH_TRANSFER", "PREPARE_AIR", "RETURN_TO_HANGAR", "RECOVER_AIR", "PRIORITIZE_AIR_TASK", "SET_STRIKE_TARGET", "SET_STRIKE_DISPERSION", "ARM_AIR", "SET_AIR_CYCLE":
+		return true
+	}
+	return false
+}
+
+// needsAirValidation 与 airOrderIsGround 配合：机场与航母共用同一批航空命令类型。
+func needsAirValidation(orderType string) bool {
+	return isAirOrderType(orderType)
+}
+
+// IsImmediateOrder 判断命令是否在提交时立刻生效（而不是等回合结算）。
+// SET_MOVE 也走这里：提交时只登记规划，位移在回合结算里统一执行。
+// 注意：RETARGET_AIR 不在这里——改目标同样是无线电通信，必须按编队消耗机会，因此走回合结算。
+func IsImmediateOrder(orderType string) bool {
+	switch orderType {
+	case "SET_MOVE", "SET_AUTO_NAV", "SET_ENGAGEMENT":
+		return true
+	}
+	return false
+}
+
+// IsAirOrder 从服务端转调：机场与航母共用同一批航空命令。
+func IsAirOrder(orderType string) bool {
+	return isAirOrderType(orderType)
+}
+
+// IsAirfieldOrder 从服务端转调：机场与航母共用航空命令，需要先判断走哪一套。
+func IsAirfieldOrder(state State, order Order) bool {
+	return isAirfieldTask(order.TaskID) || airOrderIsGround(state, order)
+}
+
+// airOrderIsGround 判断航空命令里的算子是否属于机场：只要有一个算子在机场机库里就走机场校验。
+func airOrderIsGround(state State, order Order) bool {
+	for _, id := range airOrderIDs(order) {
+		if _, ok := state.GroundAir[id]; ok {
+			return true
+		}
+	}
+	if order.Type == "PRIORITIZE_AIR_TASK" || order.Type == "SET_STRIKE_TARGET" {
+		for _, aircraft := range state.GroundAir {
+			if aircraft.TaskID == order.AircraftID {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func ResolveOrders(state *State, orders []Order) []EngineEvent {
-	AdvanceMovementCooldown(state)
-	events := AdvanceShipConditions(state)
+	if state.DeferCooldown {
+		state.DeferCooldown = false
+	} else {
+		AdvanceMovementCooldown(state)
+	}
+	// 先给在编算子拍个花名册，回合结束时靠它结算飞机损失。
+	snapshotAircraftRoster(state)
+	events := advanceTurnStartWithEvents(state)
+	// 朝向已定，按风向重算甲板长度；本回合起飞/降落容量以此为基准（规则书 824 行）。
+	RefreshDeckLengths(state)
+	events = append(events, AdvanceShipConditions(state)...)
+	events = syncArmedAircraft(state, events)
 	events = append(events, AdvanceAviation(state)...)
+	events = append(events, AdvanceAirfields(state)...)
+	events = append(events, AdvanceGroundAir(state)...)
 	for _, order := range orders {
 		if order.Type != "REORGANIZE_HEX" {
 			continue
@@ -422,7 +948,7 @@ func ResolveOrders(state *State, orders []Order) []EngineEvent {
 	}
 	moves := map[string]string{}
 	for _, order := range orders {
-		if order.Type != "SET_MOVE" {
+		if order.Type != "SET_MOVE" || strings.TrimSpace(order.Coord) == "" {
 			continue
 		}
 		leader, ok := state.Units[order.UnitID]
@@ -446,15 +972,165 @@ func ResolveOrders(state *State, orders []Order) []EngineEvent {
 			events = append(events, EngineEvent{Type: "movement_delayed", Audience: unit.Faction, Text: fmt.Sprintf("%s还需等待%d回合才能移动", unit.Name, unit.MoveCooldown)})
 			continue
 		}
+		// 不再复核地形：移动规划在下达时已经按当回合规则校验过，
+		// 结算阶段只按"依然可动"执行，避免出现规划成功却整体作废的哑火回合。
 		from := unit.Coord
 		unit.Coord = coord
 		unit.Heading = headingBetween(from, coord)
 		unit.Moved = true
-		unit.MoveCooldown = FleetMoveInterval(*state, unit)
+		if interval := FleetMoveInterval(*state, unit); interval > unit.MoveCooldown {
+			unit.MoveCooldown = interval
+		}
+		clearFleetStay(state, FleetKey(unit))
 		events = append(events, EngineEvent{Type: "unit_moved", Audience: unit.Faction, Text: fmt.Sprintf("%s从%s移动至%s，%d回合后可再次移动", unit.Name, from, coord, unit.MoveCooldown)})
 	}
+	// 自动航行（规则书 280–283 行）：手动移动与自动移动共用移动机会，
+	// 所以放在手动位移之后统一结算——本回合手动动过的舰队自动航行自然不生效。
+	events = append(events, resolveAutoNavigation(state)...)
+	// 移动会改写舰艏朝向，甲板长度依赖朝向（规则书 817–824 行）：不重算的话，
+	// 快照里会出现"朝向已经变 SW、甲板长度还按旧 NE 算"的自相矛盾状态，
+	// 玩家按快照规划下一回合的起降会失败。
+	RefreshDeckLengths(state)
 	syncEmbarkedAircraft(state)
-	return append(events, resolveContacts(state)...)
+	// 舰队侦查（规则书 575 行）：放在机动之后、接敌之前——先看清对手，
+	// 接敌时的"预先发现+1"才有来源。
+	events = append(events, resolveSurfaceRecon(state)...)
+	events = append(events, resolveContacts(state)...)
+	// 无线电改令 / 召回（规则书 597–602 行）：放在编队移动之后再结算，命令只影响下一段航程，
+	// 同时处于规则书 176–178 行的"飞行编队移动"之后、"水面交火/岸轰"之前。
+	events = append(events, resolveRadioOrders(state, orders)...)
+	events = append(events, resolveDetachments(state)...)
+	// 岸轰和运输卸载（规则书 178 行）
+	events = append(events, resolveShoreBombardment(state)...)
+	events = append(events, resolveUnloading(state)...)
+	events = append(events, resolvePortSupply(state)...)
+	// 回合结束：跟踪中的侦察机可能被敌方发现并被 CAP 攻击（规则书 551–559 行）
+	events = append(events, resolveReconExposure(state)...)
+	// 回合结束：脱离接触的情报按昼夜节奏衰减（规则书 587–593 行）。
+	events = append(events, decayContactIntel(state)...)
+	// 战斗之后舰船强度/损伤已经变化，情报里的成员快照要同步刷新，
+	// 否则 4 级情报会滞后一回合显示旧数据（战报说掉强度、舰队面板还是满的）。
+	refreshContactMembers(state)
+	trackFleetStay(state)
+	trackFleetSessions(state)
+	events = append(events, advanceTowardEdge(state)...)
+	// 敌方飞行编队的可见性：雷达/侦察/目视发现后对对手可见。
+	events = append(events, resolveAirVisibility(state)...)
+	// 天黑前召回自动循环的飞行任务（规则书 199 行）：必须在航空作业推进之前发出，
+	// 否则这一回合刚起飞的飞机已经上天，来不及回家。
+	events = append(events, recallLoopingAircraftBeforeNight(state)...)
+	// 天色收尾：快照里的 night 对应下一回合（服务端紧接着会 turn+1），
+	// 入夜那一刻还在天上的算子在回收截止时判坠海。
+	events = append(events, settleDayNightAtTurnEnd(state)...)
+	// 胜利条件（DESIGN.md 49 行）：每回合结算后统一判定一次。
+	// 回合结束对账：花名册里有、现在不在编的算子记为损失（击落/油箱耗尽/随舰沉没/机库被炸）。
+	settleAircraftLosses(state)
+	return append(events, settleOutcome(state)...)
+}
+
+// syncArmedAircraft 维护"整装待发"标记：
+// 与当前航空任务挂载不符的算子在机库整备时转为未武装（需要额外 1 回合换挂载，规则书 258 行）；
+// 与任务相符、且已经整备完毕的算子标记为 Armed，被炸弹命中时按整装待发规则摧毁（规则书 421–423 行）。
+func syncArmedAircraft(state *State, events []EngineEvent) []EngineEvent {
+	for _, id := range sortedAirUnitIDs(*state) {
+		aircraft := state.Aircraft[id]
+		if aircraft == nil {
+			continue
+		}
+		if !armedTaskMatches(aircraft.TaskKind, aircraft.Kind) {
+			if aircraft.Armed {
+				aircraft.Armed = false
+				events = append(events, EngineEvent{Type: "air_rearm", Audience: aircraft.Faction, Text: aircraft.Model + "任务挂载不符，需要额外1回合在机库更换挂载"})
+			}
+			continue
+		}
+		if !aircraft.Armed && (aircraft.Status == "hangar" || aircraft.Status == "service") {
+			aircraft.Armed = true
+		}
+	}
+	return events
+}
+
+// armedTaskMatches 判断机型能否直接执行某类任务：
+// 战斗机只能挂 CAP/护航，轰炸/侦察机型可以承担侦察，攻击/转场任务需要轰炸能力。
+func armedTaskMatches(taskKind, aircraftKind string) bool {
+	switch taskKind {
+	case "":
+		return false
+	case "cap", "cover":
+		return aircraftKind == "fighter"
+	case "recon":
+		return canSearch(AirUnit{Kind: aircraftKind})
+	case "attack", "transfer":
+		return aircraftKind != "fighter"
+	}
+	return false
+}
+
+// advanceTurnStart 对应规则书 169 行的"回合开始状态处理"：
+// 上一回合的小型火灾已经由损管阶段扑灭（火灾只持续一回合），这里负责清掉本回合的无线电记录。
+func advanceTurnStart(state *State) {
+	// 每个空中编队每回合各有一次无线电机会，回合开始时清空"已发射"记录。
+	state.RadioUsed = map[string]string{}
+	// 每回合玩家操作阶段可以调整一次舰队朝向（规则书 825 行）。
+	state.HeadingChanged = map[string]bool{}
+	// 新回合开始，尚未获得任何新情报。
+	resetIntelFresh(state)
+	// 接敌判定每回合每编队一次。
+	state.EngageTried = map[string]bool{}
+}
+
+// advanceTurnStartWithEvents 在 advanceTurnStart 的基础上返回昼夜切换等回合开始事件。
+func advanceTurnStartWithEvents(state *State) []EngineEvent {
+	advanceTurnStart(state)
+	// 回合开始状态处理：按剧本的昼夜循环刷新白天/夜间（规则书 199、587–593 行）。
+	events := UpdateDayNight(state)
+	// 动态天气（规则书 313–314、815 行）：剧本开启天气系统时按间隔刷新。
+	return append(events, StepWeather(state)...)
+}
+
+// AdvanceTurnStart 是服务端可见的回合开始钩子：刷新昼夜等回合级状态并返回事件。
+func AdvanceTurnStart(state *State) []EngineEvent {
+	return advanceTurnStartWithEvents(state)
+}
+
+// resolveRadioOrders 按指令顺序结算本回合的无线电通信：
+// 每个空中编队每回合各有一次机会（规则书 601 行），发出即消耗，失败不能再发。
+func resolveRadioOrders(state *State, orders []Order) []EngineEvent {
+	if state.RadioUsed == nil {
+		state.RadioUsed = map[string]string{}
+	}
+	events := []EngineEvent{}
+	for _, order := range orders {
+		if !isRadioOrder(order.Type) {
+			continue
+		}
+		faction := radioOrderFaction(*state, order)
+		if faction == "" {
+			continue
+		}
+		if _, used := state.RadioUsed[order.TaskID]; used {
+			events = append(events, EngineEvent{Type: "radio_exhausted", Audience: faction, Text: "该编队本回合已经发过无线电，命令被忽略"})
+			continue
+		}
+		events = append(events, ApplyRadioOrder(state, faction, order)...)
+	}
+	return events
+}
+
+// radioOrderFaction 从任务里的算子反推阵营。
+func radioOrderFaction(state State, order Order) string {
+	for _, aircraft := range airTaskMembersEveryStatus(state, order.TaskID) {
+		if aircraft.Faction != "" {
+			return aircraft.Faction
+		}
+	}
+	for _, aircraft := range groundTaskMembersEveryStatus(state, order.TaskID) {
+		if aircraft.Faction != "" {
+			return aircraft.Faction
+		}
+	}
+	return ""
 }
 
 func VisibleUnits(state State, faction string) []Unit {
@@ -464,7 +1140,7 @@ func VisibleUnits(state State, faction string) []Unit {
 		visible := unit.Faction == faction
 		if !visible {
 			for _, friendly := range state.Units {
-				if friendly.Faction == faction && Distance(friendly.Coord, unit.Coord) <= 2 {
+				if friendly.Faction == faction && Distance(friendly.Coord, unit.Coord) <= visualContactRange {
 					visible = true
 					break
 				}
@@ -481,6 +1157,9 @@ func VisibleUnits(state State, faction string) []Unit {
 			if unit.Faction == faction {
 				copyUnit.LegalMoves = LegalMoves(state, unit)
 			}
+			// 实际航速档案要随快照下发：进水每层降一档，玩家在兵牌上看到的"慢速"必须等于
+			// 引擎真正用的档位，而不是卡面印着的设计航速。
+			copyUnit.EffectiveSpeed = EffectiveSpeedClass(&copyUnit)
 			units = append(units, copyUnit)
 		}
 	}
@@ -527,6 +1206,9 @@ func VisibleFleets(state State, faction string) []FleetGroup {
 			fleet.MoveInterval = FleetMoveInterval(state, &leader)
 			fleet.MoveCooldown = FleetMoveCooldown(state, id)
 			fleet.Confusion = FleetConfusion(state, id)
+			// 自动航行信息只给自己看，敌方不该看到对方的航线规划。
+			fleet.Destination = FleetDestination(state, id)
+			fleet.Engagement = string(FleetEngagementSetting(state, id))
 		}
 		if leader.FleetName != "" {
 			fleet.Name = leader.FleetName
@@ -542,13 +1224,47 @@ func VisibleFleets(state State, faction string) []FleetGroup {
 			}
 		}
 		if fleet.ContactLevel > 0 {
-			switch {
-			case fleet.Count <= 4:
-				fleet.ContactSize = "small"
-			case fleet.Count <= 9:
-				fleet.ContactSize = "medium"
-			default:
-				fleet.ContactSize = "large"
+			// 情报未到 4 级时，规模要用情报里的真实数量算，而不是投影出来的一两个占位算子：
+			// 1 级连规模都不显示，2-3 级只给"小/中/大"。
+			if fleet.Faction != faction {
+				if contact := state.Contacts[faction][id]; contact != nil && contact.Level < 4 {
+					if contact.Level <= 1 {
+						fleet.ContactSize = ""
+					} else {
+						fleet.ContactSize = contactSizeClass(contact.Count)
+					}
+				} else {
+					fleet.ContactSize = contactSizeClass(fleet.Count)
+				}
+			} else {
+				fleet.ContactSize = contactSizeClass(fleet.Count)
+			}
+			// 情报 3 级起能判断出有没有主力舰：只给类别，不给具体舰名和数量。
+			if fleet.Faction != faction && fleet.ContactLevel >= 3 {
+				members := fleet.Members
+				if contact := state.Contacts[faction][id]; contact != nil && len(contact.Members) > 0 {
+					members = contact.Members
+				}
+				hasCarrier, hasBattleship, hasHeavy := false, false, false
+				for _, member := range members {
+					switch member.Type {
+					case "CV", "CVL", "CVE":
+						hasCarrier = true
+					case "BB", "BC":
+						hasBattleship = true
+					case "CA":
+						hasHeavy = true
+					}
+				}
+				if hasCarrier {
+					fleet.ContactCapitals = append(fleet.ContactCapitals, "carrier")
+				}
+				if hasBattleship {
+					fleet.ContactCapitals = append(fleet.ContactCapitals, "battleship")
+				}
+				if hasHeavy {
+					fleet.ContactCapitals = append(fleet.ContactCapitals, "heavy_cruiser")
+				}
 			}
 		}
 		fleets = append(fleets, fleet)

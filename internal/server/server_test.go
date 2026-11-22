@@ -18,16 +18,19 @@ import (
 )
 
 type testView struct {
-	Turn       int                    `json:"turn"`
-	Version    int64                  `json:"version"`
-	Units      []game.Unit            `json:"units"`
-	Fleets     []game.FleetGroup      `json:"fleets"`
-	Aviation   game.AviationView      `json:"aviation"`
-	AirCombats []game.AirCombatReport `json:"air_combats"`
-	You        store.Player           `json:"you"`
-	Players    []store.Player         `json:"players"`
-	Orders     []game.Order           `json:"orders"`
-	JoinToken  string                 `json:"join_token"`
+	Turn       int                      `json:"turn"`
+	Version    int64                    `json:"version"`
+	Units      []game.Unit              `json:"units"`
+	Fleets     []game.FleetGroup        `json:"fleets"`
+	Aviation   game.AviationView        `json:"aviation"`
+	AirCombats []game.AirCombatReport   `json:"air_combats"`
+	FleetStays map[string]string        `json:"fleet_stays"`
+	GroundAir  []game.AirfieldAirStatus `json:"ground_air"`
+	You        store.Player             `json:"you"`
+	Players    []store.Player           `json:"players"`
+	Orders     []game.Order             `json:"orders"`
+	JoinToken  string                   `json:"join_token"`
+	Solo       bool                     `json:"solo"`
 }
 
 type testClient struct {
@@ -125,25 +128,21 @@ func TestTwoPlayerCommandAndTurnFlow(t *testing.T) {
 		t.Fatalf("非法移动状态码%d", status)
 	}
 	valid := map[string]any{"command_id": "move-1", "base_version": 1, "type": "SET_MOVE", "unit_id": "a-bb-01", "coord": "0203"}
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/commands", valid, nil); status != http.StatusOK {
-		t.Fatal("合法移动被拒绝")
+	var moveView map[string]any
+	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/commands", valid, &moveView); status != http.StatusOK {
+		t.Fatalf("合法移动被拒绝：%v", moveView)
 	}
 	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/commands", valid, nil); status != http.StatusOK {
 		t.Fatal("幂等重试失败")
 	}
 	var moved testView
 	_ = a.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &moved)
-	if moved.Version != 2 || len(moved.Orders) != 0 {
-		t.Fatalf("立即移动未更新版本或错误生成待结算命令：%+v", moved)
+	if moved.Version != 2 {
+		t.Fatalf("移动命令未更新版本：%+v", moved)
 	}
-	movedFound := false
-	for _, unit := range moved.Units {
-		if unit.ID == "a-bb-01" && unit.Coord == "0203" && unit.Moved {
-			movedFound = true
-		}
-	}
-	if !movedFound {
-		t.Fatal("立即移动结果或移动状态未写入私有快照")
+	// 移动是"本回合规划"：提交后不立刻位移，只登记在待结算命令里。
+	if len(moved.Orders) != 1 || moved.Orders[0].Type != "SET_MOVE" || moved.Orders[0].Coord != "0203" {
+		t.Fatalf("移动规划未写入待结算命令：%+v", moved.Orders)
 	}
 
 	var readyView testView
@@ -156,14 +155,15 @@ func TestTwoPlayerCommandAndTurnFlow(t *testing.T) {
 	if readyView.Turn != 2 || readyView.Version != 3 {
 		t.Fatalf("回合版本错误：%+v", readyView)
 	}
+	// 结算完毕后进入新回合：位置应为规划目标，移动标记在新回合开始时清空。
 	found := false
 	for _, unit := range readyView.Units {
-		if unit.ID == "a-bb-01" && unit.Coord == "0203" && !unit.Moved {
+		if unit.ID == "a-bb-01" && unit.Coord == "0203" {
 			found = true
 		}
 	}
 	if !found {
-		t.Fatal("新回合未重置移动状态")
+		t.Fatal("回合结算没有执行规划的移动")
 	}
 
 	stale := map[string]any{"command_id": "move-stale", "base_version": 1, "type": "SET_MOVE", "unit_id": "a-bb-01", "coord": "0204"}
@@ -255,9 +255,10 @@ func TestConcurrentCommandsHaveSingleWinner(t *testing.T) {
 	if status := a.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{}, &created); status != http.StatusCreated {
 		t.Fatal("创建房间失败")
 	}
+	// 同一版本并发命令只能有一个成功：用两条会立即改变权威状态的命令（给同一个机库算子分配任务）来验证。
 	commands := []map[string]any{
-		{"command_id": "concurrent-flag", "base_version": 1, "type": "SET_MOVE", "unit_id": "a-bb-01", "coord": "0203"},
-		{"command_id": "concurrent-screen", "base_version": 1, "type": "SET_MOVE", "unit_id": "a-dd-01", "coord": "0201"},
+		{"command_id": "concurrent-flag", "base_version": 1, "type": "LAUNCH_CAP", "aircraft_id": "a2-cv-01-fighter-x1", "aircraft_ids": []string{"a2-cv-01-fighter-x1"}},
+		{"command_id": "concurrent-screen", "base_version": 1, "type": "LAUNCH_STRIKE", "aircraft_id": "a2-cv-01-fighter-x1", "aircraft_ids": []string{"a2-cv-01-fighter-x1"}},
 	}
 	statuses := make(chan int, len(commands))
 	errors := make(chan error, len(commands))
@@ -323,8 +324,8 @@ func TestSectorReconCommandPersistsAndAdvances(t *testing.T) {
 	}
 	version := int64(1)
 	command := map[string]any{
-		"command_id": "recon-sector-1", "base_version": version, "type": "LAUNCH_RECON", "aircraft_id": "air-b-10",
-		"heading": "W", "sector_width": 60, "recon_radius": 6,
+		"command_id": "recon-sector-1", "base_version": version, "type": "LAUNCH_RECON", "aircraft_id": "b-cv-04-dive_bomber-x1",
+		"heading": "W", "sector_width": 60,
 	}
 	if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/commands", command, nil); status != http.StatusOK {
 		t.Fatalf("机库算子分配侦察任务被拒绝")
@@ -334,19 +335,21 @@ func TestSectorReconCommandPersistsAndAdvances(t *testing.T) {
 	if status := b.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &assigned); status != http.StatusOK {
 		t.Fatal("读取预备侦察任务失败")
 	}
-	if assigned.Version != version || len(assigned.Aviation.Tasks) != 1 || assigned.Aviation.Tasks[0].Phase != "servicing" || assigned.Aviation.Tasks[0].ReconRadius != 6 {
-		t.Fatalf("侦察任务未立即进入整备：%+v", assigned)
+	// 侦察半径不可设置：无论命令里写什么，都按机型的最大搜索半径执行。
+	wantRadius := game.ReconRadiusLimit(assigned.Aviation.Tasks[0].Aircraft[0])
+	if assigned.Version != version || len(assigned.Aviation.Tasks) != 1 || assigned.Aviation.Tasks[0].Phase != "servicing" || assigned.Aviation.Tasks[0].ReconRadius != wantRadius {
+		t.Fatalf("侦察任务未立即进入整备：%+v（期望半径 %d）", assigned.Aviation.Tasks, wantRadius)
 	}
 	room, err := database.Room(t.Context(), created.RoomID)
-	if err != nil || room.State.Aircraft["air-b-10"].Status != "service" || room.State.Aircraft["air-b-10"].TaskKind != "recon" || room.State.Aircraft["air-b-10"].ReconRadius != 6 {
-		t.Fatalf("预备侦察任务未持久化：%+v %v", room.State.Aircraft["air-b-10"], err)
+	if err != nil || room.State.Aircraft["b-cv-04-dive_bomber-x1"].Status != "service" || room.State.Aircraft["b-cv-04-dive_bomber-x1"].TaskKind != "recon" || room.State.Aircraft["b-cv-04-dive_bomber-x1"].ReconRadius != game.ReconRadiusLimit(*room.State.Aircraft["b-cv-04-dive_bomber-x1"]) {
+		t.Fatalf("预备侦察任务未持久化：%+v %v", room.State.Aircraft["b-cv-04-dive_bomber-x1"], err)
 	}
 
 	for _, expected := range []struct {
 		turn   int
 		phase  string
 		status string
-	}{{2, "lifting", "elevator"}, {3, "launching", "recon"}} {
+	}{{2, "servicing", "service"}, {3, "lifting", "elevator"}, {4, "launching", "recon"}} {
 		var ready testView
 		if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": version, "ready": true}, &ready); status != http.StatusOK {
 			t.Fatal("A ready失败")
@@ -375,7 +378,7 @@ func TestSectorReconCommandPersistsAndAdvances(t *testing.T) {
 	if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": version, "ready": true}, &ready); status != http.StatusOK {
 		t.Fatal("B ready失败")
 	}
-	if ready.Turn != 4 || len(ready.Aviation.Tasks) != 1 || ready.Aviation.Tasks[0].Phase != "active" || ready.Aviation.Tasks[0].ReconDistance != 2 || ready.Aviation.Tasks[0].CurrentCoord != "0206" {
+	if ready.Turn != 5 || len(ready.Aviation.Tasks) != 1 || ready.Aviation.Tasks[0].Phase != "active" || ready.Aviation.Tasks[0].ReconDistance != 2 || ready.Aviation.Tasks[0].CurrentCoord != "0206" {
 		t.Fatalf("自动起飞后没有推进侦察航线：%+v", ready.Aviation.Tasks)
 	}
 	persisted, err := store.Open(dbPath)
@@ -384,7 +387,13 @@ func TestSectorReconCommandPersistsAndAdvances(t *testing.T) {
 	}
 	defer persisted.Close()
 	restored, err := persisted.Room(t.Context(), created.RoomID)
-	if err != nil || restored.State.Aircraft["air-b-10"].Coord != "0206" || restored.State.Aircraft["air-b-10"].RemainingRange != 14 {
-		t.Fatalf("重启读取的侦察状态错误：%+v %v", restored.State.Aircraft["air-b-10"], err)
+	restoredRecon := restored.State.Aircraft["b-cv-04-dive_bomber-x1"]
+	if restoredRecon == nil {
+		t.Fatalf("重启后侦察算子丢失：%v", err)
+	}
+	// 落盘后航程不应变化：主燃油 = 基础航程 × 副油箱系数，减去已飞的 2 格。
+	wantRange := game.SortieBaseRange(restoredRecon.BaseRange, restoredRecon.Loadout) - 2
+	if err != nil || restoredRecon.Coord != "0206" || restoredRecon.Range() != wantRange {
+		t.Fatalf("重启读取的侦察状态错误：%+v %v", restored.State.Aircraft["b-cv-04-dive_bomber-x1"], err)
 	}
 }

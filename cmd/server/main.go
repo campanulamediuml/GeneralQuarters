@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -87,15 +88,20 @@ func ensureContent(dataDir string) error {
 		if entry.IsDir() {
 			return os.MkdirAll(target, 0o750)
 		}
-		if _, err := os.Stat(target); err == nil {
-			return nil
+		// 仓库里的 content 是唯一真相：数据目录里的副本与内嵌内容不一致就覆盖，
+		// 这样改完 units/scenarios 的 JSON 重启即可生效，不必删库重建房间。
+		if current, err := os.ReadFile(target); err == nil {
+			if embedded, readErr := content.Files.ReadFile(path); readErr == nil && bytes.Equal(current, embedded) {
+				return nil
+			}
 		}
 		source, err := content.Files.Open(path)
 		if err != nil {
 			return err
 		}
 		defer source.Close()
-		file, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o640)
+		// 已存在且内容不同的文件要就地覆盖，所以不能用 O_EXCL。
+		file, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o640)
 		if err != nil {
 			return err
 		}

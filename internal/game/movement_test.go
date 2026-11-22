@@ -24,18 +24,19 @@ func TestFleetMovementIntervalsAndCooldown(t *testing.T) {
 	if err := ValidateOrder(state, "A", order); err == nil {
 		t.Fatal("移动后允许无视冷却再次移动")
 	}
-	for turn := 1; turn <= 2; turn++ {
+	// 规划移动的那一回合把 3 回合冷却花掉 1 回合：结算后只剩 2 回合，再走两回合回到 0。
+	// 段落提醒：所有船都按舰队同步冷却，因此第一回合就应该看到 2。
+	expectedCooldowns := []int{3, 2, 1, 0}
+	for turn, expected := range expectedCooldowns {
 		ResolveOrders(&state, nil)
-		if state.Units[leader.ID].MoveCooldown != 3-turn {
-			t.Fatalf("第%d回合冷却递减错误：%d", turn, state.Units[leader.ID].MoveCooldown)
+		if state.Units[leader.ID].MoveCooldown != expected {
+			t.Fatalf("第%d回合冷却递减错误：%d，期望%d", turn+1, state.Units[leader.ID].MoveCooldown, expected)
 		}
-		if err := ValidateOrder(state, "A", order); err == nil {
-			t.Fatalf("第%d回合仍允许提前移动", turn)
+		if expected > 0 {
+			if err := ValidateOrder(state, "A", order); err == nil {
+				t.Fatalf("第%d回合仍允许提前移动", turn+1)
+			}
 		}
-	}
-	ResolveOrders(&state, nil)
-	if state.Units[leader.ID].MoveCooldown != 0 {
-		t.Fatal("第三回合后仍未恢复移动")
 	}
 	if err := ValidateOrder(state, "A", Order{Type: "SET_MOVE", UnitID: leader.ID, Coord: "0202"}); err != nil {
 		t.Fatalf("冷却结束后仍禁止移动：%v", err)

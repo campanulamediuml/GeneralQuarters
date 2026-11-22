@@ -1,0 +1,139 @@
+{
+  "id": "_coral",
+  "version": 2,
+  "name": "珊瑚海 · 所罗门海域",
+  "rows": 10,
+  "cols": 12,
+  "cells": [
+    {
+      "coord": "0102",
+      "terrain": "island",
+      "name": "新不列颠岛"
+    },
+    {
+      "coord": "0103",
+      "terrain": "island",
+      "name": "新不列颠岛"
+    },
+    {
+      "coord": "0203",
+      "terrain": "island",
+      "name": "拉包尔"
+    },
+    {
+      "coord": "0204",
+      "terrain": "island",
+      "name": "新不列颠岛"
+    },
+    {
+      "coord": "0105",
+      "terrain": "island",
+      "name": "新爱尔兰岛"
+    },
+    {
+      "coord": "0106",
+      "terrain": "island",
+      "name": "新爱尔兰岛"
+    },
+    {
+      "coord": "0307",
+      "terrain": "island",
+      "name": "舒瓦瑟尔岛"
+    },
+    {
+      "coord": "0211",
+      "terrain": "island",
+      "name": "布干维尔岛"
+    },
+    {
+      "coord": "0311",
+      "terrain": "island",
+      "name": "布干维尔岛"
+    },
+    {
+      "coord": "0312",
+      "terrain": "island",
+      "name": "布干维尔岛"
+    },
+    {
+      "coord": "0408",
+      "terrain": "island",
+      "name": "圣伊莎贝尔岛"
+    },
+    {
+      "coord": "0507",
+      "terrain": "island",
+      "name": "新乔治亚岛"
+    },
+    {
+      "coord": "0510",
+      "terrain": "island",
+      "name": "瓜达尔卡纳尔岛"
+    },
+    {
+      "coord": "0610",
+      "terrain": "island",
+      "name": "瓜达尔卡纳尔岛"
+    },
+    {
+      "coord": "0611",
+      "terrain": "island",
+      "name": "马莱塔岛"
+    },
+    {
+      "coord": "0712",
+      "terrain": "island",
+      "name": "圣克里斯托瓦尔岛"
+    },
+    {
+      "coord": "0301",
+      "terrain": "island",
+      "name": "新几内亚 · 莱城"
+    },
+    {
+      "coord": "0401",
+      "terrain": "island",
+      "name": "新几内亚 · 莫尔兹比港"
+    },
+    {
+      "coord": "0501",
+      "terrain": "island",
+      "name": "新几内亚 · 米尔恩湾"
+    },
+    {
+      "coord": "0901",
+      "terrain": "island",
+      "name": "澳大利亚 · 约克角"
+    },
+    {
+      "coord": "1001",
+      "terrain": "island",
+      "name": "澳大利亚"
+    },
+    {
+      "coord": "1002",
+      "terrain": "island",
+      "name": "澳大利亚"
+    },
+    {
+      "coord": "0304",
+      "terrain": "shoal",
+      "name": "特罗布里恩德群岛"
+    },
+    {
+      "coord": "0605",
+      "terrain": "shoal",
+      "name": "路易西亚德浅滩"
+    },
+    {
+      "coord": "0606",
+      "terrain": "reef",
+      "name": "路易西亚德暗礁"
+    },
+    {
+      "coord": "0806",
+      "terrain": "reef",
+      "name": "珊瑚海暗礁"
+    }
+  ]
+}

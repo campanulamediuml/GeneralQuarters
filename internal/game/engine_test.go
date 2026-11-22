@@ -51,7 +51,8 @@ func TestScenarioValidationAndMovement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(catalog.Units) != 9 || len(state.Units) != 62 || len(state.Aircraft) != 42 {
+	// 单位库按阵营各一份：9 种舰型 × 2 阵营。
+	if len(catalog.Units) != 18 || len(state.Units) != 62 || len(state.Aircraft) != len(scenario.AirDeployments) {
 		t.Fatalf("沙盒部署数量错误：definitions=%d units=%d aircraft=%d", len(catalog.Units), len(state.Units), len(state.Aircraft))
 	}
 	fleetA := VisibleFleets(state, "A")
@@ -75,15 +76,17 @@ func TestScenarioValidationAndMovement(t *testing.T) {
 		}
 	}
 	unit := state.Units["a-bb-01"]
-	if unit.DefinitionID != "bb" || unit.Card.Gunnery != 16 || unit.Card.DamageControl != 7 || !unit.Card.SurfaceRadar {
+	if unit.DefinitionID != "bb" || unit.Card.Gunnery != 16 || unit.Card.DamageControl != 6 || !unit.Card.SurfaceRadar {
 		t.Fatalf("战列舰角色卡生成错误：%+v", unit)
 	}
 	carrier := state.Units["b-cv-01"]
-	if carrier.Card.Gunnery != 4 || carrier.Card.DeckCapacity != 9 || carrier.Card.ElevatorCount != 3 || carrier.Card.Aircraft != 4 || carrier.Card.HangarCapacity != 24 {
+	// 日军航母机库 18 单位；美军 24。甲板容量是"基础 9 + 风向修正"，开局即生效。
+	// 航母没有主炮，炮击值为 0：以前填了 4，导致战报里出现"航母炮击敌舰"。
+	if carrier.Card.Gunnery != 0 || carrier.Card.DeckCapacity != deckLengthFor(state, carrier) || carrier.Card.ElevatorCount != 3 || carrier.Card.Aircraft == 0 || carrier.Card.Aircraft > carrier.Card.HangarCapacity || carrier.Card.HangarCapacity != 18 {
 		t.Fatalf("航母角色卡生成错误：%+v", carrier)
 	}
-	if state.Definitions["units"] != "3" {
-		t.Fatalf("未记录单位目录版本：%+v", state.Definitions)
+	if state.Definitions["units"] != fmt.Sprint(catalog.Version) {
+		t.Fatalf("未记录单位目录版本：%+v（期望 %d）", state.Definitions, catalog.Version)
 	}
 	if err := ValidateOrder(state, "A", Order{Type: "SET_MOVE", UnitID: unit.ID, Coord: "0203"}); err != nil {
 		t.Fatal(err)
@@ -95,10 +98,17 @@ func TestScenarioValidationAndMovement(t *testing.T) {
 		t.Fatal("允许非相邻移动")
 	}
 
+	// 剧本规则：机场格（陆地 hex）只对含 CV/CVL/CVE 的舰队禁入；纯水面舰队可以靠岸进入并岸轰。
 	state.Units["a-bb-01"].Coord = "0303"
-	if err := ValidateOrder(state, "A", Order{Type: "SET_MOVE", UnitID: unit.ID, Coord: "0304"}); err == nil {
-		t.Fatal("允许进入岛屿")
+	if err := ValidateOrder(state, "A", Order{Type: "SET_MOVE", UnitID: unit.ID, Coord: "0304"}); err != nil {
+		t.Fatalf("水面舰队应能进入机场 hex：%v", err)
 	}
+	carrierFleetLeader := state.Units["a2-cv-01"]
+	carrierFleetLeader.Coord = "0303"
+	if err := ValidateOrder(state, "A", Order{Type: "SET_MOVE", UnitID: carrierFleetLeader.ID, Coord: "0304"}); err == nil {
+		t.Fatal("含航母的舰队不应进入机场 hex")
+	}
+	state.Units["a-bb-01"].Coord = "0202"
 	state.Units["a-bb-01"].Coord = "0405"
 	if err := ValidateOrder(state, "A", Order{Type: "SET_MOVE", UnitID: unit.ID, Coord: "0506"}); err == nil {
 		t.Fatal("允许进入暗礁")

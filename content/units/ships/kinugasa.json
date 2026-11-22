@@ -1,0 +1,27 @@
+{
+ "id": "kinugasa",
+ "faction": "B",
+ "type": "CA",
+ "name": "衣笠",
+ "picture": "misc/image/ship/furutaka.png",
+ "strength": 4,
+ "card": {
+  "damage_control": 5,
+  "main_gun_count": 6,
+  "main_gun_caliber": 8,
+  "heavy_aa": 4.0,
+  "light_aa": 2.0,
+  "surface_radar": true,
+  "air_radar": false,
+  "speed_class": "normal",
+  "torpedo_salvos": 2,
+  "aircraft": 2,
+  "deck_capacity": 1,
+  "elevator_count": 0,
+  "depth_charges": 0,
+  "cargo": 0,
+  "armored_carrier": false,
+  "gunnery": 5,
+  "hangar_capacity": 2
+ }
+}

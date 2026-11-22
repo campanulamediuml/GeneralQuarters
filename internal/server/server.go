@@ -11,6 +11,8 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"runtime/debug"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -59,6 +61,12 @@ func (a *roomActor) run() {
 type createRoomRequest struct {
 	Name       string `json:"name"`
 	ScenarioID string `json:"scenario_id"`
+	// Faction 是房主自选的阵营（A/B），空值默认 A。
+	// 以前房主固定是 A、加入者固定是 B，想坐日军就只能靠剧本对调，太别扭。
+	Faction string `json:"faction,omitempty"`
+	// Solo 是单人房：一名玩家 ready 就结算，用于沙盒自测。
+	// 双人对局必须两个人都在、都 ready，否则房间会"自己跟自己跑"。
+	Solo bool `json:"solo,omitempty"`
 }
 
 type joinRoomRequest struct {
@@ -78,8 +86,15 @@ type commandRequest struct {
 	Coord        string            `json:"coord"`
 	Heading      string            `json:"heading"`
 	SectorWidth  int               `json:"sector_width"`
-	ReconRadius  int               `json:"recon_radius"`
 	Assignments  map[string]string `json:"assignments"`
+	TaskKind     string            `json:"task_kind"`
+	Loadout      string            `json:"loadout"`
+	// Disperse：SET_STRIKE_DISPERSION 用（true=分散攻击）。
+	Disperse bool `json:"disperse"`
+	// Cycle：SET_AIR_CYCLE 用（true=开启自动任务循环，false=取消）。
+	Cycle bool `json:"cycle"`
+	// Engagement：SET_AUTO_NAV / SET_ENGAGEMENT 用（aggressive/advantage/avoid）。
+	Engagement string `json:"engagement"`
 }
 
 type readyRequest struct {
@@ -109,6 +124,10 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/rooms/", s.roomRoutes)
 	mux.HandleFunc("POST /api/v1/rooms/", s.roomRoutes)
 	mux.HandleFunc("GET /ws", s.webSocket)
+	// content/ 下的静态素材（兵牌剪影等）：路径由舰船卡的 picture 字段给出，
+	// 例如 /content/misc/image/ship/new_orleans.png。换图只要替换数据目录里的文件，
+	// 既不用重新构建前端，也不用重启（FileServer 每次读盘）。
+	mux.Handle("GET /content/", http.StripPrefix("/content/", http.FileServer(http.Dir(s.contentDir))))
 }
 
 func (s *Server) roomRoutes(w http.ResponseWriter, r *http.Request) {
@@ -174,8 +193,17 @@ func (s *Server) createRoom(w http.ResponseWriter, r *http.Request) {
 	if name == "" {
 		name = "玩家A"
 	}
-	room := store.Room{ID: roomID, JoinToken: joinToken, Status: "running", Turn: 1, Version: 1, State: state}
-	player := store.Player{ID: playerID, RoomID: roomID, Faction: "A", Name: name, IsHost: true, Ready: false, Connected: true}
+	// 单人房要显式声明：沙盒剧本默认单人（自测用得最多），其余剧本默认双人对局。
+	solo := request.Solo
+	if request.ScenarioID == "_sandbox" {
+		solo = true
+	}
+	room := store.Room{ID: roomID, JoinToken: joinToken, Status: "running", Turn: 1, Version: 1, State: state, Solo: solo}
+	faction := strings.ToUpper(strings.TrimSpace(request.Faction))
+	if faction != "A" && faction != "B" {
+		faction = "A"
+	}
+	player := store.Player{ID: playerID, RoomID: roomID, Faction: faction, Name: name, IsHost: true, Ready: false, Connected: true}
 	if err := s.store.CreateRoom(r.Context(), room, player, hashToken(session)); err != nil {
 		writeError(w, http.StatusInternalServerError, "创建房间失败")
 		return
@@ -215,6 +243,19 @@ func (s *Server) joinRoom(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, roomResponse{RoomID: player.RoomID, PlayerID: player.ID})
 }
 
+// commandFingerprint 把一条命令的可识别字段拼成指纹：用来区分"同一命令重试"和
+// "复用 command_id 的另一条命令"。只取业务字段，不含 command_id / base_version。
+func commandFingerprint(request commandRequest) string {
+	parts := []string{
+		request.Type, request.UnitID, request.TargetUnitID, request.AircraftID,
+		strings.Join(request.AircraftIDs, ","), request.TaskID, request.Coord, request.Heading,
+		strconv.Itoa(request.SectorWidth),
+		request.TaskKind, request.Loadout, fmt.Sprintf("%t", request.Disperse), request.Engagement,
+	}
+	sum := sha256.Sum256([]byte(strings.Join(parts, "|")))
+	return hex.EncodeToString(sum[:8])
+}
+
 func (s *Server) handleCommand(w http.ResponseWriter, r *http.Request, roomID string, player store.Player) {
 	var request commandRequest
 	if err := decodeJSON(r, &request); err != nil {
@@ -225,7 +266,14 @@ func (s *Server) handleCommand(w http.ResponseWriter, r *http.Request, roomID st
 		writeError(w, http.StatusBadRequest, "command_id无效")
 		return
 	}
-	if response, found, err := s.store.CommandResponse(r.Context(), player.ID, request.CommandID); err == nil && found {
+	fingerprint := commandFingerprint(request)
+	if response, stored, found, err := s.store.CommandResponse(r.Context(), player.ID, request.CommandID); err == nil && found {
+		// 同一个 command_id 必须是同一条命令：客户端重启后从 1 重新计数的情况下，
+		// 沿用旧 ID 提交新命令以前会静默返回旧回执（HTTP 200），新命令被吞掉。
+		if stored != "" && stored != fingerprint {
+			writeError(w, http.StatusBadRequest, "command_id已被其他命令使用，请换一个新的ID")
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(response))
 		return
@@ -239,23 +287,52 @@ func (s *Server) handleCommand(w http.ResponseWriter, r *http.Request, roomID st
 		writeError(w, http.StatusConflict, "状态已更新，请刷新后重试")
 		return
 	}
-	order := game.Order{Type: request.Type, UnitID: request.UnitID, TargetUnitID: request.TargetUnitID, AircraftID: request.AircraftID, AircraftIDs: request.AircraftIDs, TaskID: request.TaskID, Coord: game.NormalizeToken(request.Coord), Heading: strings.ToUpper(request.Heading), SectorWidth: request.SectorWidth, ReconRadius: request.ReconRadius, Assignments: request.Assignments}
+	order := game.Order{Type: request.Type, UnitID: request.UnitID, TargetUnitID: request.TargetUnitID, AircraftID: request.AircraftID, AircraftIDs: request.AircraftIDs, TaskID: request.TaskID, Coord: game.NormalizeToken(request.Coord), Heading: strings.ToUpper(request.Heading), SectorWidth: request.SectorWidth, Assignments: request.Assignments, TaskKind: strings.ToLower(request.TaskKind), Loadout: strings.ToLower(request.Loadout), Disperse: request.Disperse, Engagement: strings.ToLower(request.Engagement), Cycle: request.Cycle}
 	if err := game.ValidateOrder(room.State, player.Faction, order); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	if order.Type == "SET_MOVE" || order.Type == "MERGE_FLEET" || order.Type == "REORGANIZE_HEX" || order.Type == "LAUNCH_CAP" || order.Type == "LAUNCH_RECON" || order.Type == "LAUNCH_STRIKE" || order.Type == "PREPARE_AIR" || order.Type == "RETURN_TO_HANGAR" || order.Type == "RECOVER_AIR" || order.Type == "PRIORITIZE_AIR_TASK" || order.Type == "SET_STRIKE_TARGET" {
+	// 无线电机会在提交时就要扣：同一回合里重复给同一个编队发命令必须立刻被拒绝，
+	if room.State.Outcome != nil {
+		writeError(w, http.StatusBadRequest, "对局已经结束："+room.State.Outcome.Reason)
+		return
+	}
+	// 不能等到结算阶段才丢弃（那样玩家会以为第二次也发出去了）。
+	if game.IsRadioOrder(order.Type) {
+		if used := pendingRadioTask(r.Context(), s.store, roomID, room.Turn, player.ID, order.TaskID); used {
+			writeError(w, http.StatusBadRequest, "该编队本回合已经发过无线电，不能再通信")
+			return
+		}
+	}
+	if game.IsImmediateOrder(order.Type) || order.Type == "MERGE_FLEET" || order.Type == "REORGANIZE_HEX" || game.IsAirOrder(order.Type) || order.Type == "SET_HEADING" || order.Type == "SET_LOADOUT" || order.Type == "SET_AUTO_NAV" || order.Type == "SET_ENGAGEMENT" {
 		var events []game.EngineEvent
 		switch order.Type {
+		case "SET_HEADING":
+			events = game.SetFleetHeading(&room.State, game.FleetKey(room.State.Units[order.UnitID]), order.Heading)
+		case "SET_LOADOUT":
+			events = game.ApplyLoadoutOrder(&room.State, order)
+		case "SET_AUTO_NAV":
+			events = game.ApplyNavOrder(&room.State, order)
+		case "SET_ENGAGEMENT":
+			events = game.ApplyEngagementOrder(&room.State, order)
 		case "SET_MOVE":
-			events = game.ApplyImmediateMove(&room.State, order)
-		case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE", "PREPARE_AIR", "RETURN_TO_HANGAR", "RECOVER_AIR", "PRIORITIZE_AIR_TASK", "SET_STRIKE_TARGET":
-			events = game.ApplyAirOrder(&room.State, order)
+			// 移动命令走下面 SaveOrder 的"本回合规划"通道，真正的位移在回合结算里执行。
+			s.savePlannedOrder(w, r, room, roomID, player, request, order)
+			return
+		case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_COVER", "LAUNCH_TRANSFER", "PREPARE_AIR", "RETURN_TO_HANGAR", "RECOVER_AIR", "PRIORITIZE_AIR_TASK", "SET_STRIKE_TARGET", "SET_STRIKE_DISPERSION", "ARM_AIR", "SET_AIR_CYCLE":
+			if game.IsAirfieldOrder(room.State, order) {
+				events = game.ApplyGroundAirOrder(&room.State, order)
+			} else {
+				events = game.ApplyAirOrder(&room.State, order)
+			}
+			if order.Type == "SET_STRIKE_DISPERSION" {
+				log.Printf("DEBUG dispersion order %+v events=%d", order, len(events))
+			}
 		default:
 			events = game.ApplyImmediateOrganization(&room.State, order)
 		}
 		response, _ := json.Marshal(map[string]any{"accepted": true, "command_id": request.CommandID, "version": room.Version + 1})
-		room, err = s.store.ApplyImmediate(r.Context(), room, player.ID, request.CommandID, string(response), room.State, events)
+		room, err = s.store.ApplyImmediate(r.Context(), room, player.ID, request.CommandID, fingerprint, string(response), room.State, events)
 		if err != nil {
 			writeError(w, http.StatusConflict, "命令结算失败："+err.Error())
 			return
@@ -266,7 +343,7 @@ func (s *Server) handleCommand(w http.ResponseWriter, r *http.Request, roomID st
 		return
 	}
 	response, _ := json.Marshal(map[string]any{"accepted": true, "command_id": request.CommandID})
-	if err := s.store.SaveOrder(r.Context(), roomID, room.Turn, player.ID, request.CommandID, order, string(response)); err != nil {
+	if err := s.store.SaveOrder(r.Context(), roomID, room.Turn, player.ID, request.CommandID, order, string(response), fingerprint); err != nil {
 		writeError(w, http.StatusInternalServerError, "保存命令失败")
 		return
 	}
@@ -276,6 +353,52 @@ func (s *Server) handleCommand(w http.ResponseWriter, r *http.Request, roomID st
 	s.hub.broadcast(roomID, "orders_updated", room.Version)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(response)
+}
+
+// pendingRadioTask 检查本回合是否已经有无线电命令发给了同一个编队。
+// 幂等重试在外层 CommandResponse 就命中了，走不到这里，所以不必区分 command_id。
+func pendingRadioTask(ctx context.Context, s *store.Store, roomID string, turn int, playerID, taskID string) bool {
+	records, err := s.Orders(ctx, roomID, turn, playerID)
+	if err != nil {
+		return false
+	}
+	for _, record := range records {
+		if record.Order.TaskID == taskID && game.IsRadioOrder(record.Order.Type) {
+			return true
+		}
+	}
+	return false
+}
+
+// savePlannedOrder 把一条待结算命令存进 orders 表（重复提交同一条移动不会重复记账）。
+func (s *Server) savePlannedOrder(w http.ResponseWriter, r *http.Request, room store.Room, roomID string, player store.Player, request commandRequest, order game.Order) {
+	response, _ := json.Marshal(map[string]any{"accepted": true, "command_id": request.CommandID, "version": room.Version + 1})
+	// 先推进版本（commands 表在这里写幂等响应），再落待结算命令；顺序反了会让幂等重试撞上主键冲突。
+	room, err := s.store.BumpVersion(r.Context(), room, player.ID, request.CommandID, commandFingerprint(request), string(response))
+	if err != nil {
+		writeError(w, http.StatusConflict, "命令结算失败："+err.Error())
+		return
+	}
+	if err := s.store.SaveOrder(r.Context(), roomID, room.Turn, player.ID, request.CommandID, order, string(response), commandFingerprint(request)); err != nil {
+		writeError(w, http.StatusInternalServerError, "保存命令失败")
+		return
+	}
+	s.hub.broadcast(roomID, "state_changed", room.Version)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(response)
+}
+
+// resolveRoomTurn 包一层 panic 兜底：回合结算里任何一处越界都不应该让整个房间卡死，
+// 出错时记录日志并返回 nil（回合作废但不崩溃），便于快速定位。
+func resolveRoomTurn(state *game.State, orders []game.Order) (events []game.EngineEvent) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			// 带上调用栈，否则"nil pointer dereference"这种错误完全无法定位。
+			log.Printf("回合结算异常：%v\n%s", recovered, debug.Stack())
+			events = nil
+		}
+	}()
+	return game.ResolveOrders(state, orders)
 }
 
 func (s *Server) handleReady(w http.ResponseWriter, r *http.Request, roomID string, player store.Player) {
@@ -292,6 +415,23 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request, roomID stri
 	if room.Version != request.BaseVersion {
 		writeError(w, http.StatusConflict, "状态已更新，请刷新后重试")
 		return
+	}
+	if room.State.Outcome != nil && request.Ready {
+		writeError(w, http.StatusBadRequest, "对局已经结束："+room.State.Outcome.Reason)
+		return
+	}
+	// 双人对局不能一个人自己跟自己跑：对手没进房就直接拒绝 ready，
+	// 而不是"单人 ready 就结算"把十几个回合跑掉（那样回合、油量、侦察全白给）。
+	if request.Ready && !room.Solo {
+		players, err := s.store.Players(r.Context(), roomID)
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "读取玩家失败")
+			return
+		}
+		if len(players) < 2 {
+			writeError(w, http.StatusBadRequest, "这是双人对局，对手还没进房：把房间 token 发给他，两名玩家都到齐后回合才会推进")
+			return
+		}
 	}
 	if err := s.store.SetReady(r.Context(), player.ID, request.Ready); err != nil {
 		writeError(w, http.StatusInternalServerError, "准备状态保存失败")
@@ -314,7 +454,10 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request, roomID stri
 			for _, record := range records {
 				orders = append(orders, record.Order)
 			}
-			events := game.ResolveOrders(&room.State, orders)
+			// 引擎内部的回合号与服务端的房间回合保持一致，胜利条件的回合上限要用它。
+			room.State.Turn = room.Turn
+			events := resolveRoomTurn(&room.State, orders)
+			room.State.Turn = room.Turn + 1
 			room, err = s.store.Resolve(r.Context(), room, room.State, events)
 			if err != nil {
 				writeError(w, http.StatusConflict, err.Error())
@@ -365,9 +508,27 @@ func (s *Server) writeState(w http.ResponseWriter, r *http.Request, roomID strin
 		"room_id": room.ID, "status": room.Status, "turn": room.Turn, "version": room.Version,
 		"scenario": map[string]any{"id": room.State.ScenarioID, "name": room.State.ScenarioName, "description": room.State.Description},
 		"map":      room.State.Map, "units": game.VisibleUnits(room.State, player.Faction), "fleets": game.VisibleFleets(room.State, player.Faction),
-		"aviation":    game.VisibleAviation(room.State, player.Faction),
-		"air_combats": game.VisibleAirCombats(room.State, player.Faction),
-		"you":         player, "players": players, "orders": ownOrders, "events": events,
+		"aviation":        game.VisibleAviation(room.State, player.Faction),
+		"airfields":       game.VisibleAirfields(room.State, player.Faction),
+		"ground_air":      game.VisibleGroundAir(room.State, player.Faction),
+		"ground_tasks":    game.GroundAviationView(room.State, player.Faction).Tasks,
+		"ground_aircraft": game.GroundAircraftView(room.State, player.Faction),
+		"air_combats":     game.VisibleAirCombats(room.State, player.Faction),
+		"fleet_stays":     game.VisibleFleetStays(room.State, player.Faction),
+		"fleet_sessions":  game.VisibleFleetSessions(room.State, player.Faction),
+		"shore_supplies":  game.VisibleShoreSupplies(room.State, player.Faction),
+		"radio_used":      game.VisibleRadioUsage(room.State, player.Faction),
+		"radio_tasks":     game.AirborneRadioTasks(room.State, player.Faction),
+		"wind":            game.VisibleWind(room.State, player.Faction),
+		"night":           room.State.Night,
+		"clock":           game.Clock(room.State),
+		"enemy_air":       game.VisibleEnemyAir(room.State, player.Faction),
+		"losses":          game.VisibleLosses(room.State, player.Faction),
+		"outcome":         room.State.Outcome,
+		"objectives":      room.State.Objectives,
+		"you": player, "players": players, "orders": ownOrders, "events": events,
+		// solo 让前端把"完成部署"换成"等待对手进房"，别让玩家点了才发现结算不了。
+		"solo": room.Solo,
 		"server_time": time.Now().UTC(),
 	}
 	if player.IsHost {

@@ -17,6 +17,8 @@ export interface GameMap {
 }
 
 export interface ShipCard {
+  /** 兵牌剪影：相对 content/ 的路径，由舰船卡下发（例如 misc/image/ship/new_orleans.png）。 */
+  picture?: string
   gunnery: number
   damage_control: number
   main_gun_count: number
@@ -63,6 +65,7 @@ export interface ShipDamage {
   elevator_damage?: number
   torpedo_disabled?: boolean
   surface_radar_disabled?: boolean
+  fire_control_radar_disabled?: boolean
   air_radar_disabled?: boolean
   sonar_disabled?: boolean
 }
@@ -87,6 +90,12 @@ export interface Unit {
   damage?: ShipDamage
   deck?: FlightDeck
   legal_moves?: string[]
+  // 服务端算好的实际航速档位（进水降档之后），兵牌的白条按它画。
+  effective_speed?: 'fast' | 'normal' | 'slow' | 'very_slow' | 'disabled'
+  /** 自动航行目的地（规则书 280–283 行） */
+  destination?: string
+  /** 自动航行交战设置：aggressive / advantage / avoid（规则书 362–370 行） */
+  engagement?: 'aggressive' | 'advantage' | 'avoid'
 }
 
 export type ReconHeading = 'E' | 'SE' | 'SW' | 'W' | 'NW' | 'NE'
@@ -103,10 +112,16 @@ export interface AirUnit {
   strength: number
   max_range: number
   remaining_range: number
+  loadout?: string
+  tank_dropped?: boolean
+  bombed?: boolean
+  fuel?: { tank?: number; internal?: number; reserve?: number }
   air_combat: number
   anti_ship: number
   anti_ground: number
   seaplane: boolean
+  /** 陆基机型：只能在机场起降，航程不按舰载机显示。 */
+  airfield_only?: boolean
   launched: boolean
   elevator_id?: string
   priority: number
@@ -125,6 +140,14 @@ export interface AirUnit {
   confusion?: boolean
   damaged?: boolean
   maintenance?: number
+  // CAP 巡逻空域与前出接敌点（掩护范围 = 该点及周围 1 hex，不在地图绘制范围）
+  patrol_coord?: string
+  forward_coord?: string
+  /** 自动任务循环（规则书 188–191 行）：CAP、侦察、空中掩护通用 */
+  on_cycle?: boolean
+  cycle_kind?: 'cap' | 'cover' | 'recon'
+  cycle_opt_out?: boolean
+  cycle_target?: string
 }
 
 export interface DistanceHex {
@@ -156,8 +179,8 @@ export interface ReconSector {
 
 export interface AirTask {
   id: string
-  kind: 'cap' | 'recon' | 'asw' | 'attack' | 'transfer'
-  phase: 'servicing' | 'lifting' | 'preparing' | 'launching' | 'assembling' | 'active'
+  kind: 'cap' | 'recon' | 'asw' | 'attack' | 'transfer' | 'cover'
+  phase: 'servicing' | 'lifting' | 'preparing' | 'launching' | 'assembling' | 'active' | 'recovering'
   name: string
   carrier_id: string
   carrier_ids: string[]
@@ -170,12 +193,20 @@ export interface AirTask {
   origin_coord?: string
   current_coord?: string
   target_coord?: string
+  /** 攻击编队的攻击方式：true = 分散攻击（规则书 624–631 行） */
+  disperse?: boolean
+  /** 走完任务再落回母舰还要几回合（含排队着舰余量） */
+  return_turns?: number
+  /** 天黑前能否回来：false 表示这波任务注定赶不上 19:40 的回收截止 */
+  night_safe?: boolean
   heading?: ReconHeading
   sector_width?: 60 | 120
   recon_radius?: number
   recon_distance?: number
   returning?: boolean
   tracking_fleet_id?: string
+  /** 转场到达后目标舰队机库已满，降不下去：前端要打红色感叹号 */
+  cannot_land?: boolean
   sector_hexes?: string[]
   current_ring_hexes?: string[]
   recon_sectors?: ReconSector[]
@@ -193,6 +224,10 @@ export interface CarrierAirStatus {
   deck_used: number
   launch_used: number
   operation: '' | 'launch' | 'recover'
+  /** 这艘航空舰当前为什么不能起降（倾斜、起火、甲板摧毁……），空串表示正常 */
+  blocked_reason?: string
+  /** 甲板被占满时，指出挡路的具体来源，例如还没设目标的攻击编队 */
+  prevented_by?: string
   elevators: AircraftElevator[]
   aircraft: AirUnit[]
 }
@@ -212,7 +247,7 @@ export interface Player {
 }
 
 export interface Order {
-  type: 'SET_MOVE' | 'CLEAR_MOVE' | 'MERGE_FLEET' | 'REORGANIZE_HEX' | 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' | 'PREPARE_AIR' | 'RETURN_TO_HANGAR' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK' | 'SET_STRIKE_TARGET'
+  type: 'SET_MOVE' | 'CLEAR_MOVE' | 'MERGE_FLEET' | 'REORGANIZE_HEX' | 'SET_HEADING' | 'SET_LOADOUT' | 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' | 'LAUNCH_COVER' | 'LAUNCH_TRANSFER' | 'PREPARE_AIR' | 'RETURN_TO_HANGAR' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK' | 'SET_STRIKE_TARGET' | 'SET_STRIKE_DISPERSION' | 'SET_AUTO_NAV' | 'SET_ENGAGEMENT' | 'SET_AIR_CYCLE' | 'RECALL_AIR' | 'RETASK_AIR' | 'RETARGET_AIR'
   unit_id?: string
   target_unit_id?: string
   aircraft_id?: string
@@ -222,8 +257,12 @@ export interface Order {
   target_coord?: string
   heading?: ReconHeading
   sector_width?: 60 | 120
-  recon_radius?: number
   assignments?: Record<string, string>
+  task_kind?: string
+  disperse?: boolean
+  engagement?: 'aggressive' | 'advantage' | 'avoid'
+  /** SET_AIR_CYCLE：true 开启自动任务循环，false 取消 */
+  cycle?: boolean
 }
 
 export interface GameEvent {
@@ -235,9 +274,33 @@ export interface GameEvent {
   created_at: string
 }
 
+export interface AirHitDetail {
+  attacker: string
+  model: string
+  outcome: '撤退' | '损伤' | '摧毁' | '无效果'
+}
+
+export interface AirShipCard {
+  id: string
+  name: string
+  type: string
+  strength: number
+}
+
+export interface StrikeAllocation {
+  attacker: string
+  model: string
+  ship_id: string
+  ship_name: string
+  hits: number
+}
+
 export interface AirCombatReport {
   id: string
   coord: string
+  // airfield = 对地攻击；ship = 单舰目标；group = 舰队目标；缺省按对舰处理
+  target?: 'ship' | 'group' | 'airfield'
+  target_name?: string
   attacker_faction: Player['faction']
   defender_faction: Player['faction']
   attacker_models: string[]
@@ -248,8 +311,98 @@ export interface AirCombatReport {
   defender_losses: number
   aa_hits: number
   strike_hits: number
+  ships_hit?: number
+  ship_hits?: number
+  bombers?: AirHitDetail[]
+  bomb_attempts?: number
+  ships?: AirShipCard[]
+  target_allocations?: StrikeAllocation[]
+  airfield_hits?: number
+  ground_losses?: number
+  airfield?: AirShipCard
+  airfield_before?: number
+  airfield_after?: number
+  airfield_runways_before?: number
+  airfield_runways_after?: number
+  attacker_hits?: AirHitDetail[]
   winner: Player['faction'] | 'draw'
   summary: string
+}
+
+export interface AirfieldContact {
+  id: string
+  name: string
+  faction: Player['faction']
+  coord: string
+  type: 'field' | 'heavy' | 'major'
+  runways: number
+  contact_level: number
+}
+
+export interface GroundAirUnit {
+  id: string
+  definition_id: string
+  airfield_id: string
+  faction: Player['faction']
+  model: string
+  kind: string
+  status: string
+  strength: number
+  max_range: number
+  remaining_range: number
+  loadout?: string
+  tank_dropped?: boolean
+  bombed?: boolean
+  fuel?: { tank?: number; internal?: number; reserve?: number }
+  air_combat: number
+  anti_ship: number
+  anti_ground: number
+  task_id?: string
+  task_kind?: string
+  priority?: number
+  coord?: string
+  origin_coord?: string
+  target_coord?: string
+  heading?: string
+  sector_width?: number
+  recon_radius?: number
+  recon_distance?: number
+  recon_radius_limit?: number
+  returning?: boolean
+  damaged?: boolean
+  maintenance?: number
+}
+
+export interface GroundAirStatus {
+  unit_id: string
+  name: string
+  type: 'field' | 'heavy' | 'major'
+  coord: string
+  strength: number
+  max_strength: number
+  max_runways: number
+  runways: number
+  radar: boolean
+  heavy_aa: number
+  light_aa: number
+  coastal: number
+  hangar_used: number
+  aircraft: GroundAirUnit[]
+}
+
+/** 剧本时间线快照：第几天几点、天色、以及整备/放飞窗口是否开放 */
+export interface GameClock {
+  day: number
+  time: string
+  night: boolean
+  service_open: boolean
+  launch_open: boolean
+  service_start: string
+  launch_start: string
+  recover_by: string
+  turn_minutes: number
+  /** 距回收截止还有几个回合（-1 = 没配时间线） */
+  night_in_turns: number
 }
 
 export interface GameView {
@@ -257,18 +410,78 @@ export interface GameView {
   status: string
   turn: number
   version: number
+  /** 单人房：一名玩家 ready 就结算 */
+  solo?: boolean
   scenario: { id: string; name: string; description: string }
   map: GameMap
   units: Unit[]
   fleets: FleetGroup[]
   aviation: AviationView
+  airfields?: AirfieldContact[]
+  ground_air?: GroundAirStatus[]
+  ground_tasks?: AirTask[]
+  ground_aircraft?: GroundAirUnit[]
+  fleet_stays?: Record<string, string>
+  fleet_sessions?: Record<string, number>
+  shore_supplies?: Record<string, number>
+  wind?: { wind: string; fleets: { fleet_id: string; heading: string; relation: string; has_carrier: boolean; deck_modifier: number; changed: boolean }[] }
+  radio_used?: string[]
+  /** 剧本时间线快照；没配 DayHours/TurnsPerDay 的剧本为 null */
+  clock?: GameClock | null
+  radio_tasks?: { task_id: string; kind: string; coord: string; airborne: number; used: boolean; chance: number; distance: number }[]
   air_combats: AirCombatReport[]
   you: Player
   players: Player[]
   orders: Order[]
   events: GameEvent[]
+  /** 昼夜状态（开启昼夜循环时随回合变化） */
+  night?: boolean
+  /** 已发现的敌方飞行编队（雷达/侦察/目视） */
+  enemy_air?: EnemyAirContact[]
+  /** 战果台账：按阵营（A/B）分组的沉没舰船与飞机损失 */
+  losses?: Record<string, FactionLosses>
+  /** 对局结果：存在即表示已经结束 */
+  outcome?: { winner?: string; reason: string; scores: Record<string, number>; turn: number; turn_cap?: boolean }
+  objectives?: { id: string; text?: string; kind: string; coord?: string; faction?: string; value?: number; points?: number }[]
   join_token?: string
   server_time: string
+}
+
+export interface ShipLoss {
+  turn: number
+  id?: string
+  name: string
+  type: string
+  fleet?: string
+  card?: ShipCard
+}
+
+export interface AircraftLoss {
+  model: string
+  kind: string
+  count: number
+}
+
+export interface FactionLosses {
+  ships?: ShipLoss[]
+  aircraft?: AircraftLoss[]
+  ship_total?: number
+  aircraft_total?: number
+}
+
+export interface EnemyAirContact {
+  task_id: string
+  faction: 'A' | 'B'
+  kind: string
+  models: string[]
+  count: number
+  coord: string
+  heading?: string
+  target_coord?: string
+  detected_by: 'radar' | 'recon' | 'visual'
+  turn: number
+  returning?: boolean
+  attack_holding?: boolean
 }
 
 export interface RoomResponse {

@@ -20,6 +20,9 @@ type Room struct {
 	Turn      int
 	Version   int64
 	State     game.State
+	// Solo 表示"单人房"：允许一名玩家 ready 就结算（沙盒自测用）。
+	// 双人对局必须是两名玩家都 ready 才推进，否则一个人进房点一下就自己跟自己跑起来。
+	Solo bool
 }
 
 type Player struct {
@@ -71,7 +74,8 @@ func (s *Store) migrate() error {
 CREATE TABLE IF NOT EXISTS rooms (
  id TEXT PRIMARY KEY, join_token TEXT NOT NULL UNIQUE, scenario_id TEXT NOT NULL,
  status TEXT NOT NULL, turn INTEGER NOT NULL, version INTEGER NOT NULL,
- state_json TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+ state_json TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+ solo INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS players (
  id TEXT PRIMARY KEY, room_id TEXT NOT NULL, faction TEXT NOT NULL, name TEXT NOT NULL,
@@ -84,6 +88,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 CREATE TABLE IF NOT EXISTS commands (
  player_id TEXT NOT NULL, command_id TEXT NOT NULL, response_json TEXT NOT NULL, created_at TEXT NOT NULL,
+ request_fingerprint TEXT NOT NULL DEFAULT '',
  PRIMARY KEY(player_id, command_id)
 );
 CREATE TABLE IF NOT EXISTS orders (
@@ -100,7 +105,41 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE INDEX IF NOT EXISTS idx_events_room ON events(room_id, id);
 `)
-	return err
+	if err != nil {
+		return err
+	}
+	// 老库的 commands 表没有 request_fingerprint 列：补上，否则幂等校验退化成
+	// "沿用旧 command_id 就静默返回旧回执"，客户端重启后第一部分命令会被吞掉。
+	if !s.hasColumn("commands", "request_fingerprint") {
+		if _, err := s.DB.Exec(`ALTER TABLE commands ADD COLUMN request_fingerprint TEXT NOT NULL DEFAULT ''`); err != nil {
+			return err
+		}
+	}
+	// 老库的 rooms 表没有 solo 列：补上，默认 0（双人对局）。
+	if !s.hasColumn("rooms", "solo") {
+		if _, err := s.DB.Exec(`ALTER TABLE rooms ADD COLUMN solo INTEGER NOT NULL DEFAULT 0`); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Store) hasColumn(table, column string) bool {
+	rows, err := s.DB.Query(`SELECT name FROM pragma_table_info(?)`, table)
+	if err != nil {
+		return false
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return false
+		}
+		if name == column {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *Store) Close() error { return s.DB.Close() }
@@ -123,7 +162,7 @@ func (s *Store) CreateRoom(ctx context.Context, room Room, player Player, sessio
 	}
 	defer tx.Rollback()
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	_, err = tx.ExecContext(ctx, `INSERT INTO rooms VALUES(?,?,?,?,?,?,?,?,?)`, room.ID, room.JoinToken, room.State.ScenarioID, room.Status, room.Turn, room.Version, stateJSON, now, now)
+	_, err = tx.ExecContext(ctx, `INSERT INTO rooms(id,join_token,scenario_id,status,turn,version,state_json,created_at,updated_at,solo) VALUES(?,?,?,?,?,?,?,?,?,?)`, room.ID, room.JoinToken, room.State.ScenarioID, room.Status, room.Turn, room.Version, stateJSON, now, now, boolInt(room.Solo))
 	if err != nil {
 		return err
 	}
@@ -207,7 +246,9 @@ func (s *Store) RoomIDByToken(ctx context.Context, token string) (string, error)
 func (s *Store) Room(ctx context.Context, roomID string) (Room, error) {
 	var room Room
 	var stateJSON string
-	err := s.DB.QueryRowContext(ctx, `SELECT id,join_token,status,turn,version,state_json FROM rooms WHERE id=?`, roomID).Scan(&room.ID, &room.JoinToken, &room.Status, &room.Turn, &room.Version, &stateJSON)
+	var solo int
+	err := s.DB.QueryRowContext(ctx, `SELECT id,join_token,status,turn,version,state_json,solo FROM rooms WHERE id=?`, roomID).Scan(&room.ID, &room.JoinToken, &room.Status, &room.Turn, &room.Version, &stateJSON, &solo)
+	room.Solo = solo != 0
 	if err != nil {
 		return room, err
 	}
@@ -247,16 +288,19 @@ func (s *Store) SetConnected(ctx context.Context, playerID string, connected boo
 	return err
 }
 
-func (s *Store) CommandResponse(ctx context.Context, playerID, commandID string) (string, bool, error) {
-	var response string
-	err := s.DB.QueryRowContext(ctx, `SELECT response_json FROM commands WHERE player_id=? AND command_id=?`, playerID, commandID).Scan(&response)
+// CommandResponse 返回某个 command_id 之前写下的回执，以及当时的请求指纹。
+// 指纹让服务端能区分"同一命令的重试"和"复用 ID 的另一条命令"：前者原样返回，
+// 后者必须报错，否则客户端重启后沿用旧 ID 会静默拿到旧回执、新命令根本不执行。
+func (s *Store) CommandResponse(ctx context.Context, playerID, commandID string) (string, string, bool, error) {
+	var response, fingerprint string
+	err := s.DB.QueryRowContext(ctx, `SELECT response_json, COALESCE(request_fingerprint,'') FROM commands WHERE player_id=? AND command_id=?`, playerID, commandID).Scan(&response, &fingerprint)
 	if err == sql.ErrNoRows {
-		return "", false, nil
+		return "", "", false, nil
 	}
-	return response, err == nil, err
+	return response, fingerprint, err == nil, err
 }
 
-func (s *Store) SaveOrder(ctx context.Context, roomID string, turn int, playerID, commandID string, order game.Order, response string) error {
+func (s *Store) SaveOrder(ctx context.Context, roomID string, turn int, playerID, commandID string, order game.Order, response, fingerprint string) error {
 	data, err := json.Marshal(order)
 	if err != nil {
 		return err
@@ -267,14 +311,23 @@ func (s *Store) SaveOrder(ctx context.Context, roomID string, turn int, playerID
 	}
 	defer tx.Rollback()
 	if order.Type == "CLEAR_MOVE" {
-		_, err = tx.ExecContext(ctx, `DELETE FROM orders WHERE room_id=? AND turn=? AND player_id=? AND unit_id=?`, roomID, turn, playerID, order.UnitID)
+		if order.TaskID != "" {
+			// 无线电命令按任务登记，需要用 task_id 才能撤回。
+			_, err = tx.ExecContext(ctx, `DELETE FROM orders WHERE room_id=? AND turn=? AND player_id=? AND unit_id=?`, roomID, turn, playerID, order.TaskID)
+		} else {
+			_, err = tx.ExecContext(ctx, `DELETE FROM orders WHERE room_id=? AND turn=? AND player_id=? AND unit_id=?`, roomID, turn, playerID, order.UnitID)
+		}
+	} else if order.Type == "RECALL_AIR" || order.Type == "RETASK_AIR" || order.Type == "RETARGET_AIR" {
+		// 无线电命令挂在任务上，而不是某一艘船上。
+		_, err = tx.ExecContext(ctx, `INSERT INTO orders VALUES(?,?,?,?,?) ON CONFLICT(room_id,turn,player_id,unit_id) DO UPDATE SET order_json=excluded.order_json`, roomID, turn, playerID, order.TaskID, data)
 	} else {
 		_, err = tx.ExecContext(ctx, `INSERT INTO orders VALUES(?,?,?,?,?) ON CONFLICT(room_id,turn,player_id,unit_id) DO UPDATE SET order_json=excluded.order_json`, roomID, turn, playerID, order.UnitID, data)
 	}
 	if err != nil {
 		return err
 	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO commands VALUES(?,?,?,?)`, playerID, commandID, response, time.Now().UTC().Format(time.RFC3339Nano))
+	// 幂等响应可能已经由 BumpVersion 写过（规划移动先推进版本再存命令），用 upsert 覆盖即可。
+	_, err = tx.ExecContext(ctx, `INSERT INTO commands VALUES(?,?,?,?,?) ON CONFLICT(player_id,command_id) DO UPDATE SET response_json=excluded.response_json, request_fingerprint=excluded.request_fingerprint`, playerID, commandID, response, time.Now().UTC().Format(time.RFC3339Nano), fingerprint)
 	if err != nil {
 		return err
 	}
@@ -314,7 +367,7 @@ type OrderRecord struct {
 	Order    game.Order
 }
 
-func (s *Store) ApplyImmediate(ctx context.Context, room Room, playerID, commandID, response string, newState game.State, events []game.EngineEvent) (Room, error) {
+func (s *Store) ApplyImmediate(ctx context.Context, room Room, playerID, commandID, fingerprint, response string, newState game.State, events []game.EngineEvent) (Room, error) {
 	data, err := json.Marshal(newState)
 	if err != nil {
 		return room, err
@@ -339,7 +392,7 @@ func (s *Store) ApplyImmediate(ctx context.Context, room Room, playerID, command
 	if _, err := tx.ExecContext(ctx, `UPDATE turns SET version=?,state_json=? WHERE room_id=? AND turn=?`, newVersion, data, room.ID, room.Turn); err != nil {
 		return room, err
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO commands VALUES(?,?,?,?)`, playerID, commandID, response, now); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO commands VALUES(?,?,?,?,?)`, playerID, commandID, response, now, fingerprint); err != nil {
 		return room, err
 	}
 	for sequence, event := range events {

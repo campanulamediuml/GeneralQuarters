@@ -22,14 +22,52 @@ type MapDefinition struct {
 }
 
 type Deployment struct {
-	ID             string `json:"id"`
-	Unit           string `json:"unit"`
-	Faction        string `json:"faction"`
-	Name           string `json:"name"`
-	Coord          string `json:"coord"`
-	FleetID        string `json:"fleet_id"`
-	FleetName      string `json:"fleet_name"`
-	HangarCapacity int    `json:"hangar_capacity,omitempty"`
+	ID   string `json:"id"`
+	Unit string `json:"unit"`
+	// Ship 指向 content/units/ships/<ship>.json 的具名舰卡（如 "lexington"）；
+	// 写了 Ship 就用那张卡，Unit 只作为回退的舰级模板。
+	Ship    string `json:"ship,omitempty"`
+	Faction string `json:"faction"`
+	Name    string `json:"name"`
+	Coord   string `json:"coord"`
+	// Coords 是随机出生区：写一组候选 hex，部署时按种子随机挑一个（同一舰队共用）。
+	// 用于"双方随机搜索遭遇"的测试剧本。
+	Coords []string `json:"coords,omitempty"`
+	// Box 是矩形随机出生区：按行列给一个范围，引擎自己展开成候选 hex（跳过陆地、暗礁和不可通行的格）。
+	// 珊瑚海这种"日军在索罗门群岛方向、美军在新赫布里底方向随机出现"的剧本用它，
+	// 免得把几十个候选 hex 一条条抄进 JSON。coord 与 coords 都为空时才生效。
+	Box            *DeployBox `json:"box,omitempty"`
+	FleetID        string     `json:"fleet_id"`
+	FleetName      string     `json:"fleet_name"`
+	HangarCapacity int        `json:"hangar_capacity,omitempty"`
+	// Overrides 是剧本对单舰属性的覆盖：只覆盖显式写了的字段，没写的沿用单位库。
+	// 珊瑚海这类"史实编成"需要按真实参数微调单舰（例如四艘航母统一甲板长度 8），
+	// 与其为每艘舰复制一份单位定义，不如在部署里写覆盖。
+	Overrides *DeploymentOverrides `json:"overrides,omitempty"`
+}
+
+// DeployBox 是矩形随机出生区，行列都是 1 起的包含边界。
+type DeployBox struct {
+	RowMin int `json:"row_min"`
+	RowMax int `json:"row_max"`
+	ColMin int `json:"col_min"`
+	ColMax int `json:"col_max"`
+}
+
+// DeploymentOverrides 是单舰属性覆盖。全部用指针，nil 表示"沿用单位库"。
+type DeploymentOverrides struct {
+	Strength       *int     `json:"strength,omitempty"`
+	DeckLength     *int     `json:"deck_length,omitempty"`
+	HangarCapacity *int     `json:"hangar_capacity,omitempty"`
+	ElevatorCount  *int     `json:"elevator_count,omitempty"`
+	HeavyAA        *float64 `json:"heavy_aa,omitempty"`
+	LightAA        *float64 `json:"light_aa,omitempty"`
+	MainGunCount   *int     `json:"main_gun_count,omitempty"`
+	MainGunCaliber *int     `json:"main_gun_caliber,omitempty"`
+	DamageControl  *int     `json:"damage_control,omitempty"`
+	SpeedClass     *string  `json:"speed_class,omitempty"`
+	Gunnery        *int     `json:"gunnery,omitempty"`
+	ArmoredCarrier *bool    `json:"armored_carrier,omitempty"`
 }
 
 type AirDeployment struct {
@@ -39,27 +77,51 @@ type AirDeployment struct {
 }
 
 type ScenarioDefinition struct {
-	ID             string            `json:"id"`
-	Version        int               `json:"version"`
-	Name           string            `json:"name"`
-	Map            string            `json:"map"`
-	Description    string            `json:"description"`
-	Year           int               `json:"year,omitempty"`
-	Night          bool              `json:"night,omitempty"`
-	Doctrines      map[string]string `json:"doctrines,omitempty"`
-	Deployments    []Deployment      `json:"deployments"`
-	AirDeployments []AirDeployment   `json:"air_deployments"`
+	ID      string `json:"id"`
+	Version int    `json:"version"`
+	Name    string `json:"name"`
+	Map     string `json:"map"`
+	// Units 指向单位库文件名（content/units/<Units>.json），为空时用 sandbox。
+	Units       string `json:"units,omitempty"`
+	Description string `json:"description"`
+	Year        int    `json:"year,omitempty"`
+	Night       bool   `json:"night,omitempty"`
+	// DayHours / TurnsPerDay 开启昼夜循环：开局时刻（小时，可带小数）与每天回合数。
+	// TurnsPerDay 为 0 时不循环，夜间状态固定为 Night 字段（兼容老剧本）。
+	DayHours    float64 `json:"day_hours,omitempty"`
+	TurnsPerDay int     `json:"turns_per_day,omitempty"`
+	Wind        string  `json:"wind,omitempty"`
+	// WeatherTurns 是天气刷新间隔（0 = 静态天气）。
+	WeatherTurns   int                  `json:"weather_turns,omitempty"`
+	Doctrines      map[string]string    `json:"doctrines,omitempty"`
+	Deployments    []Deployment         `json:"deployments"`
+	AirDeployments []AirDeployment      `json:"air_deployments"`
+	Airfields      []AirfieldDefinition `json:"airfields,omitempty"`
+	// MaxTurns 是剧本回合上限，到达上限后按目标点判定胜负；0 表示不限。
+	MaxTurns int `json:"max_turns,omitempty"`
+	// Objectives 是剧本胜利条件（DESIGN.md 49 行）。
+	Objectives []Objective `json:"objectives,omitempty"`
+	Timeline   *Timeline   `json:"timeline,omitempty"`
 }
 
 type UnitDefinition struct {
-	ID       string   `json:"id"`
-	Type     string   `json:"type"`
-	Name     string   `json:"name"`
-	Strength int      `json:"strength"`
-	Card     ShipCard `json:"card"`
+	ID string `json:"id"`
+	// Faction 为空表示通用定义。美日同型舰船的角色卡不同（目前主要差在防空值），
+	// 所以同一个 ID 允许多份按阵营区分的定义，部署时按所属阵营取用。
+	Faction  string `json:"faction,omitempty"`
+	Type     string `json:"type"`
+	Name     string `json:"name"`
+	Strength int    `json:"strength"`
+	// Picture 是兵牌剪影，相对 content/ 的路径，例如 misc/image/ship/new_orleans.png。
+	// 素材放数据目录而不是打进前端包：换图、加船都不用重新构建前端。
+	Picture string   `json:"picture,omitempty"`
+	Card    ShipCard `json:"card"`
 }
 
 type ShipCard struct {
+	// Picture 由舰船卡注入（来自 units/ships/*.json 顶层的 picture 字段），
+	// 前端拿它当剪影蒙版；为空时回落到内置的按舰名映射。
+	Picture        string  `json:"picture,omitempty"`
 	Gunnery        int     `json:"gunnery"`
 	DamageControl  int     `json:"damage_control"`
 	MainGunCount   int     `json:"main_gun_count"`
@@ -81,7 +143,9 @@ type ShipCard struct {
 }
 
 type AircraftDefinition struct {
-	ID         string `json:"id"`
+	ID string `json:"id"`
+	// Faction 为空表示通用机型。美日机型的航程与型号不同，同 ID 可有多份定义。
+	Faction    string `json:"faction,omitempty"`
 	Name       string `json:"name"`
 	Model      string `json:"model"`
 	Kind       string `json:"kind"`
@@ -91,6 +155,147 @@ type AircraftDefinition struct {
 	AntiShip   int    `json:"anti_ship"`
 	AntiGround int    `json:"anti_ground"`
 	Seaplane   bool   `json:"seaplane"`
+	// 空军型：只能从机场起降，不能部署到航母上
+	AirfieldOnly bool `json:"airfield_only,omitempty"`
+}
+
+// AirfieldType 对应规则书的野战机��� / 重型机场 / 大型机场，决定了能起降哪些机型。
+type AirfieldType string
+
+const (
+	// AirfieldSeaplane 是水上飞机基地：锚泊在海上，只起降水机（飞行艇/水上侦察机）。
+	AirfieldSeaplane AirfieldType = "seaplane"
+	AirfieldField    AirfieldType = "field"
+	AirfieldHeavy    AirfieldType = "heavy"
+	AirfieldMajor    AirfieldType = "major"
+)
+
+// AirfieldDefinition 是剧本里部署的机场：跑道数、是否带雷达、防空与岸防值。
+type AirfieldDefinition struct {
+	ID       string       `json:"id"`
+	Faction  string       `json:"faction"`
+	Name     string       `json:"name"`
+	Coord    string       `json:"coord"`
+	Type     AirfieldType `json:"type"`
+	Runways  int          `json:"runways"`
+	Radar    bool         `json:"radar,omitempty"`
+	HeavyAA  float64      `json:"heavy_aa,omitempty"`
+	LightAA  float64      `json:"light_aa,omitempty"`
+	Coastal  int          `json:"coastal,omitempty"`
+	Aircraft []string     `json:"aircraft"`
+}
+
+// Airfield 是运行时的机场状态。生命值 = 初始跑道数 × 5，可用跑道由生命值推导。
+type Airfield struct {
+	ID          string       `json:"id"`
+	Faction     string       `json:"faction"`
+	Name        string       `json:"name"`
+	Coord       string       `json:"coord"`
+	Type        AirfieldType `json:"type"`
+	Runways     int          `json:"runways"`
+	Strength    int          `json:"strength"`
+	MaxStrength int          `json:"max_strength"`
+	Radar       bool         `json:"radar,omitempty"`
+	HeavyAA     float64      `json:"heavy_aa,omitempty"`
+	LightAA     float64      `json:"light_aa,omitempty"`
+	Coastal     int          `json:"coastal,omitempty"`
+	// 本回合剩余的起降通行次数：每条可用跑道每回合最多 12 次（规则书 250 行）。
+	// 机场受袭会把正在起降的算子挤回机库，并占用通行次数（规则书 218 行）。
+	OpsRemaining int `json:"ops_remaining,omitempty"`
+}
+
+// runwaySortiesPerTurn 是每条跑道每回合最多支持的起降算子数。
+const runwaySortiesPerTurn = 12
+
+// AirfieldAirUnit 是机场上的飞机算子，状态与舰载机保持同一套命名：
+// hangar（机库整备）→ service（整备中）→ deck（滑行到跑道）→ ready（可起飞）→ cap/recon/attack_holding/attack → recovery。
+type AirfieldAirUnit struct {
+	ID           string `json:"id"`
+	DefinitionID string `json:"definition_id"`
+	AirfieldID   string `json:"airfield_id"`
+	Faction      string `json:"faction"`
+	Model        string `json:"model"`
+	Kind         string `json:"kind"`
+	Status       string `json:"status"`
+	Strength     int    `json:"strength"`
+	MaxRange     int    `json:"max_range"`
+	// Fuel 是燃料账本；RemainingRange 是兼容投影，读写走 Range()/Spend()。
+	Fuel           Fuel `json:"fuel"`
+	RemainingRange int  `json:"remaining_range"`
+	AirCombat      int  `json:"air_combat"`
+	AntiShip       int  `json:"anti_ship"`
+	AntiGround     int  `json:"anti_ground"`
+	// AirfieldOnly：陆基机型，只能在机场起降（陆攻等）。
+	AirfieldOnly bool   `json:"airfield_only,omitempty"`
+	TaskID       string `json:"task_id,omitempty"`
+	TaskKind     string `json:"task_kind,omitempty"`
+	Priority     int    `json:"priority,omitempty"`
+	Coord        string `json:"coord,omitempty"`
+	OriginCoord  string `json:"origin_coord,omitempty"`
+	TargetCoord  string `json:"target_coord,omitempty"`
+	// TargetFleetID 是打击编队认领的敌方舰队：目标 hex 打空之后靠它去追最新情报位置。
+	TargetFleetID    string `json:"target_fleet_id,omitempty"`
+	Heading          string `json:"heading,omitempty"`
+	SectorWidth      int    `json:"sector_width,omitempty"`
+	ReconRadius      int    `json:"recon_radius,omitempty"`
+	ReconDistance    int    `json:"recon_distance,omitempty"`
+	ReconRadiusLimit int    `json:"recon_radius_limit,omitempty"`
+	Returning        bool   `json:"returning,omitempty"`
+	TrackingFleetID  string `json:"tracking_fleet_id,omitempty"`
+	Damaged          bool   `json:"damaged,omitempty"`
+	Maintenance      int    `json:"maintenance,omitempty"`
+	// Disperse：false=集中攻击（权重表），true=分散攻击（均匀随机）（规则书 624–631 行）。
+	Disperse bool `json:"disperse,omitempty"`
+	// 挂载与燃料：与舰载机同一套规则（规则书 43–63 行）
+	BaseRange     int     `json:"base_range,omitempty"`
+	Loadout       Loadout `json:"loadout,omitempty"`
+	TankDropped   bool    `json:"tank_dropped,omitempty"`
+	Bombed        bool    `json:"bombed,omitempty"`
+	LoadoutManual bool    `json:"loadout_manual,omitempty"`
+}
+
+// AirfieldAirStatus 是前端航空面板用的机场整备状态。
+type AirfieldAirStatus struct {
+	UnitID      string            `json:"unit_id"`
+	Name        string            `json:"name"`
+	Type        AirfieldType      `json:"type"`
+	Coord       string            `json:"coord"`
+	Strength    int               `json:"strength"`
+	MaxStrength int               `json:"max_strength"`
+	MaxRunways  int               `json:"max_runways"`
+	Runways     int               `json:"runways"`
+	Radar       bool              `json:"radar"`
+	HeavyAA     float64           `json:"heavy_aa"`
+	LightAA     float64           `json:"light_aa"`
+	Coastal     int               `json:"coastal"`
+	HangarUsed  int               `json:"hangar_used"`
+	Aircraft    []AirfieldAirUnit `json:"aircraft"`
+}
+
+// RunwaysAvailable 按规则书计算可用跑道：min(初始跑道, max(生命值,0)/5 向上取整)。
+func RunwaysAvailable(current, max int) int {
+	if current <= 0 {
+		return 0
+	}
+	available := (current + 4) / 5
+	if available > max {
+		available = max
+	}
+	return available
+}
+
+// HardensFor 判断机场类型能否起降某机型：野战只能战斗机，重型 = 除战略轰炸机外全部，大型全部。
+// 当前沙盒没有战略轰炸机，因此 only-airfield 之外的差异只体现在野战机场上。
+func (a Airfield) HardensFor(aircraftKind string) bool {
+	switch a.Type {
+	case AirfieldField:
+		return aircraftKind == "fighter"
+	case AirfieldSeaplane:
+		// 水上基地只能起降水上飞机（飞行艇按侦察机建模）。
+		return aircraftKind == "recon"
+	default:
+		return true
+	}
 }
 
 type UnitCatalog struct {
@@ -113,21 +318,30 @@ type FlightDeck struct {
 	Length    int                 `json:"length"`
 	Operation string              `json:"operation"`
 	Elevators []*AircraftElevator `json:"elevators"`
+	// BaseLength 是不含风向修正的基础甲板长度；Length 是加上风向修正后的本回合容量（规则书 815–825 行）
+	BaseLength int `json:"base_length,omitempty"`
 }
 
 type ShipDamage struct {
-	Fire                 string `json:"fire,omitempty"`
-	Flooding             []int  `json:"flooding,omitempty"`
-	Disabled             bool   `json:"disabled,omitempty"`
-	Tilt                 bool   `json:"tilt,omitempty"`
-	OilLeak              bool   `json:"oil_leak,omitempty"`
-	DeckDamaged          bool   `json:"deck_damaged,omitempty"`
-	DeckDestroyed        bool   `json:"deck_destroyed,omitempty"`
-	ElevatorDamage       int    `json:"elevator_damage,omitempty"`
-	TorpedoDisabled      bool   `json:"torpedo_disabled,omitempty"`
-	SurfaceRadarDisabled bool   `json:"surface_radar_disabled,omitempty"`
-	AirRadarDisabled     bool   `json:"air_radar_disabled,omitempty"`
-	SonarDisabled        bool   `json:"sonar_disabled,omitempty"`
+	Fire string `json:"fire,omitempty"`
+	// SmallFireHits 记录本回合内已经触发过几次小型火灾：第 3 次才升级为起火燃烧（规则书 432 行）。
+	// 小型火灾在回合开始时自动扑灭，同时清零这个计数。
+	SmallFireHits   int   `json:"small_fire_hits,omitempty"`
+	Flooding        []int `json:"flooding,omitempty"`
+	Disabled        bool  `json:"disabled,omitempty"`
+	Tilt            bool  `json:"tilt,omitempty"`
+	OilLeak         bool  `json:"oil_leak,omitempty"`
+	DeckDamaged     bool  `json:"deck_damaged,omitempty"`
+	DeckDestroyed   bool  `json:"deck_destroyed,omitempty"`
+	ElevatorDamage  int   `json:"elevator_damage,omitempty"`
+	TorpedoDisabled bool  `json:"torpedo_disabled,omitempty"`
+	// 对海雷达有两种损坏，各管一摊：搜索雷达提供侦查/突袭判定，火控雷达提供炮击命中加成。
+	// 规则书原来把"火控雷达损坏"和"对海搜索雷达损坏"写成都失去对海雷达加成，
+	// 这里拆开，让命中率只受火控影响、搜索相关判定只受搜索雷达影响。
+	SurfaceRadarDisabled     bool `json:"surface_radar_disabled,omitempty"`
+	FireControlRadarDisabled bool `json:"fire_control_radar_disabled,omitempty"`
+	AirRadarDisabled         bool `json:"air_radar_disabled,omitempty"`
+	SonarDisabled            bool `json:"sonar_disabled,omitempty"`
 }
 
 type Unit struct {
@@ -150,6 +364,15 @@ type Unit struct {
 	Damage       *ShipDamage `json:"damage,omitempty"`
 	Deck         *FlightDeck `json:"deck,omitempty"`
 	LegalMoves   []string    `json:"legal_moves,omitempty"`
+	// EffectiveSpeed 是算上进水层数之后的实际航速档位（fast/normal/slow/very_slow/disabled）。
+	// 卡面 speed_class 是设计值，玩家需要看的是"现在到底跑多快"：兵牌上的白条就按它画。
+	EffectiveSpeed string `json:"effective_speed,omitempty"`
+	// Withdrawing 表示这艘船处于强制/重创撤退状态，每回合自动驶向地图边缘
+	Withdrawing bool `json:"withdrawing,omitempty"`
+	// Destination / Engagement 是自动航行的目的地与交战设置（规则书 280–283、362–370 行）。
+	// 整支舰队共用，写在队内首舰上。
+	Destination string `json:"destination,omitempty"`
+	Engagement  string `json:"engagement,omitempty"`
 }
 
 type DistanceHex struct {
@@ -164,52 +387,81 @@ type DistanceReference struct {
 }
 
 type FleetGroup struct {
-	ID                string             `json:"id"`
-	FleetID           string             `json:"fleet_id"`
-	FleetName         string             `json:"fleet_name"`
-	Name              string             `json:"name"`
-	Type              string             `json:"type"`
-	Faction           string             `json:"faction"`
-	Coord             string             `json:"coord"`
-	Heading           string             `json:"heading"`
-	Strength          int                `json:"strength"`
-	MaxStrength       int                `json:"max_strength"`
-	Moved             bool               `json:"moved"`
-	MoveCooldown      int                `json:"move_cooldown,omitempty"`
-	MoveInterval      int                `json:"move_interval"`
-	Confusion         int                `json:"confusion,omitempty"`
-	ContactLevel      int                `json:"contact_level,omitempty"`
-	ContactSize       string             `json:"contact_size,omitempty"`
-	LegalMoves        []string           `json:"legal_moves,omitempty"`
-	Count             int                `json:"count"`
+	ID           string `json:"id"`
+	FleetID      string `json:"fleet_id"`
+	FleetName    string `json:"fleet_name"`
+	Name         string `json:"name"`
+	Type         string `json:"type"`
+	Faction      string `json:"faction"`
+	Coord        string `json:"coord"`
+	Heading      string `json:"heading"`
+	Strength     int    `json:"strength"`
+	MaxStrength  int    `json:"max_strength"`
+	Moved        bool   `json:"moved"`
+	MoveCooldown int    `json:"move_cooldown,omitempty"`
+	MoveInterval int    `json:"move_interval"`
+	Confusion    int    `json:"confusion,omitempty"`
+	ContactLevel int    `json:"contact_level,omitempty"`
+	ContactSize  string `json:"contact_size,omitempty"`
+	// ContactCapitals 是情报 3 级能看出的主力舰类别：carrier / battleship / heavy_cruiser。
+	ContactCapitals []string `json:"contact_capitals,omitempty"`
+	LegalMoves      []string `json:"legal_moves,omitempty"`
+	Count           int      `json:"count"`
+	// Destination / Engagement 是这个舰队自己的自动航行设置（规则书 280–283、362–370 行）。
+	Destination       string             `json:"destination,omitempty"`
+	Engagement        string             `json:"engagement,omitempty"`
 	Members           []Unit             `json:"members"`
 	DistanceReference *DistanceReference `json:"distance_reference,omitempty"`
 }
 
 type AirUnit struct {
-	ID               string `json:"id"`
-	DefinitionID     string `json:"definition_id"`
-	CarrierID        string `json:"carrier_id"`
-	Faction          string `json:"faction"`
-	Name             string `json:"name"`
-	Model            string `json:"model"`
-	Kind             string `json:"kind"`
-	Status           string `json:"status"`
-	Strength         int    `json:"strength"`
-	MaxRange         int    `json:"max_range"`
-	RemainingRange   int    `json:"remaining_range"`
-	AirCombat        int    `json:"air_combat"`
-	AntiShip         int    `json:"anti_ship"`
-	AntiGround       int    `json:"anti_ground"`
-	Seaplane         bool   `json:"seaplane"`
-	Launched         bool   `json:"launched"`
-	ElevatorID       string `json:"elevator_id,omitempty"`
-	Priority         int    `json:"priority"`
-	TaskID           string `json:"task_id,omitempty"`
-	TaskKind         string `json:"task_kind,omitempty"`
-	OriginCoord      string `json:"origin_coord,omitempty"`
-	Coord            string `json:"coord,omitempty"`
-	TargetCoord      string `json:"target_coord,omitempty"`
+	ID           string `json:"id"`
+	DefinitionID string `json:"definition_id"`
+	CarrierID    string `json:"carrier_id"`
+	Faction      string `json:"faction"`
+	Name         string `json:"name"`
+	Model        string `json:"model"`
+	Kind         string `json:"kind"`
+	Status       string `json:"status"`
+	Strength     int    `json:"strength"`
+	MaxRange     int    `json:"max_range"`
+	// BaseRange 是机种的基础航程（不含副油箱与转场加成）；挂载变化时用它换算新的 MaxRange。
+	BaseRange int `json:"base_range,omitempty"`
+	// Fuel 是燃料账本（副油箱 / 机内 / 备用），是航程的唯一真相来源。
+	Fuel Fuel `json:"fuel"`
+	// Loadout 是当前武器挂载，决定航程加成与攻击值（规则书 43–63 行）。
+	Loadout Loadout `json:"loadout,omitempty"`
+	// TankDropped 表示副油箱已抛弃：Tank 里程归零，剩余航程随之下降（规则书 48 行）。
+	TankDropped bool `json:"tank_dropped,omitempty"`
+	// Bombed 表示已投弹：剩余航程获得 20% 轻载加成（规则书 83 行）。
+	Bombed bool `json:"bombed,omitempty"`
+	// LoadoutManual 表示玩家在机库里手动选过挂载：分配任务时不再用默认值覆盖。
+	LoadoutManual bool `json:"loadout_manual,omitempty"`
+	// RemainingRange 是 Fuel 的兼容投影：所有读写都应走 Range()/SetRange()，
+	// 保留字段只是为了让旧存档和老代码在迁移期仍能工作。
+	RemainingRange int  `json:"remaining_range"`
+	AirCombat      int  `json:"air_combat"`
+	AntiShip       int  `json:"anti_ship"`
+	AntiGround     int  `json:"anti_ground"`
+	Seaplane       bool `json:"seaplane"`
+	// AirfieldOnly：陆基机型（陆攻、P-40、B-25 这类），只能在机场起降，
+	// 前端据此不再显示"舰载机"的蓝色航程框。
+	AirfieldOnly bool   `json:"airfield_only,omitempty"`
+	Launched     bool   `json:"launched"`
+	ElevatorID   string `json:"elevator_id,omitempty"`
+	Priority     int    `json:"priority"`
+	TaskID       string `json:"task_id,omitempty"`
+	TaskKind     string `json:"task_kind,omitempty"`
+	OriginCoord  string `json:"origin_coord,omitempty"`
+	Coord        string `json:"coord,omitempty"`
+	TargetCoord  string `json:"target_coord,omitempty"`
+	// TargetFleetID 是打击编队认领的敌方舰队：目标 hex 打空之后靠它去追最新情报位置。
+	TargetFleetID string `json:"target_fleet_id,omitempty"`
+	// CannotLand 表示转场/备降的算子到了目标位置却降不下去（舰队机库已满），
+	// 只能挂在天上等玩家改转场目标。
+	CannotLand bool `json:"cannot_land,omitempty"`
+	// Disperse：false=集中攻击（按权重表），true=分散攻击（均匀随机选船）（规则书 624–631 行）。
+	Disperse         bool   `json:"disperse,omitempty"`
 	Heading          string `json:"heading,omitempty"`
 	SectorWidth      int    `json:"sector_width,omitempty"`
 	ReconRadius      int    `json:"recon_radius,omitempty"`
@@ -220,6 +472,44 @@ type AirUnit struct {
 	Confusion        bool   `json:"confusion,omitempty"`
 	Damaged          bool   `json:"damaged,omitempty"`
 	Maintenance      int    `json:"maintenance,omitempty"`
+	// ServiceTurns 记录机库加油整备已经消耗的回合数（规则书 231–236 行：整备 2 回合 + 提升 1 回合 + 起飞）。
+	ServiceTurns int `json:"service_turns,omitempty"`
+	// Engaged 表示本编队已成功接敌，下一回合可以进入目标上空发起空袭（规则书 609 行）
+	Engaged bool `json:"engaged,omitempty"`
+	// SearchTurns 记录打击编队在目标空域连续搜索却没能接敌的回合数：
+	// 到上限就放弃返航，避免对着过期情报一直兜圈、把油烧到临近销毁。
+	SearchTurns int `json:"search_turns,omitempty"`
+	// WarnedIntercept 表示途中被敌方雷达截获，后续空袭命中的 DCT 临时 +1（规则书 408 行）
+	WarnedIntercept bool `json:"warned_intercept,omitempty"`
+	// OnCycle 是任务循环开关（规则书 188 行：CAP、反潜、侦察任务自动循环；
+	// 空中掩护按同一套循环处理）。降落后自动重新整备、按原参数再次升空，
+	// 直到航程不足、母舰不可用、损伤未修复或玩家取消（规则书 190、191 行）。
+	// PatrolCoord 是 CAP 的巡逻空域（默认为母舰格）；ForwardCoord 是雷达引导前出的接敌点。
+	// 掩护范围 = 巡逻点/前出点及其周围 1 hex（共 7 格），不对外绘制范围。
+	OnCycle      bool   `json:"on_cycle,omitempty"`
+	PatrolCoord  string `json:"patrol_coord,omitempty"`
+	ForwardCoord string `json:"forward_coord,omitempty"`
+	// —— 任务循环参数 ——
+	// 降落时 LandAircraft 会调用 clearAirTask 清空任务参数，循环必须在落地前把这些值存下来，
+	// 否则"再飞一次"只能飞回一个空任务（航向/扇面/掩护点全丢）。
+	CycleKind    string `json:"cycle_kind,omitempty"`
+	CycleTaskID  string `json:"cycle_task_id,omitempty"`
+	CycleHeading string `json:"cycle_heading,omitempty"`
+	CycleSector  int    `json:"cycle_sector,omitempty"`
+
+	CycleTarget string `json:"cycle_target,omitempty"`
+	CyclePatrol string `json:"cycle_patrol,omitempty"`
+	// CycleOptOut 表示玩家手动关掉了这台算子的自动循环（规则书 191 行）：
+	// 落地之后不会自己恢复，直到重新编任务或玩家再点一次。
+	CycleOptOut bool `json:"cycle_opt_out,omitempty"`
+	// InterceptedThisTurn 标记本回合已经前出拦截过：一架 CAP 一回合只能前出一次，
+	// 也不能在同一回合的空袭结算里再被当成"目标上空 CAP"打第二遍。
+	InterceptedThisTurn bool `json:"intercepted_this_turn,omitempty"`
+	// Armed 表示这架飞机已经整备完毕（挂好弹、加好油），属于"整装待发"：
+	// 机库里或甲板上被炸弹命中的整装待发飞机会被摧毁（规则书 421–423 行）。
+	Armed bool `json:"armed,omitempty"`
+	// ReturnToAirfield 是编队选定的备降机场；为空则返航回母舰（规则书 202–205 行）
+	ReturnToAirfield string `json:"return_to_airfield,omitempty"`
 }
 
 type ReconSector struct {
@@ -233,35 +523,46 @@ type ReconSector struct {
 	ReconDistance     int                `json:"recon_distance,omitempty"`
 	Returning         bool               `json:"returning,omitempty"`
 	TrackingFleetID   string             `json:"tracking_fleet_id,omitempty"`
+	CannotLand        bool               `json:"cannot_land,omitempty"`
 	SectorHexes       []string           `json:"sector_hexes,omitempty"`
 	CurrentRingHexes  []string           `json:"current_ring_hexes,omitempty"`
 	DistanceReference *DistanceReference `json:"distance_reference,omitempty"`
 }
 
 type AirTask struct {
-	ID                string             `json:"id"`
-	Kind              string             `json:"kind"`
-	Phase             string             `json:"phase"`
-	Name              string             `json:"name"`
-	CarrierID         string             `json:"carrier_id"`
-	CarrierIDs        []string           `json:"carrier_ids"`
-	FleetID           string             `json:"fleet_id,omitempty"`
-	AircraftIDs       []string           `json:"aircraft_ids"`
-	Aircraft          []AirUnit          `json:"aircraft"`
-	AirborneCount     int                `json:"airborne_count"`
-	Priority          int                `json:"priority"`
-	QueuePosition     int                `json:"queue_position"`
-	OriginCoord       string             `json:"origin_coord,omitempty"`
-	CurrentCoord      string             `json:"current_coord,omitempty"`
-	TargetCoord       string             `json:"target_coord,omitempty"`
-	Heading           string             `json:"heading,omitempty"`
-	SectorWidth       int                `json:"sector_width,omitempty"`
-	ReconRadius       int                `json:"recon_radius,omitempty"`
-	ReconDistance     int                `json:"recon_distance,omitempty"`
-	Returning         bool               `json:"returning,omitempty"`
-	TrackingFleetID   string             `json:"tracking_fleet_id,omitempty"`
-	SectorHexes       []string           `json:"sector_hexes,omitempty"`
-	CurrentRingHexes  []string           `json:"current_ring_hexes,omitempty"`
+	ID            string    `json:"id"`
+	Kind          string    `json:"kind"`
+	Phase         string    `json:"phase"`
+	Name          string    `json:"name"`
+	CarrierID     string    `json:"carrier_id"`
+	CarrierIDs    []string  `json:"carrier_ids"`
+	FleetID       string    `json:"fleet_id,omitempty"`
+	AircraftIDs   []string  `json:"aircraft_ids"`
+	Aircraft      []AirUnit `json:"aircraft"`
+	AirborneCount int       `json:"airborne_count"`
+	Priority      int       `json:"priority"`
+	QueuePosition int       `json:"queue_position"`
+	OriginCoord   string    `json:"origin_coord,omitempty"`
+	CurrentCoord  string    `json:"current_coord,omitempty"`
+	TargetCoord   string    `json:"target_coord,omitempty"`
+	// Disperse 是攻击编队的攻击方式（规则书 624–631 行）。
+	Disperse         bool     `json:"disperse,omitempty"`
+	Faction          string   `json:"faction,omitempty"`
+	Detected         bool     `json:"detected,omitempty"`
+	Engaged          bool     `json:"engaged,omitempty"`
+	Heading          string   `json:"heading,omitempty"`
+	SectorWidth      int      `json:"sector_width,omitempty"`
+	ReconRadius      int      `json:"recon_radius,omitempty"`
+	ReconDistance    int      `json:"recon_distance,omitempty"`
+	Returning        bool     `json:"returning,omitempty"`
+	TrackingFleetID  string   `json:"tracking_fleet_id,omitempty"`
+	CannotLand       bool     `json:"cannot_land,omitempty"`
+	SectorHexes      []string `json:"sector_hexes,omitempty"`
+	CurrentRingHexes []string `json:"current_ring_hexes,omitempty"`
+	// ReturnTurns 是这支编队"走完任务再落回母舰"还要几个回合（含排队着舰余量）。
+	// 前端拿它和 clock.night_in_turns 一比，就能在天黑前提醒玩家"这波回不来了"。
+	ReturnTurns       int                `json:"return_turns,omitempty"`
+	NightSafe         bool               `json:"night_safe,omitempty"`
 	ReconSectors      []ReconSector      `json:"recon_sectors,omitempty"`
 	DistanceReference *DistanceReference `json:"distance_reference,omitempty"`
 }
@@ -272,18 +573,23 @@ type AviationView struct {
 }
 
 type CarrierAirStatus struct {
-	UnitID         string             `json:"unit_id"`
-	Name           string             `json:"name"`
-	Type           string             `json:"type"`
-	HangarUsed     int                `json:"hangar_used"`
-	HangarCapacity int                `json:"hangar_capacity"`
-	DeckLength     int                `json:"deck_length"`
-	DeckCapacity   int                `json:"deck_capacity"`
-	DeckUsed       int                `json:"deck_used"`
-	LaunchUsed     int                `json:"launch_used"`
-	Operation      string             `json:"operation"`
-	Elevators      []AircraftElevator `json:"elevators"`
-	Aircraft       []AirUnit          `json:"aircraft"`
+	UnitID         string `json:"unit_id"`
+	Name           string `json:"name"`
+	Type           string `json:"type"`
+	HangarUsed     int    `json:"hangar_used"`
+	HangarCapacity int    `json:"hangar_capacity"`
+	DeckLength     int    `json:"deck_length"`
+	DeckCapacity   int    `json:"deck_capacity"`
+	DeckUsed       int    `json:"deck_used"`
+	LaunchUsed     int    `json:"launch_used"`
+	Operation      string `json:"operation"`
+	// BlockedReason 说明这艘航空舰当前为什么不能起降（倾斜、起火、甲板摧毁、甲板满……）。
+	// 空串表示正常。之前这些状态只体现在"命令被拒"里，玩家看不到原因。
+	BlockedReason string `json:"blocked_reason,omitempty"`
+	// PreventedBy 指出挡路的具体来源（例如甲板上占位的无目标攻击编队）。
+	PreventedBy string             `json:"prevented_by,omitempty"`
+	Elevators   []AircraftElevator `json:"elevators"`
+	Aircraft    []AirUnit          `json:"aircraft"`
 }
 
 type FleetContact struct {
@@ -291,14 +597,57 @@ type FleetContact struct {
 	Faction string `json:"faction"`
 	Level   int    `json:"level"`
 	Coord   string `json:"coord"`
-	Heading string `json:"heading,omitempty"`
-	Count   int    `json:"count"`
-	Members []Unit `json:"members,omitempty"`
+	// DisplayCoord 是玩家在地图上看到的"最后已知位置"（带情报误差）。
+	// 情报衰减只降 Level、不改这里，所以标记不会随着等级下降自己漂移（规则书 593 行）。
+	DisplayCoord string `json:"display_coord,omitempty"`
+	Heading      string `json:"heading,omitempty"`
+	Count        int    `json:"count"`
+	Members      []Unit `json:"members,omitempty"`
+}
+
+// StrikeTarget 是本次空袭的目标类型：舰船（对舰攻击）或机场（对地攻击）。
+type StrikeTarget string
+
+const (
+	StrikeTargetShip  StrikeTarget = "ship"
+	StrikeTargetGroup StrikeTarget = "group"
+	StrikeTargetAir   StrikeTarget = "airfield"
+)
+
+// AirHitDetail 记录一次命中落在哪架攻击机上，用来在对舰/对地动画里把损失画到具体飞机上。
+// outcome 取值为撤退、损伤、摧毁、无效果，与航空损伤表一致。
+type AirHitDetail struct {
+	Attacker string `json:"attacker"`
+	Model    string `json:"model"`
+	Outcome  string `json:"outcome"`
+}
+
+// AirShipCard 是被攻击舰队在打击报告里的舰船快照，动画按它画出舰队全部船只。
+type AirShipCard struct {
+	ID       string `json:"id"`
+	Name     string `json:"name"`
+	Type     string `json:"type"`
+	Strength int    `json:"strength"`
+}
+
+// StrikeAllocation 记录一个攻击算子最终分配到哪艘舰、对它有几次命中。
+type StrikeAllocation struct {
+	Attacker string `json:"attacker"`
+	Model    string `json:"model"`
+	ShipID   string `json:"ship_id"`
+	ShipName string `json:"ship_name"`
+	Hits     int    `json:"hits"`
+	// Attempts 是这个算子实际投出的炸弹/鱼雷次数（对舰攻击值）。
+	// 分配了目标但还没投弹就被轻防空打掉的算子 Hits 和 Attempts 都是 0，
+	// 战报据此能区分"没投弹"和"投了没中"。
+	Attempts int `json:"attempts,omitempty"`
 }
 
 type AirCombatReport struct {
 	ID              string   `json:"id"`
 	Coord           string   `json:"coord"`
+	Target          string   `json:"target,omitempty"`
+	TargetName      string   `json:"target_name,omitempty"`
 	AttackerFaction string   `json:"attacker_faction"`
 	DefenderFaction string   `json:"defender_faction"`
 	AttackerModels  []string `json:"attacker_models"`
@@ -307,26 +656,105 @@ type AirCombatReport struct {
 	DefenderCount   int      `json:"defender_count"`
 	AttackerLosses  int      `json:"attacker_losses"`
 	DefenderLosses  int      `json:"defender_losses"`
-	AAHits          int      `json:"aa_hits"`
-	StrikeHits      int      `json:"strike_hits"`
-	Winner          string   `json:"winner"`
-	Summary         string   `json:"summary"`
+	// Disabled 是"退出战斗但没被击落"的算子：损伤、撤退、弹药耗尽。
+	// 损失数只统计被摧毁的，两者分开，避免战报把驱散说成击落。
+	AttackerDisabled int `json:"attacker_disabled,omitempty"`
+	DefenderDisabled int `json:"defender_disabled,omitempty"`
+	// disabledSeen 防止同一架飞机在一次交战中因多次命中被重复计入"退出战斗"。
+	disabledSeen map[string]bool `json:"-"`
+	AAHits       int             `json:"aa_hits"`
+	StrikeHits   int             `json:"strike_hits"`
+	// DamageHits 是"命中并且真的打掉强度"的次数：命中之后还要过损管判定，
+	// 没过损管的命中只降防空、砸甲板，不掉强度。战报里两个数分开显示，避免看着像一码事。
+	DamageHits int `json:"damage_hits,omitempty"`
+	// 对舰：被命中的舰船数量与命中次数；对地：机场损失与地面飞机损失
+	ShipsHit int `json:"ships_hit,omitempty"`
+	ShipHits int `json:"ship_hits,omitempty"`
+	// 对舰：命中次数；参与投弹的算子和投弹尝试次数，0 命中也说明"确实投了弹"
+	Bombers      []AirHitDetail `json:"bombers,omitempty"`
+	BombAttempts int            `json:"bomb_attempts,omitempty"`
+	// 对舰：被攻击舰队的船只清单，以及每个算子的目标分配和命中次数
+	Ships             []AirShipCard      `json:"ships,omitempty"`
+	TargetAllocations []StrikeAllocation `json:"target_allocations,omitempty"`
+	// 对地：机场损失与地面飞机损失
+	AirfieldHit int `json:"airfield_hits,omitempty"`
+	GroundLoss  int `json:"ground_losses,omitempty"`
+	// Detected 表示本次空袭已被目标方雷达提前发现（被截获时空袭命中的 DCT +1，规则书 408 行）
+	Detected              bool           `json:"detected,omitempty"`
+	Airfield              *AirShipCard   `json:"airfield,omitempty"`
+	AirfieldBefore        int            `json:"airfield_before,omitempty"`
+	AirfieldAfter         int            `json:"airfield_after,omitempty"`
+	AirfieldRunwaysBefore int            `json:"airfield_runways_before,omitempty"`
+	AirfieldRunwaysAfter  int            `json:"airfield_runways_after,omitempty"`
+	AttackerHits          []AirHitDetail `json:"attacker_hits,omitempty"`
+	Winner                string         `json:"winner"`
+	Summary               string         `json:"summary"`
 }
 
 type State struct {
-	ScenarioID   string                              `json:"scenario_id"`
-	ScenarioName string                              `json:"scenario_name"`
-	Description  string                              `json:"description"`
-	Year         int                                 `json:"year,omitempty"`
-	Night        bool                                `json:"night,omitempty"`
-	Doctrines    map[string]string                   `json:"doctrines,omitempty"`
-	Map          MapDefinition                       `json:"map"`
-	Units        map[string]*Unit                    `json:"units"`
-	Aircraft     map[string]*AirUnit                 `json:"aircraft,omitempty"`
-	Contacts     map[string]map[string]*FleetContact `json:"contacts,omitempty"`
-	AirCombats   []AirCombatReport                   `json:"air_combats,omitempty"`
-	RNGState     uint64                              `json:"rng_state"`
-	Definitions  map[string]string                   `json:"definition_versions"`
+	ScenarioID   string `json:"scenario_id"`
+	ScenarioName string `json:"scenario_name"`
+	Description  string `json:"description"`
+	Year         int    `json:"year,omitempty"`
+	Night        bool   `json:"night,omitempty"`
+	// DayHours / TurnsPerDay：开启昼夜循环时的开局时刻与每天回合数（0 表示固定昼夜）。
+	DayHours    float64 `json:"day_hours,omitempty"`
+	TurnsPerDay int     `json:"turns_per_day,omitempty"`
+	// WeatherTurns 是天气刷新间隔（0 = 静态天气）。
+	WeatherTurns     int                                    `json:"weather_turns,omitempty"`
+	Doctrines        map[string]string                      `json:"doctrines,omitempty"`
+	Map              MapDefinition                          `json:"map"`
+	Units            map[string]*Unit                       `json:"units"`
+	Aircraft         map[string]*AirUnit                    `json:"aircraft,omitempty"`
+	Airfields        map[string]*Airfield                   `json:"airfields,omitempty"`
+	AirfieldContacts map[string]map[string]*AirfieldContact `json:"airfield_contacts,omitempty"`
+	// 每个舰队上一回合结束时所在的 hex，用于判断"停留满 1 回合"（岸轰条件）
+	FleetStays map[string]string                   `json:"fleet_stays,omitempty"`
+	GroundAir  map[string]*AirfieldAirUnit         `json:"ground_aircraft,omitempty"`
+	Contacts   map[string]map[string]*FleetContact `json:"contacts,omitempty"`
+	AirCombats []AirCombatReport                   `json:"air_combats,omitempty"`
+	// RadioUsed 记录本回合已经发射过无线电的编队（任务 ID）：每个空中编队每回合各只有一次机会，
+	// 发射后不论成败都记在这里（规则书 601 行）。键是任务 ID，值是所属阵营。
+	RadioUsed map[string]string `json:"radio_used,omitempty"`
+	// DeferCooldown 表示本回合已经用"立即移动"下达过规划航线，结算时不再额外递减冷却
+	DeferCooldown bool `json:"defer_cooldown,omitempty"`
+	// Wind 是剧本给定的风向（NE/E/SE/SW/W/NW），决定甲板长度修正（规则书 815–825 行）
+	Wind string `json:"wind,omitempty"`
+	// HeadingChanged 记录本回合已经调整过朝向的舰队（每回合每队一次）
+	HeadingChanged map[string]bool `json:"heading_changed,omitempty"`
+	// IntelFresh 记录本回合是否获得过某舰队的新情报（键为 "观察者|舰队"），用于情报过时判定
+	IntelFresh map[string]bool `json:"intel_fresh,omitempty"`
+	// IntelStaleTurns 累计"脱离接触"的回合数，白天每 2 回合才衰减一级
+	IntelStaleTurns map[string]int `json:"intel_stale_turns,omitempty"`
+	// Losses 是战果台账：每方沉没的舰船与按机型聚合的飞机损失（战果页面用）
+	Losses map[string]*LossLedger `json:"losses,omitempty"`
+	// AircraftRoster 是回合开始时的在编算子快照，用于回合结束对账出飞机损失
+	AircraftRoster map[string]AirUnit `json:"-"`
+	// EngageTried 记录本回合已经做过接敌判定的攻击编队（任务 ID），避免同编队重复判定
+	EngageTried map[string]bool `json:"engage_tried,omitempty"`
+	// FleetSessions 是舰队在同一 hex 的连续停留回合数：岸轰要 1 回合，运输卸载要 3 回合
+	FleetSessions map[string]int `json:"fleet_sessions,omitempty"`
+	// ShoreSupplies 是已经卸到岸上的物资，键为 "阵营|坐标"
+	ShoreSupplies map[string]int `json:"shore_supplies,omitempty"`
+	// 胜利条件（DESIGN.md 49 行）：剧本目标 + 回合上限，结算后统一判定。
+	Objectives []Objective `json:"objectives,omitempty"`
+	MaxTurns   int         `json:"max_turns,omitempty"`
+	// Turn 是当前回合号（1 起），由服务端每回合结算后递增；引擎内部的胜负判定要用到它。
+	Turn int `json:"turn,omitempty"`
+	// AirContacts 是"某个阵营已经发现的敌方飞行编队"（键：观察者 → 任务 ID）。
+	AirContacts map[string]map[string]*AirContact `json:"air_contacts,omitempty"`
+	// 初始舰船数（按阵营），用于"击沉 N 艘"这类目标。
+	InitialShipCounts map[string]int `json:"initial_ship_counts,omitempty"`
+	// Outcome 是当前对局结果：为空表示仍在进行。
+	Outcome     *GameOutcome      `json:"outcome,omitempty"`
+	RNGState    uint64            `json:"rng_state"`
+	Definitions map[string]string `json:"definition_versions"`
+	// DeferredSink 为 true 时，舰船沉没先记进 PendingSinks，等这一轮投弹全部落下再真正移除。
+	// 对舰攻击按"一轮投弹里所有炸弹都会砸上去"结算：半路打沉不打断这一轮，
+	// 沉没只影响它后面的那轮轻防空、以及后面对其他舰的攻击。
+	DeferredSink bool      `json:"-"`
+	PendingSinks []*Unit   `json:"-"`
+	Timeline     *Timeline `json:"timeline,omitempty"`
 }
 
 type Order struct {
@@ -339,8 +767,20 @@ type Order struct {
 	Coord        string            `json:"coord,omitempty"`
 	Heading      string            `json:"heading,omitempty"`
 	SectorWidth  int               `json:"sector_width,omitempty"`
-	ReconRadius  int               `json:"recon_radius,omitempty"`
 	Assignments  map[string]string `json:"assignments,omitempty"`
+	// TaskKind 只用于无线电改令（RETASK_AIR）：打算换成哪种任务。
+	TaskKind string `json:"task_kind,omitempty"`
+	// Loadout 只用于换挂载命令（SET_LOADOUT）。
+	Loadout string `json:"loadout,omitempty"`
+	// Disperse 用于攻击编队目标分配（SET_STRIKE_DISPERSION）：true = 分散攻击，
+	// 每个算子均匀随机选择编队中的任意一艘船；false = 集中攻击，按目标权重表选择（规则书 624–631 行）。
+	Disperse bool `json:"disperse,omitempty"`
+	// Cycle 用于任务循环开关（SET_AIR_CYCLE）：true = 开启自动循环，false = 取消。
+	// 语义是"设为"而不是"取反"，重复提交同一条命令不会来回翻转。
+	Cycle bool `json:"cycle,omitempty"`
+	// Engagement 用于自动航行的交战设置（SET_AUTO_NAV / SET_ENGAGEMENT）：
+	// aggressive=逢敌必战，advantage=优势交战，avoid=避免近战（规则书 362–370 行）。
+	Engagement string `json:"engagement,omitempty"`
 }
 
 type EngineEvent struct {
@@ -437,4 +877,14 @@ func BuildDistanceReference(gameMap MapDefinition, origin string, maxDistance in
 		}
 	}
 	return reference
+}
+
+// Timeline 是剧本自带的作战时间线：一回合多少分钟、哪天几点开始整备/放飞/必须回收。
+// 不同战役的窗口不一样（珊瑚海 04:00 整备、05:20 升空、19:40 全员回收），所以不能写死在引擎里。
+type Timeline struct {
+	TurnMinutes  int    `json:"turn_minutes,omitempty"`
+	ServiceStart string `json:"service_start,omitempty"`
+	LaunchStart  string `json:"launch_start,omitempty"`
+	RecoverBy    string `json:"recover_by,omitempty"`
+	NightLoss    bool   `json:"night_loss,omitempty"`
 }

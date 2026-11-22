@@ -16,9 +16,13 @@ func TestGunneryWeightsAndModifiers(t *testing.T) {
 	state := State{Map: MapDefinition{Cells: []MapCell{{Coord: "0101", Weather: "rain"}}}, Units: map[string]*Unit{"a": attacker, "b": target}, Aircraft: map[string]*AirUnit{
 		"scout": {ID: "scout", CarrierID: "a", Seaplane: true, Status: "recon"},
 	}}
+	// BB(行0) 打 CA(行3)：目标在下方，不触发"以小博大"惩罚。
+	// 25 + 10(雷达) + 10(水机) + 10(燃烧) - 5(降雨) = 50。
 	if chance := gunneryChance(state, attacker, target, []Unit{*target}); chance != 50 {
 		t.Fatalf("雷达、水机、燃烧和天气修正错误：%.1f", chance)
 	}
+	// DD(行5) 打 CA(行3)：目标在上方 2 行 → "力不从心" -10。
+	// 25 + 10(水机) + 10(燃烧) - 10(上方2行) - 5(降雨) = 30。
 	attacker.Type = "DD"
 	attacker.Card.SurfaceRadar = false
 	if chance := gunneryChance(state, attacker, target, []Unit{*target}); chance != 30 {

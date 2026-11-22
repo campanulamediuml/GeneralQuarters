@@ -1,11 +1,32 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { AirUnit, Player } from '../types'
+import { aircraftFloats, aircraftSilhouette } from '../silhouettes'
 
-const props = defineProps<{ aircraft: AirUnit; playerFaction: Player['faction']; stackCount?: number }>()
+// cycleClickable 默认 true：布尔型 prop 缺省时 Vue 会补成 false，必须用 withDefaults 显式给默认值，
+// 否则没传这个属性的地方（地图上的兵牌）循环角标会被渲染成拉不动的 static 按钮。
+const props = withDefaults(defineProps<{ aircraft: AirUnit; playerFaction: Player['faction']; stackCount?: number; cycleClickable?: boolean }>(), { cycleClickable: true })
+const emit = defineEmits<{ (event: 'toggle-cycle', aircraft: AirUnit): void }>()
 const friendly = computed(() => props.aircraft.faction === props.playerFaction)
 const range = computed(() => friendly.value ? props.aircraft.remaining_range : props.aircraft.max_range)
 const modelCode = computed(() => props.aircraft.model.split(' ')[0])
+// 剪影按具体机型：F6F / SB2C / TBF / SOC / A6M2 / D3A1 / B5N2 / E13A 各自一条轮廓。
+const silhouette = computed(() => aircraftSilhouette(props.aircraft.kind, props.aircraft.model))
+const floats = computed(() => aircraftFloats(props.aircraft.kind, props.aircraft.model))
+// 兵牌上的剪影逐机型不同，用 title 标出机型，方便一眼区分俯冲轰炸机、鱼雷机和水上侦察机。
+// 陆基机型（陆攻、P-40、B-25）不能上舰，标题和航程样式都按陆基来。
+const kindLabel = computed(() => {
+  if (props.aircraft.airfield_only) {
+    return ({ fighter: '陆基战斗机', dive_bomber: '陆基轰炸机', torpedo_bomber: '陆基攻击机', recon: '陆基侦察机' } as Record<string, string>)[props.aircraft.kind] || props.aircraft.kind
+  }
+  return ({ fighter: '舰载战斗机', dive_bomber: '俯冲轰炸机', torpedo_bomber: '鱼雷轰炸机', recon: '舰载侦察机', seaplane: '水上侦察机' } as Record<string, string>)[props.aircraft.kind] || props.aircraft.kind
+})
+// 任务循环：CAP、侦察、空中掩护可以自动再来一轮（规则书 188–191 行）。
+// 蓝色 🔁 表示循环已开启；灰的表示这次任务不会自动续，点一下可以打开。
+const cycleKind = computed(() => props.aircraft.cycle_kind || props.aircraft.task_kind)
+const canCycle = computed(() => friendly.value && ['cap', 'cover', 'recon'].includes(cycleKind.value || '') && props.aircraft.status !== 'attack')
+const cycleOn = computed(() => Boolean(props.aircraft.on_cycle))
+const cycleLabel = computed(() => (cycleOn.value ? '自动循环已开启，点击取消' : '自动循环已关闭，点击开启'))
 </script>
 
 <template>
@@ -16,6 +37,7 @@ const modelCode = computed(() => props.aircraft.model.split(' ')[0])
     :data-range-value="range"
     :data-stack-count="stackCount || 1"
     :aria-label="`${aircraft.model}${stackCount && stackCount > 1 ? `，${stackCount}个算子` : ''}，对空${aircraft.air_combat}，对地${aircraft.anti_ground}，对舰${aircraft.anti_ship}，机体${aircraft.strength}，${friendly ? '剩余' : '最大'}航程${range}`"
+    :title="`${aircraft.model} · ${kindLabel}`"
   >
     <div class="aircraft-ratings">
       <span title="对空能力">{{ aircraft.air_combat }}</span>
@@ -24,21 +46,39 @@ const modelCode = computed(() => props.aircraft.model.split(' ')[0])
     </div>
     <div class="aircraft-body">
       <span class="aircraft-strength" title="机体强度">{{ aircraft.strength }}</span>
-      <svg class="aircraft-symbol" viewBox="0 0 64 44" aria-hidden="true">
-        <path d="M29 3h6l2 14 23 12v5l-23-6-1 8 8 4v3l-12-2-12 2v-3l8-4-1-8-23 6v-5l23-12z" />
-        <path v-if="aircraft.seaplane" d="M15 36h34M20 32l-3 5m27-5 3 5" />
+      <svg class="aircraft-symbol" viewBox="0 0 62 44" aria-hidden="true" :data-aircraft-kind="aircraft.kind">
+        <path :d="silhouette" />
+        <path v-if="floats" class="aircraft-floats" :d="floats" />
       </svg>
       <span class="aircraft-loadout" title="挂载：未配置">—</span>
     </div>
     <div class="aircraft-footer">
       <strong
         class="aircraft-range"
-        :class="{ 'carrier-based': !aircraft.seaplane, 'low-range': friendly && aircraft.remaining_range <= 1 }"
+        :class="{ 'carrier-based': !aircraft.seaplane && !aircraft.airfield_only, 'low-range': friendly && aircraft.remaining_range <= 1 }"
         :title="friendly ? '剩余航程' : '此挂载下最大航程'"
       >{{ range }}</strong>
       <span class="aircraft-model" :title="aircraft.model">{{ modelCode }}</span>
     </div>
     <span v-if="stackCount && stackCount > 1" class="aircraft-stack-count" :title="`${stackCount}个同型算子`">×{{ stackCount }}</span>
+    <span
+      v-if="aircraft.damaged || (aircraft.maintenance || 0) > 0"
+      class="aircraft-damaged"
+      :title="aircraft.damaged ? '机体损伤：必须修复后才能再次出动' : `检修中：还需 ${aircraft.maintenance} 回合`"
+    >损</span>
+    <button
+      v-if="canCycle"
+      type="button"
+      class="aircraft-cycle"
+      :class="{ on: cycleOn, static: cycleClickable === false }"
+      :title="cycleLabel"
+      :aria-label="cycleLabel"
+      :aria-pressed="cycleOn"
+      :disabled="cycleClickable === false"
+      @click.stop.prevent="cycleClickable !== false && emit('toggle-cycle', aircraft)"
+      @mousedown.stop
+      @dragstart.stop.prevent
+    >🔁</button>
   </figure>
 </template>
 
@@ -48,7 +88,8 @@ const modelCode = computed(() => props.aircraft.model.split(' ')[0])
 .aircraft-ratings{display:grid;grid-template-columns:repeat(3,1fr);align-items:center;padding:0 4px;font:700 13px/1 'Rajdhani',sans-serif;text-align:center}
 .aircraft-body{display:grid;grid-template-columns:14px minmax(0,1fr) 14px;align-items:center;min-height:0}
 .aircraft-strength{align-self:start;padding-top:3px;font:700 12px/1 'Rajdhani',sans-serif;text-align:center}
-.aircraft-symbol{width:100%;height:40px;color:#245b72;transform:none;fill:currentColor;stroke:currentColor;stroke-width:1}
+.aircraft-symbol{width:100%;height:40px;color:#245b72;fill:currentColor;stroke:none}
+.aircraft-symbol .aircraft-floats{fill:color-mix(in srgb,#245b72 70%,#fff)}
 .seaplane .aircraft-symbol{color:#70441f}
 .aircraft-loadout{align-self:start;padding-top:3px;color:#42565b;font:10px/1 sans-serif;text-align:center}
 .aircraft-footer{display:grid;grid-template-columns:25px minmax(0,1fr);align-items:end;gap:3px;padding:0 4px 3px}
@@ -58,4 +99,8 @@ const modelCode = computed(() => props.aircraft.model.split(' ')[0])
 .aircraft-model{overflow:hidden;padding-bottom:2px;font:700 9px/1 'Rajdhani',sans-serif;text-align:right;text-overflow:ellipsis;white-space:nowrap}
 .air-counter.air-cap,.air-counter.air-recon,.air-counter.air-deck,.air-counter.air-ready,.air-counter.air-attack,.air-counter.air-attack_holding{border-color:#f0d58d}.air-counter.air-service,.air-counter.air-elevator{border-style:dashed;border-color:#d7bb7b}.air-counter.air-recovery{border-color:#7ec8db}
 .aircraft-stack-count{position:absolute;right:3px;bottom:27px;z-index:2;min-width:25px;padding:3px 4px;border:1px solid #f0d58d;background:#142a31e8;color:#f0d58d;font:700 13px/1 'Rajdhani',sans-serif;text-align:center;box-shadow:0 1px 3px #0007}
+.aircraft-cycle{position:absolute;left:3px;top:19px;z-index:2;display:grid;place-items:center;width:17px;height:17px;padding:0;border:1px solid #2f6f96;border-radius:50%;background:#12242be0;color:#7cc4ee;font:11px/1 sans-serif;cursor:pointer;opacity:.55;filter:grayscale(1)}
+.aircraft-cycle.on{opacity:1;border-color:#5db6e8;background:#0b3f63f2;color:#9fdcff;filter:none;box-shadow:0 0 6px #4aa8e0aa}
+.aircraft-cycle:hover{opacity:1}
+.aircraft-cycle.static{cursor:default}
 </style>

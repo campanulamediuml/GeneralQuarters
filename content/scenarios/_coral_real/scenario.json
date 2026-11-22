@@ -1,0 +1,850 @@
+{
+ "id": "_coral_real",
+ "version": 20,
+ "name": "珊瑚海 · 1942年5月（25海里/hex）",
+ "map": "_coral_real",
+ "units": "sandbox",
+ "year": 1942,
+ "night": false,
+ "day_hours": 0,
+ "turns_per_day": 72,
+ "weather_turns": 6,
+ "max_turns": 288,
+ "doctrines": {
+  "A": "us",
+  "B": "japan"
+ },
+ "timeline": {
+  "turn_minutes": 20,
+  "service_start": "04:00",
+  "launch_start": "05:20",
+  "recover_by": "19:40",
+  "night_loss": true
+ },
+ "description": "战役简报：日军将在珊瑚海展开对莫尔兹比港的攻势，第五航空战队已经出动，MO 机动部队（翔鹤、瑞鹤、妙高、羽黑、第27驱逐队）从拉包尔方向南下。美军以第17特混舰队（列克星敦、约克城及巡洋舰、驱逐队）从新赫布里底方向迎击，任务是不让日本人的登陆船队靠近莫尔兹比港。\n双方舰艇编组与史实相同，但出现位置每局随机——没有既定航路，必须自己派水上侦察机和舰载搜索机找出对方，再把全甲板打击砸下去。\n一回合 20 分钟：04:00 开始甲板整备，05:20 首轮升空，19:40 前必须全员回收；超过这个点还在天上的只能摸黑返航，按燃油和夜间着舰风险逐架判定。",
+ "objectives": [
+  {
+   "id": "a-sink",
+   "text": "消灭日军水面力量：击沉全部 8 艘日军舰艇",
+   "kind": "sink",
+   "faction": "A",
+   "value": 8,
+   "points": 10
+  },
+  {
+   "id": "b-sink",
+   "text": "消灭美军水面力量：击沉全部 10 艘美军舰艇",
+   "kind": "sink",
+   "faction": "B",
+   "value": 10,
+   "points": 10
+  }
+ ],
+ "deployments": [
+  {
+   "id": "b-cv-01",
+   "faction": "B",
+   "name": "翔鹤",
+   "fleet_id": "MO",
+   "fleet_name": "MO机动部队",
+   "ship": "shokaku",
+   "box": {
+    "col_max": 38,
+    "col_min": 30,
+    "row_max": 16,
+    "row_min": 8
+   }
+  },
+  {
+   "id": "b-cv-02",
+   "faction": "B",
+   "name": "瑞鹤",
+   "fleet_id": "MO",
+   "fleet_name": "MO机动部队",
+   "ship": "zuikaku",
+   "box": {
+    "col_max": 38,
+    "col_min": 30,
+    "row_max": 16,
+    "row_min": 8
+   }
+  },
+  {
+   "id": "b-ca-01",
+   "faction": "B",
+   "name": "妙高",
+   "fleet_id": "MO",
+   "fleet_name": "MO机动部队",
+   "hangar_capacity": 2,
+   "ship": "myoko",
+   "box": {
+    "col_max": 38,
+    "col_min": 30,
+    "row_max": 16,
+    "row_min": 8
+   }
+  },
+  {
+   "id": "b-ca-02",
+   "faction": "B",
+   "name": "羽黑",
+   "fleet_id": "MO",
+   "fleet_name": "MO机动部队",
+   "hangar_capacity": 2,
+   "ship": "haguro",
+   "box": {
+    "col_max": 38,
+    "col_min": 30,
+    "row_max": 16,
+    "row_min": 8
+   }
+  },
+  {
+   "id": "b-dd-01",
+   "faction": "B",
+   "name": "有明",
+   "fleet_id": "MO",
+   "fleet_name": "MO机动部队",
+   "ship": "ariake",
+   "box": {
+    "col_max": 38,
+    "col_min": 30,
+    "row_max": 16,
+    "row_min": 8
+   }
+  },
+  {
+   "id": "b-dd-02",
+   "faction": "B",
+   "name": "夕暮",
+   "fleet_id": "MO",
+   "fleet_name": "MO机动部队",
+   "ship": "yugure",
+   "box": {
+    "col_max": 38,
+    "col_min": 30,
+    "row_max": 16,
+    "row_min": 8
+   }
+  },
+  {
+   "id": "b-dd-03",
+   "faction": "B",
+   "name": "白露",
+   "fleet_id": "MO",
+   "fleet_name": "MO机动部队",
+   "ship": "shiratsuyu",
+   "box": {
+    "col_max": 38,
+    "col_min": 30,
+    "row_max": 16,
+    "row_min": 8
+   }
+  },
+  {
+   "id": "b-dd-04",
+   "faction": "B",
+   "name": "时雨",
+   "fleet_id": "MO",
+   "fleet_name": "MO机动部队",
+   "ship": "shigure",
+   "box": {
+    "col_max": 38,
+    "col_min": 30,
+    "row_max": 16,
+    "row_min": 8
+   }
+  },
+  {
+   "id": "a-cv-01",
+   "faction": "A",
+   "name": "列克星敦",
+   "fleet_id": "TF17",
+   "fleet_name": "第17特混舰队",
+   "ship": "lexington",
+   "box": {
+    "row_min": 25,
+    "row_max": 30,
+    "col_min": 11,
+    "col_max": 21
+   }
+  },
+  {
+   "id": "a-cv-02",
+   "faction": "A",
+   "name": "约克城",
+   "fleet_id": "TF17",
+   "fleet_name": "第17特混舰队",
+   "ship": "yorktown",
+   "box": {
+    "row_min": 25,
+    "row_max": 30,
+    "col_min": 11,
+    "col_max": 21
+   }
+  },
+  {
+   "id": "a-ca-01",
+   "faction": "A",
+   "name": "明尼阿波利斯",
+   "fleet_id": "TF17",
+   "fleet_name": "第17特混舰队",
+   "hangar_capacity": 2,
+   "ship": "minneapolis",
+   "box": {
+    "row_min": 25,
+    "row_max": 30,
+    "col_min": 11,
+    "col_max": 21
+   }
+  },
+  {
+   "id": "a-ca-02",
+   "faction": "A",
+   "name": "新奥尔良",
+   "fleet_id": "TF17",
+   "fleet_name": "第17特混舰队",
+   "hangar_capacity": 2,
+   "ship": "new_orleans",
+   "box": {
+    "row_min": 25,
+    "row_max": 30,
+    "col_min": 11,
+    "col_max": 21
+   }
+  },
+  {
+   "id": "a-ca-03",
+   "faction": "A",
+   "name": "阿斯托里亚",
+   "fleet_id": "TF17",
+   "fleet_name": "第17特混舰队",
+   "hangar_capacity": 2,
+   "ship": "astoria",
+   "box": {
+    "row_min": 25,
+    "row_max": 30,
+    "col_min": 11,
+    "col_max": 21
+   }
+  },
+  {
+   "id": "a-ca-04",
+   "faction": "A",
+   "name": "切斯特",
+   "fleet_id": "TF17",
+   "fleet_name": "第17特混舰队",
+   "hangar_capacity": 2,
+   "ship": "chester",
+   "box": {
+    "row_min": 25,
+    "row_max": 30,
+    "col_min": 11,
+    "col_max": 21
+   }
+  },
+  {
+   "id": "a-ca-05",
+   "faction": "A",
+   "name": "波特兰",
+   "fleet_id": "TF17",
+   "fleet_name": "第17特混舰队",
+   "hangar_capacity": 2,
+   "ship": "portland",
+   "box": {
+    "row_min": 25,
+    "row_max": 30,
+    "col_min": 11,
+    "col_max": 21
+   }
+  },
+  {
+   "id": "a-dd-01",
+   "faction": "A",
+   "name": "法拉格特",
+   "fleet_id": "TF17",
+   "fleet_name": "第17特混舰队",
+   "ship": "farragut",
+   "box": {
+    "row_min": 25,
+    "row_max": 30,
+    "col_min": 11,
+    "col_max": 21
+   }
+  },
+  {
+   "id": "a-dd-02",
+   "faction": "A",
+   "name": "莫里斯",
+   "fleet_id": "TF17",
+   "fleet_name": "第17特混舰队",
+   "ship": "morris",
+   "box": {
+    "row_min": 25,
+    "row_max": 30,
+    "col_min": 11,
+    "col_max": 21
+   }
+  },
+  {
+   "id": "a-dd-03",
+   "faction": "A",
+   "name": "安德森",
+   "fleet_id": "TF17",
+   "fleet_name": "第17特混舰队",
+   "ship": "anderson",
+   "box": {
+    "row_min": 25,
+    "row_max": 30,
+    "col_min": 11,
+    "col_max": 21
+   }
+  },
+  {
+   "id": "b-6s-aoba",
+   "faction": "B",
+   "name": "青叶",
+   "fleet_id": "6S",
+   "fleet_name": "第六战队",
+   "ship": "aoba",
+   "box": {
+    "col_max": 30,
+    "col_min": 26,
+    "row_max": 12,
+    "row_min": 9
+   }
+  },
+  {
+   "id": "b-6s-kako",
+   "faction": "B",
+   "name": "加古",
+   "fleet_id": "6S",
+   "fleet_name": "第六战队",
+   "ship": "kako",
+   "box": {
+    "col_max": 30,
+    "col_min": 26,
+    "row_max": 12,
+    "row_min": 9
+   }
+  },
+  {
+   "id": "b-6s-furutaka",
+   "faction": "B",
+   "name": "古鹰",
+   "fleet_id": "6S",
+   "fleet_name": "第六战队",
+   "ship": "furutaka",
+   "box": {
+    "col_max": 30,
+    "col_min": 26,
+    "row_max": 12,
+    "row_min": 9
+   }
+  },
+  {
+   "id": "b-6s-kinugasa",
+   "faction": "B",
+   "name": "衣笠",
+   "fleet_id": "6S",
+   "fleet_name": "第六战队",
+   "ship": "kinugasa",
+   "box": {
+    "col_max": 30,
+    "col_min": 26,
+    "row_max": 12,
+    "row_min": 9
+   }
+  }
+ ],
+ "air_deployments": [
+  {
+   "id": "b-cv-01-fighter-x1",
+   "unit": "fighter",
+   "carrier": "b-cv-01"
+  },
+  {
+   "id": "b-cv-01-fighter-x2",
+   "unit": "fighter",
+   "carrier": "b-cv-01"
+  },
+  {
+   "id": "b-cv-01-fighter-x3",
+   "unit": "fighter",
+   "carrier": "b-cv-01"
+  },
+  {
+   "id": "b-cv-01-fighter-x4",
+   "unit": "fighter",
+   "carrier": "b-cv-01"
+  },
+  {
+   "id": "b-cv-01-fighter-x5",
+   "unit": "fighter",
+   "carrier": "b-cv-01"
+  },
+  {
+   "id": "b-cv-01-fighter-x6",
+   "unit": "fighter",
+   "carrier": "b-cv-01"
+  },
+  {
+   "id": "b-cv-01-dive_bomber-x1",
+   "unit": "dive_bomber",
+   "carrier": "b-cv-01"
+  },
+  {
+   "id": "b-cv-01-dive_bomber-x2",
+   "unit": "dive_bomber",
+   "carrier": "b-cv-01"
+  },
+  {
+   "id": "b-cv-01-dive_bomber-x3",
+   "unit": "dive_bomber",
+   "carrier": "b-cv-01"
+  },
+  {
+   "id": "b-cv-01-dive_bomber-x4",
+   "unit": "dive_bomber",
+   "carrier": "b-cv-01"
+  },
+  {
+   "id": "b-cv-01-dive_bomber-x5",
+   "unit": "dive_bomber",
+   "carrier": "b-cv-01"
+  },
+  {
+   "id": "b-cv-01-dive_bomber-x6",
+   "unit": "dive_bomber",
+   "carrier": "b-cv-01"
+  },
+  {
+   "id": "b-cv-01-dive_bomber-x7",
+   "unit": "dive_bomber",
+   "carrier": "b-cv-01"
+  },
+  {
+   "id": "b-cv-01-torpedo_bomber-x1",
+   "unit": "torpedo_bomber",
+   "carrier": "b-cv-01"
+  },
+  {
+   "id": "b-cv-01-torpedo_bomber-x2",
+   "unit": "torpedo_bomber",
+   "carrier": "b-cv-01"
+  },
+  {
+   "id": "b-cv-01-torpedo_bomber-x3",
+   "unit": "torpedo_bomber",
+   "carrier": "b-cv-01"
+  },
+  {
+   "id": "b-cv-01-torpedo_bomber-x4",
+   "unit": "torpedo_bomber",
+   "carrier": "b-cv-01"
+  },
+  {
+   "id": "b-cv-01-torpedo_bomber-x5",
+   "unit": "torpedo_bomber",
+   "carrier": "b-cv-01"
+  },
+  {
+   "id": "b-cv-02-fighter-x1",
+   "unit": "fighter",
+   "carrier": "b-cv-02"
+  },
+  {
+   "id": "b-cv-02-fighter-x2",
+   "unit": "fighter",
+   "carrier": "b-cv-02"
+  },
+  {
+   "id": "b-cv-02-fighter-x3",
+   "unit": "fighter",
+   "carrier": "b-cv-02"
+  },
+  {
+   "id": "b-cv-02-fighter-x4",
+   "unit": "fighter",
+   "carrier": "b-cv-02"
+  },
+  {
+   "id": "b-cv-02-fighter-x5",
+   "unit": "fighter",
+   "carrier": "b-cv-02"
+  },
+  {
+   "id": "b-cv-02-fighter-x6",
+   "unit": "fighter",
+   "carrier": "b-cv-02"
+  },
+  {
+   "id": "b-cv-02-dive_bomber-x1",
+   "unit": "dive_bomber",
+   "carrier": "b-cv-02"
+  },
+  {
+   "id": "b-cv-02-dive_bomber-x2",
+   "unit": "dive_bomber",
+   "carrier": "b-cv-02"
+  },
+  {
+   "id": "b-cv-02-dive_bomber-x3",
+   "unit": "dive_bomber",
+   "carrier": "b-cv-02"
+  },
+  {
+   "id": "b-cv-02-dive_bomber-x4",
+   "unit": "dive_bomber",
+   "carrier": "b-cv-02"
+  },
+  {
+   "id": "b-cv-02-dive_bomber-x5",
+   "unit": "dive_bomber",
+   "carrier": "b-cv-02"
+  },
+  {
+   "id": "b-cv-02-dive_bomber-x6",
+   "unit": "dive_bomber",
+   "carrier": "b-cv-02"
+  },
+  {
+   "id": "b-cv-02-dive_bomber-x7",
+   "unit": "dive_bomber",
+   "carrier": "b-cv-02"
+  },
+  {
+   "id": "b-cv-02-torpedo_bomber-x1",
+   "unit": "torpedo_bomber",
+   "carrier": "b-cv-02"
+  },
+  {
+   "id": "b-cv-02-torpedo_bomber-x2",
+   "unit": "torpedo_bomber",
+   "carrier": "b-cv-02"
+  },
+  {
+   "id": "b-cv-02-torpedo_bomber-x3",
+   "unit": "torpedo_bomber",
+   "carrier": "b-cv-02"
+  },
+  {
+   "id": "b-cv-02-torpedo_bomber-x4",
+   "unit": "torpedo_bomber",
+   "carrier": "b-cv-02"
+  },
+  {
+   "id": "b-cv-02-torpedo_bomber-x5",
+   "unit": "torpedo_bomber",
+   "carrier": "b-cv-02"
+  },
+  {
+   "id": "b-ca-01-seaplane-x1",
+   "unit": "seaplane",
+   "carrier": "b-ca-01"
+  },
+  {
+   "id": "b-ca-01-seaplane-x2",
+   "unit": "seaplane",
+   "carrier": "b-ca-01"
+  },
+  {
+   "id": "b-ca-02-seaplane-x1",
+   "unit": "seaplane",
+   "carrier": "b-ca-02"
+  },
+  {
+   "id": "b-ca-02-seaplane-x2",
+   "unit": "seaplane",
+   "carrier": "b-ca-02"
+  },
+  {
+   "id": "a-ca-01-seaplane-x1",
+   "unit": "seaplane",
+   "carrier": "a-ca-01"
+  },
+  {
+   "id": "a-ca-01-seaplane-x2",
+   "unit": "seaplane",
+   "carrier": "a-ca-01"
+  },
+  {
+   "id": "a-ca-02-seaplane-x1",
+   "unit": "seaplane",
+   "carrier": "a-ca-02"
+  },
+  {
+   "id": "a-ca-02-seaplane-x2",
+   "unit": "seaplane",
+   "carrier": "a-ca-02"
+  },
+  {
+   "id": "a-ca-03-seaplane-x1",
+   "unit": "seaplane",
+   "carrier": "a-ca-03"
+  },
+  {
+   "id": "a-ca-03-seaplane-x2",
+   "unit": "seaplane",
+   "carrier": "a-ca-03"
+  },
+  {
+   "id": "a-ca-04-seaplane-x1",
+   "unit": "seaplane",
+   "carrier": "a-ca-04"
+  },
+  {
+   "id": "a-ca-04-seaplane-x2",
+   "unit": "seaplane",
+   "carrier": "a-ca-04"
+  },
+  {
+   "id": "a-ca-05-seaplane-x1",
+   "unit": "seaplane",
+   "carrier": "a-ca-05"
+  },
+  {
+   "id": "a-ca-05-seaplane-x2",
+   "unit": "seaplane",
+   "carrier": "a-ca-05"
+  },
+  {
+   "id": "a-cv-01-fighter-x1",
+   "unit": "fighter",
+   "carrier": "a-cv-01"
+  },
+  {
+   "id": "a-cv-01-fighter-x2",
+   "unit": "fighter",
+   "carrier": "a-cv-01"
+  },
+  {
+   "id": "a-cv-01-fighter-x3",
+   "unit": "fighter",
+   "carrier": "a-cv-01"
+  },
+  {
+   "id": "a-cv-01-fighter-x4",
+   "unit": "fighter",
+   "carrier": "a-cv-01"
+  },
+  {
+   "id": "a-cv-01-fighter-x5",
+   "unit": "fighter",
+   "carrier": "a-cv-01"
+  },
+  {
+   "id": "a-cv-01-dive_bomber-x1",
+   "unit": "dive_bomber",
+   "carrier": "a-cv-01"
+  },
+  {
+   "id": "a-cv-01-dive_bomber-x2",
+   "unit": "dive_bomber",
+   "carrier": "a-cv-01"
+  },
+  {
+   "id": "a-cv-01-dive_bomber-x3",
+   "unit": "dive_bomber",
+   "carrier": "a-cv-01"
+  },
+  {
+   "id": "a-cv-01-dive_bomber-x4",
+   "unit": "dive_bomber",
+   "carrier": "a-cv-01"
+  },
+  {
+   "id": "a-cv-01-dive_bomber-x5",
+   "unit": "dive_bomber",
+   "carrier": "a-cv-01"
+  },
+  {
+   "id": "a-cv-01-dive_bomber-x6",
+   "unit": "dive_bomber",
+   "carrier": "a-cv-01"
+  },
+  {
+   "id": "a-cv-01-dive_bomber-x7",
+   "unit": "dive_bomber",
+   "carrier": "a-cv-01"
+  },
+  {
+   "id": "a-cv-01-dive_bomber-x8",
+   "unit": "dive_bomber",
+   "carrier": "a-cv-01"
+  },
+  {
+   "id": "a-cv-01-dive_bomber-x9",
+   "unit": "dive_bomber",
+   "carrier": "a-cv-01"
+  },
+  {
+   "id": "a-cv-01-torpedo_bomber-x1",
+   "unit": "torpedo_bomber",
+   "carrier": "a-cv-01"
+  },
+  {
+   "id": "a-cv-01-torpedo_bomber-x2",
+   "unit": "torpedo_bomber",
+   "carrier": "a-cv-01"
+  },
+  {
+   "id": "a-cv-01-torpedo_bomber-x3",
+   "unit": "torpedo_bomber",
+   "carrier": "a-cv-01"
+  },
+  {
+   "id": "a-cv-02-fighter-x1",
+   "unit": "fighter",
+   "carrier": "a-cv-02"
+  },
+  {
+   "id": "a-cv-02-fighter-x2",
+   "unit": "fighter",
+   "carrier": "a-cv-02"
+  },
+  {
+   "id": "a-cv-02-fighter-x3",
+   "unit": "fighter",
+   "carrier": "a-cv-02"
+  },
+  {
+   "id": "a-cv-02-fighter-x4",
+   "unit": "fighter",
+   "carrier": "a-cv-02"
+  },
+  {
+   "id": "a-cv-02-dive_bomber-x1",
+   "unit": "dive_bomber",
+   "carrier": "a-cv-02"
+  },
+  {
+   "id": "a-cv-02-dive_bomber-x2",
+   "unit": "dive_bomber",
+   "carrier": "a-cv-02"
+  },
+  {
+   "id": "a-cv-02-dive_bomber-x3",
+   "unit": "dive_bomber",
+   "carrier": "a-cv-02"
+  },
+  {
+   "id": "a-cv-02-dive_bomber-x4",
+   "unit": "dive_bomber",
+   "carrier": "a-cv-02"
+  },
+  {
+   "id": "a-cv-02-dive_bomber-x5",
+   "unit": "dive_bomber",
+   "carrier": "a-cv-02"
+  },
+  {
+   "id": "a-cv-02-dive_bomber-x6",
+   "unit": "dive_bomber",
+   "carrier": "a-cv-02"
+  },
+  {
+   "id": "a-cv-02-dive_bomber-x7",
+   "unit": "dive_bomber",
+   "carrier": "a-cv-02"
+  },
+  {
+   "id": "a-cv-02-dive_bomber-x8",
+   "unit": "dive_bomber",
+   "carrier": "a-cv-02"
+  },
+  {
+   "id": "a-cv-02-dive_bomber-x9",
+   "unit": "dive_bomber",
+   "carrier": "a-cv-02"
+  },
+  {
+   "id": "a-cv-02-torpedo_bomber-x1",
+   "unit": "torpedo_bomber",
+   "carrier": "a-cv-02"
+  },
+  {
+   "id": "a-cv-02-torpedo_bomber-x2",
+   "unit": "torpedo_bomber",
+   "carrier": "a-cv-02"
+  },
+  {
+   "id": "a-cv-02-torpedo_bomber-x3",
+   "unit": "torpedo_bomber",
+   "carrier": "a-cv-02"
+  }
+ ],
+ "airfields": [
+  {
+   "id": "af-b-tulagi",
+   "faction": "B",
+   "name": "图拉吉水上飞机基地",
+   "coord": "1040",
+   "type": "seaplane",
+   "runways": 4,
+   "radar": true,
+   "heavy_aa": 0,
+   "light_aa": 2,
+   "coastal": 0,
+   "aircraft": [
+    "af-b-tulagi-h6k-1",
+    "af-b-tulagi-h6k-2",
+    "af-b-tulagi-h6k-3",
+    "af-b-tulagi-h6k-4"
+   ]
+  },
+  {
+   "id": "af-b-rabaul",
+   "faction": "B",
+   "name": "拉包尔机场",
+   "coord": "0428",
+   "type": "major",
+   "runways": 2,
+   "radar": true,
+   "heavy_aa": 1,
+   "light_aa": 3,
+   "coastal": 0,
+   "aircraft": [
+    "af-b-rabaul-fighter-1",
+    "af-b-rabaul-fighter-2",
+    "af-b-rabaul-fighter-3",
+    "af-b-rabaul-fighter-4",
+    "af-b-rabaul-fighter-5",
+    "af-b-rabaul-fighter-6",
+    "af-b-rabaul-g4m-1",
+    "af-b-rabaul-g4m-2",
+    "af-b-rabaul-g4m-3",
+    "af-b-rabaul-g4m-4",
+    "af-b-rabaul-g4m-5",
+    "af-b-rabaul-g4m-6",
+    "af-b-rabaul-g3m-1",
+    "af-b-rabaul-g3m-2",
+    "af-b-rabaul-g3m-3"
+   ]
+  },
+  {
+   "id": "af-a-moresby",
+   "faction": "A",
+   "name": "莫尔兹比港机场",
+   "coord": "1612",
+   "type": "major",
+   "runways": 2,
+   "radar": true,
+   "heavy_aa": 0,
+   "light_aa": 2,
+   "coastal": 0,
+   "aircraft": [
+    "af-a-moresby-dive_bomber-1",
+    "af-a-moresby-dive_bomber-2",
+    "af-a-moresby-p40-1",
+    "af-a-moresby-p40-2",
+    "af-a-moresby-p40-3",
+    "af-a-moresby-p40-4",
+    "af-a-moresby-b25-1",
+    "af-a-moresby-b25-2",
+    "af-a-moresby-b25-3"
+   ]
+  }
+ ],
+ "wind": "SE"
+}

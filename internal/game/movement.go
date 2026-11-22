@@ -15,7 +15,13 @@ func EffectiveSpeedClass(unit *Unit) string {
 	if damage.Disabled || len(damage.Flooding) > unit.Card.DamageControl {
 		return "disabled"
 	}
-	rank := map[string]int{"very_slow": 0, "slow": 1, "normal": 2, "fast": 3}[unit.Card.SpeedClass]
+	// 四档速度：fast > normal > slow > very_slow。没被进水拖慢时原样返回自身档位——
+	// 之前 very_slow 被映射到 0、再经 rank<=0 兜底，进水一档就直接跳到"极慢"，
+	// 极慢本身反而永远拿不到自己该有的档位。
+	rank := map[string]int{"fast": 3, "normal": 2, "slow": 1, "very_slow": 0}[unit.Card.SpeedClass]
+	if _, ok := map[string]bool{"fast": true, "normal": true, "slow": true, "very_slow": true}[unit.Card.SpeedClass]; !ok {
+		rank = 2
+	}
 	rank -= len(damage.Flooding)
 	if rank <= 0 {
 		return "very_slow"

@@ -1,0 +1,27 @@
+{
+ "id": "shokaku",
+ "faction": "B",
+ "type": "CV",
+ "name": "翔鹤",
+ "picture": "misc/image/ship/shokaku.png",
+ "strength": 4,
+ "card": {
+  "damage_control": 3,
+  "main_gun_count": 0,
+  "main_gun_caliber": 5,
+  "heavy_aa": 8.0,
+  "light_aa": 9.0,
+  "surface_radar": true,
+  "air_radar": true,
+  "speed_class": "normal",
+  "torpedo_salvos": 0,
+  "aircraft": 72,
+  "deck_capacity": 8,
+  "elevator_count": 3,
+  "depth_charges": 0,
+  "cargo": 0,
+  "armored_carrier": false,
+  "hangar_capacity": 18,
+  "gunnery": 0
+ }
+}

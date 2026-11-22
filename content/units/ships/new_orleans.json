@@ -1,0 +1,26 @@
+{
+ "id": "new_orleans",
+ "faction": "A",
+ "type": "CA",
+ "name": "新奥尔良",
+ "picture": "misc/image/ship/new_orleans.png",
+ "strength": 4,
+ "card": {
+  "damage_control": 5,
+  "main_gun_count": 8,
+  "main_gun_caliber": 8,
+  "heavy_aa": 2.0,
+  "light_aa": 6.0,
+  "surface_radar": true,
+  "air_radar": false,
+  "speed_class": "normal",
+  "torpedo_salvos": 2,
+  "aircraft": 2,
+  "deck_capacity": 0,
+  "elevator_count": 0,
+  "depth_charges": 0,
+  "cargo": 0,
+  "armored_carrier": false,
+  "gunnery": 7
+ }
+}

@@ -18,8 +18,8 @@ function commandID() {
 }
 
 export const api = {
-  createRoom(name: string) {
-    return request<RoomResponse>('/api/v1/rooms', { method: 'POST', body: JSON.stringify({ name, scenario_id: '_sandbox' }) })
+  createRoom(name: string, scenarioID = '_sandbox', solo = false, faction: 'A' | 'B' = 'A') {
+    return request<RoomResponse>('/api/v1/rooms', { method: 'POST', body: JSON.stringify({ name, scenario_id: scenarioID, solo, faction }) })
   },
   joinRoom(token: string, name: string) {
     return request<RoomResponse>('/api/v1/rooms/join', { method: 'POST', body: JSON.stringify({ token, name }) })

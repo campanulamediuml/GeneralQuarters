@@ -1,0 +1,27 @@
+{
+ "id": "lexington",
+ "faction": "A",
+ "type": "CV",
+ "name": "列克星敦",
+ "picture": "misc/image/ship/lexington.png",
+ "strength": 4,
+ "card": {
+  "damage_control": 5,
+  "main_gun_count": 0,
+  "main_gun_caliber": 5,
+  "heavy_aa": 6.0,
+  "light_aa": 30.0,
+  "surface_radar": true,
+  "air_radar": true,
+  "speed_class": "normal",
+  "torpedo_salvos": 0,
+  "aircraft": 72,
+  "deck_capacity": 8,
+  "elevator_count": 3,
+  "depth_charges": 0,
+  "cargo": 0,
+  "armored_carrier": false,
+  "gunnery": 0,
+  "hangar_capacity": 22
+ }
+}

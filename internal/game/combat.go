@@ -31,7 +31,7 @@ func unitsAt(state State, coord string) []Unit {
 }
 
 func detectContacts(state *State) []EngineEvent {
-	events := []EngineEvent{}
+	events := detectVisualContacts(state)
 	for _, coord := range contactCoords(*state) {
 		members := unitsAt(*state, coord)
 		factions := map[string][]Unit{}
@@ -55,6 +55,46 @@ func detectContacts(state *State) []EngineEvent {
 				recordContact(state, observer, FleetKey(&enemy), fleetMembers(state, FleetKey(&enemy)))
 			}
 			events = append(events, EngineEvent{Type: "contact", Audience: observer, Text: fmt.Sprintf("%s在%s与敌方舰队发生接触（%d艘己方舰船）", friendly[0].FleetName, coord, len(friendly))})
+		}
+	}
+	return events
+}
+
+// detectVisualContacts 把 visualContactRange 内互相看得见的舰队记成最高等级情报。
+// VisibleUnits 会把这些舰队按真实坐标画出来，但如果不留接触记录，
+// 玩家在地图上点得到目标、服务端却判定"没有情报不能盲打"，打击流程就断在这里。
+func detectVisualContacts(state *State) []EngineEvent {
+	events := []EngineEvent{}
+	seen := map[string]bool{}
+	// 按 ID 排序遍历：事件顺序和记录顺序必须可复现，否则同种子两局会对不上。
+	for _, enemyID := range sortedUnitIDs(state.Units) {
+		enemy := state.Units[enemyID]
+		if enemy == nil {
+			continue
+		}
+		fleetID := FleetKey(enemy)
+		for _, friendlyID := range sortedUnitIDs(state.Units) {
+			friendly := state.Units[friendlyID]
+			if friendly == nil || friendly.Faction == enemy.Faction {
+				continue
+			}
+			if Distance(friendly.Coord, enemy.Coord) > visualContactRange {
+				continue
+			}
+			key := friendly.Faction + "|" + fleetID
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			members := fleetMembers(state, fleetID)
+			if len(members) == 0 {
+				continue
+			}
+			// 目视只是"确认这里有敌人"，情报等级仍按正常节奏每回合 +1 级（上限 4 级），
+			// 不直接跳满：等级决定成员表能不能看全，位置则按真实坐标记录，
+			// 这样"地图上画出来的位置"和"能点打击的位置"始终是同一个 hex。
+			level := recordContact(state, friendly.Faction, fleetID, members)
+			events = append(events, EngineEvent{Type: "visual_contact", Audience: friendly.Faction, Text: fmt.Sprintf("目视发现%s在%s（%d艘），情报等级升至%d", enemy.FleetName, enemy.Coord, len(members), level)})
 		}
 	}
 	return events
@@ -89,6 +129,19 @@ func resolveContacts(state *State) []EngineEvent {
 	return events
 }
 
+// aliveUnits 只留下还浮在水面的船：沉没的舰在 state.Units 里已经没有了。
+// 舰队对轰的目标池用它刷新——被打沉的舰一旦退出就不再吃炮弹，
+// 否则开火舰船会"选中"一艘已经沉掉的船，整轮齐射白白浪费。
+func aliveUnits(state *State, units []Unit) []Unit {
+	alive := make([]Unit, 0, len(units))
+	for _, unit := range units {
+		if state.Units[unit.ID] != nil {
+			alive = append(alive, unit)
+		}
+	}
+	return alive
+}
+
 func totalGunnery(members []Unit) int {
 	total := 0
 	for _, unit := range members {
@@ -107,6 +160,8 @@ func maxConfusion(members []Unit) int {
 	return confusion
 }
 
+// hasSurfaceRadar 判断舰队里是否还有可用的对海搜索雷达。
+// 突袭判定的"对海雷达+1"是"先敌发现"的加成，属于搜索功能，所以火控雷达坏了不影响这里。
 func hasSurfaceRadar(members []Unit) bool {
 	for _, unit := range members {
 		if unit.Card.SurfaceRadar && !EnsureDamage(&unit).SurfaceRadarDisabled {
@@ -114,6 +169,12 @@ func hasSurfaceRadar(members []Unit) bool {
 		}
 	}
 	return false
+}
+
+// hasFireControlRadar 判断开火舰船的火控雷达是否还能给炮击加成。
+// 搜索雷达损坏不影响命中率，只有火控雷达损坏才扣掉这 10%。
+func hasFireControlRadar(unit *Unit) bool {
+	return unit.Card.SurfaceRadar && !EnsureDamage(unit).FireControlRadarDisabled
 }
 
 func priorDetection(state State, observer string, enemies []Unit) bool {
@@ -195,9 +256,7 @@ func targetRow(unitType string) int {
 
 func targetWeight(attacker, target string) int {
 	row := targetRow(target)
-	if attacker == "CVL" || attacker == "CVE" {
-		attacker = "CV"
-	}
+	attacker = CarrierEquivalentType(attacker)
 	table := map[string][7]int{
 		"BB": {7, 7, 9, 7, 1, 1, 3},
 		"BC": {5, 7, 9, 7, 3, 1, 3},
@@ -247,7 +306,7 @@ func seaplaneSpotting(state State, attacker *Unit) bool {
 
 func gunneryChance(state State, attacker, target *Unit, enemies []Unit) float64 {
 	chance := 25.0
-	if attacker.Card.SurfaceRadar && !EnsureDamage(attacker).SurfaceRadarDisabled {
+	if hasFireControlRadar(attacker) {
 		chance += 10
 	}
 	if seaplaneSpotting(state, attacker) {
@@ -256,13 +315,18 @@ func gunneryChance(state State, attacker, target *Unit, enemies []Unit) float64 
 	if EnsureDamage(target).Fire == "burning" {
 		chance += 10
 	}
-	difference := targetRow(attacker.Type) - targetRow(target.Type)
+	// 规则书 310–312 行："表中靠下的单位攻击上方 1 行 / 2~3 行 / 超过 3 行"分别 -5 / -10 / -15。
+	// 表里行号越大越靠下（BB=0 … TRS=6），所以"目标在攻击者上方几行"= 目标行 - 攻击者行。
+	// 之前写成 攻击者行 - 目标行，BB(0) 打 DD(5) 得到 -5，三个正数分支全部落空，
+	// 于是"以小博大/力不从心/螳臂当车"从来没生效过——统计测试抓到的就是这个。
+	// 行号越大越靠下，所以"目标在攻击者上方"= 攻击者行号 > 目标行号。
+	upward := targetRow(attacker.Type) - targetRow(target.Type)
 	switch {
-	case difference == 1:
+	case upward == 1:
 		chance -= 5
-	case difference >= 2 && difference <= 3:
+	case upward >= 2 && upward <= 3:
 		chance -= 10
-	case difference > 3:
+	case upward > 3:
 		chance -= 15
 	}
 	switch weatherAt(state.Map, target.Coord) {
@@ -281,6 +345,10 @@ func gunneryChance(state State, attacker, target *Unit, enemies []Unit) float64 
 func gunneryVolley(state *State, attackers, enemies []Unit) ([]ShellHit, []EngineEvent) {
 	hits := []ShellHit{}
 	events := []EngineEvent{}
+	enemies = aliveUnits(state, enemies)
+	if len(enemies) == 0 {
+		return hits, events
+	}
 	for _, attacker := range attackers {
 		weapon := state.Units[attacker.ID]
 		if weapon == nil || weapon.Card.Gunnery <= 0 {
@@ -288,6 +356,11 @@ func gunneryVolley(state *State, attackers, enemies []Unit) ([]ShellHit, []Engin
 		}
 		target := selectWeightedTarget(state, weapon, enemies)
 		if target == nil {
+			continue
+		}
+		// 炮击值为 0 的船（航母）不参加炮战：以前航母卡上被填了 Gunnery=4，
+		// 于是"列克星敦炮击妙高：4 次判定"这种战报会出现。炮击值才是权威，主炮数只用于展示。
+		if weapon.Card.Gunnery <= 0 {
 			continue
 		}
 		chance := gunneryChance(*state, weapon, target, enemies)
@@ -303,36 +376,47 @@ func gunneryVolley(state *State, attackers, enemies []Unit) ([]ShellHit, []Engin
 	return hits, events
 }
 
+// torpedoChance 计算一次齐射的命中率（规则书 336–343 行）：
+// 基础 25%；慢速 +10、失去动力 +20、快速 -10、驱逐舰 -10、夜间 +10；
+// 美军 1944 年以前 -20；己方混乱每点 -5。
+func torpedoChance(state State, weapon *Unit, target *Unit) float64 {
+	chance := 25.0
+	switch target.Card.SpeedClass {
+	case "slow":
+		chance += 10
+	case "fast":
+		chance -= 10
+	}
+	if EnsureDamage(target).Disabled {
+		chance += 20
+	}
+	if target.Type == "DD" {
+		chance -= 10
+	}
+	if state.Night {
+		chance += 10
+	}
+	if state.Doctrines[weapon.Faction] == "us" && state.Year > 0 && state.Year < 1944 {
+		chance -= 20
+	}
+	chance -= 5 * float64(maxConfusion(fleetMembers(&state, FleetKey(weapon))))
+	return math.Max(0, math.Min(100, chance))
+}
+
 func torpedoVolley(state *State, attackers, enemies []Unit) ([]ShellHit, []EngineEvent) {
 	hits := []ShellHit{}
 	events := []EngineEvent{}
+	enemies = aliveUnits(state, enemies)
+	if len(enemies) == 0 {
+		return hits, events
+	}
 	for _, attacker := range attackers {
 		weapon := state.Units[attacker.ID]
 		if weapon == nil || weapon.Card.TorpedoSalvos <= 0 || EnsureDamage(weapon).TorpedoDisabled {
 			continue
 		}
 		target := enemies[nextUint64(&state.RNGState)%uint64(len(enemies))]
-		chance := 25.0
-		switch target.Card.SpeedClass {
-		case "slow":
-			chance += 10
-		case "fast":
-			chance -= 10
-		}
-		if EnsureDamage(&target).Disabled {
-			chance += 20
-		}
-		if target.Type == "DD" {
-			chance -= 10
-		}
-		if state.Night {
-			chance += 10
-		}
-		if state.Doctrines[weapon.Faction] == "us" && state.Year > 0 && state.Year < 1944 {
-			chance -= 20
-		}
-		chance -= 5 * float64(maxConfusion(fleetMembers(state, FleetKey(weapon))))
-		chance = math.Max(0, math.Min(100, chance))
+		chance := torpedoChance(*state, weapon, &target)
 		weapon.Card.TorpedoSalvos--
 		count := 0
 		for shot := 0; shot < 4; shot++ {

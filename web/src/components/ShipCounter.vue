@@ -1,22 +1,32 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Unit } from '../types'
+import ShipSilhouette from './ShipSilhouette.vue'
+import { counterDamageClass, damageTitles, shipDamageMarkers } from '../shipDamage'
+import { formatNumber } from '../format'
 
 const props = withDefaults(defineProps<{ unit: Unit; side?: 'front' | 'back' }>(), { side: 'front' })
+const markers = computed(() => shipDamageMarkers(props.unit))
+const damageClasses = computed(() => counterDamageClass(props.unit))
+const damageTitle = computed(() => damageTitles(props.unit).join(' / '))
 const isCarrier = computed(() => ['CV', 'CVL', 'CVE'].includes(props.unit.type))
+// 兵牌中部的剪影没有文字说明，这里用一行舰种中文名标注，避免只靠外形辨认。
+const shipClassLabel = computed(() => ({ CV: '航空母舰', CVL: '轻型航母', CVE: '护航航母', BB: '战列舰', BC: '战列巡洋舰', CA: '重巡洋舰', CL: '轻巡洋舰', DD: '驱逐舰', TRS: '运输船' } as Record<string, string>)[props.unit.type] || props.unit.type)
+// 角标显示的是"这艘船最多能装多少架"（机库容量），不是当前在编数量。
+// 当前在编数量会随起降每回合变化，兵牌上要的是这艘舰的固有容量。
 const aircraftPayload = computed(() => {
-  const value = props.unit.card.aircraft
+  const value = props.unit.card.hangar_capacity
   if (value <= 0) return undefined
   return {
     value,
     className: isCarrier.value ? 'aircraft' : 'seaplane',
-    title: isCarrier.value ? `当前舰载机：${value}个算子` : `当前水上飞机：${value}个算子`,
+    title: isCarrier.value ? `机库容量：${value}架` : `水上飞机位：${value}架`,
   }
 })
 </script>
 
 <template>
-  <figure class="ship-counter" :class="[`counter-${unit.faction.toLowerCase()}`, { armored: unit.card.armored_carrier }]" :data-definition-id="unit.definition_id" :data-side="side" :aria-label="`${unit.name}兵牌${side === 'front' ? '正面' : '背面'}`">
+  <figure class="ship-counter" :class="[`counter-${unit.faction.toLowerCase()}`, damageClasses, { armored: unit.card.armored_carrier }]" :data-definition-id="unit.definition_id" :data-side="side" :data-damage="damageTitle || undefined" :title="damageTitle || undefined" :aria-label="`${unit.name}兵牌${side === 'front' ? '正面' : '背面'}${damageTitle ? '，' + damageTitle : ''}`">
     <div v-if="side === 'front'" class="counter-face counter-front">
       <header class="counter-top">
         <strong>{{ unit.type }}</strong>
@@ -25,15 +35,20 @@ const aircraftPayload = computed(() => {
       </header>
       <div class="counter-middle">
         <span class="counter-dc" title="损管能力">{{ unit.card.damage_control }}</span>
-        <svg class="counter-silhouette" viewBox="0 0 120 48" aria-hidden="true">
-          <path d="M2 33h116l-16 11H21z" />
-          <path v-if="isCarrier" d="M8 27h104v6H4zM74 14h21v13H74zM80 8h4v6h-4z" />
-          <path v-else d="M41 22h39v11H41zM50 13h19v9H50zM58 5h4v8h-4zM16 27h21v6H16zM85 27h20v6H85z" />
-        </svg>
+        <span class="counter-class" :title="shipClassLabel">{{ shipClassLabel }}</span>
+        <!-- 损伤标记：橙条=失去动力、白条=推进器受损，垫在剪影后面，和实体卡牌一个画法 -->
+        <i v-if="markers.disabled" class="counter-band counter-band-disabled" title="失去动力"></i>
+        <i v-else-if="markers.slow" class="counter-band counter-band-slow" :title="markers.slowLabel"></i>
+        <span class="counter-silhouette" :class="{ tilted: markers.tilt, sunk: markers.sunk }" :title="unit.name"><ShipSilhouette :type="unit.type" :name="unit.name" :picture="unit.card?.picture" /></span>
+        <!-- 红圈横杠：甲板损伤/摧毁、进水倾斜 -->
+        <span v-if="markers.deck || markers.tilt" class="counter-deny" :class="{ destroyed: markers.deckDestroyed }" :title="markers.deck ? (markers.deckDestroyed ? '飞行甲板摧毁' : '飞行甲板损伤') : '进水倾斜'"></span>
+        <!-- 起火：烟 + 火焰 -->
+        <span v-if="markers.fire" class="counter-fire" :class="{ burning: unit.damage?.fire === 'burning' }" :title="markers.fireLabel"><i class="counter-smoke"></i><i class="counter-flame"></i></span>
+        <span v-if="markers.oilLeak" class="counter-oil" title="漏油"></span>
         <span v-if="aircraftPayload" class="counter-payload" :class="aircraftPayload.className" :title="aircraftPayload.title">{{ aircraftPayload.value }}</span>
       </div>
       <footer class="counter-bottom">
-        <span title="重型防空 / 轻型防空">{{ unit.card.heavy_aa }}-{{ unit.card.light_aa }}</span>
+        <span title="重型防空 / 轻型防空">{{ formatNumber(unit.card.heavy_aa) }}-{{ formatNumber(unit.card.light_aa) }}</span>
         <b v-if="unit.card.cargo" class="counter-cargo" :title="`货物：${unit.card.cargo}`">{{ unit.card.cargo }}</b>
         <i v-else></i>
         <strong title="火炮能力">{{ unit.card.gunnery }}</strong>
@@ -49,11 +64,7 @@ const aircraftPayload = computed(() => {
       </header>
       <div class="counter-middle">
         <span class="counter-dc" title="损管能力">{{ unit.card.damage_control }}</span>
-        <svg class="counter-silhouette" viewBox="0 0 120 48" aria-hidden="true">
-          <path d="M2 33h116l-16 11H21z" />
-          <path v-if="isCarrier" d="M8 27h104v6H4zM74 14h21v13H74zM80 8h4v6h-4z" />
-          <path v-else d="M41 22h39v11H41zM50 13h19v9H50zM58 5h4v8h-4zM16 27h21v6H16zM85 27h20v6H85z" />
-        </svg>
+        <span class="counter-silhouette counter-silhouette-back"><ShipSilhouette :type="unit.type" :name="unit.name" :picture="unit.card?.picture" /></span>
         <span v-if="isCarrier" class="counter-payload aircraft counter-back-deck" title="甲板长度 / 每回合航空算子容量">{{ unit.card.deck_capacity }}</span>
       </div>
       <footer class="counter-bottom counter-back-bottom">

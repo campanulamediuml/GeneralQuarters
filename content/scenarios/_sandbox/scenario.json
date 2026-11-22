@@ -1,118 +1,1631 @@
 {
   "id": "_sandbox",
-  "version": 7,
+  "version": 15,
   "name": "灰海接触",
   "map": "_sandbox",
   "year": 1942,
   "night": false,
-  "doctrines": {"A": "us", "B": "japan"},
-  "description": "双方各拥有一支14艘的战列舰队和一支17艘的航母机动舰队。每艘配备水机的巡洋舰搭载2个SOC侦察算子，战列舰搭载1个；航母编队另含完整航空测试算子。参数仅用于功能测试。",
+  "day_hours": 12,
+  "turns_per_day": 72,
+  "weather_turns": 6,
+  "max_turns": 60,
+  "objectives": [
+    {
+      "id": "a-supply",
+      "text": "在锚地卸下 4 点滩头物资",
+      "kind": "supplies",
+      "faction": "A",
+      "coord": "0607",
+      "value": 4,
+      "points": 3
+    },
+    {
+      "id": "b-supply",
+      "text": "在浅滩卸下 4 点滩头物资",
+      "kind": "supplies",
+      "faction": "B",
+      "coord": "0703",
+      "value": 4,
+      "points": 3
+    },
+    {
+      "id": "a-sink",
+      "text": "击沉 6 艘敌舰",
+      "kind": "sink",
+      "faction": "A",
+      "value": 6,
+      "points": 2
+    },
+    {
+      "id": "b-sink",
+      "text": "击沉 6 艘敌舰",
+      "kind": "sink",
+      "faction": "B",
+      "value": 6,
+      "points": 2
+    },
+    {
+      "id": "a-control",
+      "text": "回合结束时控制瞭望岛机场",
+      "kind": "control",
+      "faction": "A",
+      "coord": "0207",
+      "points": 2
+    },
+    {
+      "id": "b-control",
+      "text": "回合结束时控制灯塔岛机场",
+      "kind": "control",
+      "faction": "B",
+      "coord": "0304",
+      "points": 2
+    }
+  ],
+  "doctrines": {
+    "A": "us",
+    "B": "japan"
+  },
+  "description": "双方各拥有一支14艘的战列舰队和一支17艘的航母机动舰队。每艘配备水机的巡洋舰搭载2个水上侦察算子（美 SOC／日 E13A），战列舰搭载1个；航母编队另含完整航空测试算子。参数仅用于功能测试。",
   "deployments": [
-    {"id":"a-bb-01","unit":"bb","faction":"A","name":"苍岭","coord":"0202","fleet_id":"TG-A","fleet_name":"第一战列舰队","hangar_capacity":1},
-    {"id":"a-bb-02","unit":"bb","faction":"A","name":"岳陵","coord":"0202","fleet_id":"TG-A","fleet_name":"第一战列舰队"},
-    {"id":"a-bc-01","unit":"bc","faction":"A","name":"岚岳","coord":"0202","fleet_id":"TG-A","fleet_name":"第一战列舰队"},
-    {"id":"a-bc-02","unit":"bc","faction":"A","name":"云嶂","coord":"0202","fleet_id":"TG-A","fleet_name":"第一战列舰队"},
-    {"id":"a-ca-01","unit":"ca","faction":"A","name":"铁礁","coord":"0202","fleet_id":"TG-A","fleet_name":"第一战列舰队","hangar_capacity":2},
-    {"id":"a-ca-02","unit":"ca","faction":"A","name":"磐石","coord":"0202","fleet_id":"TG-A","fleet_name":"第一战列舰队"},
-    {"id":"a-cl-01","unit":"cl","faction":"A","name":"白露","coord":"0202","fleet_id":"TG-A","fleet_name":"第一战列舰队","hangar_capacity":2},
-    {"id":"a-cl-02","unit":"cl","faction":"A","name":"青霜","coord":"0202","fleet_id":"TG-A","fleet_name":"第一战列舰队"},
-    {"id":"a-dd-01","unit":"dd","faction":"A","name":"细雨","coord":"0202","fleet_id":"TG-A","fleet_name":"第一战列舰队"},
-    {"id":"a-dd-02","unit":"dd","faction":"A","name":"微澜","coord":"0202","fleet_id":"TG-A","fleet_name":"第一战列舰队"},
-    {"id":"a-dd-03","unit":"dd","faction":"A","name":"听雨","coord":"0202","fleet_id":"TG-A","fleet_name":"第一战列舰队"},
-    {"id":"a-dd-04","unit":"dd","faction":"A","name":"轻潮","coord":"0202","fleet_id":"TG-A","fleet_name":"第一战列舰队"},
-    {"id":"a-dd-05","unit":"dd","faction":"A","name":"薄雾","coord":"0202","fleet_id":"TG-A","fleet_name":"第一战列舰队"},
-    {"id":"a-dd-06","unit":"dd","faction":"A","name":"远汐","coord":"0202","fleet_id":"TG-A","fleet_name":"第一战列舰队"},
-    {"id":"b-cv-01","unit":"cv","faction":"B","name":"赤穹","coord":"0208","fleet_id":"TG-B","fleet_name":"航母机动舰队"},
-    {"id":"b-cv-02","unit":"cv","faction":"B","name":"云翔","coord":"0208","fleet_id":"TG-B","fleet_name":"航母机动舰队"},
-    {"id":"b-cv-03","unit":"cv","faction":"B","name":"天鹰","coord":"0208","fleet_id":"TG-B","fleet_name":"航母机动舰队"},
-    {"id":"b-cv-04","unit":"cv","faction":"B","name":"海隼","coord":"0208","fleet_id":"TG-B","fleet_name":"航母机动舰队"},
-    {"id":"b-bb-01","unit":"bb","faction":"B","name":"烈岭","coord":"0208","fleet_id":"TG-B","fleet_name":"航母机动舰队"},
-    {"id":"b-bb-02","unit":"bb","faction":"B","name":"炎峰","coord":"0208","fleet_id":"TG-B","fleet_name":"航母机动舰队"},
-    {"id":"b-ca-01","unit":"ca","faction":"B","name":"赤礁","coord":"0208","fleet_id":"TG-B","fleet_name":"航母机动舰队","hangar_capacity":2},
-    {"id":"b-ca-02","unit":"ca","faction":"B","name":"朱岩","coord":"0208","fleet_id":"TG-B","fleet_name":"航母机动舰队","hangar_capacity":2},
-    {"id":"b-ca-03","unit":"ca","faction":"B","name":"铁霞","coord":"0208","fleet_id":"TG-B","fleet_name":"航母机动舰队"},
-    {"id":"b-ca-04","unit":"ca","faction":"B","name":"红岬","coord":"0208","fleet_id":"TG-B","fleet_name":"航母机动舰队"},
-    {"id":"b-cl-01","unit":"cl","faction":"B","name":"海雾","coord":"0208","fleet_id":"TG-B","fleet_name":"航母机动舰队","hangar_capacity":2},
-    {"id":"b-cl-02","unit":"cl","faction":"B","name":"秋霖","coord":"0208","fleet_id":"TG-B","fleet_name":"航母机动舰队"},
-    {"id":"b-dd-01","unit":"dd","faction":"B","name":"潮声","coord":"0208","fleet_id":"TG-B","fleet_name":"航母机动舰队"},
-    {"id":"b-dd-02","unit":"dd","faction":"B","name":"追浪","coord":"0208","fleet_id":"TG-B","fleet_name":"航母机动舰队"},
-    {"id":"b-dd-03","unit":"dd","faction":"B","name":"疾风","coord":"0208","fleet_id":"TG-B","fleet_name":"航母机动舰队"},
-    {"id":"b-dd-04","unit":"dd","faction":"B","name":"飞沫","coord":"0208","fleet_id":"TG-B","fleet_name":"航母机动舰队"},
-    {"id":"b-dd-05","unit":"dd","faction":"B","name":"暮潮","coord":"0208","fleet_id":"TG-B","fleet_name":"航母机动舰队"},
-    {"id":"a2-cv-01","unit":"cv","faction":"A","name":"苍穹","coord":"0602","fleet_id":"TG-A-CV","fleet_name":"第一航母机动舰队"},
-    {"id":"a2-cv-02","unit":"cv","faction":"A","name":"凌云","coord":"0602","fleet_id":"TG-A-CV","fleet_name":"第一航母机动舰队"},
-    {"id":"a2-cv-03","unit":"cv","faction":"A","name":"天翎","coord":"0602","fleet_id":"TG-A-CV","fleet_name":"第一航母机动舰队"},
-    {"id":"a2-cv-04","unit":"cv","faction":"A","name":"海鹰","coord":"0602","fleet_id":"TG-A-CV","fleet_name":"第一航母机动舰队"},
-    {"id":"a2-bb-01","unit":"bb","faction":"A","name":"镇岳","coord":"0602","fleet_id":"TG-A-CV","fleet_name":"第一航母机动舰队"},
-    {"id":"a2-bb-02","unit":"bb","faction":"A","name":"定山","coord":"0602","fleet_id":"TG-A-CV","fleet_name":"第一航母机动舰队"},
-    {"id":"a2-ca-01","unit":"ca","faction":"A","name":"青礁","coord":"0602","fleet_id":"TG-A-CV","fleet_name":"第一航母机动舰队","hangar_capacity":2},
-    {"id":"a2-ca-02","unit":"ca","faction":"A","name":"碧岩","coord":"0602","fleet_id":"TG-A-CV","fleet_name":"第一航母机动舰队","hangar_capacity":2},
-    {"id":"a2-ca-03","unit":"ca","faction":"A","name":"霜霞","coord":"0602","fleet_id":"TG-A-CV","fleet_name":"第一航母机动舰队"},
-    {"id":"a2-ca-04","unit":"ca","faction":"A","name":"蓝岬","coord":"0602","fleet_id":"TG-A-CV","fleet_name":"第一航母机动舰队"},
-    {"id":"a2-cl-01","unit":"cl","faction":"A","name":"晨雾","coord":"0602","fleet_id":"TG-A-CV","fleet_name":"第一航母机动舰队","hangar_capacity":2},
-    {"id":"a2-cl-02","unit":"cl","faction":"A","name":"清霖","coord":"0602","fleet_id":"TG-A-CV","fleet_name":"第一航母机动舰队"},
-    {"id":"a2-dd-01","unit":"dd","faction":"A","name":"浪潮","coord":"0602","fleet_id":"TG-A-CV","fleet_name":"第一航母机动舰队"},
-    {"id":"a2-dd-02","unit":"dd","faction":"A","name":"逐流","coord":"0602","fleet_id":"TG-A-CV","fleet_name":"第一航母机动舰队"},
-    {"id":"a2-dd-03","unit":"dd","faction":"A","name":"海风","coord":"0602","fleet_id":"TG-A-CV","fleet_name":"第一航母机动舰队"},
-    {"id":"a2-dd-04","unit":"dd","faction":"A","name":"白沫","coord":"0602","fleet_id":"TG-A-CV","fleet_name":"第一航母机动舰队"},
-    {"id":"a2-dd-05","unit":"dd","faction":"A","name":"晚潮","coord":"0602","fleet_id":"TG-A-CV","fleet_name":"第一航母机动舰队"},
-    {"id":"b2-bb-01","unit":"bb","faction":"B","name":"赤岭","coord":"0608","fleet_id":"TG-B-BB","fleet_name":"第二战列舰队","hangar_capacity":1},
-    {"id":"b2-bb-02","unit":"bb","faction":"B","name":"焰陵","coord":"0608","fleet_id":"TG-B-BB","fleet_name":"第二战列舰队"},
-    {"id":"b2-bc-01","unit":"bc","faction":"B","name":"火岳","coord":"0608","fleet_id":"TG-B-BB","fleet_name":"第二战列舰队"},
-    {"id":"b2-bc-02","unit":"bc","faction":"B","name":"红嶂","coord":"0608","fleet_id":"TG-B-BB","fleet_name":"第二战列舰队"},
-    {"id":"b2-ca-01","unit":"ca","faction":"B","name":"丹礁","coord":"0608","fleet_id":"TG-B-BB","fleet_name":"第二战列舰队","hangar_capacity":2},
-    {"id":"b2-ca-02","unit":"ca","faction":"B","name":"赭石","coord":"0608","fleet_id":"TG-B-BB","fleet_name":"第二战列舰队"},
-    {"id":"b2-cl-01","unit":"cl","faction":"B","name":"赤露","coord":"0608","fleet_id":"TG-B-BB","fleet_name":"第二战列舰队","hangar_capacity":2},
-    {"id":"b2-cl-02","unit":"cl","faction":"B","name":"枫霜","coord":"0608","fleet_id":"TG-B-BB","fleet_name":"第二战列舰队"},
-    {"id":"b2-dd-01","unit":"dd","faction":"B","name":"红雨","coord":"0608","fleet_id":"TG-B-BB","fleet_name":"第二战列舰队"},
-    {"id":"b2-dd-02","unit":"dd","faction":"B","name":"炎澜","coord":"0608","fleet_id":"TG-B-BB","fleet_name":"第二战列舰队"},
-    {"id":"b2-dd-03","unit":"dd","faction":"B","name":"雷鸣","coord":"0608","fleet_id":"TG-B-BB","fleet_name":"第二战列舰队"},
-    {"id":"b2-dd-04","unit":"dd","faction":"B","name":"热潮","coord":"0608","fleet_id":"TG-B-BB","fleet_name":"第二战列舰队"},
-    {"id":"b2-dd-05","unit":"dd","faction":"B","name":"赤雾","coord":"0608","fleet_id":"TG-B-BB","fleet_name":"第二战列舰队"},
-    {"id":"b2-dd-06","unit":"dd","faction":"B","name":"远焰","coord":"0608","fleet_id":"TG-B-BB","fleet_name":"第二战列舰队"}
+    {
+      "id": "a-bb-01",
+      "unit": "bb",
+      "faction": "A",
+      "name": "苍岭",
+      "coord": "0202",
+      "fleet_id": "TG-A",
+      "fleet_name": "第一战列舰队",
+      "hangar_capacity": 1
+    },
+    {
+      "id": "a-bb-02",
+      "unit": "bb",
+      "faction": "A",
+      "name": "岳陵",
+      "coord": "0202",
+      "fleet_id": "TG-A",
+      "fleet_name": "第一战列舰队"
+    },
+    {
+      "id": "a-bc-01",
+      "unit": "bc",
+      "faction": "A",
+      "name": "岚岳",
+      "coord": "0202",
+      "fleet_id": "TG-A",
+      "fleet_name": "第一战列舰队"
+    },
+    {
+      "id": "a-bc-02",
+      "unit": "bc",
+      "faction": "A",
+      "name": "云嶂",
+      "coord": "0202",
+      "fleet_id": "TG-A",
+      "fleet_name": "第一战列舰队"
+    },
+    {
+      "id": "a-ca-01",
+      "unit": "ca",
+      "faction": "A",
+      "name": "铁礁",
+      "coord": "0202",
+      "fleet_id": "TG-A",
+      "fleet_name": "第一战列舰队",
+      "hangar_capacity": 2
+    },
+    {
+      "id": "a-ca-02",
+      "unit": "ca",
+      "faction": "A",
+      "name": "磐石",
+      "coord": "0202",
+      "fleet_id": "TG-A",
+      "fleet_name": "第一战列舰队"
+    },
+    {
+      "id": "a-cl-01",
+      "unit": "cl",
+      "faction": "A",
+      "name": "白露",
+      "coord": "0202",
+      "fleet_id": "TG-A",
+      "fleet_name": "第一战列舰队",
+      "hangar_capacity": 2
+    },
+    {
+      "id": "a-cl-02",
+      "unit": "cl",
+      "faction": "A",
+      "name": "青霜",
+      "coord": "0202",
+      "fleet_id": "TG-A",
+      "fleet_name": "第一战列舰队"
+    },
+    {
+      "id": "a-dd-01",
+      "unit": "dd",
+      "faction": "A",
+      "name": "细雨",
+      "coord": "0202",
+      "fleet_id": "TG-A",
+      "fleet_name": "第一战列舰队"
+    },
+    {
+      "id": "a-dd-02",
+      "unit": "dd",
+      "faction": "A",
+      "name": "微澜",
+      "coord": "0202",
+      "fleet_id": "TG-A",
+      "fleet_name": "第一战列舰队"
+    },
+    {
+      "id": "a-dd-03",
+      "unit": "dd",
+      "faction": "A",
+      "name": "听雨",
+      "coord": "0202",
+      "fleet_id": "TG-A",
+      "fleet_name": "第一战列舰队"
+    },
+    {
+      "id": "a-dd-04",
+      "unit": "dd",
+      "faction": "A",
+      "name": "轻潮",
+      "coord": "0202",
+      "fleet_id": "TG-A",
+      "fleet_name": "第一战列舰队"
+    },
+    {
+      "id": "a-dd-05",
+      "unit": "dd",
+      "faction": "A",
+      "name": "薄雾",
+      "coord": "0202",
+      "fleet_id": "TG-A",
+      "fleet_name": "第一战列舰队"
+    },
+    {
+      "id": "a-dd-06",
+      "unit": "dd",
+      "faction": "A",
+      "name": "远汐",
+      "coord": "0202",
+      "fleet_id": "TG-A",
+      "fleet_name": "第一战列舰队"
+    },
+    {
+      "id": "b-cv-01",
+      "unit": "cv",
+      "faction": "B",
+      "name": "赤穹",
+      "coord": "0208",
+      "fleet_id": "TG-B",
+      "fleet_name": "航母机动舰队"
+    },
+    {
+      "id": "b-cv-02",
+      "unit": "cv",
+      "faction": "B",
+      "name": "云翔",
+      "coord": "0208",
+      "fleet_id": "TG-B",
+      "fleet_name": "航母机动舰队"
+    },
+    {
+      "id": "b-cv-03",
+      "unit": "cv",
+      "faction": "B",
+      "name": "天鹰",
+      "coord": "0208",
+      "fleet_id": "TG-B",
+      "fleet_name": "航母机动舰队"
+    },
+    {
+      "id": "b-cv-04",
+      "unit": "cv",
+      "faction": "B",
+      "name": "海隼",
+      "coord": "0208",
+      "fleet_id": "TG-B",
+      "fleet_name": "航母机动舰队"
+    },
+    {
+      "id": "b-bb-01",
+      "unit": "bb",
+      "faction": "B",
+      "name": "烈岭",
+      "coord": "0208",
+      "fleet_id": "TG-B",
+      "fleet_name": "航母机动舰队"
+    },
+    {
+      "id": "b-bb-02",
+      "unit": "bb",
+      "faction": "B",
+      "name": "炎峰",
+      "coord": "0208",
+      "fleet_id": "TG-B",
+      "fleet_name": "航母机动舰队"
+    },
+    {
+      "id": "b-ca-01",
+      "unit": "ca",
+      "faction": "B",
+      "name": "赤礁",
+      "coord": "0208",
+      "fleet_id": "TG-B",
+      "fleet_name": "航母机动舰队",
+      "hangar_capacity": 2
+    },
+    {
+      "id": "b-ca-02",
+      "unit": "ca",
+      "faction": "B",
+      "name": "朱岩",
+      "coord": "0208",
+      "fleet_id": "TG-B",
+      "fleet_name": "航母机动舰队",
+      "hangar_capacity": 2
+    },
+    {
+      "id": "b-ca-03",
+      "unit": "ca",
+      "faction": "B",
+      "name": "铁霞",
+      "coord": "0208",
+      "fleet_id": "TG-B",
+      "fleet_name": "航母机动舰队"
+    },
+    {
+      "id": "b-ca-04",
+      "unit": "ca",
+      "faction": "B",
+      "name": "红岬",
+      "coord": "0208",
+      "fleet_id": "TG-B",
+      "fleet_name": "航母机动舰队"
+    },
+    {
+      "id": "b-cl-01",
+      "unit": "cl",
+      "faction": "B",
+      "name": "海雾",
+      "coord": "0208",
+      "fleet_id": "TG-B",
+      "fleet_name": "航母机动舰队",
+      "hangar_capacity": 2
+    },
+    {
+      "id": "b-cl-02",
+      "unit": "cl",
+      "faction": "B",
+      "name": "秋霖",
+      "coord": "0208",
+      "fleet_id": "TG-B",
+      "fleet_name": "航母机动舰队"
+    },
+    {
+      "id": "b-dd-01",
+      "unit": "dd",
+      "faction": "B",
+      "name": "潮声",
+      "coord": "0208",
+      "fleet_id": "TG-B",
+      "fleet_name": "航母机动舰队"
+    },
+    {
+      "id": "b-dd-02",
+      "unit": "dd",
+      "faction": "B",
+      "name": "追浪",
+      "coord": "0208",
+      "fleet_id": "TG-B",
+      "fleet_name": "航母机动舰队"
+    },
+    {
+      "id": "b-dd-03",
+      "unit": "dd",
+      "faction": "B",
+      "name": "疾风",
+      "coord": "0208",
+      "fleet_id": "TG-B",
+      "fleet_name": "航母机动舰队"
+    },
+    {
+      "id": "b-dd-04",
+      "unit": "dd",
+      "faction": "B",
+      "name": "飞沫",
+      "coord": "0208",
+      "fleet_id": "TG-B",
+      "fleet_name": "航母机动舰队"
+    },
+    {
+      "id": "b-dd-05",
+      "unit": "dd",
+      "faction": "B",
+      "name": "暮潮",
+      "coord": "0208",
+      "fleet_id": "TG-B",
+      "fleet_name": "航母机动舰队"
+    },
+    {
+      "id": "a2-cv-01",
+      "unit": "cv",
+      "faction": "A",
+      "name": "苍穹",
+      "coord": "0602",
+      "fleet_id": "TG-A-CV",
+      "fleet_name": "第一航母机动舰队"
+    },
+    {
+      "id": "a2-cv-02",
+      "unit": "cv",
+      "faction": "A",
+      "name": "凌云",
+      "coord": "0602",
+      "fleet_id": "TG-A-CV",
+      "fleet_name": "第一航母机动舰队"
+    },
+    {
+      "id": "a2-cv-03",
+      "unit": "cv",
+      "faction": "A",
+      "name": "天翎",
+      "coord": "0602",
+      "fleet_id": "TG-A-CV",
+      "fleet_name": "第一航母机动舰队"
+    },
+    {
+      "id": "a2-cv-04",
+      "unit": "cv",
+      "faction": "A",
+      "name": "海鹰",
+      "coord": "0602",
+      "fleet_id": "TG-A-CV",
+      "fleet_name": "第一航母机动舰队"
+    },
+    {
+      "id": "a2-bb-01",
+      "unit": "bb",
+      "faction": "A",
+      "name": "镇岳",
+      "coord": "0602",
+      "fleet_id": "TG-A-CV",
+      "fleet_name": "第一航母机动舰队"
+    },
+    {
+      "id": "a2-bb-02",
+      "unit": "bb",
+      "faction": "A",
+      "name": "定山",
+      "coord": "0602",
+      "fleet_id": "TG-A-CV",
+      "fleet_name": "第一航母机动舰队"
+    },
+    {
+      "id": "a2-ca-01",
+      "unit": "ca",
+      "faction": "A",
+      "name": "青礁",
+      "coord": "0602",
+      "fleet_id": "TG-A-CV",
+      "fleet_name": "第一航母机动舰队",
+      "hangar_capacity": 2
+    },
+    {
+      "id": "a2-ca-02",
+      "unit": "ca",
+      "faction": "A",
+      "name": "碧岩",
+      "coord": "0602",
+      "fleet_id": "TG-A-CV",
+      "fleet_name": "第一航母机动舰队",
+      "hangar_capacity": 2
+    },
+    {
+      "id": "a2-ca-03",
+      "unit": "ca",
+      "faction": "A",
+      "name": "霜霞",
+      "coord": "0602",
+      "fleet_id": "TG-A-CV",
+      "fleet_name": "第一航母机动舰队"
+    },
+    {
+      "id": "a2-ca-04",
+      "unit": "ca",
+      "faction": "A",
+      "name": "蓝岬",
+      "coord": "0602",
+      "fleet_id": "TG-A-CV",
+      "fleet_name": "第一航母机动舰队"
+    },
+    {
+      "id": "a2-cl-01",
+      "unit": "cl",
+      "faction": "A",
+      "name": "晨雾",
+      "coord": "0602",
+      "fleet_id": "TG-A-CV",
+      "fleet_name": "第一航母机动舰队",
+      "hangar_capacity": 2
+    },
+    {
+      "id": "a2-cl-02",
+      "unit": "cl",
+      "faction": "A",
+      "name": "清霖",
+      "coord": "0602",
+      "fleet_id": "TG-A-CV",
+      "fleet_name": "第一航母机动舰队"
+    },
+    {
+      "id": "a2-dd-01",
+      "unit": "dd",
+      "faction": "A",
+      "name": "浪潮",
+      "coord": "0602",
+      "fleet_id": "TG-A-CV",
+      "fleet_name": "第一航母机动舰队"
+    },
+    {
+      "id": "a2-dd-02",
+      "unit": "dd",
+      "faction": "A",
+      "name": "逐流",
+      "coord": "0602",
+      "fleet_id": "TG-A-CV",
+      "fleet_name": "第一航母机动舰队"
+    },
+    {
+      "id": "a2-dd-03",
+      "unit": "dd",
+      "faction": "A",
+      "name": "海风",
+      "coord": "0602",
+      "fleet_id": "TG-A-CV",
+      "fleet_name": "第一航母机动舰队"
+    },
+    {
+      "id": "a2-dd-04",
+      "unit": "dd",
+      "faction": "A",
+      "name": "白沫",
+      "coord": "0602",
+      "fleet_id": "TG-A-CV",
+      "fleet_name": "第一航母机动舰队"
+    },
+    {
+      "id": "a2-dd-05",
+      "unit": "dd",
+      "faction": "A",
+      "name": "晚潮",
+      "coord": "0602",
+      "fleet_id": "TG-A-CV",
+      "fleet_name": "第一航母机动舰队"
+    },
+    {
+      "id": "b2-bb-01",
+      "unit": "bb",
+      "faction": "B",
+      "name": "赤岭",
+      "coord": "0608",
+      "fleet_id": "TG-B-BB",
+      "fleet_name": "第二战列舰队",
+      "hangar_capacity": 1
+    },
+    {
+      "id": "b2-bb-02",
+      "unit": "bb",
+      "faction": "B",
+      "name": "焰陵",
+      "coord": "0608",
+      "fleet_id": "TG-B-BB",
+      "fleet_name": "第二战列舰队"
+    },
+    {
+      "id": "b2-bc-01",
+      "unit": "bc",
+      "faction": "B",
+      "name": "火岳",
+      "coord": "0608",
+      "fleet_id": "TG-B-BB",
+      "fleet_name": "第二战列舰队"
+    },
+    {
+      "id": "b2-bc-02",
+      "unit": "bc",
+      "faction": "B",
+      "name": "红嶂",
+      "coord": "0608",
+      "fleet_id": "TG-B-BB",
+      "fleet_name": "第二战列舰队"
+    },
+    {
+      "id": "b2-ca-01",
+      "unit": "ca",
+      "faction": "B",
+      "name": "丹礁",
+      "coord": "0608",
+      "fleet_id": "TG-B-BB",
+      "fleet_name": "第二战列舰队",
+      "hangar_capacity": 2
+    },
+    {
+      "id": "b2-ca-02",
+      "unit": "ca",
+      "faction": "B",
+      "name": "赭石",
+      "coord": "0608",
+      "fleet_id": "TG-B-BB",
+      "fleet_name": "第二战列舰队"
+    },
+    {
+      "id": "b2-cl-01",
+      "unit": "cl",
+      "faction": "B",
+      "name": "赤露",
+      "coord": "0608",
+      "fleet_id": "TG-B-BB",
+      "fleet_name": "第二战列舰队",
+      "hangar_capacity": 2
+    },
+    {
+      "id": "b2-cl-02",
+      "unit": "cl",
+      "faction": "B",
+      "name": "枫霜",
+      "coord": "0608",
+      "fleet_id": "TG-B-BB",
+      "fleet_name": "第二战列舰队"
+    },
+    {
+      "id": "b2-dd-01",
+      "unit": "dd",
+      "faction": "B",
+      "name": "红雨",
+      "coord": "0608",
+      "fleet_id": "TG-B-BB",
+      "fleet_name": "第二战列舰队"
+    },
+    {
+      "id": "b2-dd-02",
+      "unit": "dd",
+      "faction": "B",
+      "name": "炎澜",
+      "coord": "0608",
+      "fleet_id": "TG-B-BB",
+      "fleet_name": "第二战列舰队"
+    },
+    {
+      "id": "b2-dd-03",
+      "unit": "dd",
+      "faction": "B",
+      "name": "雷鸣",
+      "coord": "0608",
+      "fleet_id": "TG-B-BB",
+      "fleet_name": "第二战列舰队"
+    },
+    {
+      "id": "b2-dd-04",
+      "unit": "dd",
+      "faction": "B",
+      "name": "热潮",
+      "coord": "0608",
+      "fleet_id": "TG-B-BB",
+      "fleet_name": "第二战列舰队"
+    },
+    {
+      "id": "b2-dd-05",
+      "unit": "dd",
+      "faction": "B",
+      "name": "赤雾",
+      "coord": "0608",
+      "fleet_id": "TG-B-BB",
+      "fleet_name": "第二战列舰队"
+    },
+    {
+      "id": "b2-dd-06",
+      "unit": "dd",
+      "faction": "B",
+      "name": "远焰",
+      "coord": "0608",
+      "fleet_id": "TG-B-BB",
+      "fleet_name": "第二战列舰队"
+    }
   ],
   "air_deployments": [
-    {"id":"air-b-01","unit":"fighter","carrier":"b-cv-01"},
-    {"id":"air-b-02","unit":"fighter","carrier":"b-cv-01"},
-    {"id":"air-b-03","unit":"dive_bomber","carrier":"b-cv-01"},
-    {"id":"air-b-04","unit":"torpedo_bomber","carrier":"b-cv-01"},
-    {"id":"air-b-05","unit":"fighter","carrier":"b-cv-02"},
-    {"id":"air-b-06","unit":"dive_bomber","carrier":"b-cv-02"},
-    {"id":"air-b-07","unit":"fighter","carrier":"b-cv-03"},
-    {"id":"air-b-08","unit":"torpedo_bomber","carrier":"b-cv-03"},
-    {"id":"air-b-09","unit":"fighter","carrier":"b-cv-04"},
-    {"id":"air-b-10","unit":"recon","carrier":"b-cv-04"},
-    {"id":"air-b-11","unit":"seaplane","carrier":"b-ca-01"},
-    {"id":"air-b-17","unit":"seaplane","carrier":"b-ca-01"},
-    {"id":"air-b-12","unit":"seaplane","carrier":"b-ca-02"},
-    {"id":"air-b-18","unit":"seaplane","carrier":"b-ca-02"},
-    {"id":"air-b-13","unit":"seaplane","carrier":"b-cl-01"},
-    {"id":"air-b-19","unit":"seaplane","carrier":"b-cl-01"},
-    {"id":"air-a-01","unit":"fighter","carrier":"a2-cv-01"},
-    {"id":"air-a-02","unit":"fighter","carrier":"a2-cv-01"},
-    {"id":"air-a-03","unit":"dive_bomber","carrier":"a2-cv-01"},
-    {"id":"air-a-04","unit":"torpedo_bomber","carrier":"a2-cv-01"},
-    {"id":"air-a-05","unit":"fighter","carrier":"a2-cv-02"},
-    {"id":"air-a-06","unit":"dive_bomber","carrier":"a2-cv-02"},
-    {"id":"air-a-07","unit":"fighter","carrier":"a2-cv-03"},
-    {"id":"air-a-08","unit":"torpedo_bomber","carrier":"a2-cv-03"},
-    {"id":"air-a-09","unit":"fighter","carrier":"a2-cv-04"},
-    {"id":"air-a-10","unit":"recon","carrier":"a2-cv-04"},
-    {"id":"air-a-11","unit":"seaplane","carrier":"a2-ca-01"},
-    {"id":"air-a-17","unit":"seaplane","carrier":"a2-ca-01"},
-    {"id":"air-a-12","unit":"seaplane","carrier":"a2-ca-02"},
-    {"id":"air-a-18","unit":"seaplane","carrier":"a2-ca-02"},
-    {"id":"air-a-13","unit":"seaplane","carrier":"a2-cl-01"},
-    {"id":"air-a-19","unit":"seaplane","carrier":"a2-cl-01"},
-    {"id":"air-a-14","unit":"seaplane","carrier":"a-bb-01"},
-    {"id":"air-a-15","unit":"seaplane","carrier":"a-ca-01"},
-    {"id":"air-a-20","unit":"seaplane","carrier":"a-ca-01"},
-    {"id":"air-a-16","unit":"seaplane","carrier":"a-cl-01"},
-    {"id":"air-a-21","unit":"seaplane","carrier":"a-cl-01"},
-    {"id":"air-b-14","unit":"seaplane","carrier":"b2-bb-01"},
-    {"id":"air-b-15","unit":"seaplane","carrier":"b2-ca-01"},
-    {"id":"air-b-20","unit":"seaplane","carrier":"b2-ca-01"},
-    {"id":"air-b-16","unit":"seaplane","carrier":"b2-cl-01"},
-    {"id":"air-b-21","unit":"seaplane","carrier":"b2-cl-01"}
-  ]
+    {
+      "id": "air-b-11",
+      "unit": "seaplane",
+      "carrier": "b-ca-01"
+    },
+    {
+      "id": "air-b-17",
+      "unit": "seaplane",
+      "carrier": "b-ca-01"
+    },
+    {
+      "id": "air-b-12",
+      "unit": "seaplane",
+      "carrier": "b-ca-02"
+    },
+    {
+      "id": "air-b-18",
+      "unit": "seaplane",
+      "carrier": "b-ca-02"
+    },
+    {
+      "id": "air-b-13",
+      "unit": "seaplane",
+      "carrier": "b-cl-01"
+    },
+    {
+      "id": "air-b-19",
+      "unit": "seaplane",
+      "carrier": "b-cl-01"
+    },
+    {
+      "id": "air-a-11",
+      "unit": "seaplane",
+      "carrier": "a2-ca-01"
+    },
+    {
+      "id": "air-a-17",
+      "unit": "seaplane",
+      "carrier": "a2-ca-01"
+    },
+    {
+      "id": "air-a-12",
+      "unit": "seaplane",
+      "carrier": "a2-ca-02"
+    },
+    {
+      "id": "air-a-18",
+      "unit": "seaplane",
+      "carrier": "a2-ca-02"
+    },
+    {
+      "id": "air-a-13",
+      "unit": "seaplane",
+      "carrier": "a2-cl-01"
+    },
+    {
+      "id": "air-a-19",
+      "unit": "seaplane",
+      "carrier": "a2-cl-01"
+    },
+    {
+      "id": "air-a-14",
+      "unit": "seaplane",
+      "carrier": "a-bb-01"
+    },
+    {
+      "id": "air-a-15",
+      "unit": "seaplane",
+      "carrier": "a-ca-01"
+    },
+    {
+      "id": "air-a-20",
+      "unit": "seaplane",
+      "carrier": "a-ca-01"
+    },
+    {
+      "id": "air-a-16",
+      "unit": "seaplane",
+      "carrier": "a-cl-01"
+    },
+    {
+      "id": "air-a-21",
+      "unit": "seaplane",
+      "carrier": "a-cl-01"
+    },
+    {
+      "id": "air-b-14",
+      "unit": "seaplane",
+      "carrier": "b2-bb-01"
+    },
+    {
+      "id": "air-b-15",
+      "unit": "seaplane",
+      "carrier": "b2-ca-01"
+    },
+    {
+      "id": "air-b-20",
+      "unit": "seaplane",
+      "carrier": "b2-ca-01"
+    },
+    {
+      "id": "air-b-16",
+      "unit": "seaplane",
+      "carrier": "b2-cl-01"
+    },
+    {
+      "id": "air-b-21",
+      "unit": "seaplane",
+      "carrier": "b2-cl-01"
+    },
+    {
+      "id": "a2-cv-01-fighter-x1",
+      "unit": "fighter",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-01-fighter-x2",
+      "unit": "fighter",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-01-fighter-x3",
+      "unit": "fighter",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-01-fighter-x4",
+      "unit": "fighter",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-01-fighter-x5",
+      "unit": "fighter",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-01-fighter-x6",
+      "unit": "fighter",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-01-fighter-x7",
+      "unit": "fighter",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-01-fighter-x8",
+      "unit": "fighter",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-01-fighter-x9",
+      "unit": "fighter",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-01-fighter-x10",
+      "unit": "fighter",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-01-dive_bomber-x1",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-01-dive_bomber-x2",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-01-dive_bomber-x3",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-01-dive_bomber-x4",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-01-dive_bomber-x5",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-01-dive_bomber-x6",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-01-dive_bomber-x7",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-01-dive_bomber-x8",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-01-torpedo_bomber-x1",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-01-torpedo_bomber-x2",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-01-torpedo_bomber-x3",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-01-torpedo_bomber-x4",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-01-torpedo_bomber-x5",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-01-torpedo_bomber-x6",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-01"
+    },
+    {
+      "id": "a2-cv-02-fighter-x1",
+      "unit": "fighter",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-02-fighter-x2",
+      "unit": "fighter",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-02-fighter-x3",
+      "unit": "fighter",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-02-fighter-x4",
+      "unit": "fighter",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-02-fighter-x5",
+      "unit": "fighter",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-02-fighter-x6",
+      "unit": "fighter",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-02-fighter-x7",
+      "unit": "fighter",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-02-fighter-x8",
+      "unit": "fighter",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-02-fighter-x9",
+      "unit": "fighter",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-02-fighter-x10",
+      "unit": "fighter",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-02-dive_bomber-x1",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-02-dive_bomber-x2",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-02-dive_bomber-x3",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-02-dive_bomber-x4",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-02-dive_bomber-x5",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-02-dive_bomber-x6",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-02-dive_bomber-x7",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-02-dive_bomber-x8",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-02-torpedo_bomber-x1",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-02-torpedo_bomber-x2",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-02-torpedo_bomber-x3",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-02-torpedo_bomber-x4",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-02-torpedo_bomber-x5",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-02-torpedo_bomber-x6",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-02"
+    },
+    {
+      "id": "a2-cv-03-fighter-x1",
+      "unit": "fighter",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-03-fighter-x2",
+      "unit": "fighter",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-03-fighter-x3",
+      "unit": "fighter",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-03-fighter-x4",
+      "unit": "fighter",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-03-fighter-x5",
+      "unit": "fighter",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-03-fighter-x6",
+      "unit": "fighter",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-03-fighter-x7",
+      "unit": "fighter",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-03-fighter-x8",
+      "unit": "fighter",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-03-fighter-x9",
+      "unit": "fighter",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-03-fighter-x10",
+      "unit": "fighter",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-03-dive_bomber-x1",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-03-dive_bomber-x2",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-03-dive_bomber-x3",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-03-dive_bomber-x4",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-03-dive_bomber-x5",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-03-dive_bomber-x6",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-03-dive_bomber-x7",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-03-dive_bomber-x8",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-03-torpedo_bomber-x1",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-03-torpedo_bomber-x2",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-03-torpedo_bomber-x3",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-03-torpedo_bomber-x4",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-03-torpedo_bomber-x5",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-03-torpedo_bomber-x6",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-03"
+    },
+    {
+      "id": "a2-cv-04-fighter-x1",
+      "unit": "fighter",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "a2-cv-04-fighter-x2",
+      "unit": "fighter",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "a2-cv-04-fighter-x3",
+      "unit": "fighter",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "a2-cv-04-fighter-x4",
+      "unit": "fighter",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "a2-cv-04-fighter-x5",
+      "unit": "fighter",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "a2-cv-04-fighter-x6",
+      "unit": "fighter",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "a2-cv-04-fighter-x7",
+      "unit": "fighter",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "a2-cv-04-fighter-x8",
+      "unit": "fighter",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "a2-cv-04-fighter-x9",
+      "unit": "fighter",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "a2-cv-04-fighter-x10",
+      "unit": "fighter",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "a2-cv-04-dive_bomber-x1",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "a2-cv-04-dive_bomber-x2",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "a2-cv-04-dive_bomber-x3",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "a2-cv-04-dive_bomber-x4",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "a2-cv-04-dive_bomber-x5",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "a2-cv-04-dive_bomber-x6",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "a2-cv-04-dive_bomber-x7",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "a2-cv-04-dive_bomber-x8",
+      "unit": "dive_bomber",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "a2-cv-04-torpedo_bomber-x1",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "a2-cv-04-torpedo_bomber-x2",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "a2-cv-04-torpedo_bomber-x3",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "a2-cv-04-torpedo_bomber-x4",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "a2-cv-04-torpedo_bomber-x5",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "a2-cv-04-torpedo_bomber-x6",
+      "unit": "torpedo_bomber",
+      "carrier": "a2-cv-04"
+    },
+    {
+      "id": "b-cv-01-fighter-x1",
+      "unit": "fighter",
+      "carrier": "b-cv-01"
+    },
+    {
+      "id": "b-cv-01-fighter-x2",
+      "unit": "fighter",
+      "carrier": "b-cv-01"
+    },
+    {
+      "id": "b-cv-01-fighter-x3",
+      "unit": "fighter",
+      "carrier": "b-cv-01"
+    },
+    {
+      "id": "b-cv-01-fighter-x4",
+      "unit": "fighter",
+      "carrier": "b-cv-01"
+    },
+    {
+      "id": "b-cv-01-fighter-x5",
+      "unit": "fighter",
+      "carrier": "b-cv-01"
+    },
+    {
+      "id": "b-cv-01-fighter-x6",
+      "unit": "fighter",
+      "carrier": "b-cv-01"
+    },
+    {
+      "id": "b-cv-01-dive_bomber-x1",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-01"
+    },
+    {
+      "id": "b-cv-01-dive_bomber-x2",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-01"
+    },
+    {
+      "id": "b-cv-01-dive_bomber-x3",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-01"
+    },
+    {
+      "id": "b-cv-01-dive_bomber-x4",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-01"
+    },
+    {
+      "id": "b-cv-01-dive_bomber-x5",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-01"
+    },
+    {
+      "id": "b-cv-01-dive_bomber-x6",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-01"
+    },
+    {
+      "id": "b-cv-01-dive_bomber-x7",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-01"
+    },
+    {
+      "id": "b-cv-01-torpedo_bomber-x1",
+      "unit": "torpedo_bomber",
+      "carrier": "b-cv-01"
+    },
+    {
+      "id": "b-cv-01-torpedo_bomber-x2",
+      "unit": "torpedo_bomber",
+      "carrier": "b-cv-01"
+    },
+    {
+      "id": "b-cv-01-torpedo_bomber-x3",
+      "unit": "torpedo_bomber",
+      "carrier": "b-cv-01"
+    },
+    {
+      "id": "b-cv-01-torpedo_bomber-x4",
+      "unit": "torpedo_bomber",
+      "carrier": "b-cv-01"
+    },
+    {
+      "id": "b-cv-01-torpedo_bomber-x5",
+      "unit": "torpedo_bomber",
+      "carrier": "b-cv-01"
+    },
+    {
+      "id": "b-cv-02-fighter-x1",
+      "unit": "fighter",
+      "carrier": "b-cv-02"
+    },
+    {
+      "id": "b-cv-02-fighter-x2",
+      "unit": "fighter",
+      "carrier": "b-cv-02"
+    },
+    {
+      "id": "b-cv-02-fighter-x3",
+      "unit": "fighter",
+      "carrier": "b-cv-02"
+    },
+    {
+      "id": "b-cv-02-fighter-x4",
+      "unit": "fighter",
+      "carrier": "b-cv-02"
+    },
+    {
+      "id": "b-cv-02-fighter-x5",
+      "unit": "fighter",
+      "carrier": "b-cv-02"
+    },
+    {
+      "id": "b-cv-02-fighter-x6",
+      "unit": "fighter",
+      "carrier": "b-cv-02"
+    },
+    {
+      "id": "b-cv-02-dive_bomber-x1",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-02"
+    },
+    {
+      "id": "b-cv-02-dive_bomber-x2",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-02"
+    },
+    {
+      "id": "b-cv-02-dive_bomber-x3",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-02"
+    },
+    {
+      "id": "b-cv-02-dive_bomber-x4",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-02"
+    },
+    {
+      "id": "b-cv-02-dive_bomber-x5",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-02"
+    },
+    {
+      "id": "b-cv-02-dive_bomber-x6",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-02"
+    },
+    {
+      "id": "b-cv-02-dive_bomber-x7",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-02"
+    },
+    {
+      "id": "b-cv-02-torpedo_bomber-x1",
+      "unit": "torpedo_bomber",
+      "carrier": "b-cv-02"
+    },
+    {
+      "id": "b-cv-02-torpedo_bomber-x2",
+      "unit": "torpedo_bomber",
+      "carrier": "b-cv-02"
+    },
+    {
+      "id": "b-cv-02-torpedo_bomber-x3",
+      "unit": "torpedo_bomber",
+      "carrier": "b-cv-02"
+    },
+    {
+      "id": "b-cv-02-torpedo_bomber-x4",
+      "unit": "torpedo_bomber",
+      "carrier": "b-cv-02"
+    },
+    {
+      "id": "b-cv-02-torpedo_bomber-x5",
+      "unit": "torpedo_bomber",
+      "carrier": "b-cv-02"
+    },
+    {
+      "id": "b-cv-03-fighter-x1",
+      "unit": "fighter",
+      "carrier": "b-cv-03"
+    },
+    {
+      "id": "b-cv-03-fighter-x2",
+      "unit": "fighter",
+      "carrier": "b-cv-03"
+    },
+    {
+      "id": "b-cv-03-fighter-x3",
+      "unit": "fighter",
+      "carrier": "b-cv-03"
+    },
+    {
+      "id": "b-cv-03-fighter-x4",
+      "unit": "fighter",
+      "carrier": "b-cv-03"
+    },
+    {
+      "id": "b-cv-03-fighter-x5",
+      "unit": "fighter",
+      "carrier": "b-cv-03"
+    },
+    {
+      "id": "b-cv-03-fighter-x6",
+      "unit": "fighter",
+      "carrier": "b-cv-03"
+    },
+    {
+      "id": "b-cv-03-dive_bomber-x1",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-03"
+    },
+    {
+      "id": "b-cv-03-dive_bomber-x2",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-03"
+    },
+    {
+      "id": "b-cv-03-dive_bomber-x3",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-03"
+    },
+    {
+      "id": "b-cv-03-dive_bomber-x4",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-03"
+    },
+    {
+      "id": "b-cv-03-dive_bomber-x5",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-03"
+    },
+    {
+      "id": "b-cv-03-dive_bomber-x6",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-03"
+    },
+    {
+      "id": "b-cv-03-dive_bomber-x7",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-03"
+    },
+    {
+      "id": "b-cv-03-torpedo_bomber-x1",
+      "unit": "torpedo_bomber",
+      "carrier": "b-cv-03"
+    },
+    {
+      "id": "b-cv-03-torpedo_bomber-x2",
+      "unit": "torpedo_bomber",
+      "carrier": "b-cv-03"
+    },
+    {
+      "id": "b-cv-03-torpedo_bomber-x3",
+      "unit": "torpedo_bomber",
+      "carrier": "b-cv-03"
+    },
+    {
+      "id": "b-cv-03-torpedo_bomber-x4",
+      "unit": "torpedo_bomber",
+      "carrier": "b-cv-03"
+    },
+    {
+      "id": "b-cv-03-torpedo_bomber-x5",
+      "unit": "torpedo_bomber",
+      "carrier": "b-cv-03"
+    },
+    {
+      "id": "b-cv-04-fighter-x1",
+      "unit": "fighter",
+      "carrier": "b-cv-04"
+    },
+    {
+      "id": "b-cv-04-fighter-x2",
+      "unit": "fighter",
+      "carrier": "b-cv-04"
+    },
+    {
+      "id": "b-cv-04-fighter-x3",
+      "unit": "fighter",
+      "carrier": "b-cv-04"
+    },
+    {
+      "id": "b-cv-04-fighter-x4",
+      "unit": "fighter",
+      "carrier": "b-cv-04"
+    },
+    {
+      "id": "b-cv-04-fighter-x5",
+      "unit": "fighter",
+      "carrier": "b-cv-04"
+    },
+    {
+      "id": "b-cv-04-fighter-x6",
+      "unit": "fighter",
+      "carrier": "b-cv-04"
+    },
+    {
+      "id": "b-cv-04-dive_bomber-x1",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-04"
+    },
+    {
+      "id": "b-cv-04-dive_bomber-x2",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-04"
+    },
+    {
+      "id": "b-cv-04-dive_bomber-x3",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-04"
+    },
+    {
+      "id": "b-cv-04-dive_bomber-x4",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-04"
+    },
+    {
+      "id": "b-cv-04-dive_bomber-x5",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-04"
+    },
+    {
+      "id": "b-cv-04-dive_bomber-x6",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-04"
+    },
+    {
+      "id": "b-cv-04-dive_bomber-x7",
+      "unit": "dive_bomber",
+      "carrier": "b-cv-04"
+    },
+    {
+      "id": "b-cv-04-torpedo_bomber-x1",
+      "unit": "torpedo_bomber",
+      "carrier": "b-cv-04"
+    },
+    {
+      "id": "b-cv-04-torpedo_bomber-x2",
+      "unit": "torpedo_bomber",
+      "carrier": "b-cv-04"
+    },
+    {
+      "id": "b-cv-04-torpedo_bomber-x3",
+      "unit": "torpedo_bomber",
+      "carrier": "b-cv-04"
+    },
+    {
+      "id": "b-cv-04-torpedo_bomber-x4",
+      "unit": "torpedo_bomber",
+      "carrier": "b-cv-04"
+    },
+    {
+      "id": "b-cv-04-torpedo_bomber-x5",
+      "unit": "torpedo_bomber",
+      "carrier": "b-cv-04"
+    }
+  ],
+  "airfields": [
+    {
+      "id": "af-a-lighthouse",
+      "faction": "A",
+      "name": "灯塔岛机场",
+      "coord": "0304",
+      "type": "field",
+      "runways": 2,
+      "radar": true,
+      "heavy_aa": 4,
+      "light_aa": 6,
+      "coastal": 2,
+      "aircraft": [
+        "af-a-fighter-1",
+        "af-a-fighter-2",
+        "af-a-fighter-3"
+      ]
+    },
+    {
+      "id": "af-b-sentry",
+      "faction": "B",
+      "name": "瞭望岛机场",
+      "coord": "0207",
+      "type": "heavy",
+      "runways": 3,
+      "radar": true,
+      "heavy_aa": 6,
+      "light_aa": 9,
+      "coastal": 3,
+      "aircraft": [
+        "af-b-fighter-1",
+        "af-b-fighter-2",
+        "af-b-dive_bomber-1",
+        "af-b-torpedo_bomber-1"
+      ]
+    }
+  ],
+  "wind": "NE"
 }
