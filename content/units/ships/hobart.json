@@ -1,0 +1,27 @@
+{
+ "id": "hobart",
+ "faction": "A",
+ "type": "CL",
+ "name": "霍巴特",
+ "picture": "misc/image/ship/leander.png",
+ "strength": 1,
+ "card": {
+  "damage_control": 2,
+  "main_gun_count": 8,
+  "main_gun_caliber": 6.0,
+  "heavy_aa": 4.0,
+  "light_aa": 4.0,
+  "surface_radar": false,
+  "air_radar": false,
+  "speed_class": "fast",
+  "torpedo_salvos": 0,
+  "aircraft": 0,
+  "deck_capacity": 0,
+  "elevator_count": 0,
+  "depth_charges": 0,
+  "cargo": 0,
+  "armored_carrier": false,
+  "gunnery": 6,
+  "nation": "australia"
+ }
+}

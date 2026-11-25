@@ -17,16 +17,15 @@ func TestFleetMovementIntervalsAndCooldown(t *testing.T) {
 	}
 	ApplyImmediateMove(&state, order)
 	for _, unit := range state.Units {
-		if unit.Faction == "A" && FleetKey(unit) == "TG-A" && unit.MoveCooldown != 3 {
-			t.Fatalf("移动后没有给整队设置3回合冷却：%+v", unit)
+		if unit.Faction == "A" && FleetKey(unit) == "TG-A" && unit.MoveCooldown != 2 {
+			t.Fatalf("3回合周期移动后应给整队设置2点冷却：%+v", unit)
 		}
 	}
 	if err := ValidateOrder(state, "A", order); err == nil {
 		t.Fatal("移动后允许无视冷却再次移动")
 	}
-	// 规划移动的那一回合把 3 回合冷却花掉 1 回合：结算后只剩 2 回合，再走两回合回到 0。
-	// 段落提醒：所有船都按舰队同步冷却，因此第一回合就应该看到 2。
-	expectedCooldowns := []int{3, 2, 1, 0}
+	// 3回合周期：移动后挂2点冷却，接下来两个回合结算各递减1，第二次结算后归零。
+	expectedCooldowns := []int{1, 0}
 	for turn, expected := range expectedCooldowns {
 		ResolveOrders(&state, nil)
 		if state.Units[leader.ID].MoveCooldown != expected {

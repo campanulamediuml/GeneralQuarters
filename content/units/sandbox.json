@@ -52,7 +52,7 @@
     "armored_carrier": false,
     "gunnery": 15
    },
-   "picture": "misc/image/ship/north_carolina.png"
+   "picture": "misc/image/ship/usa_bc1.png"
   },
   {
    "id": "ca",
@@ -183,7 +183,8 @@
     "armored_carrier": false,
     "gunnery": 0,
     "hangar_capacity": 9
-   }
+   },
+   "picture": "misc/image/ship/usa_cvl1.png"
   },
   {
    "id": "cve",
@@ -209,7 +210,8 @@
     "armored_carrier": false,
     "gunnery": 2,
     "hangar_capacity": 9
-   }
+   },
+   "picture": "misc/image/ship/usa_cve0.png"
   },
   {
    "id": "trs",
@@ -234,7 +236,8 @@
     "cargo": 12,
     "armored_carrier": false,
     "gunnery": 0
-   }
+   },
+   "picture": "misc/image/ship/cmn_ms1_3.png"
   },
   {
    "id": "bb",
@@ -364,7 +367,7 @@
     "armored_carrier": false,
     "gunnery": 3
    },
-   "picture": "misc/image/ship/shiratsuyu.png"
+   "picture": "misc/image/ship/jap_dd1.png"
   },
   {
    "id": "cv",
@@ -417,7 +420,8 @@
     "armored_carrier": false,
     "gunnery": 0,
     "hangar_capacity": 9
-   }
+   },
+   "picture": "misc/image/ship/jap_cvl1.png"
   },
   {
    "id": "cve",
@@ -443,7 +447,8 @@
     "armored_carrier": false,
     "gunnery": 2,
     "hangar_capacity": 9
-   }
+   },
+   "picture": "misc/image/ship/jap_cve0.png"
   },
   {
    "id": "trs",
@@ -468,7 +473,8 @@
     "cargo": 12,
     "armored_carrier": false,
     "gunnery": 0
-   }
+   },
+   "picture": "misc/image/ship/cmn_ms1_3.png"
   }
  ],
  "aircraft": [
@@ -477,6 +483,8 @@
    "faction": "A",
    "name": "战斗机",
    "model": "F4F 野猫",
+   "picture": "misc/image/aircraft/f4f.png",
+   "picture_mode": "image",
    "kind": "fighter",
    "strength": 2,
    "range": 9,
@@ -489,6 +497,8 @@
    "faction": "A",
    "name": "俯冲轰炸机",
    "model": "SBD 无畏",
+   "picture": "misc/image/aircraft/sbd.png",
+   "picture_mode": "image",
    "kind": "dive_bomber",
    "strength": 2,
    "range": 13,
@@ -501,6 +511,8 @@
    "faction": "A",
    "name": "鱼雷机",
    "model": "TBD 蹂躏者",
+   "picture": "misc/image/aircraft/tbd.png",
+   "picture_mode": "image",
    "kind": "torpedo_bomber",
    "strength": 1,
    "range": 14,
@@ -513,6 +525,8 @@
    "faction": "A",
    "name": "水上侦察机",
    "model": "SOC 海鸥",
+   "picture": "misc/image/aircraft/soc.png",
+   "picture_mode": "image",
    "kind": "recon",
    "strength": 1,
    "range": 9,
@@ -526,6 +540,8 @@
    "faction": "B",
    "name": "战斗机",
    "model": "A6M2 零战",
+   "picture": "misc/image/aircraft/a6m2.png",
+   "picture_mode": "image",
    "kind": "fighter",
    "strength": 1,
    "range": 32,
@@ -534,10 +550,26 @@
    "anti_ground": 1
   },
   {
+   "id": "a5m",
+   "faction": "B",
+   "name": "战斗机",
+   "model": "A5M 九六舰战",
+   "picture": "misc/image/aircraft/a5m.png",
+   "picture_mode": "image",
+   "kind": "fighter",
+   "strength": 1,
+   "range": 13,
+   "air_combat": 1,
+   "anti_ship": 0,
+   "anti_ground": 0
+  },
+  {
    "id": "dive_bomber",
    "faction": "B",
    "name": "俯冲轰炸机",
    "model": "D3A1 九九舰爆",
+   "picture": "misc/image/aircraft/d3a1.png",
+   "picture_mode": "image",
    "kind": "dive_bomber",
    "strength": 1,
    "range": 16,
@@ -550,6 +582,8 @@
    "faction": "B",
    "name": "鱼雷机",
    "model": "B5N2 九七舰攻",
+   "picture": "misc/image/aircraft/b5n2.png",
+   "picture_mode": "image",
    "kind": "torpedo_bomber",
    "strength": 1,
    "range": 16,
@@ -562,6 +596,8 @@
    "faction": "B",
    "name": "水上侦察机",
    "model": "E13A 零式水侦",
+   "picture": "misc/image/aircraft/e13a.png",
+   "picture_mode": "image",
    "kind": "recon",
    "strength": 1,
    "range": 14,
@@ -575,6 +611,8 @@
    "faction": "B",
    "name": "九七式飞行艇",
    "model": "H6K 九七式飞行艇",
+   "picture": "misc/image/aircraft/h6k.png",
+   "picture_mode": "image",
    "kind": "recon",
    "strength": 2,
    "range": 48,
@@ -589,6 +627,8 @@
    "faction": "B",
    "name": "陆上攻击机",
    "model": "G4M 一式陆攻",
+   "picture": "misc/image/aircraft/g4m.png",
+   "picture_mode": "image",
    "kind": "torpedo_bomber",
    "strength": 1,
    "range": 40,
@@ -602,6 +642,8 @@
    "faction": "B",
    "name": "陆上攻击机",
    "model": "G3M 九六陆攻",
+   "picture": "misc/image/aircraft/g3m.png",
+   "picture_mode": "image",
    "kind": "torpedo_bomber",
    "strength": 1,
    "range": 38,
@@ -615,6 +657,8 @@
    "faction": "A",
    "name": "战斗机",
    "model": "P-40 战鹰",
+   "picture": "misc/image/aircraft/p40.png",
+   "picture_mode": "image",
    "kind": "fighter",
    "strength": 2,
    "range": 17,
@@ -628,10 +672,43 @@
    "faction": "A",
    "name": "中型轰炸机",
    "model": "B-25 米切尔",
-   "kind": "dive_bomber",
+   "picture": "misc/image/aircraft/b25.png",
+   "picture_mode": "image",
+   "kind": "level_bomber",
    "strength": 3,
    "range": 20,
    "air_combat": 2,
+   "anti_ship": 1,
+   "anti_ground": 2,
+   "airfield_only": true
+  },
+  {
+   "id": "pby",
+   "faction": "A",
+   "name": "水上侦察机",
+   "model": "PBY 卡特里娜",
+   "picture": "misc/image/aircraft/pby.png",
+   "picture_mode": "image",
+   "kind": "recon",
+   "strength": 1,
+   "range": 40,
+   "air_combat": 0,
+   "anti_ship": 0,
+   "anti_ground": 1,
+   "seaplane": true,
+   "airfield_only": true
+  },
+  {
+   "id": "b17",
+   "faction": "A",
+   "name": "战略轰炸机",
+   "model": "B-17 空中堡垒",
+   "picture": "misc/image/aircraft/b17.png",
+   "picture_mode": "image",
+   "kind": "strategic_bomber",
+   "strength": 3,
+   "range": 37,
+   "air_combat": 3,
    "anti_ship": 1,
    "anti_ground": 2,
    "airfield_only": true

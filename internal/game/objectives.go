@@ -1,6 +1,10 @@
 package game
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+	"strings"
+)
 
 // —— 胜利条件 ——
 //
@@ -20,6 +24,9 @@ const (
 	ObjectiveSink ObjectiveKind = "sink"
 	// ObjectiveControl：回合结束时在指定坐标有己方舰队（持续时间由 Value 决定，默认 1 回合）。
 	ObjectiveControl ObjectiveKind = "control"
+	// ObjectiveScore：不按目标条目逐条计点，而是在回合上限时按击沉战果分判定胜负
+	// （航母按机库容量，战列舰 6、重巡 3、轻巡 2、驱逐 1，见 ShipVictoryPoints）。
+	ObjectiveScore ObjectiveKind = "score"
 )
 
 // Objective 是一条剧本胜利条件。
@@ -32,16 +39,19 @@ type Objective struct {
 	Faction string `json:"faction,omitempty"`
 	Value   int    `json:"value,omitempty"`
 	Points  int    `json:"points,omitempty"`
+	// Decisive 表示"一达成即结束对局"，而不是拖到回合上限再比较目标点。
+	// 到回合上限仍未达成时，声明该目标的阵营判负（对手达成阻止）。
+	Decisive bool `json:"decisive,omitempty"`
 }
 
 // GameOutcome 是对局结果。
 type GameOutcome struct {
 	// Winner 为空表示平局。
-	Winner  string         `json:"winner,omitempty"`
-	Reason  string         `json:"reason"`
-	Scores  map[string]int `json:"scores"`
-	Turn    int            `json:"turn"`
-	TurnCap bool           `json:"turn_cap,omitempty"`
+	Winner  string             `json:"winner,omitempty"`
+	Reason  string             `json:"reason"`
+	Scores  map[string]float64 `json:"scores"`
+	Turn    int                `json:"turn"`
+	TurnCap bool               `json:"turn_cap,omitempty"`
 }
 
 // OppositeFaction 返回对手阵营：A↔B。剧本只允许两个阵营，
@@ -61,6 +71,29 @@ func objectivePoints(o Objective) int {
 		return o.Points
 	}
 	return 1
+}
+
+// objectiveLabel 是给玩家看的简短目标说明，优先用剧本写好的 text。
+func objectiveLabel(o Objective) string {
+	if o.Text != "" {
+		return o.Text
+	}
+	return o.ID
+}
+
+// factionCargoLeft 统计某阵营运输船上还剩多少货物。
+// 用来提前判定决定性投送目标是否已经不可能完成。
+func factionCargoLeft(state State, faction string) int {
+	total := 0
+	for _, unit := range state.Units {
+		if unit == nil || unit.Faction != faction || unit.Type != "TRS" {
+			continue
+		}
+		if unit.Card.Cargo > 0 {
+			total += unit.Card.Cargo
+		}
+	}
+	return total
 }
 
 // factionHasUnits 判断该阵营是否还有任何可作战单位（舰船或航空算子）。
@@ -118,6 +151,9 @@ func objectiveCompleted(state State, faction string, o Objective) bool {
 			}
 		}
 		return false
+	case ObjectiveScore:
+		// 战果分是双方共用的记分板，不是某一条目标"完成/未完成"，所以这里永远返回 false。
+		return false
 	case ObjectiveSink:
 		// 目标写在哪个阵营名下，就是"这个阵营要去击沉对方"——被统计的是对方的舰船。
 		// 之前这里直接用 target（己方）来算沉没数，等于"自己损失得越多越接近胜利"，
@@ -152,28 +188,113 @@ func EvaluateOutcome(state State) *GameOutcome {
 		}
 	}
 	if len(alive) == 1 {
-		return &GameOutcome{Winner: alive[0], Reason: "对方全军覆没", Scores: map[string]int{}, Turn: state.Turn}
+		return &GameOutcome{Winner: alive[0], Reason: "对方全军覆没", Scores: map[string]float64{}, Turn: state.Turn}
 	}
 	if len(alive) == 0 {
-		return &GameOutcome{Reason: "双方全灭", Scores: map[string]int{}, Turn: state.Turn}
+		return &GameOutcome{Reason: "双方全灭", Scores: map[string]float64{}, Turn: state.Turn}
 	}
 	if len(state.Objectives) == 0 {
 		return nil
 	}
-	scores := map[string]int{}
-	for _, faction := range alive {
-		for _, objective := range state.Objectives {
-			if objectiveCompleted(state, faction, objective) {
-				scores[faction] += objectivePoints(objective)
+	// score 目标表示"这一局按击沉战果分排名"：航母按机库容量计分，
+	// 其余按舰种折算。没有声明 score 目标的老剧本仍然按目标点计。
+	usesVictoryPoints := false
+	for _, objective := range state.Objectives {
+		if objective.Kind == ObjectiveScore {
+			usesVictoryPoints = true
+			break
+		}
+	}
+	scores := map[string]float64{}
+	if usesVictoryPoints {
+		scores = VictoryPoints(state)
+		for _, faction := range alive {
+			if _, ok := scores[faction]; !ok {
+				scores[faction] = 0
 			}
 		}
 	}
+
+	// 决定性目标一旦达成立即结束对局，不必等到回合上限。
+	for _, objective := range state.Objectives {
+		if !objective.Decisive {
+			continue
+		}
+		candidates := alive
+		if objective.Faction != "" {
+			candidates = []string{objective.Faction}
+		}
+		for _, faction := range candidates {
+			if !slices.Contains(alive, faction) {
+				continue
+			}
+			if objectiveCompleted(state, faction, objective) {
+				return &GameOutcome{Winner: faction, Reason: "完成决定性目标：" + objectiveLabel(objective), Scores: scores, Turn: state.Turn}
+			}
+		}
+	}
+
+	// 决定性补给目标已经不可能完成：货已卸空或运输船全被击沉。
+	// 不提前结束的话，未达成的一方只能无所事事地拖到回合上限。
+	for _, objective := range state.Objectives {
+		if !objective.Decisive || objective.Kind != ObjectiveSupplies || objective.Faction == "" {
+			continue
+		}
+		if !slices.Contains(alive, objective.Faction) {
+			continue
+		}
+		if factionCargoLeft(state, objective.Faction) == 0 {
+			winner := OppositeFaction(objective.Faction)
+			return &GameOutcome{Winner: winner, Reason: objective.Faction + "方已无货可卸，无法完成决定性目标：" + objectiveLabel(objective), Scores: scores, Turn: state.Turn}
+		}
+	}
+
 	// 只有到达回合上限时才按目标点结算；否则继续打。
 	if state.MaxTurns <= 0 || state.Turn < state.MaxTurns {
 		return nil
 	}
+
+	// 回合上限：声明了决定性目标却没有完成的阵营判负，对手达成阻止。
+	declared := []Objective{}
+	for _, objective := range state.Objectives {
+		if objective.Decisive && objective.Faction != "" {
+			declared = append(declared, objective)
+		}
+	}
+	if len(declared) > 0 {
+		factions := map[string]bool{}
+		labels := []string{}
+		for _, objective := range declared {
+			factions[objective.Faction] = true
+			labels = append(labels, objectiveLabel(objective))
+		}
+		if len(factions) == 1 {
+			for faction := range factions {
+				return &GameOutcome{
+					Winner:  OppositeFaction(faction),
+					Reason:  fmt.Sprintf("回合上限 %d 到达：%s方未完成决定性目标（%s），对手达成阻止", state.MaxTurns, faction, strings.Join(labels, "；")),
+					Scores:  scores,
+					Turn:    state.Turn,
+					TurnCap: true,
+				}
+			}
+		}
+	}
+
+	reason := fmt.Sprintf("回合上限 %d 到达，按目标点判定", state.MaxTurns)
+	if usesVictoryPoints {
+		reason = fmt.Sprintf("回合上限 %d 到达，按击沉战果分判定", state.MaxTurns)
+	} else {
+		for _, faction := range alive {
+			for _, objective := range state.Objectives {
+				if objectiveCompleted(state, faction, objective) {
+					scores[faction] += float64(objectivePoints(objective))
+				}
+			}
+		}
+	}
 	winner := ""
-	best := -1
+	best := -1.0
 	tied := false
 	for _, faction := range alive {
 		score := scores[faction]
@@ -188,7 +309,7 @@ func EvaluateOutcome(state State) *GameOutcome {
 	if tied {
 		winner = ""
 	}
-	return &GameOutcome{Winner: winner, Reason: fmt.Sprintf("回合上限 %d 到达，按目标点判定", state.MaxTurns), Scores: scores, Turn: state.Turn, TurnCap: true}
+	return &GameOutcome{Winner: winner, Reason: reason, Scores: scores, Turn: state.Turn, TurnCap: true}
 }
 
 // settleOutcome 在对局未结束时检查并记录结果，只产生一次事件。

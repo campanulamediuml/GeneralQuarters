@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 type MapCell struct {
@@ -121,7 +122,9 @@ type UnitDefinition struct {
 type ShipCard struct {
 	// Picture 由舰船卡注入（来自 units/ships/*.json 顶层的 picture 字段），
 	// 前端拿它当剪影蒙版；为空时回落到内置的按舰名映射。
-	Picture        string  `json:"picture,omitempty"`
+	Picture string `json:"picture,omitempty"`
+	// Nation 是可选的国别标识（目前用于澳大利亚舰船的土黄色兵牌）；为空时按阵营上色。
+	Nation         string  `json:"nation,omitempty"`
 	Gunnery        int     `json:"gunnery"`
 	DamageControl  int     `json:"damage_control"`
 	MainGunCount   int     `json:"main_gun_count"`
@@ -145,44 +148,89 @@ type ShipCard struct {
 type AircraftDefinition struct {
 	ID string `json:"id"`
 	// Faction 为空表示通用机型。美日机型的航程与型号不同，同 ID 可有多份定义。
-	Faction    string `json:"faction,omitempty"`
-	Name       string `json:"name"`
-	Model      string `json:"model"`
-	Kind       string `json:"kind"`
-	Strength   int    `json:"strength"`
-	Range      int    `json:"range"`
-	AirCombat  int    `json:"air_combat"`
-	AntiShip   int    `json:"anti_ship"`
-	AntiGround int    `json:"anti_ground"`
-	Seaplane   bool   `json:"seaplane"`
+	Faction string `json:"faction,omitempty"`
+	Name    string `json:"name"`
+	Model   string `json:"model"`
+	Kind    string `json:"kind"`
+	// Picture 是航空算子图片，相对 content/ 的路径，例如 misc/image/aircraft/f6f.png。
+	// 与舰船一致：素材放数据目录，换图、加机型不用重新构建前端；为空时前端回退到内置矢量剪影。
+	Picture string `json:"picture,omitempty"`
+	// PictureMode 决定前端怎么画这张图：空/image = 原样显示彩图，mask = 只取 alpha 当单色剪影。
+	PictureMode string `json:"picture_mode,omitempty"`
+	Strength    int    `json:"strength"`
+	Range       int    `json:"range"`
+	AirCombat   int    `json:"air_combat"`
+	AntiShip    int    `json:"anti_ship"`
+	AntiGround  int    `json:"anti_ground"`
+	Seaplane    bool   `json:"seaplane"`
 	// 空军型：只能从机场起降，不能部署到航母上
 	AirfieldOnly bool `json:"airfield_only,omitempty"`
 }
 
-// AirfieldType 对应规则书的野战机��� / 重型机场 / 大型机场，决定了能起降哪些机型。
+// AirfieldType 是机场规模：小型 / 中型 / 大型，决定能起降哪些机型；
+// 水上飞机基地是另一类，只能操作水上飞机（带浮筒或飞行艇）。
 type AirfieldType string
 
 const (
-	// AirfieldSeaplane 是水上飞机基地：锚泊在海上，只起降水机（飞行艇/水上侦察机）。
+	// AirfieldSeaplane 是水上飞机基地：锚泊在海上，只收水上飞机。
 	AirfieldSeaplane AirfieldType = "seaplane"
-	AirfieldField    AirfieldType = "field"
-	AirfieldHeavy    AirfieldType = "heavy"
-	AirfieldMajor    AirfieldType = "major"
+	AirfieldSmall    AirfieldType = "small"
+	AirfieldMedium   AirfieldType = "medium"
+	AirfieldLarge    AirfieldType = "large"
 )
+
+// NormalizeAirfieldType 把旧剧本/旧存档里的类型名映射到现在的三档规模。
+// 早期写的是野战/重型/大型对应的 field/heavy/major，"重型"是错别字，规则里就是中型。
+func NormalizeAirfieldType(airfieldType AirfieldType) AirfieldType {
+	switch strings.ToLower(strings.TrimSpace(string(airfieldType))) {
+	case "field", "small":
+		return AirfieldSmall
+	case "heavy", "medium":
+		return AirfieldMedium
+	case "major", "large":
+		return AirfieldLarge
+	case "seaplane":
+		return AirfieldSeaplane
+	}
+	return airfieldType
+}
+
+// AirfieldPicture 返回机场算子中间的标识图片（规则书 92 行"机场标识图片"）。
+// 三种规模各有一张跑道符号：小型一条、中型两条、大型三条；水机基地没有跑道，返回空串由前端退化。
+// 剧本可以用 definition.picture 覆盖，单独给某个机场画一张图标。
+func AirfieldPicture(airfieldType AirfieldType, override string) string {
+	if strings.TrimSpace(override) != "" {
+		return override
+	}
+	switch NormalizeAirfieldType(airfieldType) {
+	case AirfieldSmall:
+		return "misc/image/airfield/small.png"
+	case AirfieldMedium:
+		return "misc/image/airfield/medium.png"
+	case AirfieldLarge:
+		return "misc/image/airfield/large.png"
+	case AirfieldSeaplane:
+		// 水机基地没有跑道，用一张水上飞机停泊的圆形徽章，和三条跑道符号分开。
+		return "misc/image/airfield/seaplane.png"
+	}
+	return ""
+}
 
 // AirfieldDefinition 是剧本里部署的机场：跑道数、是否带雷达、防空与岸防值。
 type AirfieldDefinition struct {
-	ID       string       `json:"id"`
-	Faction  string       `json:"faction"`
-	Name     string       `json:"name"`
-	Coord    string       `json:"coord"`
-	Type     AirfieldType `json:"type"`
-	Runways  int          `json:"runways"`
-	Radar    bool         `json:"radar,omitempty"`
-	HeavyAA  float64      `json:"heavy_aa,omitempty"`
-	LightAA  float64      `json:"light_aa,omitempty"`
-	Coastal  int          `json:"coastal,omitempty"`
-	Aircraft []string     `json:"aircraft"`
+	ID      string       `json:"id"`
+	Faction string       `json:"faction"`
+	Name    string       `json:"name"`
+	Coord   string       `json:"coord"`
+	Type    AirfieldType `json:"type"`
+	// Picture 可覆盖按规模自动选的机场标识图片（相对 content/ 的路径）。
+	Picture  string   `json:"picture,omitempty"`
+	Runways  int      `json:"runways"`
+	Radar    bool     `json:"radar,omitempty"`
+	HeavyAA  float64  `json:"heavy_aa,omitempty"`
+	LightAA  float64  `json:"light_aa,omitempty"`
+	Coastal  int      `json:"coastal,omitempty"`
+	Aircraft []string `json:"aircraft"`
 }
 
 // Airfield 是运行时的机场状态。生命值 = 初始跑道数 × 5，可用跑道由生命值推导。
@@ -192,6 +240,7 @@ type Airfield struct {
 	Name        string       `json:"name"`
 	Coord       string       `json:"coord"`
 	Type        AirfieldType `json:"type"`
+	Picture     string       `json:"picture,omitempty"`
 	Runways     int          `json:"runways"`
 	Strength    int          `json:"strength"`
 	MaxStrength int          `json:"max_strength"`
@@ -216,9 +265,13 @@ type AirfieldAirUnit struct {
 	Faction      string `json:"faction"`
 	Model        string `json:"model"`
 	Kind         string `json:"kind"`
-	Status       string `json:"status"`
-	Strength     int    `json:"strength"`
-	MaxRange     int    `json:"max_range"`
+	// Picture 与 AirUnit.Picture 同源，来自 units/*.json 的 aircraft[].picture，
+	// 机场算子落舰/上舰转场时一起带走，前后端都用同一份配置换图。
+	Picture     string `json:"picture,omitempty"`
+	PictureMode string `json:"picture_mode,omitempty"`
+	Status      string `json:"status"`
+	Strength    int    `json:"strength"`
+	MaxRange    int    `json:"max_range"`
 	// Fuel 是燃料账本；RemainingRange 是兼容投影，读写走 Range()/Spend()。
 	Fuel           Fuel `json:"fuel"`
 	RemainingRange int  `json:"remaining_range"`
@@ -226,15 +279,20 @@ type AirfieldAirUnit struct {
 	AntiShip       int  `json:"anti_ship"`
 	AntiGround     int  `json:"anti_ground"`
 	// AirfieldOnly：陆基机型，只能在机场起降（陆攻等）。
-	AirfieldOnly bool   `json:"airfield_only,omitempty"`
-	TaskID       string `json:"task_id,omitempty"`
-	TaskKind     string `json:"task_kind,omitempty"`
-	Priority     int    `json:"priority,omitempty"`
-	Coord        string `json:"coord,omitempty"`
-	OriginCoord  string `json:"origin_coord,omitempty"`
-	TargetCoord  string `json:"target_coord,omitempty"`
+	AirfieldOnly bool `json:"airfield_only,omitempty"`
+	// Seaplane：带浮筒或飞行艇，只能从水上飞机基地起降。
+	Seaplane    bool   `json:"seaplane,omitempty"`
+	TaskID      string `json:"task_id,omitempty"`
+	TaskKind    string `json:"task_kind,omitempty"`
+	Priority    int    `json:"priority,omitempty"`
+	Coord       string `json:"coord,omitempty"`
+	OriginCoord string `json:"origin_coord,omitempty"`
+	TargetCoord string `json:"target_coord,omitempty"`
 	// TargetFleetID 是打击编队认领的敌方舰队：目标 hex 打空之后靠它去追最新情报位置。
-	TargetFleetID    string `json:"target_fleet_id,omitempty"`
+	TargetFleetID string `json:"target_fleet_id,omitempty"`
+	// CoverUnitID 是空中掩护跟随的友军单位：目标 hex 里有己方舰队时自动认领，
+	// 之后每回合把掩护点更新到该舰队当前位置，而不是钉在起飞时的 hex。
+	CoverUnitID      string `json:"cover_unit_id,omitempty"`
 	Heading          string `json:"heading,omitempty"`
 	SectorWidth      int    `json:"sector_width,omitempty"`
 	ReconRadius      int    `json:"recon_radius,omitempty"`
@@ -244,6 +302,20 @@ type AirfieldAirUnit struct {
 	TrackingFleetID  string `json:"tracking_fleet_id,omitempty"`
 	Damaged          bool   `json:"damaged,omitempty"`
 	Maintenance      int    `json:"maintenance,omitempty"`
+	// —— 任务循环（规则书 188–191 行）——
+	// 机场算子与舰载机共用同一套循环语义：CAP、空中掩护、侦察降落后自动重新整备、
+	// 按原参数再次出动，直到机场失守、跑道被打光、机型不再适合或玩家取消。
+	// 落地（landGroundAircraft）会清空 TaskID/TaskKind，所以参数必须在落地前抄进 Cycle*。
+	OnCycle      bool   `json:"on_cycle,omitempty"`
+	CycleKind    string `json:"cycle_kind,omitempty"`
+	CycleTaskID  string `json:"cycle_task_id,omitempty"`
+	CycleHeading string `json:"cycle_heading,omitempty"`
+	CycleSector  int    `json:"cycle_sector,omitempty"`
+	CycleTarget  string `json:"cycle_target,omitempty"`
+	CycleOptOut  bool   `json:"cycle_opt_out,omitempty"`
+	// NightWarned 只用于"入夜前回不来"的提示去重：打击编队不再被服务器强制掉头，
+	// 但必须提醒一次，别让玩家以为没事。
+	NightWarned bool `json:"night_warned,omitempty"`
 	// Disperse：false=集中攻击（权重表），true=分散攻击（均匀随机）（规则书 624–631 行）。
 	Disperse bool `json:"disperse,omitempty"`
 	// 挂载与燃料：与舰载机同一套规则（规则书 43–63 行）
@@ -257,8 +329,10 @@ type AirfieldAirUnit struct {
 // AirfieldAirStatus 是前端航空面板用的机场整备状态。
 type AirfieldAirStatus struct {
 	UnitID      string            `json:"unit_id"`
+	Faction     string            `json:"faction"`
 	Name        string            `json:"name"`
 	Type        AirfieldType      `json:"type"`
+	Picture     string            `json:"picture,omitempty"`
 	Coord       string            `json:"coord"`
 	Strength    int               `json:"strength"`
 	MaxStrength int               `json:"max_strength"`
@@ -270,6 +344,11 @@ type AirfieldAirStatus struct {
 	Coastal     int               `json:"coastal"`
 	HangarUsed  int               `json:"hangar_used"`
 	Aircraft    []AirfieldAirUnit `json:"aircraft"`
+}
+
+// PictureOrDefault 让老存档（还没有 picture 字段）也能拿到按规模算出来的机场标识图片。
+func (a Airfield) PictureOrDefault() string {
+	return AirfieldPicture(a.Type, a.Picture)
 }
 
 // RunwaysAvailable 按规则书计算可用跑道：min(初始跑道, max(生命值,0)/5 向上取整)。
@@ -284,17 +363,22 @@ func RunwaysAvailable(current, max int) int {
 	return available
 }
 
-// HardensFor 判断机场类型能否起降某机型：野战只能战斗机，重型 = 除战略轰炸机外全部，大型全部。
-// 当前沙盒没有战略轰炸机，因此 only-airfield 之外的差异只体现在野战机场上。
-func (a Airfield) HardensFor(aircraftKind string) bool {
-	switch a.Type {
-	case AirfieldField:
-		return aircraftKind == "fighter"
+// HardensFor 判断机场能否起降某机型：
+//
+//	小型 = 只能战斗机；中型 = 除战略轰炸机外全部；大型 = 全部；
+//	水上飞机基地只能操作水上飞机（带浮筒或飞行艇），反过来轮式飞机也不能进水机基地。
+//
+// 规则书 98 行：中型机场的跑道长度不够 B-17 这一档起降，只有大型机场能放。
+func (a Airfield) HardensFor(aircraftKind string, seaplane bool) bool {
+	switch NormalizeAirfieldType(a.Type) {
 	case AirfieldSeaplane:
-		// 水上基地只能起降水上飞机（飞行艇按侦察机建模）。
-		return aircraftKind == "recon"
+		return seaplane
+	case AirfieldSmall:
+		return !seaplane && aircraftKind == "fighter"
+	case AirfieldMedium:
+		return !seaplane && aircraftKind != "strategic_bomber"
 	default:
-		return true
+		return !seaplane
 	}
 }
 
@@ -422,9 +506,12 @@ type AirUnit struct {
 	Name         string `json:"name"`
 	Model        string `json:"model"`
 	Kind         string `json:"kind"`
-	Status       string `json:"status"`
-	Strength     int    `json:"strength"`
-	MaxRange     int    `json:"max_range"`
+	// Picture/PictureMode 由 aircraft[].picture/picture_mode 注入；老存档缺图时前端回退到内置剪影。
+	Picture     string `json:"picture,omitempty"`
+	PictureMode string `json:"picture_mode,omitempty"`
+	Status      string `json:"status"`
+	Strength    int    `json:"strength"`
+	MaxRange    int    `json:"max_range"`
 	// BaseRange 是机种的基础航程（不含副油箱与转场加成）；挂载变化时用它换算新的 MaxRange。
 	BaseRange int `json:"base_range,omitempty"`
 	// Fuel 是燃料账本（副油箱 / 机内 / 备用），是航程的唯一真相来源。
@@ -457,9 +544,15 @@ type AirUnit struct {
 	TargetCoord  string `json:"target_coord,omitempty"`
 	// TargetFleetID 是打击编队认领的敌方舰队：目标 hex 打空之后靠它去追最新情报位置。
 	TargetFleetID string `json:"target_fleet_id,omitempty"`
+	// CoverUnitID 是空中掩护跟随的友军单位：目标 hex 里有己方舰队时自动认领，
+	// 之后每回合把掩护点更新到该舰队当前位置，而不是钉在起飞时的 hex。
+	CoverUnitID string `json:"cover_unit_id,omitempty"`
 	// CannotLand 表示转场/备降的算子到了目标位置却降不下去（舰队机库已满），
 	// 只能挂在天上等玩家改转场目标。
 	CannotLand bool `json:"cannot_land,omitempty"`
+	// DivertAirfield 是"母舰沉没或甲板彻底报废"之后选定的备降机场：
+	// 算子自己一格一格飞过去，到了才降落，不做瞬移。
+	DivertAirfield string `json:"divert_airfield,omitempty"`
 	// Disperse：false=集中攻击（按权重表），true=分散攻击（均匀随机选船）（规则书 624–631 行）。
 	Disperse         bool   `json:"disperse,omitempty"`
 	Heading          string `json:"heading,omitempty"`
@@ -476,11 +569,18 @@ type AirUnit struct {
 	ServiceTurns int `json:"service_turns,omitempty"`
 	// Engaged 表示本编队已成功接敌，下一回合可以进入目标上空发起空袭（规则书 609 行）
 	Engaged bool `json:"engaged,omitempty"`
+	// SearchHeading 是打击编队搜索接敌时的当前航向：接敌失败后沿这个方向继续
+	// 前出（正前 50%、左斜前 25%、右斜前 25%），每回合朝选中的方向漂一格，
+	// 不做“折回旧坐标”的往返，搜索区才是逐渐外扩的扇形。
+	SearchHeading string `json:"search_heading,omitempty"`
 	// SearchTurns 记录打击编队在目标空域连续搜索却没能接敌的回合数：
 	// 到上限就放弃返航，避免对着过期情报一直兜圈、把油烧到临近销毁。
 	SearchTurns int `json:"search_turns,omitempty"`
 	// WarnedIntercept 表示途中被敌方雷达截获，后续空袭命中的 DCT 临时 +1（规则书 408 行）
 	WarnedIntercept bool `json:"warned_intercept,omitempty"`
+	// NightWarned 是"这波天黑前回不来"的提示去重标记：打击编队不再被强制掉头（玩家自己决定），
+	// 但服务器仍然提醒一次。
+	NightWarned bool `json:"night_warned,omitempty"`
 	// OnCycle 是任务循环开关（规则书 188 行：CAP、反潜、侦察任务自动循环；
 	// 空中掩护按同一套循环处理）。降落后自动重新整备、按原参数再次升空，
 	// 直到航程不足、母舰不可用、损伤未修复或玩家取消（规则书 190、191 行）。
@@ -502,8 +602,8 @@ type AirUnit struct {
 	// CycleOptOut 表示玩家手动关掉了这台算子的自动循环（规则书 191 行）：
 	// 落地之后不会自己恢复，直到重新编任务或玩家再点一次。
 	CycleOptOut bool `json:"cycle_opt_out,omitempty"`
-	// InterceptedThisTurn 标记本回合已经前出拦截过：一架 CAP 一回合只能前出一次，
-	// 也不能在同一回合的空袭结算里再被当成"目标上空 CAP"打第二遍。
+	// InterceptedThisTurn 只用于界面提示"这架 CAP 本回合已经打过"，
+	// 不再限制参战次数：CAP 一直在目标上空，直到被击中或弹药耗尽才退出。
 	InterceptedThisTurn bool `json:"intercepted_this_turn,omitempty"`
 	// Armed 表示这架飞机已经整备完毕（挂好弹、加好油），属于"整装待发"：
 	// 机库里或甲板上被炸弹命中的整装待发飞机会被摧毁（规则书 421–423 行）。
@@ -574,6 +674,7 @@ type AviationView struct {
 
 type CarrierAirStatus struct {
 	UnitID         string `json:"unit_id"`
+	Faction        string `json:"faction,omitempty"`
 	Name           string `json:"name"`
 	Type           string `json:"type"`
 	HangarUsed     int    `json:"hangar_used"`
@@ -645,6 +746,7 @@ type StrikeAllocation struct {
 
 type AirCombatReport struct {
 	ID              string   `json:"id"`
+	Turn            int      `json:"turn,omitempty"`
 	Coord           string   `json:"coord"`
 	Target          string   `json:"target,omitempty"`
 	TargetName      string   `json:"target_name,omitempty"`
@@ -652,10 +754,14 @@ type AirCombatReport struct {
 	DefenderFaction string   `json:"defender_faction"`
 	AttackerModels  []string `json:"attacker_models"`
 	DefenderModels  []string `json:"defender_models"`
-	AttackerCount   int      `json:"attacker_count"`
-	DefenderCount   int      `json:"defender_count"`
-	AttackerLosses  int      `json:"attacker_losses"`
-	DefenderLosses  int      `json:"defender_losses"`
+	// AttackerPictures / DefenderPictures 与上面两个机型名一一对应，
+	// 前端空战动画直接显示算子图片，缺图时再回退到内置矢量剪影。
+	AttackerPictures []string `json:"attacker_pictures,omitempty"`
+	DefenderPictures []string `json:"defender_pictures,omitempty"`
+	AttackerCount    int      `json:"attacker_count"`
+	DefenderCount    int      `json:"defender_count"`
+	AttackerLosses   int      `json:"attacker_losses"`
+	DefenderLosses   int      `json:"defender_losses"`
 	// Disabled 是"退出战斗但没被击落"的算子：损伤、撤退、弹药耗尽。
 	// 损失数只统计被摧毁的，两者分开，避免战报把驱散说成击落。
 	AttackerDisabled int `json:"attacker_disabled,omitempty"`
@@ -673,6 +779,9 @@ type AirCombatReport struct {
 	// 对舰：命中次数；参与投弹的算子和投弹尝试次数，0 命中也说明"确实投了弹"
 	Bombers      []AirHitDetail `json:"bombers,omitempty"`
 	BombAttempts int            `json:"bomb_attempts,omitempty"`
+	// 对地：不挂弹的护航战斗机按固定 1 点强度扫射跑道，命中只掉地面飞机。
+	StrafeAttempts int `json:"strafe_attempts,omitempty"`
+	StrafeHits     int `json:"strafe_hits,omitempty"`
 	// 对舰：被攻击舰队的船只清单，以及每个算子的目标分配和命中次数
 	Ships             []AirShipCard      `json:"ships,omitempty"`
 	TargetAllocations []StrikeAllocation `json:"target_allocations,omitempty"`
@@ -758,16 +867,19 @@ type State struct {
 }
 
 type Order struct {
-	Type         string            `json:"type"`
-	UnitID       string            `json:"unit_id,omitempty"`
-	TargetUnitID string            `json:"target_unit_id,omitempty"`
-	AircraftID   string            `json:"aircraft_id,omitempty"`
-	AircraftIDs  []string          `json:"aircraft_ids,omitempty"`
-	TaskID       string            `json:"task_id,omitempty"`
-	Coord        string            `json:"coord,omitempty"`
-	Heading      string            `json:"heading,omitempty"`
-	SectorWidth  int               `json:"sector_width,omitempty"`
-	Assignments  map[string]string `json:"assignments,omitempty"`
+	Type         string   `json:"type"`
+	UnitID       string   `json:"unit_id,omitempty"`
+	TargetUnitID string   `json:"target_unit_id,omitempty"`
+	AircraftID   string   `json:"aircraft_id,omitempty"`
+	AircraftIDs  []string `json:"aircraft_ids,omitempty"`
+	TaskID       string   `json:"task_id,omitempty"`
+	Coord        string   `json:"coord,omitempty"`
+	// TargetFleetID 用于 SET_STRIKE_TARGET / LAUNCH_STRIKE：同一 hex 同时有敌方机场和舰队时，
+	// 显式指定打哪支舰队；为空时保持旧的“机场优先”行为。
+	TargetFleetID string            `json:"target_fleet_id,omitempty"`
+	Heading       string            `json:"heading,omitempty"`
+	SectorWidth   int               `json:"sector_width,omitempty"`
+	Assignments   map[string]string `json:"assignments,omitempty"`
 	// TaskKind 只用于无线电改令（RETASK_AIR）：打算换成哪种任务。
 	TaskKind string `json:"task_kind,omitempty"`
 	// Loadout 只用于换挂载命令（SET_LOADOUT）。

@@ -1,0 +1,83 @@
+文件,国家或阵营,舰种,对应舰级或用途,依据与备注
+JAP_CV1 Akagi_ship.png,日本,航空母舰,赤城（单舰）,代码确认
+JAP_CV1 Kaga_ship.png,日本,航空母舰,加贺（单舰）,代码确认
+JAP_CV2_ship.png,日本,航空母舰,飞鹰级（Hiyo）,代码确认
+JAP_CV3_ship.png,日本,航空母舰,云龙级（Unryu）,代码确认
+JAP_CV4_ship.png,日本,航空母舰,大凤级（Taiho）,代码确认
+JAP_CV5_ship.png,日本,航空母舰,信浓（Shinano，单舰）,代码确认
+JAP_CV6_ship.png,日本,航空母舰,苍龙级（Soryu，含飞龙）,代码确认；与CV7同属游戏内Soryu类
+JAP_CV7_ship.png,日本,航空母舰,苍龙级（Soryu，含飞龙）,代码确认；与CV6同属游戏内Soryu类
+JAP_CV8_ship.png,日本,航空母舰,翔鹤级（Shokaku）,代码确认
+USA_CV1_ship.png,美国,航空母舰,列克星敦级（游戏类名Saratoga）,代码确认
+USA_CV2_ship.png,美国,航空母舰,突击者级（Ranger）,代码确认
+USA_CV3_ship.png,美国,航空母舰,约克城级（Yorktown）,代码确认
+USA_CV4_ship.png,美国,航空母舰,黄蜂级（Wasp）,代码确认
+USA_CV5_ship.png,美国,航空母舰,埃塞克斯级（Essex）,代码确认
+GBR_CV1-2_ship.png,英国,航空母舰,光辉级（Illustrious）与鹰号（Eagle）,代码确认；两种舰共用
+JAP_CVE0_ship.png,日本,护航航空母舰,大鹰级（Taiyo）、海鹰级（Kaiyo）、神鹰（Shinyo）,代码确认；共用剪影
+USA_CVE0_ship.png,美国,护航航空母舰,博格级、卡萨布兰卡级、长岛级、桑加蒙级,代码确认；四级共用
+JAP_CVL1_ship.png,日本,轻型航空母舰,瑞凤级（Zuiho）,代码确认
+JAP_CVL2_ship.png,日本,轻型航空母舰,凤翔（Hosho，单舰）,代码确认
+JAP_CVL3_ship.png,日本,轻型航空母舰,龙骧级（Ryujo）,代码确认
+JAP_CVL4_ship.png,日本,轻型航空母舰,瑞凤级（Zuiho）与龙凤级（Ryuho）,代码确认；共用剪影
+USA_CVL1_ship.png,美国,轻型航空母舰,独立级（Independence）,代码确认
+GBR_CVL3_ship.png,英国,轻型航空母舰,竞技神（Hermes，单舰）,代码确认
+JAP_BB1_ship.png,日本,战列舰,扶桑级（Fuso）,代码确认
+JAP_BB2_ship.png,日本,战列舰,伊势级（Ise）,代码确认；常规战列舰形态
+JAP_BBV1_ship.png,日本,航空战列舰,伊势级（Ise）,代码确认；航空改装形态
+JAP_BC1_ship.png,日本,战列巡洋舰／高速战列舰,金刚级（Kongo）,代码确认
+JAP_BB4_ship.png,日本,战列舰,长门级（Nagato）,代码确认
+JAP_BB5_ship.png,日本,战列舰,大和级（Yamato）,代码确认
+GBR_BB1_ship.png,英国,战列舰,纳尔逊级（Nelson）,代码确认
+GBR_BB2_ship.png,英国,战列舰,伊丽莎白女王级与复仇级,代码确认；两级共用
+USA_BB3_ship.png,美国,战列舰,宾夕法尼亚级（Pennsylvania）,代码确认
+USA_BB4_ship.png,美国,战列舰,新墨西哥级（New Mexico）,代码确认
+USA_BB5_ship.png,美国,战列舰,田纳西级（Tennessee）,代码确认
+USA_BB6_ship.png,美国,战列舰,科罗拉多级（Colorado）,代码确认
+USA_BB7-1_ship.png,美国,战列舰,北卡罗来纳级（North Carolina）,代码确认
+USA_BB7-2_ship.png,美国,战列舰,南达科他级（South Dakota）,代码确认
+USA_BB8_ship.png,美国,战列舰,衣阿华级（Iowa）,代码确认
+JAP_CA1_ship.png,日本,重巡洋舰,古鹰级、青叶级、妙高级,代码确认；三级共用
+JAP_CA2_ship.png,日本,重巡洋舰,高雄级（Takao）,代码确认
+JAP_CA3_ship.png,日本,重巡洋舰,最上级（Mogami）,代码确认
+JAP_CA3_Mogami43.png,日本,重巡洋舰,最上级（1943年形态）,代码确认
+JAP_CA10_ship.png,日本,重巡洋舰,利根级（Tone）,代码确认；也作为通用日本重巡洋舰剪影
+GBR_CA1-2_ship.png,英国,重巡洋舰,肯特级（Kent）与伦敦级（London）,代码确认；共用剪影
+GBR_CA1-4_ship.png,英国,重巡洋舰,诺福克级（Norfolk）,代码确认
+USA_CA1_ship.png,美国,重巡洋舰,彭萨科拉级（Pensacola）,代码确认
+USA_CA2_ship.png,美国,重巡洋舰,北安普敦级（Northampton）,代码确认
+USA_CA3_ship.png,美国,重巡洋舰,波特兰级（Portland）,代码确认
+USA_CA4_ship.png,美国,重巡洋舰,新奥尔良级与威奇塔级,代码确认；共用剪影
+USA_CA5_ship.png,美国,重巡洋舰,巴尔的摩级（Baltimore）,代码确认
+JAP_CL1_ship.png,日本,轻巡洋舰,香取级、球磨级、长良级、川内级、天龙级、夕张,代码确认；六级共用
+JAP_CL2_ship.png,日本,轻巡洋舰,阿贺野级与大淀级,代码确认；共用剪影
+USA_CLAA1_ship.png,美国,防空轻巡洋舰,亚特兰大级（Atlanta）,代码确认
+USA_CL2_ship.png,美国／英联邦,轻巡洋舰,布鲁克林级与利安德级,代码确认；游戏让利安德级共用此图
+USA_CL3_ship.png,美国,轻巡洋舰,克利夫兰级（Cleveland）,代码确认
+GBR_CL1_ship.png,英国,轻巡洋舰,卡利多尼亚级、达娜厄级、绿宝石级,代码确认；三级共用
+GBR_CL2_ship.png,英国／荷兰,轻巡洋舰,黛朵级、斐济级、南安普敦级、特龙普级,代码确认；四级共用
+JAP_DD1_ship.png,日本,驱逐舰,秋月级、朝潮级、阳炎级、岛风、夕云级,代码确认；共用剪影
+JAP_DE1_ship.png,日本,驱逐舰（通用旧型）,吹雪级、初春级、神风级、松级、峰风级、睦月级、白露级,代码确认；虽编号为DE但用于这些驱逐舰
+GBR_DD1_ship.png,英国／荷兰,驱逐舰,A级、D级、F级、Gerard Callenburgh级、H级、I级、L级、N级、P级、部族级,代码确认；共用剪影
+GBR_DE1_ship.png,英国／荷兰,护航驱逐舰,Hunt II级、S级、Valkyrie级,代码确认；共用剪影
+USA_DD1_ship.png,美国,驱逐舰,Bagley、Benham、Bristol、Caldwell、Clemson、Farragut、Fletcher、Gleaves、Gridley、Mahan、Porter、Sims、Lapwing,代码确认；通用剪影
+USA_DD2_ship.png,美国,驱逐舰,Butler级与Wickes级,代码确认；共用剪影
+JAP_SS1_ship.png,日本,潜艇,丙型（C型）、巡潜型、甲型（A型）、乙型（B型）,代码确认；共用剪影
+JAP_SS1b_ship.png,日本,潜艇,海大型（Kaidai）与海大6型,代码确认；共用剪影
+JAP_SS2_ship.png,日本／英国,潜艇,KaiSho、海中（Kaichu）、机雷潜（Kirai-Sen）、L型（Vickers L）,代码确认；共用剪影
+USA_SS1_ship.png,美国及盟国,潜艇,Balao、Cachalot、Dolphin、Gato、K型、Narwhal、O19、Perch、Porpoise、Salmon、Sargo、SeaDragon、Shark、T型、Tambor,代码确认；通用潜艇剪影
+USA_SS2_ship.png,美国,潜艇,S级（S-Type）及通用潜艇,代码确认
+CMN_MS1-3_ship.png,通用,运输船,通用运输船（TRS）,代码确认；日本和美国运输船均使用
+CMN_MS1-1_ship.png,通用,运输船,小型运输船／商船,备用素材；当前代码未引用具体舰级
+JAP_CA1 Nachi-ship.png,日本,重巡洋舰,妙高级那智号,备用素材；当前代码未引用完整图片名
+USA_BB1 Arizona_ship.png,美国,战列舰,宾夕法尼亚级亚利桑那号,备用素材；由舰名可确认舰级但当前代码未引用
+USA_BB1 New York_ship.png,美国,战列舰,纽约级纽约号,备用素材；由舰名可确认舰级但当前代码未引用
+USA_CVL0_Langley.png,美国,轻型航空母舰,兰利号（Langley，单舰）,备用素材；由舰名可确认但当前代码未引用
+JAP_APD1_ship.png,日本,快速运输舰,通用高速运输舰（APD）,备用素材；当前代码未注明具体舰级
+USA_DE1_ship.png,美国,护航驱逐舰,通用护航驱逐舰（DE）,备用素材；当前代码未注明具体舰级
+USA_LST1_ship.png,美国,坦克登陆舰,通用坦克登陆舰（LST）,备用素材；当前代码未注明具体批次
+USA_LST2_ship.png,美国,坦克登陆舰,通用坦克登陆舰（LST）,备用素材；当前代码未注明具体批次
+GBR_BB3_ship.png,英国,战列舰,无法确定具体舰级,备用素材；当前代码未引用且文件名无舰级信息
+USA_BB2_ship.png,美国,战列舰,无法确定具体舰级,备用素材；当前代码未引用且文件名无舰级信息
+USA_BC1_ship.png,美国,战列巡洋舰,无法确定具体舰级,备用素材；当前代码未引用且文件名无舰级信息
+USA_CL1_ship.png,美国,轻巡洋舰,无法确定具体舰级,备用素材；当前代码未引用且文件名无舰级信息

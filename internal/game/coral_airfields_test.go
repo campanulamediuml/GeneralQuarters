@@ -6,8 +6,8 @@ import (
 )
 
 // 回归：珊瑚海真实剧本的陆基航空队（拉包尔 / 莫尔兹比港）。
-// 拉包尔：0428，6 架零战 + 6 架 G4M + 3 架 G3M（陆攻挂鱼雷）。
-// 莫尔兹比港：1612，2 架 SBD + 4 架 P-40 + 3 架 B-25。
+// 拉包尔：0323，6 架零战 + 6 架 G4M + 3 架 G3M（陆攻挂鱼雷）。
+// 莫尔兹比港：1611，2 架 SBD + 4 架 P-40 + 3 架 B-25。
 func TestCoralRealLandBasedAirGroups(t *testing.T) {
 	scenario, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")
 	if err != nil {
@@ -18,11 +18,11 @@ func TestCoralRealLandBasedAirGroups(t *testing.T) {
 		t.Fatal(err)
 	}
 	rabaul := state.Airfields["af-b-rabaul"]
-	if rabaul == nil || rabaul.Coord != "0428" || rabaul.Faction != "B" {
+	if rabaul == nil || rabaul.Coord != "0323" || rabaul.Faction != "B" {
 		t.Fatalf("拉包尔机场部署错误：%+v", rabaul)
 	}
 	moresby := state.Airfields["af-a-moresby"]
-	if moresby == nil || moresby.Coord != "1612" || moresby.Faction != "A" {
+	if moresby == nil || moresby.Coord != "1611" || moresby.Faction != "A" {
 		t.Fatalf("莫尔兹比港机场部署错误：%+v", moresby)
 	}
 	groups := map[string]map[string]int{}
@@ -57,7 +57,7 @@ func TestCoralRealLandBasedAirGroups(t *testing.T) {
 	}
 	// 陆攻对舰出击要挂鱼雷。
 	g4m := state.GroundAir["af-b-rabaul-g4m-1"]
-	applyGroundLoadoutChoice(g4m, DefaultLoadout(g4m.Kind, false, "attack", StrikeTargetShip))
+	applyGroundLoadoutChoice(g4m, DefaultLoadout(g4m.Kind, false, g4m.AntiGround, g4m.AntiShip, "attack", StrikeTargetShip))
 	if !strings.Contains(string(g4m.Loadout), "torpedo") {
 		t.Fatalf("G4M 对舰出击没有挂鱼雷：%s", g4m.Loadout)
 	}
@@ -73,5 +73,81 @@ func TestCoralRealLandBasedAirGroups(t *testing.T) {
 	// 舰载机（SBD / A6M）不能被标记成陆基。
 	if sbd := state.GroundAir["af-a-moresby-dive_bomber-1"]; sbd == nil || sbd.AirfieldOnly {
 		t.Fatalf("SBD 不该是陆基机型：%+v", sbd)
+	}
+}
+
+// 图拉吉已撤掉，日军水机基地改为肖特兰（0831）和莱卡塔（1238）。
+func TestCoralRealSeaplaneBases(t *testing.T) {
+	scenario, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err := NewState(scenario, gameMap, catalog, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Airfields["af-b-tulagi"] != nil {
+		t.Fatal("图拉吉机场应该已删除")
+	}
+	shortland := state.Airfields["af-b-shortland"]
+	if shortland == nil || shortland.Coord != "0831" || shortland.Type != AirfieldSeaplane || shortland.Faction != "B" {
+		t.Fatalf("肖特兰水机基地部署错误：%+v", shortland)
+	}
+	rekata := state.Airfields["af-b-rekata"]
+	if rekata == nil || rekata.Coord != "1238" || rekata.Type != AirfieldSeaplane || rekata.Faction != "B" {
+		t.Fatalf("莱卡塔水机基地部署错误：%+v", rekata)
+	}
+	bowen := state.Airfields["af-a-bowen"]
+	if bowen == nil || bowen.Coord != "4613" || bowen.Type != AirfieldSeaplane || bowen.Faction != "A" {
+		t.Fatalf("鲍恩水机基地部署错误：%+v", bowen)
+	}
+	counts := map[string]map[string]int{}
+	for _, aircraft := range state.GroundAir {
+		if counts[aircraft.AirfieldID] == nil {
+			counts[aircraft.AirfieldID] = map[string]int{}
+		}
+		counts[aircraft.AirfieldID][aircraft.DefinitionID]++
+	}
+	if counts["af-b-shortland"]["h6k"] != 6 {
+		t.Fatalf("肖特兰 H6K 数量错误：%v", counts["af-b-shortland"])
+	}
+	if counts["af-b-rekata"]["h6k"] != 3 || counts["af-b-rekata"]["seaplane"] != 2 {
+		t.Fatalf("莱卡塔机型数量错误：%v", counts["af-b-rekata"])
+	}
+	if counts["af-a-bowen"]["pby"] != 2 {
+		t.Fatalf("鲍恩 PBY 数量错误：%v", counts["af-a-bowen"])
+	}
+	if len(counts["af-b-tulagi"]) != 0 {
+		t.Fatalf("图拉吉还有地面飞机：%v", counts["af-b-tulagi"])
+	}
+}
+
+// 莱城（0910）：3 架 A5M + 3 架 G4M。A5M 基础对空 1、航程 13、强度 1、无对地对舰。
+func TestCoralRealLaeAirGroup(t *testing.T) {
+	scenario, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err := NewState(scenario, gameMap, catalog, 5)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lae := state.Airfields["af-b-lae"]
+	if lae == nil || lae.Coord != "0910" || lae.Type != AirfieldMedium || lae.Faction != "B" {
+		t.Fatalf("莱城机场部署错误：%+v", lae)
+	}
+	counts := map[string]int{}
+	for _, aircraft := range state.GroundAir {
+		if aircraft.AirfieldID == "af-b-lae" {
+			counts[aircraft.DefinitionID]++
+		}
+	}
+	if counts["a5m"] != 3 || counts["g4m"] != 3 {
+		t.Fatalf("莱城机群数量错误：%v", counts)
+	}
+	a5m := state.GroundAir["af-b-lae-a5m-1"]
+	// 1942 年日军精锐飞行员规则给战斗机对空 +1，所以这里读到的是基础 1 + 1 = 2。
+	if a5m == nil || a5m.Model != "A5M 九六舰战" || a5m.BaseRange != 13 || a5m.Strength != 1 || a5m.AirCombat != 2 || a5m.AntiShip != 0 || a5m.AntiGround != 0 {
+		t.Fatalf("A5M 数值错误：%+v", a5m)
 	}
 }

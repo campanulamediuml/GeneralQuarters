@@ -1,0 +1,26 @@
+{
+ "id": "dewey",
+ "faction": "A",
+ "type": "DD",
+ "name": "杜威",
+ "picture": "misc/image/ship/farragut.png",
+ "strength": 1,
+ "card": {
+  "damage_control": 1,
+  "main_gun_count": 5,
+  "main_gun_caliber": 5,
+  "heavy_aa": 2.0,
+  "light_aa": 3.0,
+  "surface_radar": false,
+  "air_radar": false,
+  "speed_class": "fast",
+  "torpedo_salvos": 3,
+  "aircraft": 0,
+  "deck_capacity": 0,
+  "elevator_count": 0,
+  "depth_charges": 6,
+  "cargo": 0,
+  "armored_carrier": false,
+  "gunnery": 5
+ }
+}

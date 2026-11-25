@@ -2,9 +2,10 @@ package game
 
 import "testing"
 
-// 规则书 144–147 行：情报 1/2/3 级的位置误差上限分别是 5/3/1 hex，4 级位置准确。
+// 情报 1/2 级的位置误差分别是 2/1 hex，3、4 级位置准确。
+// （规则书原表是 5/3/1，实测下来 5 hex 的误差让打击链路根本无从下手。）
 func TestIntelErrorRadius(t *testing.T) {
-	cases := map[int]int{0: 5, 1: 5, 2: 3, 3: 1, 4: 0}
+	cases := map[int]int{0: 2, 1: 2, 2: 1, 3: 0, 4: 0}
 	for level, want := range cases {
 		if got := intelErrorRadius(level); got != want {
 			t.Fatalf("情报%d级误差上限错误：%d（期望%d）", level, got, want)
@@ -16,8 +17,8 @@ func TestIntelErrorRadius(t *testing.T) {
 func TestIntelDisplayCoordIsStableInRange(t *testing.T) {
 	contact := FleetContact{FleetID: "TG-X", Level: 1, Coord: "0404"}
 	first := intelDisplayCoord(contact)
-	if offset := Distance(first, "0404"); offset < 3 || offset > 5 {
-		t.Fatalf("情报1级误差应在3–5hex之间：%d", offset)
+	if offset := Distance(first, "0404"); offset != 2 {
+		t.Fatalf("情报1级误差应为2hex：%d", offset)
 	}
 	for index := 0; index < 5; index++ {
 		if intelDisplayCoord(contact) != first {
@@ -26,12 +27,12 @@ func TestIntelDisplayCoordIsStableInRange(t *testing.T) {
 	}
 	// 情报等级提升后误差范围收紧
 	contact.Level = 2
-	if offset := Distance(intelDisplayCoord(contact), "0404"); offset < 2 || offset > 3 {
-		t.Fatalf("情报2级误差应在2–3hex之间：%d", offset)
+	if offset := Distance(intelDisplayCoord(contact), "0404"); offset != 1 {
+		t.Fatalf("情报2级误差应为1hex：%d", offset)
 	}
 	contact.Level = 3
-	if offset := Distance(intelDisplayCoord(contact), "0404"); offset != 1 {
-		t.Fatalf("情报3级误差应为1hex：%d", offset)
+	if got := intelDisplayCoord(contact); got != "0404" {
+		t.Fatalf("情报3级位置必须准确：%s", got)
 	}
 	contact.Level = 4
 	if intelDisplayCoord(contact) != "0404" {

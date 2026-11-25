@@ -1,0 +1,789 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>观战 · General Quarters</title>
+<style>
+  :root{--bg:#091418;--panel:#101f24;--line:#294047;--muted:#829a9c;--gold:#d7bb7b;--a:#5eb5c8;--b:#d77c6c}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:radial-gradient(circle at 12% 0%,#16303988,transparent 42%),var(--bg);color:#dce7e3;font:13px/1.5 system-ui,-apple-system,'Noto Sans SC',sans-serif}
+  header{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 20px;border-bottom:1px solid var(--line);background:#0d1d22}
+  .kicker{font-size:10px;letter-spacing:2.4px;color:var(--gold)}
+  h1{margin:3px 0 0;font-size:19px;font-weight:600;letter-spacing:1px}
+  .stats{display:flex;align-items:flex-end;gap:18px}
+  .stats div{text-align:right;line-height:1.15}
+  .stats b{display:block;font-size:20px;color:#e5ddc8;font-variant-numeric:tabular-nums}
+  .stats span{font-size:10px;color:var(--muted)}
+  .status{padding:5px 10px;border:1px solid var(--line);border-radius:2px;font-size:11px;color:var(--muted)}
+  .status.running{color:#8fd8b4;border-color:#3d6a58}
+  .status.finished{color:var(--gold);border-color:#6a5a34}
+  main{display:grid;grid-template-columns:minmax(0,1fr) 370px;gap:14px;padding:14px 18px 20px;max-width:2000px;margin:0 auto}
+  .map-wrap{position:relative;background:#0b1b20;border:1px solid #2c4248;padding:6px;overflow:hidden;min-height:520px}
+  svg#map{display:block;width:100%;height:auto;cursor:grab;touch-action:none;user-select:none}
+  svg#map.dragging{cursor:grabbing}
+  .map-tools{position:absolute;right:10px;top:10px;display:flex;gap:5px;z-index:5}
+  .map-tools button{min-width:30px;height:27px;padding:0 8px;border:1px solid var(--line);background:#10252b;color:#dce7e3;font:600 12px/1 system-ui;cursor:pointer;border-radius:2px}
+  .map-tools button:hover{border-color:var(--gold);color:var(--gold)}
+  .map-tools button:disabled{opacity:.35;cursor:default;border-color:var(--line);color:var(--muted)}
+  .map-tools #zoom-value{min-width:52px;font-size:11px;color:#c8d8d4}
+  .map-hint{position:absolute;left:12px;bottom:8px;color:#5f7e86;font-size:10px;pointer-events:none;z-index:5}
+  .detail-panel{position:absolute;right:10px;top:44px;z-index:12;width:min(390px,calc(100% - 20px));max-height:calc(100% - 58px);display:flex;flex-direction:column;background:#0d1d22f7;border:1px solid #526b73;box-shadow:0 14px 40px #000a;color:#dce7e3}
+  .detail-panel[hidden]{display:none}
+  .detail-panel>header{display:flex;justify-content:space-between;gap:10px;padding:10px 12px;border-bottom:1px solid #2c4248}
+  .detail-panel header span{display:block;color:var(--gold);font-size:9px;letter-spacing:1.8px}
+  .detail-panel h2{margin:3px 0 0;font-size:15px;font-weight:600}
+  .detail-panel header button{border:0;background:transparent;color:#8fa7a8;font-size:20px;line-height:1;padding:0 2px}
+  .detail-panel header button:hover{color:var(--gold)}
+  .detail-meta{display:flex;flex-wrap:wrap;gap:5px 12px;padding:7px 12px;border-bottom:1px solid #22383e;color:#8fa7a8;font-size:10px}
+  .detail-meta b{color:#cfe0dc;font-weight:500}
+  .detail-cards{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px;overflow:auto}
+  .detail-card{display:flex;align-items:center;gap:7px;min-width:0;padding:5px;border:1px solid #314b53;background:#12252b}
+  .detail-card img{width:56px;height:34px;object-fit:contain;flex:none;background:transparent;border:0}
+  .detail-card img.ship-pic{filter:brightness(0) invert(1);opacity:.9}
+  .detail-card .detail-copy{min-width:0;line-height:1.35}
+  .detail-card b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:#dce7e3}
+  .detail-card small{display:block;color:#809a9d;font-size:9px}
+  .detail-card em{display:inline-block;margin-top:2px;color:#d7bb7b;font-style:normal;font-size:9px}
+  .detail-card .detail-pic-fallback{width:56px;height:34px;display:grid;place-items:center;flex:none;border:1px solid #20343a;background:#0a181d;color:#6f8d92;font-size:9px}
+  .detail-empty{padding:18px 12px;color:#718d91;font-size:11px}
+  .fleet-ship,.fleet-label,.watch-air{cursor:pointer}
+  @media(max-width:600px){.detail-cards{grid-template-columns:1fr}.detail-panel{top:38px}}
+  .hex{fill:#102830;stroke:#34505a;stroke-width:.7}
+  .hex.island{fill:#34463e;stroke:#6b8066}
+  .hex.shoal{fill:#173c42;stroke:#4b7775;stroke-dasharray:3 2}
+  .hex.reef{fill:#273137;stroke:#7e6f67;stroke-dasharray:2 2}
+  .recon-sector .recon-cell{pointer-events:none}
+  .recon-sector .recon-cell.current{stroke-linejoin:round}
+  aside{display:flex;flex-direction:column;gap:12px;min-width:0}
+  .card{background:var(--panel);border:1px solid #2a4148;padding:10px 12px}
+  .card h2{margin:0 0 8px;font-size:11px;letter-spacing:1.6px;color:var(--gold);font-weight:600}
+  .row{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-top:1px solid #1d3238;font-size:12px}
+  .row:first-child{border-top:0}
+  .row small{color:var(--muted);font-size:10px}
+  .tag{display:inline-block;min-width:16px;text-align:center;font-size:10px;font-weight:700;color:#0b1b20;border-radius:2px;padding:0 4px}
+  .tag.a{background:var(--a)} .tag.b{background:var(--b)}
+  .fleet-line{display:flex;align-items:center;gap:7px;padding:4px 0;border-top:1px solid #1d3238;font-size:12px}
+  .fleet-line:first-child{border-top:0}
+  .fleet-line .coord{color:#9fc4cb;font-variant-numeric:tabular-nums}
+  .fleet-line .meta{margin-left:auto;color:var(--muted);font-size:10px;white-space:nowrap}
+  .event-list{list-style:none;margin:0;padding:0;max-height:320px;overflow:auto}
+  .event-list li{display:flex;gap:8px;padding:4px 0;border-top:1px solid #1d3238;font-size:11px;color:#a9bfbb;line-height:1.45}
+  .event-list li:first-child{border-top:0}
+  .event-list time{color:#5f7e86;font-variant-numeric:tabular-nums;flex:none}
+  footer{padding:10px 20px;color:#5f7e86;font-size:11px;border-top:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .empty{color:#5f7e86;font-size:11px;padding:4px 0}
+  .err{color:#e59889;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="kicker">GENERAL QUARTERS · SPECTATOR</div>
+    <h1 id="scenario">正在连接…</h1>
+  </div>
+  <div class="stats">
+    <div><b id="turn">–</b><span>回合</span></div>
+    <div><b id="clock">–</b><span>剧本时间</span></div>
+    <div><b id="version">–</b><span>版本</span></div>
+    <div id="status" class="status">连接中</div>
+  </div>
+</header>
+<main>
+  <section class="map-wrap">
+    <div class="map-tools">
+      <button id="zoom-out" type="button" title="缩小" aria-label="缩小地图">−</button>
+      <button id="zoom-value" type="button" title="复位到全图" aria-label="地图缩放复位">100%</button>
+      <button id="zoom-in" type="button" title="放大" aria-label="放大地图">+</button>
+    </div>
+    <div class="map-hint">拖动地图平移 · ＋/－缩放 · 点兵牌看编成</div>
+    <div id="detail-panel" class="detail-panel" hidden>
+      <header>
+        <div><span id="detail-kicker">FORMATION</span><h2 id="detail-title">编队详情</h2></div>
+        <button id="detail-close" type="button" aria-label="关闭详情">×</button>
+      </header>
+      <div id="detail-meta" class="detail-meta"></div>
+      <div id="detail-cards" class="detail-cards"></div>
+    </div>
+    <svg id="map" xmlns="http://www.w3.org/2000/svg"></svg>
+  </section>
+  <aside>
+    <section class="card"><h2>战况</h2><div id="summary"><div class="empty">等待第一次刷新…</div></div></section>
+    <section class="card"><h2>舰队</h2><div id="fleets"></div></section>
+    <section class="card"><h2>航母作业</h2><div id="carriers"></div></section>
+    <section class="card"><h2>战报</h2><ol class="event-list" id="events"></ol></section>
+  </aside>
+</main>
+<footer>
+  <span id="updated">–</span>
+  <span id="room">–</span>
+</footer>
+<script>
+(function () {
+  'use strict';
+  var SIZE = 17;
+  var MAP_WIDTH = 0;
+  var MAP_HEIGHT = 0;
+  var FULL_VIEW = null;
+  var VIEW = null;
+  var ZOOM_STEPS = [0.5, 0.6, 0.75, 1, 1.2, 1.5, 2, 2.5, 3, 4, 5];
+  var zoomIndex = 3;
+  var HEADING_ANGLE = { E: 0, SE: 60, SW: 120, W: 180, NW: 240, NE: 300 };
+  var COLOR = { A: '#5aa9ff', B: '#ff6f61' };
+  var AIRBORNE = { cap: 1, recon: 1, attack: 1, attack_holding: 1, cover: 1, transfer: 1 };
+  var NS = 'http://www.w3.org/2000/svg';
+  var parts = location.pathname.split('/').filter(Boolean);
+  var room = parts[1] || '';
+  // 主入口 /watch/{token}；兼容 /watch/{room}/{token} 与旧 query token。
+  var token = parts[2] || new URLSearchParams(location.search).get('token') || parts[1] || '';
+  var built = false;
+
+  function el(name, attrs) {
+    var node = document.createElementNS(NS, name);
+    if (attrs) Object.keys(attrs).forEach(function (key) { node.setAttribute(key, attrs[key]); });
+    return node;
+  }
+  function text(x, y, value, fill, size, weight, anchor) {
+    var node = el('text', { x: x, y: y, fill: fill || '#dce7e3', 'font-size': size || 10, 'font-weight': weight || 400, 'text-anchor': anchor || 'start' });
+    node.textContent = value;
+    return node;
+  }
+  function center(coord) {
+    var row = Number(coord.slice(0, 2));
+    var col = Number(coord.slice(2, 4));
+    return {
+      x: Math.sqrt(3) * SIZE * (col - 0.5 + (row % 2 ? 0.5 : 0)),
+      y: SIZE * (1.5 * (row - 1) + 1)
+    };
+  }
+  function hexPoints(x, y) {
+    var points = [];
+    for (var i = 0; i < 6; i++) {
+      var angle = Math.PI / 180 * (60 * i - 30);
+      points.push((x + SIZE * Math.cos(angle)) + ',' + (y + SIZE * Math.sin(angle)));
+    }
+    return points.join(' ');
+  }
+  function pad(value) { return String(value).padStart ? String(value).padStart(2, '0') : ('0' + value).slice(-2); }
+
+  function buildMap(map) {
+    var svg = document.getElementById('map');
+    var width = Math.sqrt(3) * SIZE * (map.cols + 0.5) + 20;
+    var height = SIZE * (1.5 * (map.rows - 1) + 2) + 20;
+    MAP_WIDTH = width;
+    MAP_HEIGHT = height;
+    FULL_VIEW = { x: 0, y: 0, w: width, h: height };
+    VIEW = { x: 0, y: 0, w: width, h: height };
+    zoomIndex = ZOOM_STEPS.indexOf(1);
+    applyView();
+    updateZoomLabel();
+    svg.innerHTML = '';
+    var terrain = {};
+    (map.cells || []).forEach(function (cell) { terrain[cell.coord] = cell.terrain; });
+    var layer = el('g');
+    for (var row = 1; row <= map.rows; row++) {
+      for (var col = 1; col <= map.cols; col++) {
+        var coord = pad(row) + pad(col);
+        var point = center(coord);
+        layer.appendChild(el('polygon', { points: hexPoints(point.x, point.y), class: 'hex ' + (terrain[coord] || 'sea') }));
+      }
+    }
+    svg.appendChild(layer);
+    svg.appendChild(el('g', { id: 'marks' }));
+    built = true;
+  }
+
+  function applyView() {
+    var svg = document.getElementById('map');
+    if (!svg || !VIEW) return;
+    svg.setAttribute('viewBox', VIEW.x + ' ' + VIEW.y + ' ' + VIEW.w + ' ' + VIEW.h);
+  }
+
+  function clampView() {
+    if (!FULL_VIEW || !VIEW) return;
+    if (VIEW.w >= FULL_VIEW.w) VIEW.x = FULL_VIEW.x + (FULL_VIEW.w - VIEW.w) / 2;
+    else VIEW.x = Math.min(FULL_VIEW.x + FULL_VIEW.w - VIEW.w, Math.max(FULL_VIEW.x, VIEW.x));
+    if (VIEW.h >= FULL_VIEW.h) VIEW.y = FULL_VIEW.y + (FULL_VIEW.h - VIEW.h) / 2;
+    else VIEW.y = Math.min(FULL_VIEW.y + FULL_VIEW.h - VIEW.h, Math.max(FULL_VIEW.y, VIEW.y));
+  }
+
+  function updateZoomLabel() {
+    var label = document.getElementById('zoom-value');
+    if (label) label.textContent = Math.round(ZOOM_STEPS[zoomIndex] * 100) + '%';
+    var zoomIn = document.getElementById('zoom-in');
+    var zoomOut = document.getElementById('zoom-out');
+    if (zoomIn) zoomIn.disabled = zoomIndex >= ZOOM_STEPS.length - 1;
+    if (zoomOut) zoomOut.disabled = zoomIndex <= 0;
+  }
+
+  function applyZoom(index) {
+    if (!FULL_VIEW || !VIEW) return;
+    zoomIndex = Math.max(0, Math.min(ZOOM_STEPS.length - 1, index));
+    var level = ZOOM_STEPS[zoomIndex];
+    var nextW = FULL_VIEW.w / level;
+    var nextH = FULL_VIEW.h / level;
+    var cx = VIEW.x + VIEW.w / 2;
+    var cy = VIEW.y + VIEW.h / 2;
+    VIEW = { x: cx - nextW / 2, y: cy - nextH / 2, w: nextW, h: nextH };
+    clampView();
+    applyView();
+    updateZoomLabel();
+  }
+
+  function stepZoom(direction) {
+    applyZoom(zoomIndex + direction);
+  }
+
+  function resetView() {
+    if (!FULL_VIEW) return;
+    zoomIndex = ZOOM_STEPS.indexOf(1);
+    VIEW = { x: FULL_VIEW.x, y: FULL_VIEW.y, w: FULL_VIEW.w, h: FULL_VIEW.h };
+    applyView();
+    updateZoomLabel();
+  }
+
+  function bindZoom() {
+    var svg = document.getElementById('map');
+    if (!svg || svg.dataset.zoomBound) return;
+    svg.dataset.zoomBound = '1';
+    var drag = null;
+    svg.addEventListener('pointerdown', function (event) {
+      if (event.button !== 0 || !VIEW) return;
+      var target = event.target;
+      if (target && target.closest && target.closest('[data-detail]')) return;
+      closeDetail();
+      var ctm = svg.getScreenCTM();
+      if (!ctm || !ctm.a || !ctm.d) return;
+      drag = {
+        pointerId: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+        vx: VIEW.x,
+        vy: VIEW.y,
+        scaleX: ctm.a,
+        scaleY: ctm.d,
+        moved: false
+      };
+      svg.classList.add('dragging');
+      if (svg.setPointerCapture) svg.setPointerCapture(event.pointerId);
+    });
+    svg.addEventListener('pointermove', function (event) {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      var dx = event.clientX - drag.x;
+      var dy = event.clientY - drag.y;
+      if (!drag.moved && Math.sqrt(dx * dx + dy * dy) < 4) return;
+      if (!drag.moved) event.preventDefault();
+      drag.moved = true;
+      VIEW.x = drag.vx - dx / drag.scaleX;
+      VIEW.y = drag.vy - dy / drag.scaleY;
+      clampView();
+      applyView();
+    });
+    function endDrag(event) {
+      if (!drag || (event && event.pointerId !== drag.pointerId)) return;
+      drag = null;
+      svg.classList.remove('dragging');
+    }
+    svg.addEventListener('pointerup', endDrag);
+    svg.addEventListener('pointercancel', endDrag);
+    var zoomIn = document.getElementById('zoom-in');
+    var zoomOut = document.getElementById('zoom-out');
+    var reset = document.getElementById('zoom-value');
+    if (zoomIn) zoomIn.addEventListener('click', function () { stepZoom(1); });
+    if (zoomOut) zoomOut.addEventListener('click', function () { stepZoom(-1); });
+    if (reset) reset.addEventListener('click', resetView);
+    var detailClose = document.getElementById('detail-close');
+    if (detailClose) detailClose.addEventListener('click', closeDetail);
+    window.addEventListener('keydown', function (event) { if (event.key === 'Escape') closeDetail(); });
+  }
+
+  function shipIcon(fleet, color) {
+    var group = el('g', { transform: 'rotate(' + (HEADING_ANGLE[fleet.heading] || 0) + ')' });
+    var members = fleet.members || [];
+    var carrier = members.some(function (member) {
+      return member.type === 'CV' || member.type === 'CVL' || member.type === 'CVE';
+    });
+    if (carrier) {
+      group.appendChild(el('path', { d: 'M -10 -3.5 L 6 -3.5 L 10 0 L 6 3.5 L -10 3.5 Z', fill: color, stroke: '#071417', 'stroke-width': 0.8 }));
+      group.appendChild(el('rect', { x: -3, y: -5.5, width: 3, height: 2.2, fill: '#071417', 'fill-opacity': 0.7 }));
+    } else {
+      group.appendChild(el('path', { d: 'M -9 0 L -6 -3.2 L 6 -3.2 L 9 0 L 6 3.2 L -6 3.2 Z', fill: color, stroke: '#071417', 'stroke-width': 0.8 }));
+      group.appendChild(el('rect', { x: -2.5, y: -1.4, width: 5, height: 2.8, rx: 0.6, fill: '#071417', 'fill-opacity': 0.65 }));
+    }
+    return group;
+  }
+
+  var MISSION_LABEL = { cap: 'CAP', recon: '侦察', attack: '攻击', attack_holding: '攻击', cover: '掩护', transfer: '转场' };
+  var AIR_STATUS_LABEL = { hangar: '机库', deck: '甲板', ready: '待命', cap: 'CAP', attack: '攻击', attack_holding: '攻击待机', recon: '侦察', cover: '掩护', transfer: '转场', service: '整备' };
+  var ENGAGEMENT_LABEL = { aggressive: '逢敌必战', advantage: '优势交战', avoid: '避免近战' };
+  function missionLabel(value) {
+    return MISSION_LABEL[String(value || '').toLowerCase()] || value || '空中';
+  }
+  function statusLabel(value) {
+    return AIR_STATUS_LABEL[String(value || '').toLowerCase()] || value || '未知';
+  }
+  function contentURL(picture) {
+    return picture ? '/content/' + String(picture).replace(/^\/+/, '') : '';
+  }
+  function damageText(damage) {
+    if (!damage) return '完好';
+    var names = { disabled: '失去动力', oil_leak: '漏油', fire: '起火', flooding: '进水', list: '倾斜', rudder: '舵机受损', engine: '主机受损', deck: '甲板受损' };
+    var keys = Object.keys(damage).filter(function (key) { return damage[key]; });
+    return keys.length ? keys.map(function (key) { return names[key] || key; }).join(' / ') : '完好';
+  }
+  function pictureBlock(picture, fallback, className) {
+    var url = contentURL(picture);
+    return url ? '<img class="' + escapeHTML(className || '') + '" src="' + escapeHTML(url) + '" alt="">' : '<div class="detail-pic-fallback">' + escapeHTML(fallback || '—') + '</div>';
+  }
+  var LAST_DATA = null;
+
+  function openDetail(kicker, title, meta, cards) {
+    LAST_DATA = LAST_DATA || {};
+    document.getElementById('detail-kicker').textContent = kicker;
+    document.getElementById('detail-title').textContent = title;
+    document.getElementById('detail-meta').innerHTML = meta;
+    document.getElementById('detail-cards').innerHTML = cards || '<div class="detail-empty">没有可显示的编成数据</div>';
+    document.getElementById('detail-panel').hidden = false;
+  }
+  function closeDetail() {
+    var panel = document.getElementById('detail-panel');
+    if (panel) panel.hidden = true;
+  }
+  function showFleetDetail(fleet) {
+    if (!fleet) return;
+    var members = fleet.members && fleet.members.length ? fleet.members : ((LAST_DATA && LAST_DATA.units) || []).filter(function (unit) { return unit.fleet_id === fleet.fleet_id; });
+    var carrierMap = {};
+    ((LAST_DATA && LAST_DATA.aviation && LAST_DATA.aviation.carriers) || []).forEach(function (carrier) { carrierMap[carrier.unit_id] = carrier; });
+    var cards = members.map(function (member) {
+      var carrier = carrierMap[member.id];
+      var details = [(member.type || '—'), '强度 ' + (member.strength == null ? '?' : member.strength) + '/' + (member.max_strength == null ? '?' : member.max_strength)];
+      if (member.card && member.card.cargo) details.push('货物 ' + member.card.cargo);
+      if (carrier) details.push('舰载机 ' + (carrier.aircraft || []).length + '/' + (carrier.hangar_capacity || '?'));
+      return '<div class="detail-card">' + pictureBlock(member.card && member.card.picture, member.type || '舰', 'ship-pic') +
+        '<div class="detail-copy"><b>' + escapeHTML(member.name || member.type || '未知舰') + '</b>' +
+        '<small>' + escapeHTML(details.join(' · ')) + '</small>' +
+        '<em>' + escapeHTML(damageText(member.damage)) + '</em></div></div>';
+    }).join('');
+    var meta = '<span>编成 <b>' + members.length + '</b> 艘</span>' +
+      '<span>坐标 <b>' + escapeHTML(fleet.coord || '—') + '</b></span>' +
+      '<span>航向 <b>' + escapeHTML(fleet.heading || '—') + '</b></span>' +
+      '<span>交战 <b>' + escapeHTML(ENGAGEMENT_LABEL[fleet.engagement] || fleet.engagement || '—') + '</b></span>';
+    openDetail('FLEET · ' + (fleet.faction === 'A' ? '美军' : '日军'), fleet.fleet_name || fleet.name || fleet.fleet_id || '舰队详情', meta, cards);
+  }
+  function showAirDetail(group) {
+    if (!group) return;
+    var rows = {};
+    (group.aircraft || []).forEach(function (aircraft) {
+      var key = [aircraft.model || '?', aircraft.status || '', aircraft.loadout || ''].join('|');
+      if (!rows[key]) {
+        rows[key] = {
+          model: aircraft.model || '未知机型', picture: aircraft.picture, status: aircraft.status,
+          loadout: aircraft.loadout, range: aircraft.remaining_range, max: aircraft.max_range, count: 0
+        };
+      }
+      rows[key].count++;
+    });
+    var cards = Object.keys(rows).map(function (key) {
+      var row = rows[key];
+      var details = ['状态 ' + statusLabel(row.status), '数量 ' + row.count];
+      if (row.range != null) details.push('航程 ' + row.range + (row.max ? '/' + row.max : ''));
+      return '<div class="detail-card">' + pictureBlock(row.picture, '机') +
+        '<div class="detail-copy"><b>' + escapeHTML(row.model) + '</b>' +
+        '<small>' + escapeHTML(details.join(' · ')) + '</small>' +
+        '<em>' + escapeHTML(row.loadout || '') + '</em></div></div>';
+    }).join('');
+    var meta = '<span>兵力 <b>' + (group.count || (group.aircraft || []).length) + '</b> 架</span>' +
+      '<span>坐标 <b>' + escapeHTML(group.coord || '—') + '</b></span>' +
+      '<span>任务 <b>' + escapeHTML(group.mission || '空中') + '</b></span>' +
+      '<span>阵营 <b>' + (group.faction === 'A' ? '美军' : '日军') + '</b></span>';
+    openDetail('AIR GROUP · ' + (group.faction === 'A' ? '美军' : '日军'), (group.mission || '空中编队') + ' · ' + (group.count || 0) + ' 架', meta, cards);
+  }
+
+  // 侦察机不画机体：画完整搜索扇面，当前距离带用高亮格表示“扫到哪条线”。
+  function drawReconSectors(data, marks) {
+    var tasks = (data.aviation && data.aviation.tasks) || [];
+    var base = {};
+    var currentLayers = [];
+    var seenCurrent = {};
+    tasks.forEach(function (task) {
+      (task.recon_sectors || []).forEach(function (sector) {
+        var hexes = sector.sector_hexes || [];
+        if (!hexes.length) return;
+        var color = COLOR[task.faction] || '#d7bb7b';
+        var ring = sector.current_ring_hexes || [];
+        // 同一任务的两架侦察机扇面完全重叠：整条搜索带只画一遍，否则透明度叠成一团。
+        var baseKey = [task.faction, sector.origin_coord, sector.heading, sector.sector_width, sector.recon_radius].join('|');
+        if (!base[baseKey]) base[baseKey] = { color: color, cells: hexes, label: task.name || '侦察' };
+        if (ring.length) {
+          var currentKey = task.faction + '|' + ring.slice().sort().join(',');
+          if (!seenCurrent[currentKey]) {
+            seenCurrent[currentKey] = true;
+            currentLayers.push({ color: color, cells: ring, origin: sector.origin_coord, current: sector.current_coord, heading: sector.heading, radius: sector.recon_radius });
+          }
+        }
+      });
+    });
+    Object.keys(base).forEach(function (key) {
+      var group = base[key];
+      var layer = el('g', { class: 'recon-sector' });
+      group.cells.forEach(function (coord) {
+        var point = center(coord);
+        layer.appendChild(el('polygon', {
+          points: hexPoints(point.x, point.y),
+          class: 'recon-cell',
+          fill: group.color,
+          'fill-opacity': 0.055,
+          stroke: 'none'
+        }));
+      });
+      marks.appendChild(layer);
+    });
+    // 当前距离带单独盖在最上层：这是“侦察机扫到哪条线”的唯一视觉标记。
+    currentLayers.forEach(function (sector) {
+      var layer = el('g', { class: 'recon-sector current-band' });
+      sector.cells.forEach(function (coord) {
+        var point = center(coord);
+        layer.appendChild(el('polygon', {
+          points: hexPoints(point.x, point.y),
+          class: 'recon-cell current',
+          fill: sector.color,
+          'fill-opacity': 0.52,
+          stroke: sector.color,
+          'stroke-opacity': 0.95,
+          'stroke-width': 1.4
+        }));
+      });
+      var title = el('title');
+      title.textContent = '侦察扇面 · ' + (sector.origin || '?') + ' → ' + (sector.heading || '?') + ' · 当前 ' + (sector.current || '?') + ' · 半径 ' + (sector.radius || '?');
+      layer.appendChild(title);
+      marks.appendChild(layer);
+    });
+  }
+
+  function drawMarks(data) {
+    var marks = document.getElementById('marks');
+    if (!marks) return;
+    marks.innerHTML = '';
+    LAST_DATA = data;
+    drawReconSectors(data, marks);
+    var byCoord = {};
+    (data.fleets || []).forEach(function (fleet) {
+      if (!fleet.coord) return;
+      (byCoord[fleet.coord] = byCoord[fleet.coord] || []).push(fleet);
+    });
+    var airfieldCoords = {};
+    ((data.ground_air && data.ground_air.length) ? data.ground_air : (data.airfields || [])).forEach(function (airfield) {
+      airfieldCoords[airfield.coord] = true;
+    });
+    var placedLabels = [];
+    function labelOverlaps(rect) {
+      return placedLabels.some(function (other) {
+        return !(rect.x + rect.w < other.x || other.x + other.w < rect.x || rect.y + rect.h < other.y || other.y + other.h < rect.y);
+      });
+    }
+
+    Object.keys(byCoord).forEach(function (coord) {
+      var point = center(coord);
+      var fleets = byCoord[coord];
+      fleets.forEach(function (fleet, index) {
+        var color = COLOR[fleet.faction] || '#9fb2b2';
+        var offset = (index - (fleets.length - 1) / 2) * 9 + (airfieldCoords[coord] ? 10 : 0);
+
+        // hex 里放舰影；牌子放到旁边，先试右、再试左/上/下，尽量避免压住别的牌子。
+        var ship = el('g', { class: 'fleet-ship', 'data-detail': 'fleet', transform: 'translate(' + point.x + ',' + (point.y + offset) + ')' });
+        ship.appendChild(shipIcon(fleet, color));
+        var shipTitle = el('title');
+        shipTitle.textContent = (fleet.fleet_name || fleet.name || fleet.fleet_id) + ' · ' + fleet.count + ' 艘 · ' + coord;
+        ship.appendChild(shipTitle);
+        ship.addEventListener('click', function (event) { event.stopPropagation(); showFleetDetail(fleet); });
+        marks.appendChild(ship);
+
+        var label = fleet.fleet_id || '';
+        var wide = Math.max(62, label.length * 7 + 48);
+        var candidates = [
+          { x: point.x + SIZE + 7, y: point.y - 12 + index * 28 },
+          { x: point.x - SIZE - 7 - wide, y: point.y - 12 + index * 28 },
+          { x: point.x - wide / 2, y: point.y - SIZE - 20 - index * 28 },
+          { x: point.x - wide / 2, y: point.y + SIZE + 8 + index * 28 }
+        ];
+        var chosen = null;
+        for (var c = 0; c < candidates.length; c++) {
+          var cand = candidates[c];
+          if (cand.x < 0 || cand.x + wide > MAP_WIDTH || cand.y < 0 || cand.y + 24 > MAP_HEIGHT) continue;
+          if (!labelOverlaps({ x: cand.x, y: cand.y, w: wide, h: 24 })) { chosen = cand; break; }
+        }
+        if (!chosen) {
+          chosen = {
+            x: Math.min(Math.max(4, point.x + SIZE + 7), MAP_WIDTH - wide - 4),
+            y: Math.min(Math.max(4, point.y - 12 + index * 28), MAP_HEIGHT - 28)
+          };
+        }
+        placedLabels.push({ x: chosen.x, y: chosen.y, w: wide, h: 24 });
+
+        var labelGroup = el('g', { class: 'fleet-label', 'data-detail': 'fleet', transform: 'translate(' + chosen.x + ',' + chosen.y + ')' });
+        labelGroup.addEventListener('click', function (event) { event.stopPropagation(); showFleetDetail(fleet); });
+        labelGroup.appendChild(el('rect', { x: 0, y: 0, width: wide, height: 24, rx: 3, fill: color, 'fill-opacity': 0.18, stroke: color, 'stroke-width': 1 }));
+        labelGroup.appendChild(text(5, 10, label, color, 10, 700));
+        labelGroup.appendChild(text(wide - 6, 10, '×' + fleet.count, '#e8cd8b', 10, 700, 'end'));
+        labelGroup.appendChild(text(5, 21, coord, '#9fc4cb', 8, 600));
+        var title = el('title');
+        title.textContent = (fleet.fleet_name || fleet.name || label) + ' · ' + fleet.count + ' 艘 · 强度 ' + fleet.strength + '/' + fleet.max_strength + (fleet.coord ? ' · ' + fleet.coord : '');
+        labelGroup.appendChild(title);
+        marks.appendChild(labelGroup);
+      });
+    });
+    ((data.ground_air && data.ground_air.length) ? data.ground_air : (data.airfields || [])).forEach(function (airfield) {
+      var point = center(airfield.coord);
+      var group = el('g', { transform: 'translate(' + point.x + ',' + point.y + ')' });
+      group.appendChild(el('rect', { x: -8, y: -8, width: 16, height: 16, rx: 2, fill: '#1c2f34', stroke: COLOR[airfield.faction] || '#829a9c', 'stroke-width': 1 }));
+      group.appendChild(text(0, 3, '机', '#cfe0dc', 8, 600, 'middle'));
+      var based = (airfield.aircraft || []).filter(function (aircraft) {
+        return !AIRBORNE[aircraft.status];
+      }).length;
+      if (based > 0) {
+        group.appendChild(text(9, -4, '×' + based, COLOR[airfield.faction] || '#cfe0dc', 8, 700, 'start'));
+      }
+      var title = el('title');
+      title.textContent = airfield.name + ' · ' + airfield.coord + ' · 驻机 ' + based;
+      group.appendChild(title);
+      marks.appendChild(group);
+    });
+    // 空中单位：按实际坐标画小飞机，A 蓝 B 红；同格多架合并成 ×N。
+    var seenAircraft = {};
+    var airGroups = {};
+    function addAircraft(aircraft, fallbackFaction) {
+      if (!aircraft || !aircraft.id || seenAircraft[aircraft.id]) return;
+      seenAircraft[aircraft.id] = true;
+      if (!aircraft.coord || !AIRBORNE[aircraft.status]) return;
+      // 侦察机交给扇面图层表达，不再画机体；否则“飞机到了哪”会和“搜索带扫到哪”打架。
+      var status = String(aircraft.status || '').toLowerCase();
+      if (status === 'recon') return;
+      var faction = aircraft.faction || fallbackFaction || 'A';
+      var mission = missionLabel(aircraft.task_kind || status);
+      var key = aircraft.coord + '|' + faction + '|' + mission;
+      if (!airGroups[key]) {
+        airGroups[key] = {
+          coord: aircraft.coord,
+          faction: faction,
+          mission: mission,
+          count: 0,
+          aircraft: [],
+          heading: String(aircraft.heading || aircraft.search_heading || '').toUpperCase()
+        };
+      }
+      airGroups[key].count++;
+      airGroups[key].aircraft.push(aircraft);
+    }
+    ((data.aviation && data.aviation.carriers) || []).forEach(function (carrier) {
+      (carrier.aircraft || []).forEach(function (aircraft) { addAircraft(aircraft, carrier.faction); });
+    });
+    (data.ground_air || []).forEach(function (airfield) {
+      (airfield.aircraft || []).forEach(function (aircraft) { addAircraft(aircraft, airfield.faction); });
+    });
+    ((data.aviation && data.aviation.tasks) || []).forEach(function (task) {
+      (task.aircraft || []).forEach(function (aircraft) { addAircraft(aircraft, task.faction); });
+    });
+
+    var airByCoord = {};
+    Object.keys(airGroups).forEach(function (key) {
+      var group = airGroups[key];
+      (airByCoord[group.coord] = airByCoord[group.coord] || []).push(group);
+    });
+    Object.keys(airByCoord).forEach(function (coord) {
+      var point = center(coord);
+      var groups = airByCoord[coord];
+      groups.forEach(function (group, index) {
+        var color = COLOR[group.faction] || '#d7bb7b';
+        var offsetY = (index - (groups.length - 1) / 2) * 16;
+        var marker = el('g', { class: 'watch-air', 'data-detail': 'air', transform: 'translate(' + point.x + ',' + (point.y - 20 + offsetY) + ')' });
+        marker.addEventListener('click', function (event) { event.stopPropagation(); showAirDetail(group); });
+        marker.appendChild(el('circle', { r: 8, fill: color, 'fill-opacity': 0.92, stroke: '#071417', 'stroke-width': 1 }));
+        marker.appendChild(text(0, 3, group.count, '#071417', 9, 700, 'middle'));
+        var labelRight = point.x < MAP_WIDTH - 78;
+        var label = text(labelRight ? 11 : -11, 3, group.mission, color, 9, 700, labelRight ? 'start' : 'end');
+        label.setAttribute('stroke', '#071417');
+        label.setAttribute('stroke-width', '2.6');
+        label.setAttribute('stroke-linejoin', 'round');
+        label.setAttribute('paint-order', 'stroke');
+        marker.appendChild(label);
+        var title = el('title');
+        title.textContent = (group.faction === 'A' ? '美军' : '日军') + ' ' + group.mission + ' ' + group.count + ' 架 · ' + coord;
+        marker.appendChild(title);
+        marks.appendChild(marker);
+      });
+    });
+
+    // 老快照没有逐机坐标时，退回任务标记；侦察同样只靠扇面。
+    ((data.aviation && data.aviation.tasks) || []).forEach(function (task) {
+      if (task.kind === 'recon') return;
+      if ((task.aircraft && task.aircraft.length) || !task.airborne_count || !task.current_coord) return;
+      var point = center(task.current_coord);
+      var color = COLOR[task.faction] || '#d7bb7b';
+      var group = el('g', { class: 'watch-air', 'data-detail': 'air', transform: 'translate(' + point.x + ',' + (point.y - 26) + ')' });
+      group.addEventListener('click', function (event) { event.stopPropagation(); showAirDetail({ faction: task.faction, coord: task.current_coord, mission: missionLabel(task.kind), count: task.airborne_count, aircraft: task.aircraft || [] }); });
+      group.appendChild(el('circle', { r: 7, fill: color, 'fill-opacity': 0.92, stroke: '#071417', 'stroke-width': 1 }));
+      group.appendChild(text(0, 3, task.airborne_count > 1 ? '×' + task.airborne_count : '1', '#071417', 8, 700, 'middle'));
+      var label = text(11, 3, missionLabel(task.kind), color, 9, 700);
+      label.setAttribute('stroke', '#071417');
+      label.setAttribute('stroke-width', '2.6');
+      label.setAttribute('paint-order', 'stroke');
+      group.appendChild(label);
+      var title = el('title');
+      title.textContent = task.name + ' · ' + task.phase + (task.target_coord ? ' · 目标 ' + task.target_coord : '');
+      group.appendChild(title);
+      marks.appendChild(group);
+    });
+  }
+
+  function row(label, value, note) {
+    return '<div class="row"><span>' + label + '</span><span>' + value + (note ? ' <small>' + note + '</small>' : '') + '</span></div>';
+  }
+  function escapeHTML(value) {
+    return String(value == null ? '' : value).replace(/[&<>"]/g, function (ch) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch];
+    });
+  }
+
+  function renderSummary(data) {
+    var clock = data.clock || {};
+    var phase = clock.night ? '夜战' : (clock.service_open ? '整备中' : '待命');
+    if (clock.launch_open) phase = '可放飞';
+    var target = document.getElementById('summary');
+    var html = '';
+    html += row('剧本时间', (clock.day ? '第' + clock.day + '天 ' : '') + (clock.time || '–'), clock.turn_minutes ? clock.turn_minutes + ' 分钟/回合' : '');
+    html += row('阶段', phase, clock.recover_by ? clock.recover_by + ' 前回收' : '');
+    var wind = data.wind;
+    if (wind && typeof wind === 'object') wind = wind.wind || wind.name || '';
+    html += row('风力', escapeHTML(wind || '–'));
+    html += row('舰船', (data.units || []).length + ' 艘', (data.fleets || []).length + ' 支舰队');
+    var scores = data.scores || {};
+    var points = function (value) { return Math.round((Number(value) || 0) * 100) / 100; };
+    html += '<div class="row"><span>战果分</span><span><span class="tag a">A</span> ' + points(scores.A) + ' : ' + points(scores.B) + ' <span class="tag b">B</span></span></div>';
+    var losses = data.losses || {};
+    ['A', 'B'].forEach(function (side) {
+      var ledger = losses[side] || {};
+      html += '<div class="row"><span><span class="tag ' + side.toLowerCase() + '">' + side + '</span> 损失</span><span>' + (ledger.ship_total || 0) + ' 舰 · ' + (ledger.aircraft_total || 0) + ' 机</span></div>';
+    });
+    (data.objectives || []).forEach(function (objective) {
+      if (objective.kind === 'score') {
+        html += row('计分', '母舰按机库容量 · 每机 0.25', 'BB/BC 6 · CA 3 · CL 2 · DD 1');
+        return;
+      }
+      var side = objective.faction || '';
+      if (objective.kind === 'supplies') {
+        var supplies = data.shore_supplies || {};
+        var delivered = supplies[side + '|' + objective.coord] || 0;
+        html += '<div class="row"><span><span class="tag ' + side.toLowerCase() + '">' + escapeHTML(side) + '</span> ' + escapeHTML(objective.text || '投送物资') + '</span><span>' + delivered + ' / ' + (objective.value || 0) + (objective.decisive ? ' · 决定' : '') + '</span></div>';
+        return;
+      }
+      var enemy = side === 'A' ? 'B' : 'A';
+      var enemyLedger = (data.losses || {})[enemy] || {};
+      var killed = enemyLedger.ship_total || 0;
+      html += '<div class="row"><span><span class="tag ' + side.toLowerCase() + '">' + escapeHTML(side) + '</span> 击沉 ' + (objective.value || 0) + ' 艘</span><span>' + killed + ' / ' + (objective.value || 0) + '</span></div>';
+    });
+    if (data.outcome) {
+      html += '<div class="row"><span>结局</span><span>' + escapeHTML(data.outcome.reason || data.outcome.winner || '已结束') + '</span></div>';
+    }
+    target.innerHTML = html;
+  }
+
+  function renderFleets(data) {
+    var target = document.getElementById('fleets');
+    var fleets = (data.fleets || []).slice().sort(function (a, b) {
+      if (a.faction !== b.faction) return String(a.faction).localeCompare(String(b.faction));
+      return String(a.fleet_id).localeCompare(String(b.fleet_id));
+    });
+    if (!fleets.length) { target.innerHTML = '<div class="empty">暂无舰队</div>'; return; }
+    target.innerHTML = fleets.map(function (fleet) {
+      var side = String(fleet.faction || '?').toLowerCase();
+      return '<div class="fleet-line"><span class="tag ' + side + '">' + escapeHTML(fleet.faction) + '</span>' +
+        '<span>' + escapeHTML(fleet.fleet_name || fleet.name) + '</span>' +
+        '<span class="coord">' + escapeHTML(fleet.coord) + '</span>' +
+        '<span class="meta">' + fleet.count + ' 艘 · ' + fleet.strength + '/' + fleet.max_strength + (fleet.move_cooldown ? ' · 冷却' + fleet.move_cooldown : '') + '</span></div>';
+    }).join('');
+  }
+
+  function renderCarriers(data) {
+    var target = document.getElementById('carriers');
+    var carriers = (data.aviation && data.aviation.carriers) ? data.aviation.carriers : [];
+    if (!carriers.length) { target.innerHTML = '<div class="empty">暂无航母</div>'; return; }
+    target.innerHTML = carriers.map(function (carrier) {
+      var airborne = (carrier.aircraft || []).filter(function (aircraft) {
+        return aircraft.status === 'cap' || aircraft.status === 'recon' || aircraft.status === 'attack' || aircraft.status === 'attack_holding';
+      }).length;
+      var side = String(carrier.faction || '').toLowerCase();
+      return '<div class="fleet-line"><span>' + (side ? '<span class="tag ' + side + '">' + escapeHTML(carrier.faction) + '</span> ' : '') + escapeHTML(carrier.name) + '</span>' +
+        '<span class="meta">机库 ' + carrier.hangar_used + '/' + carrier.hangar_capacity + ' · 甲板 ' + carrier.deck_used + '/' + carrier.deck_capacity + ' · 空中 ' + airborne + (carrier.blocked_reason ? ' · ' + escapeHTML(carrier.blocked_reason) : '') + '</span></div>';
+    }).join('');
+  }
+
+  function renderEvents(data) {
+    var target = document.getElementById('events');
+    var events = (data.events || []).slice(0, 60);
+    if (!events.length) { target.innerHTML = '<li class="empty">暂无战报</li>'; return; }
+    target.innerHTML = events.map(function (event) {
+      var stamp = event.created_at ? new Date(event.created_at) : null;
+      var time = stamp && !isNaN(stamp) ? pad(stamp.getHours()) + ':' + pad(stamp.getMinutes()) : '';
+      return '<li><time>T' + event.turn + (time ? ' ' + time : '') + '</time><span>' + escapeHTML(event.text) + '</span></li>';
+    }).join('');
+  }
+
+  function render(data) {
+    if (!built) buildMap(data.map);
+    bindZoom();
+    drawMarks(data);
+    document.getElementById('scenario').textContent = (data.scenario && data.scenario.name) || '珊瑚海';
+    document.getElementById('turn').textContent = data.turn;
+    document.getElementById('version').textContent = data.version;
+    document.getElementById('clock').textContent = data.clock ? data.clock.time : '–';
+    var status = document.getElementById('status');
+    status.textContent = data.status === 'running' ? '进行中' : String(data.status || '');
+    status.className = 'status ' + (data.status === 'running' ? 'running' : 'finished');
+    renderSummary(data);
+    renderFleets(data);
+    renderCarriers(data);
+    renderEvents(data);
+    document.getElementById('room').textContent = '房间 ' + data.room_id;
+    document.getElementById('updated').textContent = '最后刷新 ' + new Date().toLocaleTimeString('zh-CN', { hour12: false });
+  }
+
+  function fail(message) {
+    document.getElementById('status').textContent = '连接失败';
+    document.getElementById('status').className = 'status finished';
+    document.getElementById('summary').innerHTML = '<div class="err">' + escapeHTML(message) + '</div>';
+  }
+
+  var reconnectDelay = 1000;
+  var reconnectTimer = null;
+  var terminalError = false;
+  function connect() {
+    if (!room || !token) { fail('观战地址缺少房间 token，例如 /watch/XXXX-XXXX-XXXX'); return; }
+    var scheme = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    var socket = new WebSocket(scheme + '//' + location.host + '/ws?mode=spectator');
+    socket.onopen = function () {
+      reconnectDelay = 1000;
+      document.getElementById('status').textContent = '已连接';
+      socket.send(JSON.stringify({ type: 'subscribe', room_id: room, token: token }));
+    };
+    socket.onmessage = function (event) {
+      try {
+        var message = JSON.parse(event.data);
+        if (message.type === 'snapshot' && message.view) { render(message.view); return; }
+        if (message.type === 'error') { terminalError = true; fail(message.error || '读取失败'); }
+      } catch (error) { fail('读取失败：' + error.message); }
+    };
+    socket.onerror = function () { socket.close(); };
+    socket.onclose = function () {
+      if (terminalError) return;
+      document.getElementById('status').textContent = '连接中断，正在重连…';
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      reconnectTimer = setTimeout(connect, reconnectDelay);
+      reconnectDelay = Math.min(reconnectDelay * 2, 10000);
+    };
+  }
+
+  connect();
+})();
+</script>
+</body>
+</html>

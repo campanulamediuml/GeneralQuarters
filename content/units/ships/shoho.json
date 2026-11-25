@@ -1,0 +1,27 @@
+{
+ "id": "shoho",
+ "faction": "B",
+ "type": "CVL",
+ "name": "祥凤",
+ "picture": "misc/image/ship/jap_cvl1.png",
+ "strength": 2,
+ "card": {
+  "damage_control": 2,
+  "main_gun_count": 0,
+  "main_gun_caliber": 0,
+  "heavy_aa": 3.0,
+  "light_aa": 3.0,
+  "surface_radar": false,
+  "air_radar": false,
+  "speed_class": "fast",
+  "torpedo_salvos": 0,
+  "aircraft": 0,
+  "deck_capacity": 6,
+  "elevator_count": 2,
+  "depth_charges": 0,
+  "cargo": 0,
+  "armored_carrier": false,
+  "hangar_capacity": 8,
+  "gunnery": 0
+ }
+}

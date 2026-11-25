@@ -7,11 +7,34 @@ import "fmt"
 // advanceCover 让"空中掩护"编队飞到目标 hex 上空盘旋：
 // 到位后就是那个 hex 的 CAP（敌方空袭打过来时由 strikeCAPGroups 算作防守方），
 // 燃料只够回家时自动撤出返航，不需要玩家手动召回。
+// friendlyUnitIDAt 返回目标 hex 上第一艘己方舰船；空中掩护用它认领要跟随的舰队。
+func friendlyUnitIDAt(state State, faction, coord string) string {
+	if coord == "" {
+		return ""
+	}
+	for _, id := range sortedUnitIDs(state.Units) {
+		unit := state.Units[id]
+		if unit != nil && unit.Faction == faction && unit.Coord == coord {
+			return unit.ID
+		}
+	}
+	return ""
+}
+
 func advanceCover(state *State, aircraft *AirUnit) []EngineEvent {
 	carrier := state.Units[aircraft.CarrierID]
 	if carrier == nil {
 		aircraft.Returning = true
 		return advanceAircraftReturn(state, aircraft)
+	}
+	// 空中掩护跟着被掩护的舰队走：目标 hex 里有己方舰队时，认领其中一艘，
+	// 每回合把 TargetCoord 更新到它当前位置，而不是钉在起飞时的旧 hex。
+	if aircraft.CoverUnitID != "" {
+		if guarded := state.Units[aircraft.CoverUnitID]; guarded != nil && guarded.Faction == aircraft.Faction {
+			aircraft.TargetCoord = guarded.Coord
+		} else {
+			aircraft.CoverUnitID = ""
+		}
 	}
 	home := carrier.Coord
 	if aircraft.Range() <= Distance(aircraft.Coord, home)+1 {

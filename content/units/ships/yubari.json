@@ -1,0 +1,26 @@
+{
+ "id": "yubari",
+ "faction": "B",
+ "type": "CL",
+ "name": "夕张",
+ "picture": "misc/image/ship/yubari.png",
+ "strength": 2,
+ "card": {
+  "damage_control": 1,
+  "main_gun_count": 4,
+  "main_gun_caliber": 5.5,
+  "heavy_aa": 0.0,
+  "light_aa": 1.0,
+  "surface_radar": false,
+  "air_radar": false,
+  "speed_class": "fast",
+  "torpedo_salvos": 1,
+  "aircraft": 0,
+  "deck_capacity": 0,
+  "elevator_count": 0,
+  "depth_charges": 0,
+  "cargo": 0,
+  "armored_carrier": false,
+  "gunnery": 5
+ }
+}

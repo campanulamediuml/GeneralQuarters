@@ -41,6 +41,7 @@ func TestShoreBombardmentDamagesAirfieldAndChargesConfusion(t *testing.T) {
 	}
 	state.FleetStays = map[string]string{"TG-A": airfield.Coord}
 	before := airfield.Strength
+	beforeCoastal := airfield.Coastal
 	beforeGround := len(sortedGroundAirIDs(state, airfield.ID))
 	// 用固定种子（52）保证本场齐射至少命中 2 次，否则断言"没掉血"会是测试本身失效。
 	state.RNGState = 52
@@ -54,11 +55,63 @@ func TestShoreBombardmentDamagesAirfieldAndChargesConfusion(t *testing.T) {
 	if airfield.Strength < 0 {
 		t.Fatalf("机场生命值不应跌破 0：%d", airfield.Strength)
 	}
+	if airfield.Coastal >= beforeCoastal {
+		t.Fatalf("岸轰命中应削减岸炮：%d -> %d", beforeCoastal, airfield.Coastal)
+	}
+	if airfield.Coastal < 0 {
+		t.Fatalf("岸炮不应跌破 0：%d", airfield.Coastal)
+	}
 	if len(sortedGroundAirIDs(state, airfield.ID)) > beforeGround {
 		t.Fatal("岸轰不应增加地面飞机")
 	}
 	if state.Units["a-bb-01"].Confusion < 4 {
 		t.Fatalf("岸轰后舰队应获得 4 点混乱，实际 %d", state.Units["a-bb-01"].Confusion)
+	}
+}
+
+// 岸轰不是每回合都开火：停满一回合后开始，每次齐射给舰队 4 点混乱，
+// 混乱每回合 -1，清零后才会再次开火。
+func TestShoreBombardmentStartsAfterOneTurnAndRepeats(t *testing.T) {
+	state := sandboxState(t)
+	airfield := state.Airfields["af-b-sentry"]
+	for _, unit := range state.Units {
+		if FleetKey(unit) != "TG-A" {
+			continue
+		}
+		unit.Coord = airfield.Coord
+		unit.Destination = ""
+		unit.MoveCooldown = 0
+		unit.Confusion = 0
+	}
+	state.FleetStays = map[string]string{}
+	fire := func(events []EngineEvent) bool {
+		for _, event := range events {
+			if event.Type == "shore_bombardment" {
+				return true
+			}
+		}
+		return false
+	}
+	// 第一回合刚到位：只记录停留位置，不开火。
+	if events := ResolveOrders(&state, nil); fire(events) {
+		t.Fatal("舰队刚进入机场 hex 的当回合不应岸轰")
+	}
+	// 第二回合仍在原地：开始岸轰，并获得 4 点混乱。
+	if events := ResolveOrders(&state, nil); !fire(events) {
+		t.Fatal("停满一回合后应开始岸轰")
+	}
+	if got := FleetConfusion(state, "TG-A"); got < 4 {
+		t.Fatalf("岸轰后舰队应有 4 点混乱，实际 %d", got)
+	}
+	// 接下来三回合混乱还没清零，不能连续开火。
+	for i := 0; i < 3; i++ {
+		if events := ResolveOrders(&state, nil); fire(events) {
+			t.Fatalf("混乱未清零时不应再次岸轰（第 %d 回合）", i+1)
+		}
+	}
+	// 第四回合混乱归零，重新开火。
+	if events := ResolveOrders(&state, nil); !fire(events) {
+		t.Fatal("混乱清零后应再次岸轰")
 	}
 }
 

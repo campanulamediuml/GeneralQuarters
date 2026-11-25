@@ -27,6 +27,23 @@ func TestWindRelationAndDeckModifier(t *testing.T) {
 	}
 }
 
+// 卡面 DeckCapacity 是印刷的基础值，风向只改本回合可用长度 Deck.Length。
+func TestWindKeepsPrintedDeckCapacity(t *testing.T) {
+	state := sandboxState(t)
+	state.Wind = "NE"
+	carrier := state.Units["a2-cv-01"]
+	carrier.Card.DeckCapacity = 8
+	carrier.Deck.BaseLength = 8
+	carrier.Heading = "SE" // 侧顺风 -1
+	RefreshDeckLengths(&state)
+	if carrier.Deck.Length != 7 {
+		t.Fatalf("本回合甲板长度错误：%d（期望7）", carrier.Deck.Length)
+	}
+	if carrier.Card.DeckCapacity != 8 {
+		t.Fatalf("卡面基础甲板容量被风向改写：%d（期望8）", carrier.Card.DeckCapacity)
+	}
+}
+
 // 修正后的甲板长度最低为 0（规则书 824 行）。
 func TestDeckLengthClampedToZero(t *testing.T) {
 	state := sandboxState(t)

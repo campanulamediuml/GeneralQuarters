@@ -8,8 +8,8 @@ import "fmt"
 //   1. 武器：侦察 / 对空 / 鱼雷 / 炸弹 / 转场；
 //   2. 是否挂副油箱：除"重型炸弹"外都可手动选择。
 //
-// 哪些组合可选由机种决定（攻击机没有对空选项、战斗机没有炸弹鱼雷选项、
-// 水上飞机只有侦察与转场），见 LoadoutOptions。
+// 哪些组合可选由机种和飞机的对地/对舰能力共同决定：攻击机没有对空选项，
+// 水上飞机只有侦察与转场；炸弹/鱼雷还要看飞机本身有没有对地/对舰值，见 LoadoutOptions。
 
 // Weapon 是一次出击的武器配置（不含副油箱）。
 type Weapon string
@@ -104,25 +104,64 @@ var LoadoutOrder = []Loadout{
 // LoadoutOptions 返回某个机种可选的挂载。
 //
 // 攻击机（俯冲/鱼雷轰炸机）没有对空选项，但可以挂侦察载荷去搜索；
-// 战斗机没有炸弹鱼雷；水上飞机只有侦察与转场。
-// 空地两用的攻击机（能挂炸弹）额外保留重型炸弹与裸炸弹选项。
-func LoadoutOptions(kind string, seaplane bool) []Loadout {
+// 水上飞机只有侦察与转场。
+//
+// 弹药挂载由飞机自己的对地/对舰值把关，而不是只看机种：
+//   - 炸弹：对地 > 0 或对舰 > 0 才能挂（炸弹既能炸机场也能炸船）；
+//   - 鱼雷：只有鱼雷机且对舰 > 0 才能挂（没有对舰值的飞机挂鱼雷没有意义）。
+//
+// 所以对地 0、对舰 0 的纯制空战斗机只会拿到对空/转场，不会出现炸弹选项；
+// 反过来，有对地/对舰值的战斗轰炸型可以挂炸弹。
+func LoadoutOptions(kind string, seaplane bool, antiGround, antiShip int) []Loadout {
 	if seaplane {
 		return []Loadout{LoadoutReconTank, LoadoutTransfer}
 	}
+	canBomb := antiGround > 0 || antiShip > 0
+	canTorpedo := antiShip > 0
+	var options []Loadout
 	switch kind {
 	case "fighter":
-		return []Loadout{LoadoutAirTank, LoadoutAir, LoadoutTransfer}
+		options = []Loadout{LoadoutAirTank, LoadoutAir, LoadoutTransfer}
+		if canBomb {
+			// 战斗轰炸型：有对地/对舰值的战斗机可以带炸弹，但默认仍是护航对空。
+			options = []Loadout{LoadoutAirTank, LoadoutAir, LoadoutBombTank, LoadoutBomb, LoadoutTransfer}
+		}
 	case "dive_bomber":
 		// 俯冲轰炸机只能挂炸弹：D3A1/SBD 都没有鱼雷挂架。
-		return []Loadout{LoadoutReconTank, LoadoutBombTank, LoadoutBomb, LoadoutTransfer}
+		options = []Loadout{LoadoutReconTank, LoadoutBombTank, LoadoutBomb, LoadoutTransfer}
+	case "level_bomber", "medium_bomber", "heavy_bomber", "strategic_bomber":
+		// 水平轰炸机（B-25 / B-17）挂炸弹，雷击不在挂载表里。
+		// 以前没这个分支，会掉进最后的"只有转场"，B-25 改成中型轰炸机后直接没法出击。
+		options = []Loadout{LoadoutReconTank, LoadoutBombTank, LoadoutBomb, LoadoutTransfer}
 	case "torpedo_bomber":
 		// 攻击机可以带侦察载荷：没有专用侦察机时，俯冲/鱼雷轰炸机就是搜索主力。
-		return []Loadout{LoadoutReconTank, LoadoutTorpedoTank, LoadoutBombTank, LoadoutBomb, LoadoutTorpedo, LoadoutTransfer}
+		options = []Loadout{LoadoutReconTank, LoadoutTorpedoTank, LoadoutBombTank, LoadoutBomb, LoadoutTorpedo, LoadoutTransfer}
 	case "recon":
-		return []Loadout{LoadoutReconTank, LoadoutTransfer}
+		options = []Loadout{LoadoutReconTank, LoadoutTransfer}
+	default:
+		options = []Loadout{LoadoutTransfer}
 	}
-	return []Loadout{LoadoutTransfer}
+	return filterAmmoLoadouts(options, canBomb, canTorpedo)
+}
+
+// filterAmmoLoadouts 按飞机能力删掉挂不了的弹药，其余选项原样保留。
+// 转场永远保留：就算飞机没有武装，也得能飞回后方。
+func filterAmmoLoadouts(options []Loadout, canBomb, canTorpedo bool) []Loadout {
+	filtered := make([]Loadout, 0, len(options))
+	for _, option := range options {
+		switch option.Weapon() {
+		case WeaponBomb:
+			if !canBomb {
+				continue
+			}
+		case WeaponTorpedo:
+			if !canTorpedo {
+				continue
+			}
+		}
+		filtered = append(filtered, option)
+	}
+	return filtered
 }
 
 // DefaultLoadout 按任务给出默认挂载，所有默认都挂副油箱。
@@ -135,8 +174,9 @@ func LoadoutOptions(kind string, seaplane bool) []Loadout {
 //   - 转场：转场挂载。
 //
 // 对地与对舰的区别由 targetKind 表达（StrikeTargetShip / StrikeTargetAirfield）。
-func DefaultLoadout(kind string, seaplane bool, taskKind string, targetKind StrikeTarget) Loadout {
-	options := LoadoutOptions(kind, seaplane)
+// antiGround / antiShip 用来排除飞机根本挂不了的弹药（对地 0、对舰 0 的飞机没有炸弹）。
+func DefaultLoadout(kind string, seaplane bool, antiGround, antiShip int, taskKind string, targetKind StrikeTarget) Loadout {
+	options := LoadoutOptions(kind, seaplane, antiGround, antiShip)
 	preferred := preferredWeapon(options, kind, taskKind, targetKind)
 	if pick, ok := bestLoadout(options, preferred); ok {
 		return pick
@@ -227,9 +267,9 @@ func bestLoadout(options []Loadout, weapon Weapon) (Loadout, bool) {
 	return "", false
 }
 
-// ValidateLoadout 校验机种是否能挂这个组合。
-func ValidateLoadout(kind string, seaplane bool, loadout Loadout) error {
-	for _, option := range LoadoutOptions(kind, seaplane) {
+// ValidateLoadout 校验机种和飞机能力是否能挂这个组合。
+func ValidateLoadout(kind string, seaplane bool, antiGround, antiShip int, loadout Loadout) error {
+	for _, option := range LoadoutOptions(kind, seaplane, antiGround, antiShip) {
 		if option == loadout {
 			return nil
 		}
@@ -317,13 +357,16 @@ func applyLoadout(state State, aircraft *AirUnit) {
 		return
 	}
 	targetKind := strikeTargetKind(state, aircraft)
-	loadout := LoadoutForTask(aircraft.Kind, aircraft.Seaplane, aircraft.TaskKind, targetKind)
+	loadout := LoadoutForTask(aircraft.Kind, aircraft.Seaplane, aircraft.AntiGround, aircraft.AntiShip, aircraft.TaskKind, targetKind)
 	applyLoadoutChoice(aircraft, loadout)
 }
 
 // strikeTargetKind 判断这次攻击是对舰还是对地：目标 hex 上有敌方机场就是对地。
 func strikeTargetKind(state State, aircraft *AirUnit) StrikeTarget {
 	if aircraft == nil || aircraft.TargetCoord == "" {
+		return StrikeTargetShip
+	}
+	if aircraft.TargetFleetID != "" {
 		return StrikeTargetShip
 	}
 	for _, airfield := range state.Airfields {
@@ -353,8 +396,8 @@ func applyLoadoutChoice(aircraft *AirUnit, loadout Loadout) {
 }
 
 // LoadoutForTask 是 DefaultLoadout 的便捷包装（保留旧调用点）。
-func LoadoutForTask(kind string, seaplane bool, taskKind string, targetKind StrikeTarget) Loadout {
-	return DefaultLoadout(kind, seaplane, taskKind, targetKind)
+func LoadoutForTask(kind string, seaplane bool, antiGround, antiShip int, taskKind string, targetKind StrikeTarget) Loadout {
+	return DefaultLoadout(kind, seaplane, antiGround, antiShip, taskKind, targetKind)
 }
 
 // DroppedTank 模拟空战爆发后抛弃副油箱（规则书 48 行）：
@@ -367,19 +410,6 @@ func dropTank(aircraft *AirUnit) int {
 	wasted := aircraft.Fuel.DropTank()
 	aircraft.RemainingRange = aircraft.Range()
 	return wasted
-}
-
-// dropBombsForEscort 让没护航的战斗轰炸机抛弃炸弹转当护航（规则书 813 行）。
-// 抛弃挂载后不能再投弹，但当前剩余航程仍按"轻载"结算（规则书 83 行：攻击后变轻载），
-// 因为这架飞机确实把自己的炸弹扔掉了。
-func dropBombsForEscort(aircraft *AirUnit) {
-	if aircraft == nil || !aircraft.Loadout.CarriesWeapon() {
-		return
-	}
-	// 抛弃弹药后是纯空挂：没有炸弹也没有鱼雷，空战值按原机型（战斗轰炸机）结算。
-	// 注意这里不能调 markBombed——规则书 83 行的轻载 +20% 只奖励"真的投过弹"，
-	// 把炸弹扔海里的护航机不该额外获得航程。
-	aircraft.Loadout = LoadoutAir
 }
 
 // markBombed 记录投弹并给剩余航程加 20%（规则书 83 行）。
@@ -404,6 +434,19 @@ func validateLoadoutOrder(state State, faction string, order Order) error {
 		return fmt.Errorf("请选择要更换挂载的飞机")
 	}
 	for _, id := range ids {
+		if ground := state.GroundAir[id]; ground != nil {
+			// 机场算子换挂载：地面上待命的陆基机同样可以换弹，只是不能用舰载机那套记账。
+			if ground.Faction != faction {
+				return fmt.Errorf("航空算子不存在或不属于当前玩家")
+			}
+			if airfieldAirborne(ground) {
+				return fmt.Errorf("已经升空的算子不能更换挂载")
+			}
+			if err := ValidateLoadout(ground.Kind, false, ground.AntiGround, ground.AntiShip, loadout); err != nil {
+				return err
+			}
+			continue
+		}
 		aircraft := state.Aircraft[id]
 		if aircraft == nil || aircraft.Faction != faction {
 			return fmt.Errorf("航空算子不存在或不属于当前玩家")
@@ -411,7 +454,7 @@ func validateLoadoutOrder(state State, faction string, order Order) error {
 		if aircraft.Launched || airborne(aircraft) {
 			return fmt.Errorf("已经升空的算子不能更换挂载")
 		}
-		if err := ValidateLoadout(aircraft.Kind, aircraft.Seaplane, loadout); err != nil {
+		if err := ValidateLoadout(aircraft.Kind, aircraft.Seaplane, aircraft.AntiGround, aircraft.AntiShip, loadout); err != nil {
 			return err
 		}
 	}
@@ -424,6 +467,15 @@ func ApplyLoadoutOrder(state *State, order Order) []EngineEvent {
 	events := []EngineEvent{}
 	count := 0
 	for _, id := range airOrderIDs(order) {
+		if ground := state.GroundAir[id]; ground != nil {
+			if airfieldAirborne(ground) {
+				continue
+			}
+			applyGroundLoadoutChoice(ground, loadout)
+			ground.LoadoutManual = true
+			count++
+			continue
+		}
 		aircraft := state.Aircraft[id]
 		if aircraft == nil || aircraft.Launched || airborne(aircraft) {
 			continue
@@ -450,9 +502,9 @@ func orderFactionFromIDs(state State, order Order) string {
 }
 
 // LoadoutOption 是前端展示用的一个挂载选项。
-func LoadoutOptionList(kind string, seaplane bool) []map[string]string {
+func LoadoutOptionList(kind string, seaplane bool, antiGround, antiShip int) []map[string]string {
 	result := []map[string]string{}
-	for _, loadout := range LoadoutOptions(kind, seaplane) {
+	for _, loadout := range LoadoutOptions(kind, seaplane, antiGround, antiShip) {
 		result = append(result, map[string]string{"id": string(loadout), "label": loadout.Label()})
 	}
 	return result
@@ -467,7 +519,9 @@ func applyGroundLoadout(state State, aircraft *AirfieldAirUnit) {
 		return
 	}
 	targetKind := StrikeTargetShip
-	if aircraft.TaskKind == "attack" && aircraft.TargetCoord != "" {
+	if aircraft.TargetFleetID != "" {
+		targetKind = StrikeTargetShip
+	} else if aircraft.TaskKind == "attack" && aircraft.TargetCoord != "" {
 		for _, airfield := range state.Airfields {
 			if airfield != nil && airfield.Coord == aircraft.TargetCoord && airfield.Faction != aircraft.Faction {
 				targetKind = StrikeTargetAir
@@ -475,7 +529,7 @@ func applyGroundLoadout(state State, aircraft *AirfieldAirUnit) {
 			}
 		}
 	}
-	loadout := DefaultLoadout(aircraft.Kind, false, aircraft.TaskKind, targetKind)
+	loadout := DefaultLoadout(aircraft.Kind, false, aircraft.AntiGround, aircraft.AntiShip, aircraft.TaskKind, targetKind)
 	applyGroundLoadoutChoice(aircraft, loadout)
 }
 
@@ -554,4 +608,81 @@ func markGroundBombed(aircraft *AirfieldAirUnit) {
 		aircraft.Fuel.Internal += delta
 	}
 	aircraft.SetRange(aircraft.Range())
+}
+
+// validateStrikeLoadoutChange 检查改目标后挂载是否会变；已经升空的飞机不能换弹，
+// 必须返航重新整备。
+func validateStrikeLoadoutChange(state State, members []*AirUnit, fleetID, coord string) error {
+	for _, aircraft := range members {
+		if aircraft == nil {
+			continue
+		}
+		probe := *aircraft
+		probe.TargetFleetID = fleetID
+		probe.TargetCoord = coord
+		desired := LoadoutForTask(aircraft.Kind, aircraft.Seaplane, aircraft.AntiGround, aircraft.AntiShip, aircraft.TaskKind, strikeTargetKind(state, &probe))
+		if desired != aircraft.Loadout && (aircraft.Launched || airborne(aircraft)) {
+			return fmt.Errorf("%s已升空，目标类型改变后必须返航重新整备", aircraft.Model)
+		}
+	}
+	return nil
+}
+
+// applyStrikeLoadoutChange 把非空中飞机的挂载换成新目标需要的类型，并退回整备。
+func applyStrikeLoadoutChange(state *State, aircraft *AirUnit) {
+	if aircraft == nil {
+		return
+	}
+	desired := LoadoutForTask(aircraft.Kind, aircraft.Seaplane, aircraft.AntiGround, aircraft.AntiShip, aircraft.TaskKind, strikeTargetKind(*state, aircraft))
+	if desired == aircraft.Loadout {
+		return
+	}
+	applyLoadoutChoice(aircraft, desired)
+	aircraft.LoadoutManual = false
+	aircraft.Status = "service"
+}
+
+// validateGroundStrikeLoadoutChange 是机场版本的同一套检查。
+func validateGroundStrikeLoadoutChange(state State, members []*AirfieldAirUnit, fleetID, coord string) error {
+	for _, aircraft := range members {
+		if aircraft == nil {
+			continue
+		}
+		targetKind := StrikeTargetShip
+		if fleetID == "" && coord != "" {
+			for _, airfield := range state.Airfields {
+				if airfield != nil && airfield.Coord == coord && airfield.Faction != aircraft.Faction {
+					targetKind = StrikeTargetAir
+					break
+				}
+			}
+		}
+		desired := DefaultLoadout(aircraft.Kind, false, aircraft.AntiGround, aircraft.AntiShip, aircraft.TaskKind, targetKind)
+		if desired != aircraft.Loadout && airfieldAirborne(aircraft) {
+			return fmt.Errorf("%s已升空，目标类型改变后必须返航重新整备", aircraft.Model)
+		}
+	}
+	return nil
+}
+
+func applyGroundStrikeLoadoutChange(state *State, aircraft *AirfieldAirUnit) {
+	if aircraft == nil {
+		return
+	}
+	targetKind := StrikeTargetShip
+	if aircraft.TargetFleetID == "" && aircraft.TargetCoord != "" {
+		for _, airfield := range state.Airfields {
+			if airfield != nil && airfield.Coord == aircraft.TargetCoord && airfield.Faction != aircraft.Faction {
+				targetKind = StrikeTargetAir
+				break
+			}
+		}
+	}
+	desired := DefaultLoadout(aircraft.Kind, false, aircraft.AntiGround, aircraft.AntiShip, aircraft.TaskKind, targetKind)
+	if desired == aircraft.Loadout {
+		return
+	}
+	applyGroundLoadoutChoice(aircraft, desired)
+	aircraft.LoadoutManual = false
+	aircraft.Status = "service"
 }

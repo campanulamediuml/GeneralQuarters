@@ -70,7 +70,7 @@ func TestFailedEngageSearchesAndMoves(t *testing.T) {
 	}
 	state.Aircraft[aircraft.ID] = aircraft
 	before := aircraft.Coord
-	events := searchAfterFailedEngage(&state, aircraft)
+	events := searchAfterFailedEngage(&state, aircraft, 2)
 	if aircraft.Coord == before {
 		t.Fatalf("搜索失败后应当移动：%+v", aircraft)
 	}
@@ -97,7 +97,7 @@ func TestSearchRespectsRTBThreshold(t *testing.T) {
 		RemainingRange: 1,
 	}
 	state.Aircraft[aircraft.ID] = aircraft
-	searchAfterFailedEngage(&state, aircraft)
+	searchAfterFailedEngage(&state, aircraft, 2)
 	if !aircraft.Returning {
 		t.Fatal("航程不足以返航时搜索编队应当直接返航")
 	}

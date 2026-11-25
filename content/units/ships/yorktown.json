@@ -11,7 +11,7 @@
   "main_gun_caliber": 5,
   "heavy_aa": 4.0,
   "light_aa": 16.0,
-  "surface_radar": true,
+  "surface_radar": false,
   "air_radar": true,
   "speed_class": "normal",
   "torpedo_salvos": 0,

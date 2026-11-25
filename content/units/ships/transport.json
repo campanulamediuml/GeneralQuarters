@@ -1,0 +1,26 @@
+{
+ "id": "transport",
+ "faction": "B",
+ "type": "TRS",
+ "name": "运输船",
+ "picture": "misc/image/ship/cmn_ms1_3.png",
+ "strength": 1,
+ "card": {
+  "damage_control": 0,
+  "main_gun_count": 0,
+  "main_gun_caliber": 0,
+  "heavy_aa": 0.0,
+  "light_aa": 0.0,
+  "surface_radar": false,
+  "air_radar": false,
+  "speed_class": "slow",
+  "torpedo_salvos": 0,
+  "aircraft": 0,
+  "deck_capacity": 0,
+  "elevator_count": 0,
+  "depth_charges": 0,
+  "cargo": 6,
+  "armored_carrier": false,
+  "gunnery": 0
+ }
+}

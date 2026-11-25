@@ -1,0 +1,26 @@
+{
+ "id": "chicago",
+ "faction": "A",
+ "type": "CA",
+ "name": "芝加哥",
+ "picture": "misc/image/ship/northampton.png",
+ "strength": 3,
+ "card": {
+  "damage_control": 3,
+  "main_gun_count": 9,
+  "main_gun_caliber": 8.0,
+  "heavy_aa": 2.0,
+  "light_aa": 11.0,
+  "surface_radar": false,
+  "air_radar": true,
+  "speed_class": "normal",
+  "torpedo_salvos": 0,
+  "aircraft": 1,
+  "deck_capacity": 0,
+  "elevator_count": 0,
+  "depth_charges": 0,
+  "cargo": 0,
+  "armored_carrier": false,
+  "gunnery": 8
+ }
+}

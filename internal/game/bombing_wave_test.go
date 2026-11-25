@@ -44,3 +44,53 @@ func TestBombingWaveOrderLevelDiveTorpedo(t *testing.T) {
 		}
 	}
 }
+
+// 挂弹战斗机对舰是投弹，不是扫射：按炸弹波结算，伤害吃对舰值 + 重型炸弹加成。
+func TestBombArmedFighterBombsShips(t *testing.T) {
+	state := buildStrikeState()
+	addDefenderFleet(state, "bb-a", "BB", "0202", 0, 0)
+	fighter := addAttacker(state, "f1", "fighter", 2, 3, LoadoutBomb)
+	report := &AirCombatReport{}
+	resolveBombingWave(state, []*AirUnit{fighter}, []Unit{*state.Units["bb-a"]}, false, false, report)
+	if report.BombAttempts != 5 { // 3 点对舰 + 重型炸弹 2 点
+		t.Fatalf("挂弹战斗机应按对舰值+重型炸弹结算，尝试次数 %d（期望5）", report.BombAttempts)
+	}
+	if len(report.TargetAllocations) != 1 {
+		t.Fatalf("挂弹战斗机应进入目标分配，实际 %d 条", len(report.TargetAllocations))
+	}
+}
+
+// 不挂弹的护航战斗机不参与对舰投弹。
+func TestAirLoadoutFighterDoesNotBombShips(t *testing.T) {
+	state := buildStrikeState()
+	addDefenderFleet(state, "bb-a", "BB", "0202", 0, 0)
+	fighter := addAttacker(state, "f1", "fighter", 2, 3, LoadoutAirTank)
+	report := &AirCombatReport{}
+	resolveBombingWave(state, []*AirUnit{fighter}, []Unit{*state.Units["bb-a"]}, false, false, report)
+	if report.BombAttempts != 0 || len(report.TargetAllocations) != 0 {
+		t.Fatalf("不挂弹的护航战斗机不该投弹：attempts=%d allocations=%d", report.BombAttempts, len(report.TargetAllocations))
+	}
+}
+
+// 挂弹战斗机算炸弹机，不因为 kind=fighter 被排除出投弹名单。
+func TestStrikeBomberIncludesBombArmedFighter(t *testing.T) {
+	if !strikeBomber(&AirUnit{Kind: "fighter", Loadout: LoadoutBomb}) {
+		t.Fatal("挂弹战斗机应算投弹机")
+	}
+	if strikeBomber(&AirUnit{Kind: "fighter", Loadout: LoadoutAirTank}) {
+		t.Fatal("不挂弹的护航战斗机不该算投弹机")
+	}
+	if !strikeBomber(&AirUnit{Kind: "dive_bomber", Loadout: LoadoutBombTank}) {
+		t.Fatal("俯冲轰炸机应算投弹机")
+	}
+}
+
+// 挂弹战斗机按攻击机整备；不挂弹的护航战斗机不算。
+func TestBombArmedFighterCanArmForAttack(t *testing.T) {
+	if !armedTaskMatches("attack", &AirUnit{Kind: "fighter", Loadout: LoadoutBomb}) {
+		t.Fatal("挂弹战斗机应能作为攻击机整备")
+	}
+	if armedTaskMatches("attack", &AirUnit{Kind: "fighter", Loadout: LoadoutAirTank}) {
+		t.Fatal("不挂弹的护航战斗机不该按攻击机整备")
+	}
+}

@@ -63,7 +63,7 @@ func TestLoadoutOptionsByAircraftKind(t *testing.T) {
 		return false
 	}
 	// 俯冲轰炸机只能挂炸弹：D3A1/SBD 都没有鱼雷挂架。
-	diveBomber := LoadoutOptions("dive_bomber", false)
+	diveBomber := LoadoutOptions("dive_bomber", false, 2, 2)
 	if has(diveBomber, LoadoutAirTank) || has(diveBomber, LoadoutAir) {
 		t.Fatalf("攻击机不应有对空选项：%v", diveBomber)
 	}
@@ -73,44 +73,73 @@ func TestLoadoutOptionsByAircraftKind(t *testing.T) {
 	if has(diveBomber, LoadoutTorpedoTank) || has(diveBomber, LoadoutTorpedo) {
 		t.Fatalf("俯冲轰炸机不应有鱼雷选项：%v", diveBomber)
 	}
-	torpedoBomber := LoadoutOptions("torpedo_bomber", false)
+	torpedoBomber := LoadoutOptions("torpedo_bomber", false, 2, 2)
 	if !has(torpedoBomber, LoadoutBombTank) || !has(torpedoBomber, LoadoutTorpedoTank) {
 		t.Fatalf("鱼雷机应当能挂炸弹和鱼雷：%v", torpedoBomber)
 	}
-	fighter := LoadoutOptions("fighter", false)
+	fighter := LoadoutOptions("fighter", false, 0, 0)
 	if has(fighter, LoadoutBomb) || has(fighter, LoadoutTorpedo) {
 		t.Fatalf("战斗机不应有炸弹鱼雷选项：%v", fighter)
 	}
 	if !has(fighter, LoadoutAirTank) || !has(fighter, LoadoutAir) {
 		t.Fatalf("战斗机应当有对空选项：%v", fighter)
 	}
-	seaplane := LoadoutOptions("recon", true)
+	seaplane := LoadoutOptions("recon", true, 0, 0)
 	if len(seaplane) != 2 || !has(seaplane, LoadoutReconTank) || !has(seaplane, LoadoutTransfer) {
 		t.Fatalf("水上飞机只能挂侦察与转场：%v", seaplane)
+	}
+}
+
+// 弹药挂载只看飞机能力：对地/对舰都为 0 时，连攻击机也不给炸弹/鱼雷。
+func TestLoadoutAmmoRequiresGroundOrShipValue(t *testing.T) {
+	has := func(options []Loadout, want Weapon) bool {
+		for _, option := range options {
+			if option.Weapon() == want {
+				return true
+			}
+		}
+		return false
+	}
+	blank := LoadoutOptions("dive_bomber", false, 0, 0)
+	if has(blank, WeaponBomb) || has(blank, WeaponTorpedo) {
+		t.Fatalf("对地0、对舰0的飞机不应有炸弹/鱼雷：%v", blank)
+	}
+	groundOnly := LoadoutOptions("fighter", false, 1, 0)
+	if !has(groundOnly, WeaponBomb) {
+		t.Fatalf("有对地值的战斗机应当能挂炸弹：%v", groundOnly)
+	}
+	if has(groundOnly, WeaponTorpedo) {
+		t.Fatalf("对舰0的战斗机不应能挂鱼雷：%v", groundOnly)
+	}
+	shipOnly := LoadoutOptions("torpedo_bomber", false, 0, 2)
+	if !has(shipOnly, WeaponBomb) || !has(shipOnly, WeaponTorpedo) {
+		t.Fatalf("有对舰值的鱼雷机应当能挂炸弹和鱼雷：%v", shipOnly)
 	}
 }
 
 // 默认挂载：对舰优先鱼雷，无法挂鱼雷则炸弹；对地一律炸弹；战斗机对空。
 func TestDefaultLoadoutByTarget(t *testing.T) {
 	cases := []struct {
-		name   string
-		kind   string
-		task   string
-		target StrikeTarget
-		want   Loadout
+		name       string
+		kind       string
+		antiGround int
+		antiShip   int
+		task       string
+		target     StrikeTarget
+		want       Loadout
 	}{
-		{"鱼雷机对舰", "torpedo_bomber", "attack", StrikeTargetShip, LoadoutTorpedoTank},
-		{"俯冲轰炸机对舰", "dive_bomber", "attack", StrikeTargetShip, LoadoutBombTank},
-		{"鱼雷机对地", "torpedo_bomber", "attack", StrikeTargetAir, LoadoutBombTank},
-		{"俯冲轰炸机对地", "dive_bomber", "attack", StrikeTargetAir, LoadoutBombTank},
-		{"战斗机护航对舰", "fighter", "attack", StrikeTargetShip, LoadoutAirTank},
-		{"战斗机护航对地", "fighter", "attack", StrikeTargetAir, LoadoutAirTank},
-		{"战斗机CAP", "fighter", "cap", StrikeTargetShip, LoadoutAirTank},
-		{"侦察机侦察", "recon", "recon", StrikeTargetShip, LoadoutReconTank},
-		{"转场", "fighter", "transfer", StrikeTargetShip, LoadoutTransfer},
+		{"鱼雷机对舰", "torpedo_bomber", 2, 2, "attack", StrikeTargetShip, LoadoutTorpedoTank},
+		{"俯冲轰炸机对舰", "dive_bomber", 2, 2, "attack", StrikeTargetShip, LoadoutBombTank},
+		{"鱼雷机对地", "torpedo_bomber", 2, 2, "attack", StrikeTargetAir, LoadoutBombTank},
+		{"俯冲轰炸机对地", "dive_bomber", 2, 2, "attack", StrikeTargetAir, LoadoutBombTank},
+		{"战斗机护航对舰", "fighter", 0, 0, "attack", StrikeTargetShip, LoadoutAirTank},
+		{"战斗机护航对地", "fighter", 0, 0, "attack", StrikeTargetAir, LoadoutAirTank},
+		{"战斗机CAP", "fighter", 0, 0, "cap", StrikeTargetShip, LoadoutAirTank},
+		{"侦察机侦察", "recon", 0, 0, "recon", StrikeTargetShip, LoadoutReconTank},
+		{"转场", "fighter", 0, 0, "transfer", StrikeTargetShip, LoadoutTransfer},
 	}
 	for _, item := range cases {
-		if got := DefaultLoadout(item.kind, false, item.task, item.target); got != item.want {
+		if got := DefaultLoadout(item.kind, false, item.antiGround, item.antiShip, item.task, item.target); got != item.want {
 			t.Fatalf("%s 默认挂载错误：%s（期望%s）", item.name, got, item.want)
 		}
 	}
@@ -121,7 +150,7 @@ func TestDefaultLoadoutAlwaysCarriesTank(t *testing.T) {
 	for _, kind := range []string{"fighter", "dive_bomber", "torpedo_bomber", "recon"} {
 		for _, task := range []string{"cap", "recon", "attack", "transfer"} {
 			for _, target := range []StrikeTarget{StrikeTargetShip, StrikeTargetAir} {
-				got := DefaultLoadout(kind, false, task, target)
+				got := DefaultLoadout(kind, false, 2, 2, task, target)
 				if !got.HasTank() {
 					t.Fatalf("%s/%s/%s 默认挂载应当带副油箱：%s", kind, task, target, got)
 				}
@@ -150,17 +179,26 @@ func TestManualLoadoutSurvivesTaskAssignment(t *testing.T) {
 
 // 非法组合被拒绝。
 func TestValidateLoadoutRejectsMismatch(t *testing.T) {
-	if err := ValidateLoadout("fighter", false, LoadoutBombTank); err == nil {
-		t.Fatal("战斗机不应能挂炸弹")
+	if err := ValidateLoadout("fighter", false, 0, 0, LoadoutBombTank); err == nil {
+		t.Fatal("对地0、对舰0的战斗机不应能挂炸弹")
 	}
-	if err := ValidateLoadout("dive_bomber", false, LoadoutAirTank); err == nil {
+	if err := ValidateLoadout("fighter", false, 0, 0, LoadoutTorpedo); err == nil {
+		t.Fatal("对地0、对舰0的战斗机不应能挂鱼雷")
+	}
+	if err := ValidateLoadout("dive_bomber", false, 2, 2, LoadoutAirTank); err == nil {
 		t.Fatal("攻击机不应能选对空挂载")
 	}
-	if err := ValidateLoadout("recon", true, LoadoutTorpedoTank); err == nil {
+	if err := ValidateLoadout("dive_bomber", false, 2, 2, LoadoutTorpedo); err == nil {
+		t.Fatal("俯冲轰炸机不应能挂鱼雷")
+	}
+	if err := ValidateLoadout("recon", true, 0, 0, LoadoutTorpedoTank); err == nil {
 		t.Fatal("水上飞机不应能挂鱼雷")
 	}
-	if err := ValidateLoadout("dive_bomber", false, LoadoutBombTank); err != nil {
+	if err := ValidateLoadout("dive_bomber", false, 2, 2, LoadoutBombTank); err != nil {
 		t.Fatalf("合法组合被拒绝：%v", err)
+	}
+	if err := ValidateLoadout("fighter", false, 1, 0, LoadoutBombTank); err != nil {
+		t.Fatalf("有对地值的战斗机应当能挂炸弹：%v", err)
 	}
 }
 
@@ -181,14 +219,13 @@ func TestDogfightDropsTank(t *testing.T) {
 	if !attacker.TankDropped {
 		t.Fatal("空战后应当抛弃副油箱")
 	}
-	// 规则书 813 行：没有护航战斗机时，挂炸弹的俯冲轰炸机抛弃炸弹转当护航，
-	// 于是同时拿到抛油箱和轻载两份损失/加成，这里不能再按"只丢油箱"断言。
-	if attacker.Loadout.CarriesWeapon() {
-		t.Fatal("没有护航时俯冲轰炸机应当抛弃炸弹转护航")
+	// "没有护航就抛弹转护航"这条规则已经取消：轰炸机带着炸弹进空战，不该被结算悄悄改派。
+	if !attacker.Loadout.CarriesWeapon() {
+		t.Fatal("空战不应让轰炸机抛弃炸弹")
 	}
-	// 抛弃挂载只减少损失（丢掉副油箱剩余量），不会凭空加航程；轻载加成只针对真正投弹的情况。
+	// 抛弃副油箱只减少损失（丢掉副油箱剩余量），不会凭空加航程。
 	if got := attacker.Range(); got != before-tank {
-		t.Fatalf("抛弃副油箱+抛弃炸弹后航程错误：%d → %d（期望%d，副油箱%d）", before, got, before-tank, tank)
+		t.Fatalf("抛弃副油箱后航程错误：%d → %d（期望%d，副油箱%d）", before, got, before-tank, tank)
 	}
 }
 

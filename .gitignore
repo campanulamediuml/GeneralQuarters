@@ -1,6 +1,7 @@
 node_modules/
 web/node_modules/
 web/dist/
+.pnpm-store/
 *.db
 *.db-shm
 *.db-wal

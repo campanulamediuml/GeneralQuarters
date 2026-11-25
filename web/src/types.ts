@@ -19,6 +19,8 @@ export interface GameMap {
 export interface ShipCard {
   /** 兵牌剪影：相对 content/ 的路径，由舰船卡下发（例如 misc/image/ship/new_orleans.png）。 */
   picture?: string
+  /** 国别标识：目前用于澳大利亚舰船的土黄色兵牌；为空时按阵营上色。 */
+  nation?: string
   gunnery: number
   damage_control: number
   main_gun_count: number
@@ -107,7 +109,11 @@ export interface AirUnit {
   faction: 'A' | 'B'
   name: string
   model: string
-  kind: 'fighter' | 'dive_bomber' | 'torpedo_bomber' | 'recon'
+  /** 算子图片：相对 content/ 的路径，由 units/*.json 的 aircraft[].picture 下发。 */
+  picture?: string
+  /** image（默认）原样显示彩图；mask 只取 alpha 当剪影。 */
+  picture_mode?: 'image' | 'mask'
+  kind: 'fighter' | 'dive_bomber' | 'torpedo_bomber' | 'recon' | 'level_bomber' | 'medium_bomber' | 'heavy_bomber' | 'strategic_bomber'
   status: 'hangar' | 'service' | 'elevator' | 'deck' | 'ready' | 'recovery' | 'cap' | 'recon' | 'attack_holding' | 'attack'
   strength: number
   max_range: number
@@ -130,6 +136,8 @@ export interface AirUnit {
   origin_coord?: string
   coord?: string
   target_coord?: string
+  /** SET_STRIKE_TARGET / LAUNCH_STRIKE：同格机场+舰队时显式指定打舰队 */
+  target_fleet_id?: string
   heading?: ReconHeading
   sector_width?: 60 | 120
   recon_radius?: number
@@ -297,14 +305,18 @@ export interface StrikeAllocation {
 
 export interface AirCombatReport {
   id: string
+  turn?: number
   coord: string
   // airfield = 对地攻击；ship = 单舰目标；group = 舰队目标；缺省按对舰处理
-  target?: 'ship' | 'group' | 'airfield'
+  target?: 'ship' | 'group' | 'airfield' | 'intercept'
   target_name?: string
   attacker_faction: Player['faction']
   defender_faction: Player['faction']
   attacker_models: string[]
   defender_models: string[]
+  /** 与 attacker_models / defender_models 一一对应的算子图片（相对 content/ 的路径）。 */
+  attacker_pictures?: string[]
+  defender_pictures?: string[]
   attacker_count: number
   defender_count: number
   attacker_losses: number
@@ -334,8 +346,20 @@ export interface AirfieldContact {
   name: string
   faction: Player['faction']
   coord: string
-  type: 'field' | 'heavy' | 'major'
+  /** 机场规模：small / medium / large，水上飞机基地是 seaplane */
+  type: 'small' | 'medium' | 'large' | 'seaplane'
+  /** 机场标识图片（小/中/大三条跑道符号），相对 content/ 的路径 */
+  picture?: string
+  /** 当前可用跑道 / 总跑道 */
   runways: number
+  max_runways?: number
+  strength?: number
+  max_strength?: number
+  radar?: boolean
+  heavy_aa?: number
+  light_aa?: number
+  coastal?: number
+  hangar_used?: number
   contact_level: number
 }
 
@@ -345,6 +369,9 @@ export interface GroundAirUnit {
   airfield_id: string
   faction: Player['faction']
   model: string
+  /** 算子图片：与 AirUnit.picture 同源，机场算子转场时保持同一张图。 */
+  picture?: string
+  picture_mode?: 'image' | 'mask'
   kind: string
   status: string
   strength: number
@@ -371,12 +398,20 @@ export interface GroundAirUnit {
   returning?: boolean
   damaged?: boolean
   maintenance?: number
+  /** 自动任务循环（规则书 188–191 行）：机场算子与舰载机同一套开关 */
+  on_cycle?: boolean
+  cycle_kind?: 'cap' | 'cover' | 'recon'
+  cycle_target?: string
+  cycle_opt_out?: boolean
 }
 
 export interface GroundAirStatus {
   unit_id: string
+  faction: Player['faction']
   name: string
-  type: 'field' | 'heavy' | 'major'
+  type: 'small' | 'medium' | 'large' | 'seaplane'
+  /** 机场标识图片（小/中/大三条跑道符号），相对 content/ 的路径 */
+  picture?: string
   coord: string
   strength: number
   max_strength: number
@@ -440,9 +475,11 @@ export interface GameView {
   enemy_air?: EnemyAirContact[]
   /** 战果台账：按阵营（A/B）分组的沉没舰船与飞机损失 */
   losses?: Record<string, FactionLosses>
+  /** 战果分：按阵营（A/B）累计的击沉与击落折算值，剧本声明 kind:"score" 目标时用于判胜负 */
+  scores?: Record<string, number>
   /** 对局结果：存在即表示已经结束 */
   outcome?: { winner?: string; reason: string; scores: Record<string, number>; turn: number; turn_cap?: boolean }
-  objectives?: { id: string; text?: string; kind: string; coord?: string; faction?: string; value?: number; points?: number }[]
+  objectives?: { id: string; text?: string; kind: string; coord?: string; faction?: string; value?: number; points?: number; decisive?: boolean }[]
   join_token?: string
   server_time: string
 }

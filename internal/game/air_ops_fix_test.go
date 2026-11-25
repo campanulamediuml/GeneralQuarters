@@ -120,7 +120,7 @@ func TestStrikeSearchGivesUpWhenFuelLow(t *testing.T) {
 	aircraft.Fuel = Fuel{Tank: 6, Internal: 6, Reserve: 4}
 	aircraft.MaxRange = 18
 	aircraft.SetRange(3)
-	events := searchAfterFailedEngage(&state, aircraft)
+	events := searchAfterFailedEngage(&state, aircraft, 2)
 	found := false
 	for _, event := range events {
 		if event.Type == "attack_rtb" {
@@ -135,32 +135,42 @@ func TestStrikeSearchGivesUpWhenFuelLow(t *testing.T) {
 	}
 }
 
-// TestStrikeSearchTurnsCap 连续搜索到上限也要放弃，而不是无限追着过期情报跑。
-func TestStrikeSearchTurnsCap(t *testing.T) {
+// TestStrikeSearchSpreadsOutward 接敌失败后编队必须持续朝前搜索、逐渐外扩，
+// 不能一到目标点就往旧坐标折返——那样 26 架飞机会在两格见方里原地打转，
+// 明明敌舰队就在两三格之外也永远撞不上。
+func TestStrikeSearchSpreadsOutward(t *testing.T) {
 	state := sandboxState(t)
+	freezeFleets(&state)
 	aircraft := state.Aircraft["b-cv-04-dive_bomber-x1"]
 	carrier := state.Units[aircraft.CarrierID]
+	carrier.Coord = "0402"
 	aircraft.Status = "attack"
 	aircraft.Launched = true
-	aircraft.TaskID = "strike-search-cap"
+	aircraft.TaskID = "strike-spread"
 	aircraft.TaskKind = "attack"
 	aircraft.TargetCoord = carrier.Coord
 	aircraft.Coord = carrier.Coord
+	aircraft.Heading = "E"
 	aircraft.Fuel = Fuel{Tank: 18, Internal: 18, Reserve: 4}
 	aircraft.MaxRange = 18
 	aircraft.SetRange(18)
-	exhausted := false
-	for turn := 0; turn < maxStrikeSearchTurns+2 && !aircraft.Returning; turn++ {
-		for _, event := range searchAfterFailedEngage(&state, aircraft) {
-			if event.Type == "attack_search_exhausted" {
-				exhausted = true
-			}
+
+	origin := aircraft.Coord
+	previous := Distance(origin, aircraft.Coord)
+	visited := map[string]bool{origin: true}
+	for turn := 0; turn < 5 && !aircraft.Returning; turn++ {
+		searchAfterFailedEngage(&state, aircraft, 2)
+		current := Distance(origin, aircraft.Coord)
+		if current < previous {
+			t.Fatalf("第 %d 回合搜索折回了原点方向：%d → %d", turn, previous, current)
 		}
+		if visited[aircraft.Coord] {
+			t.Fatalf("第 %d 回合又飞回了刚搜过的 %s，搜索在原地打转", turn, aircraft.Coord)
+		}
+		visited[aircraft.Coord] = true
+		previous = current
 	}
-	if !aircraft.Returning {
-		t.Fatalf("搜索超过 %d 回合应放弃返航", maxStrikeSearchTurns)
-	}
-	if !exhausted {
-		t.Fatal("放弃搜索时应给出 attack_search_exhausted 战报")
+	if previous < 3 {
+		t.Fatalf("搜索 5 回合后只离开起点 %d 格，搜索没有扩散出去", previous)
 	}
 }

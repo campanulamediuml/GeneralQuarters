@@ -104,13 +104,8 @@ func validateNavOrder(state State, faction string, order Order) error {
 	if !inBounds(state.Map, order.Coord) {
 		return fmt.Errorf("目的地超出地图范围")
 	}
-	carrierFleet := false
-	for _, member := range state.Units {
-		if FleetKey(member) == FleetKey(unit) && IsCarrier(member) {
-			carrierFleet = true
-		}
-	}
-	if terrainAt(state.Map, order.Coord) == "reef" || (carrierFleet && !fleetCanEnter(state, order.Coord, carrierFleet)) {
+	carrierFleet := FleetHasCarrier(state, FleetKey(unit))
+	if !fleetCanEnter(state, order.Coord, carrierFleet) {
 		return fmt.Errorf("目的地不可通行")
 	}
 	if _, ok := shortestFleetPath(state, unit.Coord, order.Coord, carrierFleet); !ok {
@@ -155,39 +150,7 @@ func ApplyEngagementOrder(state *State, order Order) []EngineEvent {
 
 // shortestFleetPath 用 BFS 找最短可通行航线（不含起点），第二个返回值表示是否可达。
 func shortestFleetPath(state State, from, to string, carrierFleet bool) ([]string, bool) {
-	if from == to {
-		return nil, true
-	}
-	prev := map[string]string{from: ""}
-	queue := []string{from}
-	for len(queue) > 0 {
-		current := queue[0]
-		queue = queue[1:]
-		for _, next := range Neighbors(current) {
-			if !inBounds(state.Map, next) {
-				continue
-			}
-			if _, seen := prev[next]; seen {
-				continue
-			}
-			if next != to && !fleetCanEnter(state, next, carrierFleet) {
-				continue
-			}
-			if next == to && terrainAt(state.Map, next) == "reef" {
-				continue
-			}
-			prev[next] = current
-			if next == to {
-				path := []string{}
-				for node := to; node != from; node = prev[node] {
-					path = append([]string{node}, path...)
-				}
-				return path, true
-			}
-			queue = append(queue, next)
-		}
-	}
-	return nil, false
+	return shortestFleetPathAvoiding(state, from, to, carrierFleet, nil)
 }
 
 // enemyUnitsAt 返回该 hex 上其他阵营的舰船。
@@ -230,12 +193,7 @@ func autoNavStep(state *State, unit *Unit) (string, string) {
 		return "", ""
 	}
 	faction := unit.Faction
-	carrierFleet := false
-	for _, member := range state.Units {
-		if FleetKey(member) == FleetKey(unit) && IsCarrier(member) {
-			carrierFleet = true
-		}
-	}
+	carrierFleet := FleetHasCarrier(*state, FleetKey(unit))
 	setting := FleetEngagementSetting(*state, FleetKey(unit))
 	blocked := map[string]bool{}
 	for {
@@ -280,13 +238,13 @@ func shortestFleetPathAvoiding(state State, from, to string, carrierFleet bool, 
 		current := queue[0]
 		queue = queue[1:]
 		for _, next := range Neighbors(current) {
-			if !inBounds(state.Map, next) || blocked[next] {
+			if blocked[next] {
 				continue
 			}
 			if _, seen := prev[next]; seen {
 				continue
 			}
-			if next != to && !fleetCanEnter(state, next, carrierFleet) {
+			if !fleetCanEnter(state, next, carrierFleet) {
 				continue
 			}
 			prev[next] = current
@@ -337,8 +295,8 @@ func resolveAutoNavigation(state *State) []EngineEvent {
 			unit.Coord = next
 			unit.Heading = headingBetween(from, next)
 			unit.Moved = true
-			if interval := FleetMoveInterval(*state, unit); interval > unit.MoveCooldown {
-				unit.MoveCooldown = interval
+			if interval := FleetMoveInterval(*state, unit); movementCooldownAfterMove(interval) > unit.MoveCooldown {
+				unit.MoveCooldown = movementCooldownAfterMove(interval)
 			}
 		}
 		clearFleetStay(state, fleetID)

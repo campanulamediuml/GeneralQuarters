@@ -41,7 +41,8 @@ func EnsureAviation(state *State) {
 		if unit.Deck.BaseLength <= 0 {
 			unit.Deck.BaseLength = length
 		}
-		unit.Card.DeckCapacity = unit.Deck.Length
+		// Card.DeckCapacity 是卡面印刷的基础值，不跟着本回合风向改写；
+		// 当前可用容量看 Deck.Length（航空面板/作业判定都用它）。
 		kind := "elevator"
 		capacity := 2
 		if !IsCarrier(unit) {
@@ -169,7 +170,7 @@ func aircraftForOrder(state State, faction string, order Order) ([]*AirUnit, *Un
 		}
 		if carrierID == "" {
 			carrierID = aircraft.CarrierID
-		} else if order.Type != "LAUNCH_STRIKE" && order.Type != "RECOVER_AIR" && order.Type != "SET_AIR_CYCLE" && aircraft.CarrierID != carrierID {
+		} else if order.Type != "LAUNCH_STRIKE" && order.Type != "LAUNCH_CAP" && order.Type != "LAUNCH_COVER" && order.Type != "RECOVER_AIR" && order.Type != "SET_AIR_CYCLE" && aircraft.CarrierID != carrierID {
 			// 任务循环开关只改标志位，跨母舰一起点没有任何副作用；
 			// 空战任务栏里同一型 CAP 本来就横跨翔鹤、瑞鹤两艘母舰，
 			// 不放开这条的话"点一下取消整队循环"会被拒绝成"点了没反应"。
@@ -283,6 +284,9 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 			if order.Type == "LAUNCH_RECON" && !canSearch(*aircraft) {
 				return fmt.Errorf("战斗机不能执行扇面搜索，TBF、SB2C和侦察机可以执行搜索")
 			}
+			if (order.Type == "LAUNCH_CAP" || order.Type == "LAUNCH_COVER") && FleetKey(ship) != fleetID {
+				return fmt.Errorf("CAP和空中掩护的母舰必须属于同一舰队")
+			}
 			if order.Type == "LAUNCH_STRIKE" {
 				if aircraft.Seaplane || (aircraft.Kind != "dive_bomber" && aircraft.Kind != "torpedo_bomber" && aircraft.Kind != "fighter") {
 					return fmt.Errorf("攻击编队只能由舰载轰炸机和护航战斗机组成")
@@ -370,9 +374,15 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 				return fmt.Errorf("最多同时保留两个侦察组，请把飞机加入已有任务栏")
 			}
 		}
-		if order.Type == "LAUNCH_STRIKE" && order.TaskID == "" && order.Coord != "" {
-			if err := ValidateStrikeTarget(state, faction, order.Coord); err != nil {
-				return err
+		if order.Type == "LAUNCH_STRIKE" && order.TaskID == "" {
+			if order.TargetFleetID != "" {
+				if err := ValidateStrikeFleetTarget(state, faction, order.TargetFleetID, order.Coord); err != nil {
+					return err
+				}
+			} else if order.Coord != "" {
+				if err := ValidateStrikeTarget(state, faction, order.Coord); err != nil {
+					return err
+				}
 			}
 		}
 		if status == "deck" || status == "ready" {
@@ -389,7 +399,14 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 		}
 		switch aircraftList[0].TaskKind {
 		case "attack":
-			return ValidateStrikeTarget(state, faction, order.Coord)
+			if order.TargetFleetID != "" {
+				if err := ValidateStrikeFleetTarget(state, faction, order.TargetFleetID, order.Coord); err != nil {
+					return err
+				}
+			} else if err := ValidateStrikeTarget(state, faction, order.Coord); err != nil {
+				return err
+			}
+			return validateStrikeLoadoutChange(state, taskAircraft(state, aircraftList[0].TaskID), order.TargetFleetID, order.Coord)
 		case "cover", "transfer":
 			// 空中掩护改掩护 hex、转场改降落目标：只要求是地图内合法 hex。
 			// 降不下去时玩家就是靠这条命令把编队改到另一支舰队。
@@ -632,6 +649,12 @@ func clearAirTask(aircraft *AirUnit) {
 	aircraft.ReconDistance = 0
 	aircraft.Returning = false
 	aircraft.TrackingFleetID = ""
+	// 接敌标记和搜索状态属于"上一轮任务"：换任务、落舰、重新编队之后必须清掉。
+	// 否则重新出击的编队会带着 Engaged=true 离场，一旦进入 attack 状态就在
+	// 十几格外直接对旧目标结算一次空袭（凭空打击），或者反过来永远不再接敌。
+	aircraft.Engaged = false
+	aircraft.SearchTurns = 0
+	aircraft.SearchHeading = ""
 }
 
 func configureAirTask(state *State, aircraftList []*AirUnit, order Order) {
@@ -695,8 +718,15 @@ func configureAirTask(state *State, aircraftList []*AirUnit, order Order) {
 			assignReconMission(aircraft, order.Heading, order.SectorWidth)
 		case MissionStrike:
 			assignStrikeMission(state, aircraft, order.Coord)
+			if order.TargetFleetID != "" {
+				aircraft.TargetFleetID = order.TargetFleetID
+				if coord, ok := strikeFleetCoord(*state, aircraft.Faction, order.TargetFleetID); ok {
+					aircraft.TargetCoord = coord
+				}
+			}
 		case MissionCover:
 			assignCoverMission(aircraft, order.Coord)
+			aircraft.CoverUnitID = friendlyUnitIDAt(*state, aircraft.Faction, order.Coord)
 		case MissionTransfer:
 			assignTransferMission(aircraft, order.Coord)
 		default:
@@ -770,6 +800,12 @@ func updateAttackFormation(state *State, taskID string) []EngineEvent {
 	}
 	for _, aircraft := range members {
 		aircraft.Status = "attack"
+		// 离场这一刻是"新一轮出击"的起点：整备期间攒下的接敌/搜索状态必须清掉。
+		// 上一轮打击留下的 Engaged=true 如果带出去，编队会在还没飞到的位置就按目标 hex
+		// 结算一次空袭（凭空打击），或者卡在"已接敌但不推进"。
+		aircraft.Engaged = false
+		aircraft.SearchTurns = 0
+		aircraft.SearchHeading = ""
 	}
 	return []EngineEvent{{Type: "attack_departed", Audience: members[0].Faction, Text: fmt.Sprintf("攻击编队%d个算子全部到齐，编队离开舰队", len(members))}}
 }
@@ -860,6 +896,7 @@ func launchAirTask(state *State, aircraftList []*AirUnit) []EngineEvent {
 		carrier := state.Units[carrierID]
 		for _, aircraft := range group {
 			aircraft.Launched = true
+			aircraft.NightWarned = false
 			aircraft.Status = aircraft.TaskKind
 			if aircraft.TaskKind == "attack" {
 				aircraft.Status = "attack_holding"
@@ -935,12 +972,22 @@ func ApplyAirOrder(state *State, order Order) []EngineEvent {
 		for _, aircraft := range taskAircraft(*state, taskID) {
 			if kind == "attack" {
 				setStrikeTarget(state, aircraft, carrier.Faction, order.Coord)
+				if order.TargetFleetID != "" {
+					aircraft.TargetFleetID = order.TargetFleetID
+					if coord, ok := strikeFleetCoord(*state, carrier.Faction, order.TargetFleetID); ok {
+						aircraft.TargetCoord = coord
+					}
+				}
+				applyStrikeLoadoutChange(state, aircraft)
 				continue
 			}
 			// 掩护/转场改目标：清掉"降不下去"标记，重新飞向新 hex。
 			aircraft.TargetCoord = order.Coord
 			aircraft.CannotLand = false
 			aircraft.Returning = false
+			if kind == "cover" {
+				aircraft.CoverUnitID = friendlyUnitIDAt(*state, carrier.Faction, order.Coord)
+			}
 		}
 		events := []EngineEvent{{Type: "strike_target_set", Audience: carrier.Faction, Text: fmt.Sprintf("编队目标设为%s", order.Coord)}}
 		if kind == "attack" {
@@ -1054,6 +1101,14 @@ func completeElevatorCycles(state *State) []EngineEvent {
 					continue
 				}
 				if elevator.Status == "lifting" {
+					if aircraft.TaskKind == "" {
+						// 没有任务类型的算子提升到甲板也放飞不了：直接退回机库，
+						// 让它重新变成"可分配"的算子，而不是卡在甲板上占位。
+						clearAirTask(aircraft)
+						aircraft.Status = "hangar"
+						aircraft.ElevatorID = ""
+						continue
+					}
 					aircraft.Status = "deck"
 					if aircraft.Seaplane {
 						aircraft.Status = "ready"
@@ -1100,6 +1155,17 @@ func sortedTaskGroups(state State, filter func(*AirUnit) bool) [][]*AirUnit {
 		result = append(result, groups[taskID])
 	}
 	return result
+}
+
+// taskWaitsForTarget 判断这个任务是不是"还没定目标、不能起飞"。
+// 攻击/转场/掩护编队没有目标就不该被提升到甲板：以前它们照样占升降机、
+// 占满甲板之后又不放飞，回收也被卡住，整条航空作业链就死在那里。
+func taskWaitsForTarget(aircraft *AirUnit) bool {
+	switch aircraft.TaskKind {
+	case "attack", "transfer", "cover":
+		return aircraft.TargetCoord == ""
+	}
+	return false
 }
 
 func launchReadyTasks(state *State) []EngineEvent {
@@ -1240,7 +1306,9 @@ func scheduleElevators(state *State) []EngineEvent {
 	events := []EngineEvent{}
 	events = append(events, advanceAircraftService(state)...)
 	taskGroups := sortedTaskGroups(*state, func(aircraft *AirUnit) bool {
-		return aircraft.Status == "service" && serviceComplete(aircraft)
+		// TaskKind 为空的算子是"脱队残骸"（老存档里返航后类型被清掉留下的），
+		// 不能再往甲板上提升：升上去也放飞不了，只会把甲板和升降机一起堵死。
+		return aircraft.Status == "service" && serviceComplete(aircraft) && aircraft.TaskKind != "" && !taskWaitsForTarget(aircraft)
 	})
 	for _, carrierID := range sortedUnitIDs(state.Units) {
 		carrier := state.Units[carrierID]
@@ -1335,13 +1403,13 @@ func scheduleElevators(state *State) []EngineEvent {
 	return events
 }
 
-// closeFinishedReconTasks 关闭已经全员落回甲板的侦察组。
-// 侦察是一次性扇面搜索，飞机降落之后任务就该结束；残留的 TaskID 会一直占着
-// "最多同时保留两个侦察组"的名额，导致第二次侦察之后再也没法建新的侦察组。
-func closeFinishedReconTasks(state *State) {
+// closeFinishedTasks 关闭已经全员落回机库的任务组。
+// 任务结束后残留的 TaskID 有两个后果：侦察组会一直占着"最多两个侦察组"的名额，
+// 普通攻击编队则会让算子永久处于"已经属于其他任务"，玩家想重新分配会被拒绝。
+func closeFinishedTasks(state *State) {
 	groups := map[string][]*AirUnit{}
 	for _, aircraft := range state.Aircraft {
-		if aircraft.TaskID != "" && aircraft.TaskKind == "recon" {
+		if aircraft.TaskID != "" {
 			groups[aircraft.TaskID] = append(groups[aircraft.TaskID], aircraft)
 		}
 	}
@@ -1349,7 +1417,7 @@ func closeFinishedReconTasks(state *State) {
 		active := false
 		for _, aircraft := range members {
 			switch aircraft.Status {
-			case "cap", "recon", "attack", "attack_holding", "service", "elevator", "deck", "ready":
+			case "cap", "recon", "attack", "attack_holding", "cover", "service", "elevator", "deck", "ready", "recovery":
 				active = true
 			}
 		}
@@ -1357,7 +1425,12 @@ func closeFinishedReconTasks(state *State) {
 			continue
 		}
 		for _, aircraft := range members {
+			// 还在自动循环里的算子要保留任务号：落地后它会按原参数重新整备再出动。
+			if aircraft.OnCycle || aircraft.CycleTaskID != "" {
+				continue
+			}
 			aircraft.TaskID = ""
+			aircraft.TaskKind = ""
 		}
 	}
 }
@@ -1533,7 +1606,7 @@ func AdvanceAviation(state *State) []EngineEvent {
 			unit.Deck.Operation = ""
 		}
 	}
-	closeFinishedReconTasks(state)
+	closeFinishedTasks(state)
 	// 回收后的算子会一直挂着 TaskID（分组需要），但 TaskKind 已经被 clearAirTask 清空；
 	// 分组关闭只认 TaskKind，于是这些算子在 ValidateAirOrder 里被当成"已经属于其他任务"，
 	// 而 RETURN_TO_HANGAR 又不接受 hangar 状态——飞机降落之后就永久不能再出击了。
@@ -1640,10 +1713,14 @@ func LandAircraft(state *State, aircraft *AirUnit, carrier *Unit) {
 	}
 	aircraft.Status = "recovery"
 	aircraft.Launched = false
-	// 只清空任务参数，保留 TaskID：任务分组依赖它，清掉会让还在任务栏里的算子（含同组其他飞机）整组消失。
+	// 只清空任务参数，保留 TaskID/TaskKind：任务分组依赖它们，清掉会让还在任务栏里的
+	// 算子（含同组其他飞机）整组消失；TaskKind 清掉则整组变成"无类型"，
+	// 既不能放飞也不能重新编队——返航的轰炸机卡在"待分配"就是这么来的。
 	taskID := aircraft.TaskID
+	taskKind := aircraft.TaskKind
 	clearAirTask(aircraft)
 	aircraft.TaskID = taskID
+	aircraft.TaskKind = taskKind
 	// 母舰已经沉没时没有需要用"在舰机数"做容量校验的接收方，直接停在回收状态等待处理。
 	if state == nil || state.Units[carrier.ID] != carrier {
 		return
@@ -1684,6 +1761,11 @@ func loseCarrierAircraft(state *State, aircraft *AirUnit) []EngineEvent {
 // altLanding 为空中的算子挑选备降母舰：同一舰队其他航母优先，其次同阵营其他航母。
 // 母舰被击沉后算子不能凭空消失，规则要求"尽力飞往最近的可以备降的机场或舰队"。
 func altLanding(state *State, aircraft *AirUnit) *Unit {
+	// 水上飞机没有起落架，只能回自己的巡洋舰母舰或水上飞机基地，不能降落在航母甲板上。
+	// 以前这里不分机型地把所有航母都当候选，于是巡洋舰的水侦返航后"落"到了航母上。
+	if aircraft.Seaplane {
+		return nil
+	}
 	origin := state.Units[aircraft.CarrierID]
 	ownFleet := ""
 	if origin != nil {
@@ -1720,7 +1802,7 @@ func airfieldCanAccept(state *State, airfield *Airfield, aircraft *AirUnit) bool
 	if aircraft.Kind == "fighter" {
 		return true
 	}
-	return airfield.Type != "" && (airfield.Type == AirfieldHeavy || airfield.Type == AirfieldMajor || airfield.Type == AirfieldField)
+	return airfield.Type != "" && NormalizeAirfieldType(airfield.Type) != AirfieldSeaplane
 }
 
 // alternateAirfield 在母舰无法降落时寻找最近的可用机场（同阵营、能收该机型）。
@@ -1745,24 +1827,86 @@ func alternateAirfield(state *State, aircraft *AirUnit) *Airfield {
 // 甲板满或母舰沉没时，按规则书"尽力飞往最近的可以备降的机场"转场到机场机库；都没有则返回 false 继续盘旋。
 func landIfCapacity(state *State, aircraft *AirUnit, carrier *Unit) bool {
 	if carrier != nil && CanLandAircraft(*state, carrier) {
-		// 任务循环：CAP／空中掩护／侦察降落后会自动重新整备再升空（规则书 188 行）。
-		// 必须在 LandAircraft 之前抄循环参数——它内部会 clearAirTask 清空航向/扇面/半径。
-		if kind := cycleKindForStatus(aircraft.Status); kind != "" {
-			// 规则书 188 行：这些任务默认自动循环；玩家手动关掉（CycleOptOut）的例外。
-			if !aircraft.CycleOptOut {
-				aircraft.OnCycle = true
-			}
-			rememberCycleParams(aircraft, kind)
-		}
-		LandAircraft(state, aircraft, carrier)
+		landOnCarrier(state, aircraft, carrier)
 		return true
 	}
-	if airfield := alternateAirfield(state, aircraft); airfield != nil {
-		aircraft.Coord = airfield.Coord
-		landAtAirfield(state, aircraft, airfield)
+	// 同一编队里另一艘航母还能收，就落到那艘上：两艘航母不是一条船，
+	// 一艘甲板在抢修不代表整个编队没地方降落。只接受同格（或相邻一格）的航母，
+	// 远处的航母不能凭空接住这架飞机。水上飞机只能回自己的母舰或机场（见 altLanding）。
+	if host := altLanding(state, aircraft); host != nil && host.ID != aircraft.CarrierID &&
+		Distance(aircraft.Coord, host.Coord) <= 1 {
+		aircraft.CarrierID = host.ID
+		landOnCarrier(state, aircraft, host)
 		return true
+	}
+	// 甲板暂时占满/在抢修：盘旋等待，不转场、更不瞬移。
+	// 只有母舰沉没或甲板被彻底摧毁（永久失去回收能力）才谈备降，
+	// 而且备降是"自己飞过去"，到得了才落，到不了就继续飞。
+	if permanentlyUnlandable(*state, aircraft) {
+		if airfield := alternateAirfield(state, aircraft); airfield != nil && aircraft.DivertAirfield == "" {
+			aircraft.DivertAirfield = airfield.ID
+			aircraft.TargetCoord = airfield.Coord
+		}
 	}
 	return false
+}
+
+// landOnCarrier 把算子上舰，并保留任务循环参数。
+func landOnCarrier(state *State, aircraft *AirUnit, carrier *Unit) {
+	// 任务循环：CAP／空中掩护／侦察降落后会自动重新整备再升空（规则书 188 行）。
+	// 必须在 LandAircraft 之前抄循环参数——它内部会 clearAirTask 清空航向/扇面/半径。
+	if kind := cycleKindForStatus(aircraft.Status); kind != "" {
+		// 规则书 188 行：这些任务默认自动循环；玩家手动关掉（CycleOptOut）的例外。
+		if !aircraft.CycleOptOut {
+			aircraft.OnCycle = true
+		}
+		rememberCycleParams(aircraft, kind)
+	}
+	aircraft.DivertAirfield = ""
+	LandAircraft(state, aircraft, carrier)
+}
+
+// permanentlyUnlandable 判断这个阵营是不是已经没有能回收的甲板：
+// 所有航母不是沉了就是飞行甲板被彻底摧毁。只要还有一艘能修、能腾出甲板，
+// 飞机就该在天上等，而不是被送去机场。
+func permanentlyUnlandable(state State, aircraft *AirUnit) bool {
+	for _, id := range sortedUnitIDs(state.Units) {
+		unit := state.Units[id]
+		if unit == nil || unit.Faction != aircraft.Faction || !IsCarrier(unit) {
+			continue
+		}
+		if unit.Damage == nil || !unit.Damage.DeckDestroyed {
+			return false
+		}
+	}
+	// 一艘航母都没有，或者全都被打废了甲板：这时候机场才是唯一出路。
+	return true
+}
+
+// advanceAirfieldDivert 让失去甲板的算子自己飞到备降机场，抵达之后才真正着陆。
+// 以前 landIfCapacity 直接把坐标改成机场坐标：30 格外的拉包尔能一回合"接住"飞机，
+// 既不合规则，也让损失台账把这批飞机算成被击毁。
+func advanceAirfieldDivert(state *State, aircraft *AirUnit) []EngineEvent {
+	airfield := state.Airfields[aircraft.DivertAirfield]
+	if airfield == nil || airfield.Faction != aircraft.Faction {
+		aircraft.DivertAirfield = ""
+		return nil
+	}
+	model := aircraft.Model
+	for steps := 0; steps < 2 && aircraft.Coord != airfield.Coord; steps++ {
+		next := nextFlightCoord(*state, aircraft, airfield.Coord)
+		if next == "" {
+			break
+		}
+		aircraft.Coord = next
+		aircraft.Spend(1)
+	}
+	if aircraft.Coord != airfield.Coord {
+		return nil
+	}
+	aircraft.DivertAirfield = ""
+	landAtAirfield(state, aircraft, airfield)
+	return []EngineEvent{{Type: "air_landed_airfield", Audience: aircraft.Faction, Text: fmt.Sprintf("%s母舰无法回收，转场降落在%s", model, airfield.Name)}}
 }
 
 // landAtAirfield 让舰载机在机场降落：转为机场地面算子（状态 recovery，下一回合进机库），
@@ -1782,9 +1926,10 @@ func landAtAirfield(state *State, aircraft *AirUnit, airfield *Airfield) {
 	}
 	state.GroundAir[aircraft.ID] = &AirfieldAirUnit{
 		ID: aircraft.ID, DefinitionID: aircraft.DefinitionID, AirfieldID: airfield.ID, Faction: aircraft.Faction,
-		Model: aircraft.Model, Kind: aircraft.Kind, Status: "recovery", Strength: aircraft.Strength,
+		Model: aircraft.Model, Kind: aircraft.Kind, Picture: aircraft.Picture, PictureMode: aircraft.PictureMode, Status: "recovery", Strength: aircraft.Strength,
 		MaxRange: aircraft.MaxRange, RemainingRange: aircraft.MaxRange,
 		AirCombat: aircraft.AirCombat, AntiShip: aircraft.AntiShip, AntiGround: aircraft.AntiGround,
+		Seaplane: aircraft.Seaplane, AirfieldOnly: aircraft.AirfieldOnly,
 		Coord: airfield.Coord, Damaged: damaged, ReconRadiusLimit: max(1, aircraft.MaxRange/2),
 	}
 	delete(state.Aircraft, aircraft.ID)
@@ -1816,6 +1961,7 @@ func taskPhase(members []*AirUnit) string {
 	if members[0].TaskKind == "attack" {
 		allDeparted := true
 		launched := false
+		returning := 0
 		for _, aircraft := range members {
 			if aircraft.Status != "attack" {
 				allDeparted = false
@@ -1823,6 +1969,14 @@ func taskPhase(members []*AirUnit) string {
 			if aircraft.Launched {
 				launched = true
 			}
+			if aircraft.Returning {
+				returning++
+			}
+		}
+		// 无线电召回会把目标清空：不认返航状态的话，已经离场的编队会被判成
+		// "舰队上空等待编队"，从整编栏里又冒出来一张早就出发了的编队卡。
+		if allDeparted && returning == len(members) {
+			return "active"
 		}
 		if allDeparted && members[0].TargetCoord == "" {
 			return "assembling"
@@ -1889,7 +2043,9 @@ func projectReconSector(state State, aircraft *AirUnit) ReconSector {
 			origin = carrier.Coord
 		}
 		sector.SectorHexes = ReconScanBandHexes(state.Map, origin, aircraft.Heading, aircraft.SectorWidth, aircraft.ReconRadius)
-		sector.CurrentRingHexes = ReconStepHexes(state.Map, current, aircraft.Heading, aircraft.SectorWidth)
+		// 本回合高亮的必须是"实际会被判定的那一段弧"：当前距离圈 + 下一距离圈落在扇面里的全部格子。
+		// 以前给的是"本格 + 正前方一格"，地图上就只亮一个点，玩家看不出这回合到底扫了哪条弧。
+		sector.CurrentRingHexes = ReconScannedRingHexes(state.Map, origin, current, aircraft.Heading, aircraft.SectorWidth, aircraft.ReconRadius)
 		if current != "" {
 			sector.DistanceReference = BuildDistanceReference(state.Map, current, 8)
 		}
@@ -1904,7 +2060,7 @@ func VisibleAviation(state State, faction string) AviationView {
 		if unit.Faction != faction || unit.Deck == nil {
 			continue
 		}
-		carrier := CarrierAirStatus{UnitID: unit.ID, Name: unit.Name, Type: unit.Type, HangarCapacity: unit.Card.HangarCapacity, DeckLength: unit.Deck.Length, DeckCapacity: unit.Deck.Length, Operation: unit.Deck.Operation, Elevators: []AircraftElevator{}, Aircraft: []AirUnit{}}
+		carrier := CarrierAirStatus{UnitID: unit.ID, Faction: unit.Faction, Name: unit.Name, Type: unit.Type, HangarCapacity: unit.Card.HangarCapacity, DeckLength: unit.Deck.Length, DeckCapacity: unit.Deck.Length, Operation: unit.Deck.Operation, Elevators: []AircraftElevator{}, Aircraft: []AirUnit{}}
 		// 把"为什么不能起降"直接投影给客户端：倾斜/起火/甲板摧毁这类状态以前只能通过
 		// 命令被 400 拒绝才知道，玩家会以为飞机卡死了。
 		carrier.BlockedReason = aviationBlockReason(state, unit)
@@ -1964,9 +2120,20 @@ func VisibleAviation(state State, faction string) AviationView {
 	for taskID, aircraftList := range groups {
 		sort.Slice(aircraftList, func(i, j int) bool { return aircraftList[i].ID < aircraftList[j].ID })
 		leader := aircraftList[0]
+		// 队长自己可能已经着舰、任务类型被清空：类型取组里第一个还带类型的成员，
+		// 否则整组在任务栏里显示成空类型，玩家看到的既不是攻击也不是侦察，
+		// 点它也没有可用操作。
 		kind := leader.TaskKind
+		if kind == "" {
+			for _, member := range aircraftList {
+				if member.TaskKind != "" {
+					kind = member.TaskKind
+					break
+				}
+			}
+		}
 		phase := taskPhase(aircraftList)
-		task := AirTask{ID: taskID, Kind: kind, Phase: phase, CarrierID: leader.CarrierID, CarrierIDs: []string{}, AircraftIDs: []string{}, Aircraft: []AirUnit{}, Priority: leader.Priority}
+		task := AirTask{ID: taskID, Kind: kind, Phase: phase, CarrierID: leader.CarrierID, CarrierIDs: []string{}, AircraftIDs: []string{}, Aircraft: []AirUnit{}, Priority: leader.Priority, Faction: leader.Faction}
 		carrierSet := map[string]bool{}
 		for _, aircraft := range aircraftList {
 			task.AircraftIDs = append(task.AircraftIDs, aircraft.ID)
@@ -2005,6 +2172,9 @@ func VisibleAviation(state State, faction string) AviationView {
 			task.CurrentCoord = leader.Coord
 			task.TargetCoord = leader.TargetCoord
 			task.Disperse = leader.Disperse
+			// 返航中的打击编队要让地图上的编队牌写明"返航中"，
+			// 否则召回到家之前它看起来还是"任务执行中"。
+			task.Returning = leader.Returning
 		case "cover":
 			task.Name = "空中掩护 · " + leader.Model
 			task.CurrentCoord = leader.Coord
@@ -2049,7 +2219,7 @@ func VisibleAviation(state State, faction string) AviationView {
 					origin = carrier.Coord
 				}
 				task.SectorHexes = ReconScanBandHexes(state.Map, origin, reconLeader.Heading, reconLeader.SectorWidth, reconLeader.ReconRadius)
-				task.CurrentRingHexes = ReconStepHexes(state.Map, reconLeader.Coord, reconLeader.Heading, reconLeader.SectorWidth)
+				task.CurrentRingHexes = ReconScannedRingHexes(state.Map, origin, reconLeader.Coord, reconLeader.Heading, reconLeader.SectorWidth, reconLeader.ReconRadius)
 			}
 		}
 		if len(aircraftList) > 1 {

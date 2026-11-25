@@ -3,7 +3,8 @@ import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import type { AirTask, DistanceReference, GameMap, Order, ReconSector, Unit } from '../types'
 import { contactCapitalsLabel, contactSizeLabel, fleetOrder, type FleetGroup } from '../fleet'
 import ShipSilhouette from './ShipSilhouette.vue'
-import { shipMaskURL } from '../silhouette-masks'
+import { aircraftPictureURL, shipMaskURL } from '../silhouette-masks'
+import { airfieldContactStatus } from '../airfields'
 import { aircraftSilhouette } from '../silhouettes'
 import AircraftCounter from './AircraftCounter.vue'
 import AirfieldCounter from './AirfieldCounter.vue'
@@ -24,6 +25,14 @@ const props = defineProps<{
   groundTasks?: AirTask[]
   /** 已发现的敌方飞行编队（雷达/侦察/目视） */
   enemyAir?: import('../types').EnemyAirContact[]
+  /** 地图上点开的那支编队（打击/转场），用于高亮编队牌 */
+  selectedAirTaskId?: string
+  /** 本回合已就绪：只让看，不允许任何会改动状态的操作 */
+  locked?: boolean
+  /** 正在选打击目标：点敌方机场要设目标，不能弹情报卡 */
+  strikeTargeting?: boolean
+  /** 正在选自动航行目的地：点敌方机场要设目的地 */
+  navTargeting?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -34,15 +43,25 @@ const emit = defineEmits<{
   /** 拖动失败时的提示（冷却中 / 不是相邻格），交给上层显示 */
   notice: [text: string]
   selectAirfield: [airfieldID: string]
+  /** 点敌方机场算子：打开只读情报卡（不改变任何状态） */
+  inspectAirfield: [airfieldID: string]
+  /** 点地图上的编队牌：打开编队详情（机型 / 状态 / 目标 / 改目标 / 召回） */
+  selectAirTask: [taskID: string]
 }>()
 
 const size = 43
 // 缩放记在 localStorage：地图是 v-if 挂载的，切到航空界面再回来组件会重建，
 // 之前缩放跟着丢，每次回来都跳回 100%。
 const ZOOM_STORAGE_KEY = 'gq_map_zoom'
+// 缩放档位而不是固定步长：50%–500% 用 20% 步长要点二十下才能拉到头，
+// 所以做成档位，加减各跳一档，越往后步子越大。
+const ZOOM_STEPS = [0.5, 0.6, 0.75, 1, 1.2, 1.5, 2, 2.5, 3, 4, 5]
+function nearestZoomStep(value: number) {
+  return ZOOM_STEPS.reduce((best, step) => (Math.abs(step - value) < Math.abs(best - value) ? step : best), ZOOM_STEPS[0])
+}
 function storedZoom() {
   const saved = Number(localStorage.getItem(ZOOM_STORAGE_KEY))
-  return Number.isFinite(saved) && saved >= 0.6 && saved <= 2.4 ? saved : 1
+  return Number.isFinite(saved) && saved >= ZOOM_STEPS[0] && saved <= ZOOM_STEPS[ZOOM_STEPS.length - 1] ? nearestZoomStep(saved) : 1
 }
 const zoom = ref(storedZoom())
 watch(zoom, (value) => {
@@ -76,7 +95,23 @@ const hexes = computed(() => {
   return result
 })
 
-const viewBox = computed(() => `0 0 ${Math.sqrt(3) * size * (props.map.cols + 1)} ${size * (1.5 * props.map.rows + 0.7)}`)
+const MAP_MARGIN = 14
+const fullView = computed(() => {
+  const width = Math.sqrt(3) * size * (props.map.cols + 1)
+  const height = size * (1.5 * props.map.rows + 0.7)
+  return { x: -MAP_MARGIN, y: -MAP_MARGIN, w: width + MAP_MARGIN * 2, h: height + MAP_MARGIN * 2 }
+})
+type Camera = { x: number; y: number; w: number; h: number }
+function viewForZoom(level: number): Camera {
+  const map = fullView.value
+  const w = map.w / level
+  const h = map.h / level
+  return { x: map.x + (map.w - w) / 2, y: map.y + (map.h - h) / 2, w, h }
+}
+// 地图用 viewBox 当摄像机：缩放只改视野大小，拖动只改视野原点。
+// 这样不再靠改 SVG 的 width 撑出滚动条，观战页和游戏页的手感可以对齐。
+const camera = ref<Camera>(viewForZoom(zoom.value))
+const viewBox = computed(() => `${camera.value.x} ${camera.value.y} ${camera.value.w} ${camera.value.h}`)
 const selectedMoves = computed(() => new Set(props.selectedUnit?.legal_moves || []))
 // 已发现的敌方飞行编队按当前坐标分组。
 function enemyAirAt(coord: string) {
@@ -86,21 +121,44 @@ const reconSectors = computed<ReconSector[]>(() => props.reconTasks.flatMap((tas
 const reconCells = computed(() => new Set(reconSectors.value.flatMap((sector) => sector.sector_hexes || [])))
 const reconCurrentCells = computed(() => new Set(reconSectors.value.flatMap((sector) => sector.current_ring_hexes || [])))
 const flightTasks = computed(() => props.airTasks.filter((task) => (task.kind === 'attack' || task.kind === 'transfer') && task.airborne_count > 0 && task.current_coord))
-const mapStyle = computed(() => ({ width: `${zoom.value * 100}%`, minWidth: `${620 * zoom.value}px`, maxHeight: zoom.value > 1 ? 'none' : '100%' }))
 
 function reconAircraftAt(coord: string) {
   return reconSectors.value.filter((sector) => sector.current_coord === coord)
 }
 
-// CAP：掩护 = 巡逻点/前出点及周围 1 hex（共 7 格），但巡逻范围不绘制；
-// 地图上只标出"前出拦截中"和"受损/弹药耗尽返航中"的 CAP，便于看清哪批飞机在脱离。
-const capAircraft = computed(() => props.airTasks
-  .filter((task) => task.kind === 'cap')
-  .flatMap((task) => task.aircraft)
-  .map((aircraft) => ({ ...aircraft, taskId: aircraft.task_id || '' }))
-  .filter((aircraft) => ['cap', 'attack', 'recon'].includes(aircraft.status)))
-function capAircraftAt(coord: string) {
-  return capAircraft.value.filter((aircraft) => (aircraft.forward_coord || aircraft.coord) === coord)
+// CAP：掩护 = 巡逻点/前出点及周围 1 hex（共 7 格），但巡逻范围不绘制。
+// 同样一格只画一面 CAP 牌子：以前一个算子一张牌，一队 10 架 CAP 就横着一排 10 个牌子，
+// 把海图盖住一大片。现在按格子聚合成一面牌，牌上写"CAP ×10"，具体架数和状态放在 title 里。
+type CapBadge = { coord: string; total: number; returning: number; forward: number; models: string[] }
+const capBadges = computed(() => {
+  const badges = new Map<string, CapBadge>()
+  for (const task of props.airTasks) {
+    if (task.kind !== 'cap') continue
+    for (const aircraft of task.aircraft) {
+      if (!['cap', 'attack', 'recon'].includes(aircraft.status)) continue
+      const coord = aircraft.forward_coord || aircraft.coord || ''
+      if (!coord) continue
+      const badge = badges.get(coord) || { coord, total: 0, returning: 0, forward: 0, models: [] }
+      badge.total += 1
+      if (aircraft.returning) badge.returning += 1
+      if (aircraft.forward_coord) badge.forward += 1
+      if (!badge.models.includes(aircraft.model)) badge.models.push(aircraft.model)
+      badges.set(coord, badge)
+    }
+  }
+  return badges
+})
+function capBadgeAt(coord: string) {
+  return capBadges.value.get(coord)
+}
+// 牌上只写状态和架数：全员返航就写"返航"，有前出就写"拦截"，否则"CAP"。
+function capBadgeLabel(badge: CapBadge) {
+  const state = badge.forward > 0 ? '拦截' : badge.returning === badge.total ? '返航' : 'CAP'
+  return `${state} ×${badge.total}`
+}
+function capBadgeTitle(badge: CapBadge) {
+  const detail = [badge.forward ? `前出拦截 ${badge.forward}` : '', badge.returning ? `返航 ${badge.returning}` : ''].filter(Boolean).join(' · ')
+  return `${badge.models.join(' / ')} · CAP ${badge.total} 架${detail ? `（${detail}）` : ''} · ${badge.coord}`
 }
 
 function reconCurrentAircraftAt(coord: string) {
@@ -129,6 +187,18 @@ function flightRange(task: AirTask) {
 function flightModels(task: AirTask) {
   return [...new Set(task.aircraft.map((aircraft) => aircraft.model))].join(' / ')
 }
+
+// 打击编队算子用"素材图标"而不是矢量剪影：编队本身是混编的（俯冲、鱼雷、护航机都有），
+// 挑成员里的哪一架都不代表这支编队，所以美军统一给蓝底 SBD、日军统一给粉底零战，
+// 和航空界面的飞机兵牌用同一套素材，一眼分得出敌我。
+const STRIKE_FORMATION_PICTURES: Record<string, string> = {
+  A: 'misc/image/aircraft/sbd.png',
+  B: 'misc/image/aircraft/a6m2.png',
+}
+function strikeFormationPicture(faction?: string) {
+  return aircraftPictureURL(STRIKE_FORMATION_PICTURES[faction === 'B' ? 'B' : 'A'])
+}
+
 // 距离一律按 hex 数算，而且整张图都算：服务端下发的 distance_reference 只覆盖
 // 8 格（为了控制快照体积），选中舰队要量到地图另一头就量不了。
 // 这里在客户端按同一个 offset→cube 公式现算，结果和引擎的 Distance() 完全一致。
@@ -169,8 +239,89 @@ function distanceLabel(coord: string) {
   return distance > 0 && (distance % 2 === 0 || distance <= 3) ? String(distance) : ''
 }
 
-function adjustZoom(amount: number) {
-  zoom.value = Math.min(2.4, Math.max(0.6, Math.round((zoom.value + amount) * 10) / 10))
+function clampCamera() {
+  const map = fullView.value
+  const view = camera.value
+  view.x = view.w >= map.w
+    ? map.x + (map.w - view.w) / 2
+    : Math.min(map.x + map.w - view.w, Math.max(map.x, view.x))
+  view.y = view.h >= map.h
+    ? map.y + (map.h - view.h) / 2
+    : Math.min(map.y + map.h - view.h, Math.max(map.y, view.y))
+}
+
+function applyZoom(level: number) {
+  const map = fullView.value
+  const w = map.w / level
+  const h = map.h / level
+  const cx = camera.value.x + camera.value.w / 2
+  const cy = camera.value.y + camera.value.h / 2
+  camera.value = { x: cx - w / 2, y: cy - h / 2, w, h }
+  clampCamera()
+  zoom.value = level
+}
+
+function adjustZoom(direction: number) {
+  const index = ZOOM_STEPS.indexOf(nearestZoomStep(zoom.value))
+  applyZoom(ZOOM_STEPS[Math.min(ZOOM_STEPS.length - 1, Math.max(0, index + direction))])
+}
+
+const mapPanning = ref(false)
+let mapPanState: { startX: number; startY: number; cameraX: number; cameraY: number; scaleX: number; scaleY: number; moved: boolean } | null = null
+let mapPanLastMovedAt = 0
+
+function startMapPan(event: PointerEvent) {
+  if (event.pointerType === 'mouse' && event.button !== 0) return
+  const target = event.target as Element | null
+  // 舰队/机场/飞行编队自己有点击和拖拽语义，不能让地图平移抢走。
+  if (target?.closest('.map-unit, .map-airfield-card, .map-flight-task, .map-ground-task, .map-cap-aircraft, .map-enemy-air, .map-recon-aircraft, button, a')) return
+  const svg = mapElement.value
+  const ctm = svg?.getScreenCTM()
+  if (!svg || !ctm || !ctm.a || !ctm.d) return
+  mapPanState = {
+    startX: event.clientX,
+    startY: event.clientY,
+    cameraX: camera.value.x,
+    cameraY: camera.value.y,
+    scaleX: ctm.a,
+    scaleY: ctm.d,
+    moved: false,
+  }
+  mapPanning.value = true
+  window.addEventListener('pointermove', moveMapPan)
+  window.addEventListener('pointerup', endMapPan, { once: true })
+  window.addEventListener('pointercancel', endMapPan, { once: true })
+}
+
+function moveMapPan(event: PointerEvent) {
+  const state = mapPanState
+  if (!state) return
+  const dx = event.clientX - state.startX
+  const dy = event.clientY - state.startY
+  if (!state.moved && Math.hypot(dx, dy) < 4) return
+  if (!state.moved) event.preventDefault()
+  state.moved = true
+  camera.value.x = state.cameraX - dx / state.scaleX
+  camera.value.y = state.cameraY - dy / state.scaleY
+  clampCamera()
+}
+
+function endMapPan() {
+  if (!mapPanState) return
+  if (mapPanState.moved) mapPanLastMovedAt = performance.now()
+  mapPanState = null
+  mapPanning.value = false
+  window.removeEventListener('pointermove', moveMapPan)
+  window.removeEventListener('pointerup', endMapPan)
+  window.removeEventListener('pointercancel', endMapPan)
+}
+
+// 拖动结束后浏览器还会补一个 click；不吞掉的话松手就会顺手选中一格。
+function onMapClickCapture(event: MouseEvent) {
+  if (performance.now() - mapPanLastMovedAt > 250) return
+  event.preventDefault()
+  event.stopPropagation()
+  mapPanLastMovedAt = 0
 }
 
 function center(coord: string) {
@@ -223,22 +374,37 @@ const groundAirTaskTasks = computed(() => props.groundTasks || [])
 function airfieldsAt(coord: string) {
   return airfieldMarkers.value.filter((airfield) => airfield.coord === coord)
 }
-// 敌方机场只在接触等级足够时显示类型，否则只显示"机场?"
+// 地图上的机场直接画成机场算子卡片：生命值、可用跑道、防空、机库占用都在上面，
+// 敌我双方都能看到，炮击/轰炸后不用再点开面板才知道效果。
+// 敌方机场的规模和名字都公开（这些基地的位置是常识），细节仍要侦察。
 // 机场点击：先取消可能残留的拖拽/长按（拖拽监听挂在 window 上，会吞掉紧随其后的 click），再回调父组件。
-function airfieldClick(airfield: { id: string }) {
+function airfieldClick(airfield: { id: string; coord: string; faction: string }) {
   cancelDrag()
+  // 敌方机场不是"自己的机场"，点它不能打开自己的航空面板：
+  // - 选打击目标/自动航行时交给 hex 点击，继续走设目标/设目的地；
+  // - 平时打开只读情报卡，让缩小的算子也能看清生命值、跑道和防空。
+  if (airfield.faction !== props.playerFaction) {
+    if (props.strikeTargeting || props.navTargeting) {
+      emit('selectHex', airfield.coord)
+      return
+    }
+    emit('inspectAirfield', airfield.id)
+    return
+  }
   emit('selectAirfield', airfield.id)
 }
 
-function airfieldLabel(airfield: { name: string; contact_level: number; faction: string }) {
-  if (airfield.faction === props.playerFaction || airfield.contact_level >= 3) return '机场'
-  return '未知机场'
-}
 function groundAirAt(coord: string) {
   return (props.groundAircraft || []).filter((aircraft) => aircraft.coord === coord && ['cap', 'recon', 'attack', 'attack_holding'].includes(aircraft.status))
 }
-function groundTaskAt(coord: string) {
-  return groundAirTaskTasks.value.filter((task) => task.current_coord === coord && task.airborne_count > 0)
+// 地图上只给"正在飞出去干活"的陆基编队画飞行牌：攻击与转场。
+// 侦察已经由搜索扇面（含当前距离圈上的小标记）表达，再叠一块 44×26 的大牌子只会挡住 hex；
+// 巡逻（CAP／掩护）改用和舰载 CAP 一样的小方牌。
+function groundFlightAt(coord: string) {
+  return groundAirTaskTasks.value.filter((task) => task.current_coord === coord && task.airborne_count > 0 && (task.kind === 'attack' || task.kind === 'transfer'))
+}
+function groundPatrolAt(coord: string) {
+  return groundAirTaskTasks.value.filter((task) => task.current_coord === coord && task.airborne_count > 0 && (task.kind === 'cap' || task.kind === 'cover'))
 }
 
 // 两支舰队同格（接触状态）时反方向错开并左右挂名；单支舰队仍然居中。
@@ -268,6 +434,11 @@ function dragDebug(...args: unknown[]) {
 
 function startDrag(unit: FleetGroup, event: PointerEvent) {
   dragDebug('pointerdown', { unit: unit.id, faction: unit.faction, coord: unit.coord, moves: unit.legal_moves, cooldown: unit.move_cooldown, pointerType: event.pointerType, button: event.button })
+  // 本回合已就绪 = 冻结：连拖都不该开始，否则玩家拖一半才发现服务端根本不收。
+  if (props.locked) {
+    emit('notice', '本回合已就绪，操作已锁定：等双方就绪由服务器结算，下一回合才能再操作')
+    return
+  }
   if (unit.faction !== props.playerFaction || (event.pointerType === 'mouse' && event.button !== 0)) return
   event.preventDefault()
   // 冷却中的舰队拖了也没用，之前是完全静默——玩家只会觉得"拖不动"。这里直接说明原因。
@@ -381,7 +552,10 @@ function cancelDrag() {
   dropHover.value = ''
 }
 
-onUnmounted(cancelDrag)
+onUnmounted(() => {
+  cancelDrag()
+  endMapPan()
+})
 
 // 地图上的舰队算子：优先用带头两艘舰的真实剪影（旗舰 + 次舰）
 function leadMasks(unit: FleetGroup) {
@@ -409,17 +583,18 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
 
 <template>
   <div class="map-zoom-controls" @click.stop>
-    <button aria-label="缩小地图" @click="adjustZoom(-0.2)">−</button>
-    <button class="map-zoom-value" aria-label="地图缩放复位" @click="zoom = 1">{{ Math.round(zoom * 100) }}%</button>
-    <button aria-label="放大地图" @click="adjustZoom(0.2)">+</button>
+    <button aria-label="缩小地图" :disabled="zoom <= ZOOM_STEPS[0]" @click="adjustZoom(-1)">−</button>
+    <button class="map-zoom-value" aria-label="地图缩放复位" @click="applyZoom(1)">{{ Math.round(zoom * 100) }}%</button>
+    <button aria-label="放大地图" :disabled="zoom >= ZOOM_STEPS[ZOOM_STEPS.length - 1]" @click="adjustZoom(1)">+</button>
   </div>
-  <!-- 缩放条钉在可视区，滚的是里面这层 .map-scroll；否则缩放条跟着 hex 一起滚出屏幕。 -->
+  <!-- 摄像机层：+ / − 只改 viewBox，拖动地图改 viewBox 原点；滚轮不再改变缩放。 -->
   <div class="map-scroll">
-  <svg ref="mapElement" class="hex-map" :viewBox="viewBox" :style="mapStyle" :data-zoom="zoom.toFixed(1)" role="img" aria-label="沙盒海图">
+  <svg ref="mapElement" class="hex-map" :class="{ panning: mapPanning }" :viewBox="viewBox" :data-zoom="zoom.toFixed(1)" role="img" aria-label="沙盒海图" @pointerdown="startMapPan" @click.capture="onMapClickCapture">
     <g v-for="hex in hexes" :key="hex.coord" class="hex-cell" :data-coord="hex.coord" :data-distance="distanceAt(hex.coord) >= 0 ? distanceAt(hex.coord) : undefined" :data-recon-current-aircraft="reconCurrentAircraftAt(hex.coord) || undefined" :class="[`terrain-${hex.terrain}`, { legal: selectedMoves.has(hex.coord), 'drop-hover': dropHover === hex.coord, 'recon-sector': reconCells.has(hex.coord), 'recon-current': reconCurrentCells.has(hex.coord), 'distance-reference': distanceAt(hex.coord) > 0 && distanceAt(hex.coord) <= 2, 'distance-outer': distanceAt(hex.coord) === 2, 'distance-origin': distanceAt(hex.coord) === 0 }]" @click="clickHex(hex.coord)">
       <polygon :points="points(hex.x, hex.y)" />
       <text class="coord-label" :x="hex.x" :y="hex.y - 23">{{ hex.coord }}</text>
-      <text v-if="hex.name" class="terrain-label" :x="hex.x" :y="hex.y + 27">{{ hex.name }}</text>
+      <!-- 机场格的地名由机场算子自己写，地形标签再写一遍会变成上下两个"拉包尔"。 -->
+      <text v-if="hex.name && !airfieldsAt(hex.coord).length" class="terrain-label" :x="hex.x" :y="hex.y + 27">{{ hex.name }}</text>
       <circle v-if="selectedMoves.has(hex.coord)" class="legal-dot" :cx="hex.x" :cy="hex.y" r="5" />
       <g v-if="distanceLabel(hex.coord)" class="distance-label" :data-distance-label="distanceLabel(hex.coord)">
         <circle :cx="hex.x" :cy="hex.y" r="9" />
@@ -523,15 +698,18 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         v-for="(task, index) in flightTasksAt(hex.coord)"
         :key="task.id"
         class="map-flight-task"
-        :class="task.kind"
+        :class="[task.kind, `faction-${playerFaction.toLowerCase()}`, { selected: selectedAirTaskId === task.id }]"
         :data-flight-task-id="task.id"
         :data-task-kind="task.kind"
+        :data-task-faction="playerFaction"
         :data-display-coord="task.current_coord"
         :data-target-coord="task.target_coord"
         :transform="`translate(${flightPosition(hex.coord, index, flightTasksAt(hex.coord).length).x}, ${flightPosition(hex.coord, index, flightTasksAt(hex.coord).length).y})`"
+        @click.stop="emit('selectAirTask', task.id)"
       >
         <rect x="-24" y="-15" width="48" height="30" rx="3" />
-        <path class="flight-task-symbol" :data-task-kind="task.kind" :d="task.kind === 'attack' ? aircraftSilhouette('dive_bomber') : task.kind === 'cover' ? aircraftSilhouette('fighter') : aircraftSilhouette('recon')" transform="translate(-14 -16) scale(.46)" />
+        <image v-if="task.kind === 'attack'" class="flight-task-picture" :href="strikeFormationPicture(playerFaction)" x="-21" y="-13" width="42" height="26" preserveAspectRatio="xMidYMid meet" :data-aircraft-picture="STRIKE_FORMATION_PICTURES[playerFaction === 'B' ? 'B' : 'A']" />
+        <path v-else class="flight-task-symbol" :data-task-kind="task.kind" :d="task.kind === 'cover' ? aircraftSilhouette('fighter') : aircraftSilhouette('recon')" transform="translate(-14 -16) scale(.46)" />
         <text x="30" y="-3">{{ task.kind === 'attack' ? '攻击' : task.kind === 'cover' ? '掩护' : '转场' }} {{ task.airborne_count }}/{{ task.aircraft_ids.length }}{{ task.cannot_land ? ' ⚠' : '' }}</text>
         <text class="flight-task-range" x="30" y="10">航程 {{ flightRange(task) }}</text>
         <text class="flight-task-coord" y="27">{{ task.current_coord }} → {{ task.target_coord || '等待目标' }}</text>
@@ -540,51 +718,66 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
     </g>
     <g v-for="hex in hexes" :key="`cap-${hex.coord}`">
       <g
-        v-for="(aircraft, index) in capAircraftAt(hex.coord)"
-        :key="aircraft.id"
+        v-if="capBadgeAt(hex.coord)"
         class="map-cap-aircraft"
-        :class="{ returning: aircraft.returning, forward: Boolean(aircraft.forward_coord) }"
-        :data-aircraft-id="aircraft.id"
-        :data-forward="aircraft.forward_coord || ''"
-        :transform="`translate(${center(hex.coord).x + (index - 1) * 16}, ${center(hex.coord).y - 34})`"
+        :class="{ returning: capBadgeAt(hex.coord)!.returning === capBadgeAt(hex.coord)!.total, forward: capBadgeAt(hex.coord)!.forward > 0 }"
+        :data-cap-coord="hex.coord"
+        :data-cap-count="capBadgeAt(hex.coord)!.total"
+        :transform="`translate(${center(hex.coord).x}, ${center(hex.coord).y - 34})`"
       >
-        <rect x="-13" y="-8" width="26" height="16" rx="3" />
-        <path class="cap-symbol" :d="aircraftSilhouette('fighter')" transform="translate(-7 -5) scale(.23)" />
-        <text x="0" y="2">{{ aircraft.returning ? '返' : aircraft.forward_coord ? '拦' : 'CAP' }}</text>
-        <title>{{ aircraft.model }} · {{ aircraft.returning ? '受损/弹药耗尽，返航中' : aircraft.forward_coord ? '雷达引导前出拦截' : 'CAP 巡逻' }}</title>
+        <rect x="-25" y="-8" width="50" height="16" rx="3" />
+        <path class="cap-symbol" :d="aircraftSilhouette('fighter')" transform="translate(-21 -5) scale(.23)" />
+        <text x="9" y="2">{{ capBadgeLabel(capBadgeAt(hex.coord)!) }}</text>
+        <title>{{ capBadgeTitle(capBadgeAt(hex.coord)!) }}</title>
       </g>
     </g>
     <g v-for="hex in hexes" :key="`airfield-${hex.coord}`">
-      <g
+      <foreignObject
         v-for="(airfield, index) in airfieldsAt(hex.coord)"
         :key="airfield.id"
-        class="map-airfield"
+        class="map-airfield-card"
         :class="[`faction-${airfield.faction.toLowerCase()}`, { enemy: airfield.faction !== playerFaction, unknown: airfield.contact_level < 3 }]"
         :data-airfield-id="airfield.id"
-        :transform="`translate(${center(hex.coord).x + (index - (airfieldsAt(hex.coord).length - 1) / 2) * 20}, ${center(hex.coord).y + 16})`"
+        :x="center(hex.coord).x - 32 + (index - (airfieldsAt(hex.coord).length - 1) / 2) * 66"
+        :y="center(hex.coord).y - 29"
+        width="64"
+        height="58"
         @click.stop="airfieldClick(airfield)"
       >
-        <rect x="-17" y="-8" width="34" height="16" rx="2" />
-        <path class="airfield-runway" d="M-13 1h26v3h-26z" />
-        <path class="airfield-stripes" d="M-9 1v3M-1 1v3M7 1v3" />
-        <path v-if="airfield.contact_level >= 3" class="airfield-tower" d="M6 -7h5v8H6z" />
-        <text class="airfield-type" text-anchor="middle" y="12">{{ airfieldLabel(airfield) }} · {{ airfield.runways }}跑道</text>
-        <title>{{ airfield.name }} · {{ ({ field: '野战机场', heavy: '重型机场', major: '大型机场' } as Record<string,string>)[airfield.type] }} · {{ airfield.runways }} 跑道 · 情报{{ airfield.contact_level }}</title>
-      </g>
+        <div xmlns="http://www.w3.org/1999/xhtml" class="map-airfield-card-inner">
+          <AirfieldCounter :airfield="airfieldContactStatus(airfield)" />
+        </div>
+      </foreignObject>
     </g>
     <g v-for="hex in hexes" :key="`ground-air-${hex.coord}`">
       <g
-        v-for="(task, index) in groundTaskAt(hex.coord)"
+        v-for="(task, index) in groundFlightAt(hex.coord)"
         :key="task.id"
         class="map-ground-task"
-        :class="task.kind"
+        :class="[task.kind, `faction-${playerFaction.toLowerCase()}`, { selected: selectedAirTaskId === task.id }]"
         :data-ground-task-id="task.id"
-        :transform="`translate(${flightPosition(hex.coord, index, groundTaskAt(hex.coord).length).x}, ${flightPosition(hex.coord, index, groundTaskAt(hex.coord).length).y})`"
+        :data-task-faction="playerFaction"
+        :transform="`translate(${flightPosition(hex.coord, index, groundFlightAt(hex.coord).length).x}, ${flightPosition(hex.coord, index, groundFlightAt(hex.coord).length).y})`"
+        @click.stop="emit('selectAirTask', task.id)"
       >
         <rect x="-22" y="-13" width="44" height="26" rx="3" />
-        <path class="flight-task-symbol" :d="task.kind === 'attack' ? aircraftSilhouette('dive_bomber') : task.kind === 'recon' ? aircraftSilhouette('recon') : aircraftSilhouette('fighter')" transform="translate(-13 -11) scale(.5)" />
-        <text class="ground-task-label" x="14" y="-2">{{ task.kind === 'attack' ? '攻击' : task.kind === 'recon' ? '侦察' : 'CAP' }} {{ task.airborne_count }}</text>
+        <image v-if="task.kind === 'attack'" class="flight-task-picture" :href="strikeFormationPicture(playerFaction)" x="-19" y="-11" width="38" height="22" preserveAspectRatio="xMidYMid meet" :data-aircraft-picture="STRIKE_FORMATION_PICTURES[playerFaction === 'B' ? 'B' : 'A']" />
+        <path v-else class="flight-task-symbol" :d="aircraftSilhouette('recon')" transform="translate(-13 -11) scale(.5)" />
+        <text class="ground-task-label" x="14" y="-2">{{ task.kind === 'attack' ? '攻击' : '转场' }} {{ task.airborne_count }}</text>
         <text class="ground-task-coord" y="10">{{ task.current_coord }}</text>
+        <title>{{ flightModels(task) }} · 来自机场 · {{ task.current_coord }}{{ task.target_coord ? ' → ' + task.target_coord : '' }}</title>
+      </g>
+      <g
+        v-for="(task, index) in groundPatrolAt(hex.coord)"
+        :key="`ground-patrol-${task.id}`"
+        class="map-ground-patrol"
+        :class="task.kind"
+        :data-ground-task-id="task.id"
+        :transform="`translate(${center(hex.coord).x + (index - 1) * 16}, ${center(hex.coord).y - 34})`"
+      >
+        <rect x="-14" y="-8" width="28" height="16" rx="3" />
+        <path class="cap-symbol" :d="aircraftSilhouette('fighter')" transform="translate(-7 -5) scale(.23)" />
+        <text x="0" y="2">{{ task.kind === 'cover' ? '掩护' : 'CAP' }}</text>
         <title>{{ flightModels(task) }} · 来自机场 · {{ task.current_coord }}{{ task.target_coord ? ' → ' + task.target_coord : '' }}</title>
       </g>
     </g>
@@ -593,14 +786,17 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         v-for="(contact, index) in enemyAirAt(hex.coord)"
         :key="contact.task_id"
         class="map-enemy-air"
-        :class="[`kind-${contact.kind}`, { converging: contact.returning }]"
+        :class="[`kind-${contact.kind}`, `faction-${contact.faction.toLowerCase()}`, { converging: contact.returning }]"
         :data-enemy-air-id="contact.task_id"
         :data-display-coord="contact.coord"
         :data-detected-by="contact.detected_by"
         :transform="`translate(${center(hex.coord).x - 34 + index * 22}, ${center(hex.coord).y + 30})`"
       >
         <rect x="-10" y="-7" width="20" height="14" rx="2" />
-        <path class="enemy-air-symbol" :d="aircraftSilhouette(contact.kind === 'attack' ? 'dive_bomber' : contact.kind === 'recon' ? 'recon' : 'fighter')" transform="translate(-6 -5) scale(.22)" />
+        <template v-if="contact.kind === 'attack'">
+          <image class="flight-task-picture enemy-air-picture" :href="strikeFormationPicture(contact.faction)" x="-9" y="-6" width="18" height="12" preserveAspectRatio="xMidYMid meet" :data-aircraft-picture="STRIKE_FORMATION_PICTURES[contact.faction === 'B' ? 'B' : 'A']" />
+        </template>
+        <path v-else class="enemy-air-symbol" :d="aircraftSilhouette(contact.kind === 'recon' ? 'recon' : 'fighter')" transform="translate(-6 -5) scale(.22)" />
         <text x="0" y="13">{{ contact.count }}</text>
         <title>敌方编队 · {{ contact.models?.join('/') }} · 约 {{ contact.count }} 个算子 · {{ contact.coord }} · 由{{ { radar: '雷达', recon: '侦察机', visual: '目视' }[contact.detected_by] || contact.detected_by }}发现</title>
       </g>

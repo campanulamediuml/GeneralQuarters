@@ -77,40 +77,36 @@ func TestLoopingAircraftRecallBeforeNight(t *testing.T) {
 	}
 }
 
-// 珊瑚海时间线：19:40 还在天上的算子直接坠海，不给迫降判定。
-func TestNightLossCrashesAirborneAircraft(t *testing.T) {
+// 珊瑚海时间线：天黑之后空中不许还有飞机。
+// 够得着母舰（2 hex 内，一回合航程）的当场强制着舰并按夜间风险判定；
+// 够不着的直接判损失。这样"天黑前一回合降落、降落占一回合"的计划才有意义。
+func TestNightLossResolvesAirborneAircraft(t *testing.T) {
 	state := State{Turn: 24, DayHours: 12, TurnsPerDay: 72}
 	state.Timeline = &Timeline{TurnMinutes: 20, ServiceStart: "04:00", LaunchStart: "05:20", RecoverBy: "19:40", NightLoss: true}
-	carrier := &Unit{ID: "cv", Faction: "A", Name: "列克星敦", Card: ShipCard{HangarCapacity: 8}}
+	carrier := &Unit{ID: "cv", Faction: "A", Name: "列克星敦", Coord: "0505", Card: ShipCard{HangarCapacity: 8}}
+	carrier.Deck = &FlightDeck{Length: 4, Elevators: []*AircraftElevator{{ID: "e1", Capacity: 2, Status: "idle"}}}
 	state.Units = map[string]*Unit{"cv": carrier}
 	state.Aircraft = map[string]*AirUnit{
-		"late": {ID: "late", CarrierID: "cv", Faction: "A", Model: "SBD", Status: "attack", Coord: "0505"},
+		// 就在母舰上空：强制着舰（夜间 70% 摔毁，可能活也可能死，但不能还在天上）。
+		"homebound": {ID: "homebound", CarrierID: "cv", Faction: "A", Model: "SBD", Status: "attack", Coord: "0505", MaxRange: 10, RemainingRange: 5},
+		// 十几格外：天黑就是回不去。
+		"lost": {ID: "lost", CarrierID: "cv", Faction: "A", Model: "SBD", Status: "attack", Coord: "0808", MaxRange: 10, RemainingRange: 5},
 		"deck": {ID: "deck", CarrierID: "cv", Faction: "A", Model: "F4F", Status: "hangar"},
 	}
-	events := UpdateDayNight(&state)
+	UpdateDayNight(&state)
 	if !state.Night {
 		t.Fatalf("第 24 回合应入夜：%.2f", clockAt(state))
 	}
-	// 入夜不再"原地删除"：强制摸黑返航，能不能回来交给燃油和夜间着舰判定，
-	// 每架飞机都有独立的战报，而不是一下子整队消失。
-	late := state.Aircraft["late"]
-	if late == nil {
-		t.Fatal("入夜不应直接抹掉还在天上的算子")
+	if state.Aircraft["lost"] != nil {
+		t.Fatal("天黑时还在远处空中的算子应当判损失")
 	}
-	if !late.Returning {
-		t.Fatal("还在天上的算子应被强制转入返航")
+	for _, aircraft := range state.Aircraft {
+		if airborne(aircraft) {
+			t.Fatalf("天黑之后不应还有算子在空中：%s status=%s", aircraft.ID, aircraft.Status)
+		}
 	}
 	if state.Aircraft["deck"] == nil {
 		t.Fatal("机库里的算子不该被夜间规则带走")
-	}
-	forced := false
-	for _, event := range events {
-		if event.Type == "night_forced_return" {
-			forced = true
-		}
-	}
-	if !forced {
-		t.Fatalf("应产生强制返航事件：%+v", events)
 	}
 }
 

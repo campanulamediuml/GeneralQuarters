@@ -1,50 +1,60 @@
-# 剪影素材来源
+# 舰船剪影素材
 
-兵牌上的真图剪影来自识别图、线图或用户提供的照片，
-经二值化 / 逐列描边 + 泛洪取轮廓处理后存为透明蒙版，构建时内联进包，运行时零网络请求。
-处理工具：`silfill`（阈值 / 自适应阈值 / 红色水线切割 / 裁边 / 缩放 / 去毛刺 / 抗锯齿）。
+兵牌、地图标记和舰队面板里的舰船剪影，统一来自用户提供的整包识别图剪影
+（仓库根目录 `素材/船只剪影/正常`）。原图是黑底透明的侧视轮廓，舰首朝左，
+前端用 CSS `mask-image` 只取 alpha 通道、再用 `currentColor` 按阵营和损伤上色，
+所以这里的 PNG 只看形状，颜色会被忽略。
 
-| 文件 | 来源 | 许可 |
+`content/units/ships/*.json` 的具名舰和 `content/units/sandbox.json` 的通用舰级卡
+都用 `picture` 字段指向本目录，服务端按 `/content/...` 静态下发；
+换图、加船的素材都放在 content 里，不需要重新构建前端。
+
+## 当前映射
+
+沿用最早的具名文件名，这样老存档里已经写进卡片的 `picture` 路径不会失效；
+文件内容换成了对应舰级的剪影：
+
+| 本目录文件 | 素材文件（素材/船只剪影/正常） | 对应舰级 / 用途 |
 |---|---|---|
-| shokaku.png | Wikimedia Commons: File:Shokaku-class carriers.jpg（ONI 41-42 识别卡） | Public domain（US Navy） |
-| kongo.png | Wikimedia Commons: File:Kongo class battleship drawing.png | Public domain |
-| north_carolina.png | Wikimedia Commons: File:North Carolina class battleship recognition drawings.jpg | Public domain |
-| lexington.png | Wikimedia Commons: File:CV Saratoga silhouette.png（同级舰） | Public domain |
-| yorktown.png | Wikimedia Commons: File:CV Enterprise silhouette.png（同级舰） | Public domain |
-| yubari.png | Internet Archive: oni-4142《Japanese Naval Vessels》p157 页脚剪影 | Public domain |
-| farragut.png | Wikimedia Commons: File:DD Farragut silhouette.png（USN 1944 识别卡，逆光照片提取） | Public domain |
-| northampton.png | Shipbucket 侧视线图：USS Chicago CA-29（Navixa 绘，北安普敦级） | Shipbucket 自由使用条款（非商业，署名） |
-| new_orleans.png | Shipbucket 侧视线图：USS Minneapolis CA-36，1934（Navixa 绘，新奥尔良级） | Shipbucket 自由使用条款（非商业，署名） |
-| myoko.png | 用户提供的高精度侧视线图，处理成蒙版 | 用户提供 |
-| leander.png | 用户提供的 HMS Leander 侧视照片，逐列描边（天际线 + 水线）生成实心剪影 | 用户提供 |
-| shiratsuyu.png | 用户提供的侧视线图，处理成蒙版 | 用户提供 |
-| nagato.png | 用户提供的长门侧视剪影，二值化成透明蒙版（2480×466） | 用户提供 |
-| portland.png | 用户提供的波特兰级（CA-33 Portland）侧视剪影 | 用户素材 |
+| north_carolina.png | USA_BB7-1_ship.png | 北卡罗来纳级（美军 BB 卡） |
+| usa_bc1.png | USA_BC1_ship.png | 素材内的通用美国战列巡洋舰剪影 |
+| northampton.png | USA_CA2_ship.png | 北安普敦级（美军 CA 卡） |
+| new_orleans.png | USA_CA4_ship.png | 新奥尔良级 / 威奇塔级 |
+| portland.png | USA_CA3_ship.png | 波特兰级 |
+| leander.png | USA_CL2_ship.png | 布鲁克林级与利安德级共用（美军 CL 卡、澳大利亚号霍巴特） |
+| australia.png | GBR_CA1-2_ship.png | 英国肯特级/伦敦级（澳大利亚号） |
+| farragut.png | USA_DD1_ship.png | 美军通用驱逐舰（法拉格特、弗莱彻等） |
+| lexington.png | USA_CV1_ship.png | 列克星敦级 |
+| yorktown.png | USA_CV3_ship.png | 约克城级 |
+| usa_cvl1.png | USA_CVL1_ship.png | 独立级 |
+| usa_cve0.png | USA_CVE0_ship.png | 博格 / 卡萨布兰卡 / 长岛 / 桑加蒙级共用 |
+| nagato.png | JAP_BB4_ship.png | 长门级（日军 BB 卡） |
+| kongo.png / haruna.png / hiei.png / kirishima.png | JAP_BC1_ship.png | 金刚级（金刚、榛名、比叡、雾岛同名文件，同一张剪影） |
+| akagi.png / kaga.png | JAP_CV1 Akagi_ship.png / JAP_CV1 Kaga_ship.png | 赤城 / 加贺（单舰） |
+| shokaku.png | JAP_CV8_ship.png | 翔鹤级（翔鹤、瑞鹤共用） |
+| jap_cvl1.png | JAP_CVL1_ship.png | 瑞凤级 |
+| jap_cve0.png | JAP_CVE0_ship.png | 大鹰 / 海鹰 / 神鹰共用 |
+| myoko.png / furutaka.png | JAP_CA1_ship.png | 古鹰级、青叶级、妙高级共用（日 CA 卡与青叶/古鹰/加古/衣笠/妙高/羽黑） |
+| yubari.png | JAP_CL1_ship.png | 舰队通用轻巡剪影（夕张与香取/球磨/长良/川内/天龙级共用） |
+| jap_dd1.png | JAP_DD1_ship.png | 日军通用新式驱逐舰（秋月/朝潮/阳炎/岛风/夕云共用） |
+| shiratsuyu.png | JAP_DE1_ship.png | 日军通用旧式驱逐舰（白露/时雨/有明/夕暮及吹雪、初春等） |
+| cmn_ms1_3.png | CMN_MS1-3_ship.png | 通用运输船（双方 TRS 卡） |
 
-## 处理流程
+完整的"素材文件 → 舰种 → 舰级"对照在 `素材/船只剪影/ship_classes.csv`。
+素材包里还有一批当前剧本没用到（或本作尚未建卡）的舰级图，例如埃塞克斯、大和、
+亚特兰大、利根、兰利等，需要时按同一命名规则抄进本目录并在 JSON 里指过去。
 
-1. `silfill`：非白像素视为前景 → 从边界泛洪标记背景 → 被舰体包围的白洞一并填实 →
-   只保留最大连通域（滤掉水印、标尺、孤立噪点）→ 裁边 → 最近邻缩放到 224px → 3×3 开运算去毛刺 → 抗锯齿透明 PNG。
-   船头方向沿用原图（当前整套素材都是船头朝左），不做镜像，保证同级舰之间方向一致。
-2. 彩色线图：用红色舰底（水线下船体）定位水线，在红色顶部截断，只保留水线以上的干舷轮廓。
-3. 低质量扫描照片（如 leander）：不用全局阈值（纸张和海水会把船体连成一片），
-   改为逐列求天际线 + 拟合水线，再按列填充成实心剪影。
-4. 前端用 CSS `mask-image` + `currentColor` 上色，阵营配色与损伤标记自动跟随。
-
-## 仍需手绘的舰
-
-无。场景内 18 艘舰全部使用上面的具名蒙版；`silhouettes-named.ts` 里的手绘造型只作为
-素材缺失时的兜底（例如新加舰船还没找到图）。
+`素材/船只剪影/沉没` 是沉没状态的单独剪影，目前前端没有用到：
+沉没舰船是给同一张剪影加倾斜、灰度和半透明来表现（`ShipCounter.vue`），
+如果以后要做"残骸图"，可以在卡片上再加一个 `picture_sunk` 字段。
 
 ## 新增素材的硬性要求
 
-放进本目录的 PNG **必须是带 alpha 的 RGBA 蒙版**（白色不透明 = 舰体，透明 = 背景）。
-CSS mask-image 默认读 alpha 通道：灰度图或照片没有 alpha，会被当成整块不透明，
-兵牌上就是一个实心方块（new_orleans / furutaka 都踩过这个坑）。
-灰度稿先用 alpha = luminance 转一遍再入库：
+放进本目录的 PNG **必须是带 alpha 的 RGBA 蒙版**（不透明 = 舰体，透明 = 背景）。
+CSS `mask-image` 默认读 alpha 通道：白底 JPG、灰度图或整块不透明的 PNG，
+在兵牌上会渲染成一个实心矩形。`TestShipPicturesCarryAlpha` 会检查每张图至少有一个透明像素。
 
-    from PIL import Image
-    src = Image.open('raw.png').convert('L')
-    alpha = src.point(lambda v: 0 if v <= 25 else 255 if v >= 180 else int((v - 25) * 255 / 155))
-    white = Image.new('L', alpha.size, 255)
-    Image.merge('RGBA', (white, white, white, alpha)).save('ship.png', optimize=True)
+- 舰首朝左，和素材包保持一致，同级舰之间不要混方向。
+- 不要给图加边框、水印、尺度标尺；剪影要裁到舰体本身。
+- 长宽比保持素材原样（多为 5:1），前端用 `mask-size: contain` 等比缩放，
+  在 48×20 的地图标记和 128×72 的兵牌里都不会被拉伸。

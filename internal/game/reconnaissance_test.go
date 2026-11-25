@@ -40,15 +40,16 @@ func TestReconDetectionChanceModifiers(t *testing.T) {
 		{ID: "b2", FleetID: "target", Faction: "B", Type: "BB", Coord: "0104"},
 		{ID: "b3", FleetID: "target", Faction: "B", Type: "DD", Coord: "0104"},
 	}
-	if chance := reconDetectionChance(state, aircraft, members); chance != 20 {
+	// 每 hex -1%：25 基础 + 11（2BB+1DD）- 10（降雨）- 3（距离）= 23。
+	if chance := reconDetectionChance(state, aircraft, members); chance != 23 {
 		t.Fatalf("舰船、距离和降雨修正错误：%.1f", chance)
 	}
 	state.Contacts = map[string]map[string]*FleetContact{"A": {"target": {Level: 1}}}
-	if chance := reconDetectionChance(state, aircraft, members); chance != 25 {
+	if chance := reconDetectionChance(state, aircraft, members); chance != 28 {
 		t.Fatalf("既有情报修正错误：%.1f", chance)
 	}
 	aircraft.SectorWidth = 120
-	if chance := reconDetectionChance(state, aircraft, members); math.Abs(chance-12.5) > 0.001 {
+	if chance := reconDetectionChance(state, aircraft, members); math.Abs(chance-14) > 0.001 {
 		t.Fatalf("120度扇面没有将最终发现率减半：%.1f", chance)
 	}
 }

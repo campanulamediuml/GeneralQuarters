@@ -31,6 +31,38 @@ func TestRunwaysDerivedFromStrength(t *testing.T) {
 	}
 }
 
+// 敌方机场也要返回实时整备状态：炮击/轰炸后双方都能从地图算子上看到生命值和跑道变化。
+func TestVisibleAirfieldsReportDamageToEnemy(t *testing.T) {
+	state := sandboxState(t)
+	airfield := state.Airfields["af-b-sentry"]
+	airfield.Strength = 4
+	airfield.HeavyAA = 2
+	airfield.LightAA = 3
+	airfield.Coastal = 6
+	for _, contact := range VisibleAirfields(state, "A") {
+		if contact.ID != airfield.ID {
+			continue
+		}
+		if contact.Strength != 4 || contact.MaxStrength != 15 {
+			t.Fatalf("敌方机场生命值应为 4/15，实际 %d/%d", contact.Strength, contact.MaxStrength)
+		}
+		if contact.Runways != 1 || contact.MaxRunways != 3 {
+			t.Fatalf("4 点生命值应剩 1/3 条跑道，实际 %d/%d", contact.Runways, contact.MaxRunways)
+		}
+		if contact.HeavyAA != 2 || contact.LightAA != 3 {
+			t.Fatalf("敌方机场防空应为 2/3，实际 %v/%v", contact.HeavyAA, contact.LightAA)
+		}
+		if contact.Coastal != 6 {
+			t.Fatalf("敌方机场岸炮应为 6，实际 %d", contact.Coastal)
+		}
+		if contact.HangarUsed == 0 {
+			t.Fatal("敌方机场应返回机库占用数")
+		}
+		return
+	}
+	t.Fatal("没有找到 af-b-sentry 的可见机场")
+}
+
 // TestAirfieldBusycycle 机场整备三回合：service → deck → ready → 起飞。
 func TestAirfieldBusycycle(t *testing.T) {
 	state := sandboxState(t)

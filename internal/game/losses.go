@@ -10,11 +10,11 @@ import "sort"
 
 // ShipLoss 是一艘沉没舰船的记录。
 type ShipLoss struct {
-	Turn  int      `json:"turn"`
-	ID    string   `json:"id,omitempty"`
-	Name  string   `json:"name"`
-	Type  string   `json:"type"`
-	Fleet string   `json:"fleet,omitempty"`
+	Turn  int    `json:"turn"`
+	ID    string `json:"id,omitempty"`
+	Name  string `json:"name"`
+	Type  string `json:"type"`
+	Fleet string `json:"fleet,omitempty"`
 	// Card 是沉没那一刻的舰船卡：战果页面要按原样画兵牌，
 	// 不能拿一张全零的占位卡拉倒（会显示成 0 强度、0-0 防空）。
 	Card ShipCard `json:"card"`
@@ -29,10 +29,10 @@ type AircraftLoss struct {
 
 // LossLedger 是一个阵营的战果账。
 type LossLedger struct {
-	Ships        []ShipLoss     `json:"ships,omitempty"`
-	Aircraft     []AircraftLoss `json:"aircraft,omitempty"`
-	ShipTotal    int            `json:"ship_total,omitempty"`
-	AircraftTotal int           `json:"aircraft_total,omitempty"`
+	Ships         []ShipLoss     `json:"ships,omitempty"`
+	Aircraft      []AircraftLoss `json:"aircraft,omitempty"`
+	ShipTotal     int            `json:"ship_total,omitempty"`
+	AircraftTotal int            `json:"aircraft_total,omitempty"`
 }
 
 func ensureLosses(state *State) map[string]*LossLedger {
@@ -103,6 +103,17 @@ func snapshotAircraftRoster(state *State) {
 		}
 		state.AircraftRoster[id] = *aircraft
 	}
+	// 陆基算子住在 GroundAir，不在 state.Aircraft 里。以前花名册漏了它们，
+	// 机场飞机被击落或在地面被炸都不会进损失台账——赢了也拿不到那 0.25 分。
+	for id, ground := range state.GroundAir {
+		if ground == nil {
+			continue
+		}
+		if _, exists := state.AircraftRoster[id]; exists {
+			continue
+		}
+		state.AircraftRoster[id] = groundAirUnit(*state, ground)
+	}
 }
 
 // settleAircraftLosses 在回合结束时对账：花名册里有、当前不在编的算子记为损失。
@@ -117,6 +128,13 @@ func settleAircraftLosses(state *State) {
 	sort.Strings(ids)
 	for _, id := range ids {
 		if _, alive := state.Aircraft[id]; alive {
+			continue
+		}
+		// 转场到机场的算子只是换了所在位置（舰载机 → 机场地面算子），
+		// 飞机还在、还能再出动，不能算击毁。以前这里只查 state.Aircraft，
+		// 一次备降就把整队飞机记成战损，还白送对方战果分。
+		if _, onGround := state.GroundAir[id]; onGround {
+			delete(state.AircraftRoster, id)
 			continue
 		}
 		gone := state.AircraftRoster[id]

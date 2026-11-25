@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import type { AirTask, AirUnit, AviationView, CarrierAirStatus, Player, ReconHeading, StrikeTarget, Unit } from '../types'
+import type { AirTask, AirUnit, AviationView, CarrierAirStatus, GroundAirStatus, Player, ReconHeading, StrikeTarget, Unit } from '../types'
+import { airfieldTypeHint, airfieldTypeLabel, normalizeAirfieldType } from '../airfields'
 import AircraftCounter from './AircraftCounter.vue'
+import AirfieldCounter from './AirfieldCounter.vue'
 import ShipCounter from './ShipCounter.vue'
 
 type AirCommandType = 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' | 'LAUNCH_COVER' | 'LAUNCH_TRANSFER' | 'RETURN_TO_HANGAR' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK' | 'SET_AIR_CYCLE' | 'RECALL_AIR' | 'RETASK_AIR' | 'RETARGET_AIR' | 'SET_STRIKE_DISPERSION'
@@ -9,7 +11,15 @@ type CommandOptions = { heading?: ReconHeading; sector_width?: 60 | 120; task_id
 type TaskLane = { id: string; name: string; kind: string; slot?: number }
 type AirZone = 'hangar' | 'deck'
 
-const props = defineProps<{ aviation: AviationView; units: Unit[]; fleetId: string; targets: StrikeTarget[]; playerFaction: Player['faction']; focusUnitId?: string; selectedAircraftId?: string; busy: boolean; clock?: import('../types').GameClock | null; radioTasks?: { task_id: string; kind: string; coord: string; airborne: number; used: boolean; chance: number; distance: number }[] }>()
+const props = defineProps<{ aviation: AviationView; units: Unit[]; fleetId: string; targets: StrikeTarget[]; playerFaction: Player['faction']; focusUnitId?: string; selectedAircraftId?: string; busy: boolean; clock?: import('../types').GameClock | null; locked?: boolean; airfield?: GroundAirStatus | null; radioTasks?: { task_id: string; kind: string; coord: string; airborne: number; used: boolean; chance: number; distance: number }[] }>()
+
+// 本回合已就绪 = 冻结：界面只保留查看，任何会改动状态的动作都就地拦下，
+// 不要等命令发到服务端再弹一个 409。
+function refuseLocked() {
+  if (!props.locked) return false
+  selectionHint.value = '本回合已就绪，操作已锁定：等双方就绪由服务器结算，下一回合才能再操作'
+  return true
+}
 
 // 每个空中编队每回合各一次无线电机会：发出即消耗，失败也不能再发。
 type RadioStatus = { used: boolean; chance: number; distance: number }
@@ -43,19 +53,44 @@ const loadoutLabels: Record<string, string> = {
   'transfer+tank': '转场（副油箱）',
 }
 
+// 挂载选项：机种决定基础表，飞机自己的对地/对舰值决定能不能带弹药。
+// 对地 0、对舰 0 的纯制空机不会出现炸弹/鱼雷选项。
 function loadoutOptionsFor(aircraft: AirUnit) {
   if (aircraft.seaplane) return ['recon+tank', 'transfer+tank']
+  const canBomb = (aircraft.anti_ground || 0) > 0 || (aircraft.anti_ship || 0) > 0
+  const canTorpedo = (aircraft.anti_ship || 0) > 0
+  let options: string[]
   switch (aircraft.kind) {
     case 'fighter':
-      return ['air+tank', 'air', 'transfer+tank']
+      // 有对地/对舰值的战斗轰炸型可以挂炸弹；默认仍是护航对空。
+      options = ['air+tank', 'air', 'bomb+tank', 'bomb', 'transfer+tank']
+      break
     case 'dive_bomber':
+      // 俯冲轰炸机没有鱼雷挂架：D3A1/SBD 都只能挂炸弹。
+      options = ['recon+tank', 'bomb+tank', 'bomb', 'transfer+tank']
+      break
     case 'torpedo_bomber':
       // 攻击机也能挂侦察载荷：没有专用侦察机时由它们执行搜索。
-      return ['recon+tank', 'torpedo+tank', 'bomb+tank', 'bomb', 'torpedo', 'transfer+tank']
+      options = ['recon+tank', 'torpedo+tank', 'bomb+tank', 'bomb', 'torpedo', 'transfer+tank']
+      break
+    case 'level_bomber':
+    case 'medium_bomber':
+    case 'heavy_bomber':
+    case 'strategic_bomber':
+      // 水平轰炸机只有炸弹，没有鱼雷挂架（B-25 / B-17）。
+      options = ['recon+tank', 'bomb+tank', 'bomb', 'transfer+tank']
+      break
     case 'recon':
-      return ['recon+tank', 'transfer+tank']
+      options = ['recon+tank', 'transfer+tank']
+      break
+    default:
+      options = ['transfer+tank']
   }
-  return ['transfer+tank']
+  return options.filter((option) => {
+    if (option.startsWith('bomb')) return canBomb
+    if (option.startsWith('torpedo')) return canTorpedo
+    return true
+  })
 }
 
 function loadoutName(loadout?: string, tankDropped?: boolean) {
@@ -72,10 +107,16 @@ function radioTitle(taskID: string) {
 }
 
 // 航空面板同时服务航母和机场：机场没有升降机和吊车，用跑道数表示起降容量。
+// 水机基地也是机场——它只是没有跑道，但仍然有机库、防空和生命值，不能当航母画。
+const AIRFIELD_TYPES = new Set(['small', 'medium', 'large', 'seaplane'])
 function isAirfield(carrier: CarrierAirStatus) {
-  return ['field', 'heavy', 'major'].includes(carrier.type)
+  return AIRFIELD_TYPES.has(normalizeAirfieldType(carrier.type))
+}
+function isSeaplaneBase(carrier: CarrierAirStatus) {
+  return normalizeAirfieldType(carrier.type) === 'seaplane'
 }
 function spotsLabel(carrier: CarrierAirStatus) {
+  if (isSeaplaneBase(carrier)) return `水上起降位 ${carrier.deck_length}`
   return isAirfield(carrier) ? `跑道 ${carrier.deck_length}` : `甲板 ${carrier.deck_length}`
 }
 const emit = defineEmits<{
@@ -183,6 +224,10 @@ function selectCounter(aircraft: AirUnit, stackIDs: string[] = [aircraft.id]) {
 let dragPreview: HTMLElement | undefined
 
 function startDrag(aircraft: AirUnit, event: DragEvent, stackIDs: string[] = [aircraft.id]) {
+  if (refuseLocked()) {
+    event.preventDefault()
+    return
+  }
   if (!selectedIDs.value.includes(aircraft.id)) selectedIDs.value = counterSelection(aircraft, stackIDs)
   else if (selectionMode.value === 'type') selectedIDs.value = [...new Set([...selectedIDs.value, ...counterSelection(aircraft, stackIDs)])]
   draggingIDs.value = [...selectedIDs.value]
@@ -211,6 +256,7 @@ function endDrag() {
 }
 
 function assignTarget(target: string, taskID = '') {
+  if (refuseLocked()) return
   const ids = [...(draggingIDs.value.length ? draggingIDs.value : selectedIDs.value)]
   endDrag()
   if (!ids.length) {
@@ -251,6 +297,7 @@ function dropOnTask(task: AirTask, lane: TaskLane) {
 }
 
 function recover(aircraftIDs: string[]) {
+  if (refuseLocked()) return
   emit('command', 'RECOVER_AIR', aircraftIDs)
 }
 
@@ -273,17 +320,19 @@ function taskOnCycle(task: AirTask) {
   return (task.aircraft || []).some((aircraft) => aircraft.on_cycle)
 }
 function toggleTaskCycle(task: AirTask) {
-  if (props.busy) return
+  if (props.busy || refuseLocked()) return
   emit('command', 'SET_AIR_CYCLE', task.aircraft_ids, { cycle: !taskOnCycle(task) })
 }
 
 // 规则书 191 行：点算子开关自动任务循环。同一栈是"同型同状态"，一起开关。
 function toggleCycle(aircraft: AirUnit, ids: string[]) {
+  if (refuseLocked()) return
   const next = !aircraft.on_cycle
   emit('command', 'SET_AIR_CYCLE', ids.length ? ids : [aircraft.id], { cycle: next })
 }
 
 function launchRecon() {
+  if (refuseLocked()) return
   if (!reconAircraftIDs.value.length) return
   emit('command', 'LAUNCH_RECON', reconAircraftIDs.value, { heading: reconHeading.value, sector_width: reconWidth.value, task_id: reconTaskID.value || undefined })
   reconAircraftIDs.value = []
@@ -350,11 +399,27 @@ function reconGroupAlive(task: AirTask) {
   return ['servicing', 'lifting', 'preparing', 'launching'].includes(task.phase)
 }
 
+// 打击编队的"出发"从任务栏里退出：离场之后编队的整编已经结束，
+// 详情、改目标、召回都在大地图那张编队牌上做。
+const departedPhases = ['launching', 'active', 'recovering']
+
 function laneTasks(lane: TaskLane) {
   const matching = tasks.value.filter((task) => task.kind === lane.kind)
   if (lane.slot === undefined) return matching
   if (lane.kind === 'recon') return matching.filter((_, index) => index === lane.slot)
-  return matching.filter((_, index) => index % 2 === lane.slot)
+  const slotted = matching.filter((_, index) => index % 2 === lane.slot)
+  if (lane.kind !== 'attack') return slotted
+  return slotted.filter((task) => !departedPhases.includes(task.phase))
+}
+
+// 已经从这一栏出发、正在天上飞或者正在回收的编队数。
+// 空栏里要留一句"去地图上点编队牌"，否则玩家看到编队凭空消失会以为丢了。
+function departedCount(lane: TaskLane) {
+  if (lane.kind !== 'attack' || lane.slot === undefined) return 0
+  return tasks.value
+    .filter((task) => task.kind === 'attack')
+    .filter((_, index) => index % 2 === lane.slot)
+    .filter((task) => departedPhases.includes(task.phase)).length
 }
 
 // 升降机上的算子在哪儿显示：提升中的挂到甲板，下降中的挂回机库。
@@ -497,10 +562,11 @@ function operationName(carrier: CarrierAirStatus) {
           <p>{{ lane.kind === 'attack' ? '拖入飞机建立编队' : '拖入飞机分配任务' }}</p>
           <small v-if="lane.kind === 'recon'">60° · 自动侦察航程</small>
         </div>
+        <small v-if="departedCount(lane)" class="lane-departed-hint">{{ departedCount(lane) }} 支编队已出发 · 在地图上点编队牌改目标 / 召回</small>
       </section>
 
       <section v-if="selectedCarrier" class="air-storage-zone flight-deck-zone mission-deck" data-deck-zone>
-        <header><div><span class="section-kicker">{{ isAirfield(selectedCarrier) ? 'RUNWAY' : 'FLIGHT DECK' }}</span><h3>{{ isAirfield(selectedCarrier) ? '跑道 / 待回收' : '飞行甲板 / 待回收' }}</h3></div><strong>{{ selectedCarrier.deck_used }} / {{ selectedCarrier.deck_length }}</strong></header>
+        <header><div><span class="section-kicker">{{ isSeaplaneBase(selectedCarrier) ? 'SEAPLANE BASE' : isAirfield(selectedCarrier) ? 'RUNWAY' : 'FLIGHT DECK' }}</span><h3>{{ isSeaplaneBase(selectedCarrier) ? '水上起降 / 待回收' : isAirfield(selectedCarrier) ? '跑道 / 待回收' : '飞行甲板 / 待回收' }}</h3></div><strong>{{ selectedCarrier.deck_used }} / {{ selectedCarrier.deck_length }}</strong></header>
         <div class="air-counter-grid">
           <div v-for="stack in aircraftStacks('deck')" :key="stack.aircraft.id" class="air-counter-item" :data-aircraft-id="stack.aircraft.id" :data-status="stack.aircraft.status" :data-stack-count="stack.ids.length">
             <AircraftCounter :aircraft="stack.aircraft" :stack-count="stack.ids.length" :player-faction="playerFaction" :class="{ selected: stack.ids.some((id) => selectedIDs.includes(id)), selectable: stack.aircraft.status !== 'recovery' }" :draggable="stack.aircraft.status !== 'recovery'" @click="stack.aircraft.status !== 'recovery' && selectCounter(stack.aircraft, stack.ids)" @toggle-cycle="toggleCycle(stack.aircraft, stack.ids)" @dragstart="stack.aircraft.status !== 'recovery' && startDrag(stack.aircraft, $event, stack.ids)" @dragend="endDrag" />
@@ -513,13 +579,28 @@ function operationName(carrier: CarrierAirStatus) {
       </section>
 
       <section v-if="selectedCarrier" class="carrier-air-card mission-ship" :class="{ focused: focusUnitId === selectedCarrier.unit_id }" :data-carrier-id="selectedCarrier.unit_id">
-        <ShipCounter v-if="selectedUnit && !isAirfield(selectedCarrier)" :unit="selectedUnit" />
+        <AirfieldCounter v-if="airfield" :airfield="airfield" class="mission-airfield-counter" />
+        <ShipCounter v-else-if="selectedUnit && !isAirfield(selectedCarrier)" :unit="selectedUnit" />
         <div v-else-if="isAirfield(selectedCarrier)" class="airfield-badge">
-          <span>{{ selectedCarrier.type === 'field' ? '野战机场' : selectedCarrier.type === 'heavy' ? '重型机场' : '大型机场' }}</span>
+          <span :title="airfieldTypeHint(selectedCarrier.type)">{{ airfieldTypeLabel(selectedCarrier.type) }}</span>
           <b>{{ selectedCarrier.name }}</b>
-          <small>可用跑道 {{ selectedCarrier.deck_length }} 条</small>
+          <small>{{ isSeaplaneBase(selectedCarrier) ? `水上起降位 ${selectedCarrier.deck_length}` : `可用跑道 ${selectedCarrier.deck_length} 条` }}</small>
         </div>
-        <div class="carrier-current-info"><header><span class="unit-type-badge">{{ selectedCarrier.type }}</span><h2>{{ selectedCarrier.name }}</h2></header><div class="hangar-meter"><span>机库</span><strong>{{ selectedCarrier.hangar_used }} / {{ selectedCarrier.hangar_capacity }}</strong></div><div class="carrier-operation"><span :class="`operation-${selectedCarrier.operation || 'idle'}`">{{ operationName(selectedCarrier) }}</span><small>{{ isAirfield(selectedCarrier) ? `可用跑道 ${selectedCarrier.deck_length}` : `起飞 ${selectedCarrier.launch_used} / ${selectedCarrier.deck_length}` }}</small></div><p v-if="selectedCarrier.blocked_reason" class="carrier-blocked">⚠ {{ selectedCarrier.blocked_reason }}</p><p v-else-if="selectedCarrier.prevented_by" class="carrier-blocked">⚠ 甲板已满：{{ selectedCarrier.prevented_by }}</p></div>
+        <div class="carrier-current-info">
+          <header><span class="unit-type-badge">{{ selectedCarrier.type }}</span><h2>{{ selectedCarrier.name }}</h2></header>
+          <div v-if="airfield" class="airfield-spec">
+            <span>生命值 <b>{{ airfield.strength }} / {{ airfield.max_strength }}</b></span>
+            <span v-if="!isSeaplaneBase(selectedCarrier)" title="可用跑道 = ceil(生命值 / 5)，不超过总跑道数">可用跑道 <b>{{ airfield.runways }} / {{ airfield.max_runways }}</b></span>
+            <span v-else>水上起降位 <b>{{ airfield.runways }}</b></span>
+            <span>重型防空 <b>{{ airfield.heavy_aa }}</b> · 轻型防空 <b>{{ airfield.light_aa }}</b></span>
+            <span>岸炮 <b>{{ airfield.coastal }}</b></span>
+            <span>雷达 <b>{{ airfield.radar ? '有' : '无' }}</b></span>
+          </div>
+          <div class="hangar-meter"><span>机库</span><strong>{{ selectedCarrier.hangar_used }} / {{ selectedCarrier.hangar_capacity }}</strong></div>
+          <div class="carrier-operation"><span :class="`operation-${selectedCarrier.operation || 'idle'}`">{{ operationName(selectedCarrier) }}</span><small>{{ isSeaplaneBase(selectedCarrier) ? `水上起降位 ${selectedCarrier.deck_length}` : isAirfield(selectedCarrier) ? `可用跑道 ${selectedCarrier.deck_length}` : `起飞 ${selectedCarrier.launch_used} / ${selectedCarrier.deck_length}` }}</small></div>
+          <p v-if="selectedCarrier.blocked_reason" class="carrier-blocked">⚠ {{ selectedCarrier.blocked_reason }}</p>
+          <p v-else-if="selectedCarrier.prevented_by" class="carrier-blocked">⚠ 甲板已满：{{ selectedCarrier.prevented_by }}</p>
+        </div>
       </section>
 
       <section v-if="selectedCarrier" class="air-storage-zone hangar-zone mission-hangar" :class="{ 'drop-active': dragOver === 'hangar' }" data-drop-target="hangar" @click="assignTarget('hangar')" @dragover.prevent="dragOver = 'hangar'" @dragleave="dragOver = ''" @drop.prevent="assignTarget('hangar')">

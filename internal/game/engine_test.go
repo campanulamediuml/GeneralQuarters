@@ -80,9 +80,10 @@ func TestScenarioValidationAndMovement(t *testing.T) {
 		t.Fatalf("战列舰角色卡生成错误：%+v", unit)
 	}
 	carrier := state.Units["b-cv-01"]
-	// 日军航母机库 18 单位；美军 24。甲板容量是"基础 9 + 风向修正"，开局即生效。
+	// 日军航母机库 18 单位；美军 24。卡面保留印刷的基础甲板容量 9，
+	// 本回合实际可用长度是 Deck.Length（基础值 + 风向修正），开局即生效。
 	// 航母没有主炮，炮击值为 0：以前填了 4，导致战报里出现"航母炮击敌舰"。
-	if carrier.Card.Gunnery != 0 || carrier.Card.DeckCapacity != deckLengthFor(state, carrier) || carrier.Card.ElevatorCount != 3 || carrier.Card.Aircraft == 0 || carrier.Card.Aircraft > carrier.Card.HangarCapacity || carrier.Card.HangarCapacity != 18 {
+	if carrier.Card.Gunnery != 0 || carrier.Card.DeckCapacity != 9 || carrier.Deck == nil || carrier.Deck.Length != deckLengthFor(state, carrier) || carrier.Card.ElevatorCount != 3 || carrier.Card.Aircraft == 0 || carrier.Card.Aircraft > carrier.Card.HangarCapacity || carrier.Card.HangarCapacity != 18 {
 		t.Fatalf("航母角色卡生成错误：%+v", carrier)
 	}
 	if state.Definitions["units"] != fmt.Sprint(catalog.Version) {

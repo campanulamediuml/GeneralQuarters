@@ -2,9 +2,10 @@ package game
 
 import "testing"
 
-// TestAdvanceMovementCooldownLocksFleetUntilZero 回归：冷却从 3 开始，减到 0 之前 LegalMoves 必须为空、
+// TestAdvanceMovementCooldownLocksFleetUntilZero 回归：冷却未归零前 LegalMoves 必须为空、
 // SET_MOVE 必须被拒绝，减到 0 之后必须恢复可移动。旧实现在冷却期间直接返回空列表并让校验依赖该列表，
 // 导致舰队移动一次后永远无法再下达移动命令。
+// 纯高速驱逐舰是 2 回合周期，所以移动后挂 1 点冷却，下一次结算开始就归零。
 func TestAdvanceMovementCooldownLocksFleetUntilZero(t *testing.T) {
 	state := sandboxState(t)
 	state.Units["probe"] = &Unit{ID: "probe", Type: "DD", Faction: "A", Coord: "0202", FleetID: "probe", Name: "探路舰", Strength: 3, MaxStrength: 3, Card: ShipCard{SpeedClass: "fast", DamageControl: 5}}
@@ -24,8 +25,8 @@ func TestAdvanceMovementCooldownLocksFleetUntilZero(t *testing.T) {
 		t.Fatalf("初始移动被拒绝：%v", err)
 	}
 	ApplyImmediateMove(&state, Order{Type: "SET_MOVE", UnitID: "probe", Coord: move})
-	if unit.MoveCooldown != 2 {
-		t.Fatalf("纯高速驱逐舰应冷却 2 回合，实际 %d", unit.MoveCooldown)
+	if unit.MoveCooldown != 1 {
+		t.Fatalf("纯高速驱逐舰是 2 回合周期，移动后应挂 1 点冷却，实际 %d", unit.MoveCooldown)
 	}
 	if err := ValidateOrder(state, "A", Order{Type: "SET_MOVE", UnitID: "probe", Coord: unit.Coord}); err == nil {
 		t.Fatal("冷却期间不应接受移动")
@@ -34,13 +35,6 @@ func TestAdvanceMovementCooldownLocksFleetUntilZero(t *testing.T) {
 	if unit.Moved {
 		t.Fatal("结算后 Moved 应复位")
 	}
-	if unit.MoveCooldown != 1 {
-		t.Fatalf("冷却应按回合递减到 1，实际 %d", unit.MoveCooldown)
-	}
-	if moves := LegalMoves(state, unit); len(moves) != 0 {
-		t.Fatalf("冷却未结束时不应有合法移动：%v", moves)
-	}
-	AdvanceMovementCooldown(&state)
 	if unit.MoveCooldown != 0 {
 		t.Fatalf("冷却应归零，实际 %d", unit.MoveCooldown)
 	}
@@ -96,12 +90,19 @@ func TestLandingRespectsDeckCapacityWithinOneTurn(t *testing.T) {
 			landed++
 		}
 	}
-	// 第 3 架按规则备降到最近机场，不算"滞留空中"，但不能占航母甲板。
+	// 第 3 架换一艘航母落地（同编队同 hex），而不是硬塞或瞬移去机场。
 	if landed != 3 || deckUsed(state, carrier.ID) != 2 {
-		t.Fatalf("甲板长度 2 时航母只接 2 架、第 3 架备降机场，实际降落 %d 架、甲板占用 %d", landed, deckUsed(state, carrier.ID))
+		t.Fatalf("甲板长度 2 时这条甲板只接 2 架，实际降落 %d 架、甲板占用 %d", landed, deckUsed(state, carrier.ID))
 	}
-	if diverted := state.GroundAir["r3"]; diverted == nil || diverted.AirfieldID != "af-a-lighthouse" {
-		t.Fatalf("超容的飞机应备降最近友方机场：%+v", diverted)
+	if diverted := state.GroundAir["r3"]; diverted != nil {
+		t.Fatalf("甲板满不该把飞机送去机场：%+v", diverted)
+	}
+	r3 := state.Aircraft["r3"]
+	if r3 == nil {
+		t.Fatalf("第 3 架应换一艘航母降落，而不是消失")
+	}
+	if r3.CarrierID == carrier.ID {
+		t.Fatalf("第 3 架不该塞进已满的 %s", carrier.ID)
 	}
 }
 
@@ -239,5 +240,42 @@ func TestBlindStrikeAgainstAirfield(t *testing.T) {
 	state.Contacts = map[string]map[string]*FleetContact{}
 	if err := ValidateStrikeTarget(state, "A", "0207"); err != nil {
 		t.Fatalf("未侦察的敌方机场也应允许打击：%v", err)
+	}
+}
+
+// 普通/快速舰队是 3 回合移动一次：移动后挂 2 点冷却，
+// 经过两个回合结算的递减后归零，第三个回合重新可动。
+func TestNormalFleetMovesEveryThreeTurns(t *testing.T) {
+	state := sandboxState(t)
+	state.Units["probe"] = &Unit{ID: "probe", Type: "CA", Faction: "A", Coord: "0202", FleetID: "probe", Name: "探路舰", Strength: 3, MaxStrength: 3, Card: ShipCard{SpeedClass: "normal", DamageControl: 5}}
+	unit := state.Units["probe"]
+	start := unit.Coord
+	move := ""
+	for _, coord := range LegalMoves(state, unit) {
+		if Distance(coord, start) == 1 {
+			move = coord
+			break
+		}
+	}
+	if move == "" {
+		t.Fatal("初始状态应当有合法移动")
+	}
+	ApplyImmediateMove(&state, Order{Type: "SET_MOVE", UnitID: "probe", Coord: move})
+	if unit.MoveCooldown != 2 {
+		t.Fatalf("3 回合周期移动后应挂 2 点冷却，实际 %d", unit.MoveCooldown)
+	}
+	AdvanceMovementCooldown(&state)
+	if unit.MoveCooldown != 1 {
+		t.Fatalf("第一次递减后应为 1，实际 %d", unit.MoveCooldown)
+	}
+	if moves := LegalMoves(state, unit); len(moves) != 0 {
+		t.Fatalf("第一个空档回合不应可动：%v", moves)
+	}
+	AdvanceMovementCooldown(&state)
+	if unit.MoveCooldown != 0 {
+		t.Fatalf("第二次递减后应归零，实际 %d", unit.MoveCooldown)
+	}
+	if moves := LegalMoves(state, unit); len(moves) == 0 {
+		t.Fatal("第三个回合应恢复可动")
 	}
 }

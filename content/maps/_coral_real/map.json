@@ -1,57 +1,147 @@
 {
  "id": "_coral_real",
- "version": 1,
- "name": "珊瑚海 · 真实比例（25海里/hex）",
- "rows": 30,
- "cols": 60,
+ "version": 2,
+ "name": "珊瑚海 · 真实比例（64×52，25海里/hex）",
+ "rows": 52,
+ "cols": 64,
  "cells": [
   {
+   "coord": "0101",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0102",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0103",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
    "coord": "0123",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "0201",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "0124",
+   "coord": "0202",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "0125",
+   "coord": "0203",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "0225",
+   "coord": "0204",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "0226",
+   "coord": "0205",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0223",
+   "terrain": "island",
+   "name": "拉包尔"
+  },
+  {
+   "coord": "0224",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0301",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0302",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0303",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0304",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0305",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0306",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0321",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0322",
    "terrain": "island",
    "name": ""
   },
   {
    "coord": "0323",
-   "terrain": "island",
+   "terrain": "shoal",
    "name": ""
   },
   {
    "coord": "0324",
-   "terrain": "island",
-   "name": "拉包尔"
+   "terrain": "shoal",
+   "name": ""
   },
   {
-   "coord": "0325",
+   "coord": "0401",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "0326",
+   "coord": "0402",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "0327",
+   "coord": "0403",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0404",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0405",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0406",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0407",
    "terrain": "island",
    "name": ""
   },
@@ -66,23 +156,38 @@
    "name": ""
   },
   {
-   "coord": "0423",
+   "coord": "0501",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "0428",
+   "coord": "0502",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "0518",
+   "coord": "0503",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0504",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0505",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0506",
    "terrain": "island",
    "name": ""
   },
   {
    "coord": "0519",
-   "terrain": "island",
+   "terrain": "shoal",
    "name": ""
   },
   {
@@ -92,6 +197,66 @@
   },
   {
    "coord": "0521",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0601",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0602",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0603",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0604",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0605",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0606",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0607",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0608",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0609",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "0614",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0615",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0616",
    "terrain": "island",
    "name": ""
   },
@@ -106,43 +271,408 @@
    "name": ""
   },
   {
-   "coord": "0632",
+   "coord": "0619",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "0732",
+   "coord": "0620",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "0733",
+   "coord": "0621",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "0629",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "0833",
+   "coord": "0701",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "0834",
+   "coord": "0702",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "0934",
+   "coord": "0703",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "1137",
+   "coord": "0704",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "1138",
+   "coord": "0705",
    "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0706",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0707",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0708",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0709",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0710",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0711",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "0714",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "0715",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0716",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0717",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0718",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0719",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0728",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "0729",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0801",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0802",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0803",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0804",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0805",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0806",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0807",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0808",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0809",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0810",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0811",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0812",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0830",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0831",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "0901",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0902",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0903",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0904",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0905",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0906",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0907",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0908",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0909",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0910",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "0911",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "0930",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "0933",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "1001",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1002",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1003",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1004",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1005",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1006",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1007",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1008",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1009",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1010",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1034",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1101",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1102",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1103",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1104",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1105",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1106",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1107",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1108",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1109",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1110",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1201",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1202",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1203",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "1206",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1207",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1208",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1209",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1210",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1211",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1212",
+   "terrain": "shoal",
    "name": ""
   },
   {
@@ -151,17 +681,67 @@
    "name": ""
   },
   {
-   "coord": "1239",
+   "coord": "1301",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "1240",
+   "coord": "1308",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "1340",
+   "coord": "1309",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1310",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1311",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1312",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1339",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1401",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1409",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1410",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1411",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1412",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1413",
    "terrain": "island",
    "name": ""
   },
@@ -172,42 +752,7 @@
   },
   {
    "coord": "1501",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "1502",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "1503",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "1504",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "1505",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "1506",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "1507",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "1508",
-   "terrain": "island",
+   "terrain": "shoal",
    "name": ""
   },
   {
@@ -228,22 +773,37 @@
   {
    "coord": "1512",
    "terrain": "island",
-   "name": "莫尔兹比港"
+   "name": ""
+  },
+  {
+   "coord": "1513",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "1541",
+   "terrain": "island",
+   "name": "图拉吉"
+  },
+  {
+   "coord": "1542",
+   "terrain": "shoal",
+   "name": ""
   },
   {
    "coord": "1543",
-   "terrain": "island",
+   "terrain": "shoal",
    "name": ""
   },
   {
-   "coord": "1544",
-   "terrain": "island",
+   "coord": "1610",
+   "terrain": "shoal",
    "name": ""
   },
   {
-   "coord": "1545",
+   "coord": "1611",
    "terrain": "island",
-   "name": ""
+   "name": "莫尔兹比港"
   },
   {
    "coord": "1612",
@@ -266,153 +826,123 @@
    "name": ""
   },
   {
-   "coord": "1616",
+   "coord": "1640",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "1711",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "1617",
+   "coord": "1712",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "1645",
+   "coord": "1713",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "1646",
+   "coord": "1714",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "1718",
+   "coord": "1715",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "1719",
+   "coord": "1716",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "1720",
+   "coord": "1739",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "1740",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "1721",
+   "coord": "1741",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "1801",
+   "coord": "1742",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "1825",
+   "coord": "1812",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "1901",
+   "coord": "1813",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "1902",
+   "coord": "1814",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "2002",
+   "coord": "1815",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "2027",
+   "coord": "1816",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "2030",
+   "coord": "1817",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "2101",
+   "coord": "1916",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "1917",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "2103",
+   "coord": "1918",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "2106",
+   "coord": "1944",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "2108",
-   "terrain": "island",
+   "coord": "1945",
+   "terrain": "shoal",
    "name": ""
   },
   {
-   "coord": "2203",
-   "terrain": "island",
+   "coord": "2045",
+   "terrain": "shoal",
    "name": ""
   },
   {
-   "coord": "2204",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2304",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2305",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2401",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2403",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2405",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2406",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2408",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2505",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2506",
-   "terrain": "island",
+   "coord": "2501",
+   "terrain": "shoal",
    "name": ""
   },
   {
@@ -421,38 +951,23 @@
    "name": ""
   },
   {
-   "coord": "2603",
+   "coord": "2602",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2701",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "2606",
+   "coord": "2801",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "2607",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2608",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2707",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2807",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2808",
-   "terrain": "island",
+   "coord": "2802",
+   "terrain": "shoal",
    "name": ""
   },
   {
@@ -461,37 +976,1217 @@
    "name": ""
   },
   {
-   "coord": "2903",
+   "coord": "3001",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "2906",
+   "coord": "3002",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "2908",
+   "coord": "3003",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "3004",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "2909",
+   "coord": "3101",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "2959",
+   "coord": "3102",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "2960",
+   "coord": "3103",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "3009",
+   "coord": "3104",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3105",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3156",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "3201",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3202",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3203",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3204",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3205",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3206",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3257",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3258",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "3301",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3302",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3303",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3304",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3305",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3356",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "3357",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3401",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3402",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3403",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3404",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3405",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3406",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3501",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3502",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3503",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3504",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3505",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3506",
+   "terrain": "island",
+   "name": "苦难角"
+  },
+  {
+   "coord": "3558",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3601",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3602",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3603",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3604",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3605",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3606",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3607",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "3659",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "3701",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3702",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3703",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3704",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3705",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3706",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3707",
+   "terrain": "island",
+   "name": "凯恩斯"
+  },
+  {
+   "coord": "3801",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3802",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3803",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3804",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3805",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3806",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3807",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3901",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3902",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3903",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3904",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3905",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3906",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3907",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3960",
+   "terrain": "island",
+   "name": "维拉港"
+  },
+  {
+   "coord": "4001",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4002",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4003",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4004",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4005",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4006",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4007",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4008",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4009",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "4101",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4102",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4103",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4104",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4105",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4106",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4107",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4108",
+   "terrain": "island",
+   "name": "欣钦布鲁克岛"
+  },
+  {
+   "coord": "4201",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4202",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4203",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4204",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4205",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4206",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4207",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4208",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4301",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4302",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4303",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4304",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4305",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4306",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4307",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4308",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4401",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4402",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4403",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4404",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4405",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4406",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4407",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4408",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4409",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4410",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4411",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "4501",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4502",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4503",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4504",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4505",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4506",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4507",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4508",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4509",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4510",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4511",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4601",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4602",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4603",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4604",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4605",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4606",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4607",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4608",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4609",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4610",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4611",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4612",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4613",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4614",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "4615",
+   "terrain": "island",
+   "name": "胡克岛"
+  },
+  {
+   "coord": "4701",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4702",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4703",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4704",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4705",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4706",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4707",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4708",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4709",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4710",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4711",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4712",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4713",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4714",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "4750",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "4751",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4801",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4802",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4803",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4804",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4805",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4806",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4807",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4808",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4809",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4810",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4811",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4812",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4813",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4814",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4852",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4853",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4901",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4902",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4903",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4904",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4905",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4906",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4907",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4908",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4909",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4910",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4911",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4912",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4913",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4914",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4915",
+   "terrain": "island",
+   "name": "马凯"
+  },
+  {
+   "coord": "4952",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4953",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5001",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5002",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5003",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5004",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5005",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5006",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5007",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5008",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5009",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5010",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5011",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5012",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5013",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5014",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5015",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5052",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "5053",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5054",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5055",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5101",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5102",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5103",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5104",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5105",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5106",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5107",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5108",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5109",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5110",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5111",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5112",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5113",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5114",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5115",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5153",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "5154",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5155",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5156",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "5201",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5202",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5203",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5204",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5205",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5206",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5207",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5208",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5209",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5210",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5211",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5212",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5213",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5214",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5215",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5216",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5256",
+   "terrain": "island",
+   "name": "努美阿"
+  },
+  {
+   "coord": "5257",
    "terrain": "island",
    "name": ""
   }

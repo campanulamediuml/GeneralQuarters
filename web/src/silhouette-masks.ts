@@ -48,11 +48,23 @@ const LEGACY_BY_NAME: Record<string, string> = {
 }
 
 // picture 既有可能是 content 相对路径，也可能已经是站内绝对 URL。
-export function shipMaskURL(picture?: string, name?: string): string | undefined {
-  const path = (picture || '').trim() || LEGACY_BY_NAME[(name || '').trim()]
+// 舰船和航空算子共用同一套解析规则：misc/image/... → /content/misc/image/...。
+export function contentImageURL(picture?: string): string | undefined {
+  const path = (picture || '').trim()
   if (!path) return undefined
   if (path.startsWith('/') || path.startsWith('http')) return path
   return '/content/' + path
+}
+
+export function shipMaskURL(picture?: string, name?: string): string | undefined {
+  const path = (picture || '').trim() || LEGACY_BY_NAME[(name || '').trim()]
+  return contentImageURL(path)
+}
+
+// 航空算子的 picture 来自 units/*.json 的 aircraft[].picture；默认是彩图，
+// picture_mode=mask 时才当单色剪影用。没有配置或图片加载失败时回退到内置矢量剪影。
+export function aircraftPictureURL(picture?: string): string | undefined {
+  return contentImageURL(picture)
 }
 
 export function shipMask(name?: string): string | undefined {

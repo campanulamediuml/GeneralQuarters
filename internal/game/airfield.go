@@ -13,7 +13,16 @@ type AirfieldContact struct {
 	Faction      string       `json:"faction"`
 	Coord        string       `json:"coord"`
 	Type         AirfieldType `json:"type"`
+	Picture      string       `json:"picture,omitempty"`
 	Runways      int          `json:"runways"`
+	MaxRunways   int          `json:"max_runways"`
+	Strength     int          `json:"strength"`
+	MaxStrength  int          `json:"max_strength"`
+	Radar        bool         `json:"radar"`
+	HeavyAA      float64      `json:"heavy_aa"`
+	LightAA      float64      `json:"light_aa"`
+	Coastal      int          `json:"coastal"`
+	HangarUsed   int          `json:"hangar_used"`
 	ContactLevel int          `json:"contact_level"`
 }
 
@@ -35,7 +44,8 @@ func setAirfieldContact(state *State, observer string, airfield *Airfield) {
 	}
 	contact.Name = airfield.Name
 	contact.Coord = airfield.Coord
-	contact.Type = airfield.Type
+	contact.Type = NormalizeAirfieldType(airfield.Type)
+	contact.Picture = airfield.PictureOrDefault()
 	contact.Runways = airfield.Runways
 }
 
@@ -79,24 +89,54 @@ func discoverEnemyAirfields(state *State, aircraft *AirfieldAirUnit, ring int) [
 
 // VisibleAirfields 返回当前阵营能看到的机场。
 //
-// 机场是固定的地面设施，不会移动，所以位置从一开始就完全可见（与舰队不同）：
-// 未侦察时也知道"这里有个敌方机场"，但只给出粗略信息（类型/跑道按已侦察到的情报，
-// 没侦察到就按初始值），防空值、岸防、剩余生命值等细节仍然要通过侦察获得。
+// 机场是固定的地面设施，不会移动，所以位置从一开始就完全可见（与舰队不同）。
+// 以前敌方机场只暴露类型和跑道，防空、生命值、机库占用要侦察后才给；但地图上的
+// 机场算子现在直接承担"炮击/轰炸效果面板"的角色，所以当前生命值、可用跑道、
+// 防空、岸防和机库占用也实时返回。名字/类型仍按接触情报的等级展示，数值不藏。
 func VisibleAirfields(state State, faction string) []AirfieldContact {
 	result := []AirfieldContact{}
 	for _, id := range sortedAirfieldIDs(state) {
 		airfield := state.Airfields[id]
+		base := AirfieldContact{ContactLevel: 1}
 		if airfield.Faction == faction {
-			result = append(result, AirfieldContact{ID: airfield.ID, Name: airfield.Name, Faction: airfield.Faction, Coord: airfield.Coord, Type: airfield.Type, Runways: airfield.Runways, ContactLevel: 4})
-			continue
+			base.ContactLevel = 4
+		} else if scouted := state.AirfieldContacts[faction][id]; scouted != nil {
+			base = *scouted
 		}
-		contact := AirfieldContact{ID: airfield.ID, Name: airfield.Name, Faction: airfield.Faction, Coord: airfield.Coord, Type: airfield.Type, Runways: airfield.Runways, ContactLevel: 1}
-		if scouted := state.AirfieldContacts[faction][id]; scouted != nil {
-			contact = *scouted
-		}
-		result = append(result, contact)
+		result = append(result, airfieldContactView(state, airfield, base))
 	}
 	return result
+}
+
+// airfieldContactView 把机场的真实整备状态投影成前线可见的算子。
+// 名字、类型、图片以情报里的值为准（未侦察时是基础值），其余数值一律取实时状态。
+func airfieldContactView(state State, airfield *Airfield, contact AirfieldContact) AirfieldContact {
+	contact.ID = airfield.ID
+	contact.Name = airfield.Name
+	contact.Faction = airfield.Faction
+	contact.Coord = airfield.Coord
+	contact.Type = NormalizeAirfieldType(airfield.Type)
+	contact.Picture = airfield.PictureOrDefault()
+	contact.MaxRunways = airfield.Runways
+	contact.Runways = RunwaysAvailable(airfield.Strength, airfield.Runways)
+	contact.Strength = airfield.Strength
+	contact.MaxStrength = airfield.MaxStrength
+	contact.Radar = airfield.Radar
+	contact.HeavyAA = airfield.HeavyAA
+	contact.LightAA = airfield.LightAA
+	contact.Coastal = airfield.Coastal
+	contact.HangarUsed = groundedAirCount(state, airfield.ID)
+	return contact
+}
+
+func groundedAirCount(state State, airfieldID string) int {
+	count := 0
+	for _, aircraft := range state.GroundAir {
+		if aircraft.AirfieldID == airfieldID && !airfieldAirborne(aircraft) {
+			count++
+		}
+	}
+	return count
 }
 
 func sortedAirfieldIDs(state State) []string {
@@ -117,7 +157,7 @@ func VisibleGroundAir(state State, faction string) []AirfieldAirStatus {
 			continue
 		}
 		status := AirfieldAirStatus{
-			UnitID: airfield.ID, Name: airfield.Name, Type: airfield.Type, Coord: airfield.Coord,
+			UnitID: airfield.ID, Faction: airfield.Faction, Name: airfield.Name, Type: NormalizeAirfieldType(airfield.Type), Picture: airfield.PictureOrDefault(), Coord: airfield.Coord,
 			Strength: airfield.Strength, MaxStrength: airfield.MaxStrength, MaxRunways: airfield.Runways,
 			Runways: RunwaysAvailable(airfield.Strength, airfield.Runways), Radar: airfield.Radar,
 			HeavyAA: airfield.HeavyAA, LightAA: airfield.LightAA, Coastal: airfield.Coastal,
@@ -146,8 +186,40 @@ func sortedGroundAirIDs(state State, airfieldID string) []string {
 	return ids
 }
 
+// unitIsSeaplane 判断机场算子是不是水上飞机。老存档没有 seaplane 标记，
+// 按"它停在什么机场"兜底：停在水上飞机基地的就是水机。
+func unitIsSeaplane(state State, aircraft *AirfieldAirUnit) bool {
+	if aircraft == nil {
+		return false
+	}
+	if aircraft.Seaplane {
+		return true
+	}
+	if airfield := airfieldFor(&state, aircraft.AirfieldID); airfield != nil && NormalizeAirfieldType(airfield.Type) == AirfieldSeaplane {
+		return true
+	}
+	return false
+}
+
 func airfieldAirborne(aircraft *AirfieldAirUnit) bool {
-	return aircraft.Status == "cap" || aircraft.Status == "recon" || aircraft.Status == "attack_holding" || aircraft.Status == "attack"
+	switch aircraft.Status {
+	case "cap", "cover", "recon", "attack_holding", "attack", "transfer":
+		return true
+	}
+	return false
+}
+
+// friendlyAirfieldAtCoord 找到落在某个 hex 上的己方机场；转场目的地就是它。
+func friendlyAirfieldAtCoord(state State, faction, coord string) *Airfield {
+	if coord == "" {
+		return nil
+	}
+	for _, airfield := range state.Airfields {
+		if airfield != nil && airfield.Faction == faction && airfield.Coord == coord {
+			return airfield
+		}
+	}
+	return nil
 }
 
 // AdvanceAirfields 是机场的每回合推进：
@@ -210,8 +282,9 @@ func launchReadyGroundTasks(state *State) []EngineEvent {
 		if aircraft == nil || aircraft.Status != "ready" || aircraft.TaskID == "" {
 			continue
 		}
-		// 没有目标的攻击编队留在跑道上等目标，不升空烧油。
-		if aircraft.TaskKind == "attack" && aircraft.TargetCoord == "" {
+		// 没有目标的攻击编队、没有目的地的转场编队都留在跑道上等，
+		// 不升空烧油（转场没目的地会在空中无处可去）。
+		if (aircraft.TaskKind == "attack" || aircraft.TaskKind == "transfer") && aircraft.TargetCoord == "" {
 			continue
 		}
 		groups[aircraft.TaskID] = append(groups[aircraft.TaskID], aircraft)
@@ -409,25 +482,30 @@ func resolveGroundStrike(state *State, taskID, coord string) []EngineEvent {
 	faction := attackers[0].Faction
 	defender := airfield.Faction
 	setAirfieldContact(state, faction, airfield)
+	restoreDefenders := projectDefendingGroundAir(state, defender, coord, 1)
+	defer restoreDefenders()
 	groups := airfieldCAPGroups(*state, defender, coord)
+	attackerModels, attackerPictures := aircraftModelCards(attackers)
 	report := AirCombatReport{
 		Coord: coord, Target: string(StrikeTargetAir), TargetName: airfield.Name,
 		AttackerFaction: faction, DefenderFaction: defender,
-		AttackerModels: aircraftModels(attackers), AttackerCount: len(attackers),
+		AttackerModels: attackerModels, AttackerPictures: attackerPictures, AttackerCount: len(attackers),
 		Airfield: &AirShipCard{ID: airfield.ID, Name: airfield.Name, Type: string(airfield.Type)},
 	}
+	defenders := []*AirUnit{}
 	for _, group := range groups {
-		report.DefenderModels = append(report.DefenderModels, aircraftModels(group)...)
+		defenders = append(defenders, group...)
 		report.DefenderCount += len(group)
 	}
-	report.DefenderModels = aircraftModelsFromNames(report.DefenderModels)
+	report.DefenderModels, report.DefenderPictures = aircraftModelCards(defenders)
 	events := []EngineEvent{}
 	for _, group := range groups {
 		events = append(events, resolveDogfight(state, attackers, group, &report)...)
 	}
 	bombers := []*AirUnit{}
 	for _, aircraft := range attackers {
-		if aircraft.Kind != "fighter" {
+		// 挂弹的战斗机按投弹处理；不挂弹的战斗机是护航，后面按 1 点强度扫射。
+		if aircraft.Kind != "fighter" || aircraft.Loadout.Weapon() == WeaponBomb {
 			bombers = append(bombers, aircraft)
 		}
 	}
@@ -443,7 +521,6 @@ func resolveGroundStrike(state *State, taskID, coord string) []EngineEvent {
 	if report.TargetAllocations == nil {
 		report.TargetAllocations = []StrikeAllocation{}
 	}
-	groundAircraftBefore := len(sortedGroundAirIDs(*state, airfield.ID))
 	for _, aircraft := range bombers {
 		if !operationalAircraft(state, aircraft) {
 			continue
@@ -490,17 +567,33 @@ func resolveGroundStrike(state *State, taskID, coord string) []EngineEvent {
 		report.AirfieldRunwaysBefore = RunwaysAvailable(report.AirfieldBefore, airfield.Runways)
 	}
 	report.AirfieldRunwaysAfter = RunwaysAvailable(airfield.Strength, airfield.Runways)
-	// 战斗机扫射跑道：只摧毁地面飞机，不减生命值和岸防
-	sweeps := 0
+	// 不挂弹的护航战斗机扫射跑道：固定 1 点对地强度，按基础 20% 判定；
+	// 命中只摧毁地面飞机，不减机场生命值和岸防。扫射机也要先吃轻防空。
+	strafeHits := 0
 	for _, aircraft := range attackers {
-		if aircraft.Kind == "fighter" && operationalAircraft(state, aircraft) {
-			sweeps++
+		if aircraft.Kind != "fighter" || aircraft.Loadout.Weapon() == WeaponBomb {
+			continue
 		}
+		if !operationalAircraft(state, aircraft) {
+			continue
+		}
+		_, lightEvents := airfieldLightAA(state, aircraft, airfield, &report)
+		events = append(events, lightEvents...)
+		if !operationalAircraft(state, aircraft) {
+			continue
+		}
+		chance := groundHitChance(*state, airfield, groundAircraftView(aircraft), capRemaining)
+		report.StrafeAttempts++
+		hits := 0
+		if probabilityRoll(&state.RNGState) < chance {
+			hits = 1
+			strafeHits++
+			report.StrafeHits++
+		}
+		events = append(events, EngineEvent{Type: "ground_strafe", Audience: "all", Text: fmt.Sprintf("%s扫射%s：命中率%.1f%%，命中%d次", aircraft.Model, airfield.Name, chance, hits)})
 	}
-	if sweeps > 0 {
-		report.GroundLoss += destroyGroundAircraft(state, airfield, sweeps)
-	}
-	_ = groundAircraftBefore
+	// 扫射命中同样摧毁机场上的飞机，但不会扣机场生命/岸防。
+	report.GroundLoss += destroyGroundAircraft(state, airfield, strafeHits)
 	for _, group := range groups {
 		events = append(events, resolveDogfight(state, attackers, group, &report)...)
 	}
@@ -514,10 +607,11 @@ func resolveGroundStrike(state *State, taskID, coord string) []EngineEvent {
 	default:
 		report.Winner = "draw"
 	}
-	report.Summary = fmt.Sprintf("%s对机场%s空袭：防空命中%d，投弹%d次命中%d次，机场生命值%s→%s（跑道%d条），摧毁地面飞机%d，攻击方损失%d",
-		coord, airfield.Name, report.AAHits, report.BombAttempts, report.StrikeHits,
+	report.Summary = fmt.Sprintf("%s对机场%s空袭：防空命中%d，投弹%d次命中%d次（扫射命中%d次），机场生命值%s→%s（跑道%d条），摧毁地面飞机%d，攻击方损失%d",
+		coord, airfield.Name, report.AAHits, report.BombAttempts, report.StrikeHits, strafeHits,
 		formatStrength(report.AirfieldBefore), formatStrength(report.AirfieldAfter),
 		RunwaysAvailable(airfield.Strength, airfield.Runways), report.GroundLoss, report.AttackerLosses)
+	report.Turn = state.Turn
 	state.AirCombats = append(state.AirCombats, report)
 	if len(state.AirCombats) > 20 {
 		state.AirCombats = state.AirCombats[len(state.AirCombats)-20:]
@@ -547,7 +641,7 @@ func groundAircraftView(aircraft *AirUnit) *AirfieldAirUnit {
 	if aircraft == nil {
 		return &AirfieldAirUnit{}
 	}
-	return &AirfieldAirUnit{ID: aircraft.ID, Model: aircraft.Model, Kind: aircraft.Kind, Damaged: aircraft.Damaged || aircraft.Confusion}
+	return &AirfieldAirUnit{ID: aircraft.ID, Model: aircraft.Model, Kind: aircraft.Kind, Seaplane: aircraft.Seaplane, Damaged: aircraft.Damaged || aircraft.Confusion}
 }
 
 // destroyGroundAircraft 摧毁机场上至多 n 个随机地面飞机算子（优先机库内整装待发的）。
@@ -615,6 +709,35 @@ func isAirfieldTask(taskID string) bool {
 	return strings.HasPrefix(taskID, "af-")
 }
 
+// validateGroundCycleOrder 校验机场算子的自动任务循环开关（规则书 191 行）。
+// 关循环永远允许：空中、损伤、跑道被打光的时候都能关掉，否则玩家只能干看着它自己再飞一轮。
+// 开循环才要求这个算子身上有一个可循环的任务，并且不在检修状态。
+func validateGroundCycleOrder(state State, order Order, ids []string) error {
+	for _, id := range ids {
+		aircraft := state.GroundAir[id]
+		if aircraft == nil {
+			return fmt.Errorf("航空算子不存在或不属于当前玩家")
+		}
+		if !order.Cycle {
+			continue
+		}
+		kind := aircraft.TaskKind
+		if kind == "" {
+			kind = aircraft.CycleKind
+		}
+		if kind == "" && aircraft.Status == string(MissionCap) {
+			kind = string(MissionCap)
+		}
+		if !cyclicTaskKind(kind) {
+			return fmt.Errorf("%s没有可循环的任务（只有CAP、侦察和空中掩护支持自动循环）", aircraft.Model)
+		}
+		if aircraft.Damaged || aircraft.Maintenance > 0 {
+			return fmt.Errorf("%s损伤或检修中，修好之后才能开启自动循环", aircraft.Model)
+		}
+	}
+	return nil
+}
+
 // ValidateGroundAirOrder 校验机场航空命令：LAUNCH_CAP / LAUNCH_RECON / LAUNCH_STRIKE / PRIORITIZE_AIR_TASK / SET_STRIKE_TARGET。
 func ValidateGroundAirOrder(state State, order Order) error {
 	if !state.ServiceWindowOpen() && nightBlockedAirOrder(order.Type) {
@@ -623,6 +746,11 @@ func ValidateGroundAirOrder(state State, order Order) error {
 	ids := airOrderIDs(order)
 	if len(ids) == 0 || len(ids) > 20 {
 		return fmt.Errorf("航空命令至少需要一个航空算子")
+	}
+	if order.Type == "SET_AIR_CYCLE" {
+		// 循环开关不参与下面的"同机场、同作业阶段"批量约束：玩家可以一次点掉一整个
+		// 任务卡（里面可能有机库里的、也有还在天上值班的），也可以只点一架。
+		return validateGroundCycleOrder(state, order, ids)
 	}
 	status := ""
 	var airfield *Airfield
@@ -643,8 +771,10 @@ func ValidateGroundAirOrder(state State, order Order) error {
 		if status == "" {
 			status = aircraft.Status
 			airfield = airfieldFor(&state, aircraft.AirfieldID)
-		} else if aircraft.Status != status || aircraft.AirfieldID != airfield.ID {
-			return fmt.Errorf("同一批命令的机场算子必须来自同一机场且处于相同作业阶段")
+		} else if aircraft.AirfieldID != airfield.ID {
+			return fmt.Errorf("%s与同批算子不在同一机场，不能同批下发", aircraft.Model)
+		} else if aircraft.Status != status {
+			return fmt.Errorf("%s处于%s，同批其他算子处于%s；同一批机场算子必须同机场、同状态，请按状态分批下发", aircraft.Model, groundStatusLabel(aircraft.Status), groundStatusLabel(status))
 		}
 		if aircraft.Damaged || aircraft.Maintenance > 0 {
 			return fmt.Errorf("损伤或检修中的算子必须完成修复后才能分配任务")
@@ -658,7 +788,7 @@ func ValidateGroundAirOrder(state State, order Order) error {
 		return fmt.Errorf("%s已经没有可用跑道", airfield.Name)
 	}
 	switch order.Type {
-	case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE":
+	case "LAUNCH_CAP", "LAUNCH_COVER", "LAUNCH_RECON", "LAUNCH_STRIKE":
 		if sameTaskAssignmentGround(list, order) {
 			return nil
 		}
@@ -671,6 +801,16 @@ func ValidateGroundAirOrder(state State, order Order) error {
 			}
 			if order.Type == "LAUNCH_CAP" && aircraft.Kind != "fighter" {
 				return fmt.Errorf("只有战斗机可以执行CAP")
+			}
+			if order.Type == "LAUNCH_COVER" {
+				// 规则书：空中掩护只能由战斗机执行。目标 hex 可以留空，
+				// 表示掩护本机场上空（默认值在 Apply 里落成机场坐标）。
+				if aircraft.Kind != "fighter" {
+					return fmt.Errorf("空中掩护只能由战斗机执行")
+				}
+				if order.Coord != "" && !inBounds(state.Map, order.Coord) {
+					return fmt.Errorf("掩护目标 hex 无效")
+				}
 			}
 			if order.Type == "LAUNCH_RECON" && (aircraft.Kind == "fighter") {
 				return fmt.Errorf("战斗机不能执行扇面搜索")
@@ -691,8 +831,14 @@ func ValidateGroundAirOrder(state State, order Order) error {
 				}
 			}
 		}
-		if order.Type == "LAUNCH_STRIKE" && order.Coord != "" {
-			return ValidateStrikeTarget(state, airfield.Faction, order.Coord)
+		if order.Type == "LAUNCH_STRIKE" {
+			if order.TargetFleetID != "" {
+				if err := ValidateStrikeFleetTarget(state, airfield.Faction, order.TargetFleetID, order.Coord); err != nil {
+					return err
+				}
+			} else if order.Coord != "" {
+				return ValidateStrikeTarget(state, airfield.Faction, order.Coord)
+			}
 		}
 		if order.TaskID != "" {
 			members := groundTaskAircraft(state, order.TaskID)
@@ -709,11 +855,74 @@ func ValidateGroundAirOrder(state State, order Order) error {
 			}
 		}
 		return nil
-	case "SET_STRIKE_TARGET":
-		if len(list) != 1 || list[0].TaskKind != "attack" {
-			return fmt.Errorf("只有攻击编队可以设置目标")
+	case "LAUNCH_TRANSFER":
+		// 陆基转场：从当前机场挪到另一个己方机场。以前这里根本没有这个分支，
+		// 机场算子只能 CAP/侦察/打击，凯恩斯、莫尔兹比这种后方基地的飞机
+		// 上不了前线，等于一次性摆设。
+		//
+		// order.Coord 允许留空：界面上是先拖进"转场"任务栏、再在地图上点选目的地，
+		// 和打击任务一样分两步提交；没有目的地时算子留在跑道上不起飞。
+		if order.Coord == "" {
+			return nil
 		}
-		return ValidateStrikeTarget(state, airfield.Faction, order.Coord)
+		dest := friendlyAirfieldAtCoord(state, airfield.Faction, order.Coord)
+		if dest == nil {
+			return fmt.Errorf("转场目的地必须是己方机场")
+		}
+		if dest.ID == airfield.ID {
+			return fmt.Errorf("不能转场到同一个机场")
+		}
+		if RunwaysAvailable(dest.Strength, dest.Runways) == 0 {
+			return fmt.Errorf("%s已经没有可用跑道，无法接收转场", dest.Name)
+		}
+		if airfield.Type == AirfieldSeaplane && dest.Type != AirfieldSeaplane {
+			return fmt.Errorf("水上飞机基地的算子只能转场到另一个水上飞机基地")
+		}
+		for _, aircraft := range list {
+			if !dest.HardensFor(aircraft.Kind, unitIsSeaplane(state, aircraft)) {
+				return fmt.Errorf("%s无法起降%s", dest.Name, aircraft.Model)
+			}
+			limit := SortieBaseRange(aircraft.BaseRange, LoadoutTransfer)
+			if need := Distance(airfield.Coord, dest.Coord); need > limit {
+				return fmt.Errorf("%s转场航程%d hex（挂副油箱），飞到%s需要%d hex", aircraft.Model, limit, dest.Name, need)
+			}
+		}
+		return nil
+	case "SET_STRIKE_TARGET":
+		if len(list) != 1 {
+			return fmt.Errorf("只有编队可以设置目标")
+		}
+		switch list[0].TaskKind {
+		case "attack":
+			if order.TargetFleetID != "" {
+				if err := ValidateStrikeFleetTarget(state, airfield.Faction, order.TargetFleetID, order.Coord); err != nil {
+					return err
+				}
+			} else if err := ValidateStrikeTarget(state, airfield.Faction, order.Coord); err != nil {
+				return err
+			}
+			return validateGroundStrikeLoadoutChange(state, groundTaskAircraft(state, list[0].TaskID), order.TargetFleetID, order.Coord)
+		case "cover":
+			// 掩护改目标：舰队所在格或机场格都行，只要求是地图内合法 hex。
+			if order.Coord == "" || !inBounds(state.Map, order.Coord) {
+				return fmt.Errorf("掩护目标 hex 无效")
+			}
+			return nil
+		case "transfer":
+			// 转场改目的地：必须是己方机场（地面转场落不了舰）。
+			dest := friendlyAirfieldAtCoord(state, airfield.Faction, order.Coord)
+			if dest == nil {
+				return fmt.Errorf("转场目的地必须是己方机场")
+			}
+			if !dest.HardensFor(list[0].Kind, unitIsSeaplane(state, list[0])) {
+				return fmt.Errorf("%s无法起降%s", dest.Name, list[0].Model)
+			}
+			if need, limit := Distance(airfield.Coord, dest.Coord), SortieBaseRange(list[0].BaseRange, LoadoutTransfer); need > limit {
+				return fmt.Errorf("%s转场航程%d hex，飞到%s需要%d hex", list[0].Model, limit, dest.Name, need)
+			}
+			return nil
+		}
+		return fmt.Errorf("只有攻击编队或转场编队可以设置目标")
 	case "SET_STRIKE_DISPERSION":
 		for _, aircraft := range list {
 			if aircraft.TaskKind != "attack" {
@@ -742,6 +951,23 @@ func ValidateGroundAirOrder(state State, order Order) error {
 		return nil
 	default:
 		return fmt.Errorf("不支持的航空命令")
+	}
+}
+
+// groundStatusLabel 把机场算子的内部状态翻成玩家能看懂的话。
+// "作业阶段"这个说法容易被误解成机型或任务阶段，实际只是 hangar/service/ready 这类状态。
+func groundStatusLabel(status string) string {
+	switch status {
+	case "hangar":
+		return "机库"
+	case "service":
+		return "整备中"
+	case "deck":
+		return "跑道上"
+	case "ready":
+		return "待命"
+	default:
+		return status
 	}
 }
 
@@ -778,7 +1004,7 @@ func ApplyGroundAirOrder(state *State, order Order) []EngineEvent {
 		return nil
 	}
 	switch order.Type {
-	case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE":
+	case "LAUNCH_CAP", "LAUNCH_COVER", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_TRANSFER":
 		if sameTaskAssignmentGround(list, order) {
 			return []EngineEvent{{Type: "air_task_unchanged", Audience: airfield.Faction, Text: "算子已在当前任务中，无需重复加入"}}
 		}
@@ -823,15 +1049,37 @@ func ApplyGroundAirOrder(state *State, order Order) []EngineEvent {
 				assignGroundReconMission(aircraft, heading, sector)
 			case MissionStrike:
 				assignGroundStrikeMission(state, aircraft, order.Coord)
+				if order.TargetFleetID != "" {
+					aircraft.TargetFleetID = order.TargetFleetID
+					if coord, ok := strikeFleetCoord(*state, aircraft.Faction, order.TargetFleetID); ok {
+						aircraft.TargetCoord = coord
+					}
+				}
+			case MissionCover:
+				// 留空 = 掩护本机场上空；给了 hex 就守那个 hex（例如护着前出的舰队）。
+				aircraft.TargetCoord = order.Coord
+				if aircraft.TargetCoord == "" {
+					aircraft.TargetCoord = airfield.Coord
+				}
+				aircraft.CoverUnitID = friendlyUnitIDAt(*state, aircraft.Faction, order.Coord)
+				aircraft.Returning = false
+			case MissionTransfer:
+				aircraft.TargetCoord = order.Coord
+				aircraft.Returning = false
 			default:
-				assignGroundCapMission(aircraft, order.Coord)
+				// CAP 同样是指定目标：不填就守本机场上空。
+				target := order.Coord
+				if target == "" {
+					target = airfield.Coord
+				}
+				assignGroundCapMission(aircraft, target)
 			}
 			// 按任务换挂载：对舰优先鱼雷、对地挂炸弹（规则书 43–63 行）。
 			applyGroundLoadout(*state, aircraft)
 			if aircraft.Status == "hangar" {
 				aircraft.Status = "service"
 			}
-			if aircraft.Status == "ready" && !(kind == MissionStrike && aircraft.TargetCoord == "") {
+			if aircraft.Status == "ready" && !((kind == MissionStrike || kind == MissionTransfer) && aircraft.TargetCoord == "") {
 				if !state.LaunchWindowOpen() {
 					events = append(events, EngineEvent{Type: "air_launch_delayed", Audience: airfield.Faction, Text: aircraft.Model + state.launchWindowHint()})
 					continue
@@ -843,10 +1091,34 @@ func ApplyGroundAirOrder(state *State, order Order) []EngineEvent {
 		return events
 	case "SET_STRIKE_TARGET":
 		taskID := list[0].TaskID
+		kind := list[0].TaskKind
 		for _, aircraft := range groundTaskAircraft(*state, taskID) {
-			setGroundStrikeTarget(state, aircraft, airfield.Faction, order.Coord)
+			if kind == "attack" {
+				setGroundStrikeTarget(state, aircraft, airfield.Faction, order.Coord)
+				if order.TargetFleetID != "" {
+					aircraft.TargetFleetID = order.TargetFleetID
+					if coord, ok := strikeFleetCoord(*state, airfield.Faction, order.TargetFleetID); ok {
+						aircraft.TargetCoord = coord
+					}
+				}
+				applyGroundStrikeLoadoutChange(state, aircraft)
+				continue
+			}
+			// 掩护 / 转场改目标。
+			aircraft.TargetCoord = order.Coord
+			aircraft.Returning = false
+			if kind == "cover" {
+				aircraft.CoverUnitID = friendlyUnitIDAt(*state, airfield.Faction, order.Coord)
+			}
 		}
-		return []EngineEvent{{Type: "strike_target_set", Audience: airfield.Faction, Text: fmt.Sprintf("攻击编队目标设为%s", order.Coord)}}
+		text := fmt.Sprintf("攻击编队目标设为%s", order.Coord)
+		switch kind {
+		case "cover":
+			text = fmt.Sprintf("空中掩护目标设为%s", order.Coord)
+		case "transfer":
+			text = fmt.Sprintf("转场目的地设为%s", order.Coord)
+		}
+		return []EngineEvent{{Type: "strike_target_set", Audience: airfield.Faction, Text: text}}
 	case "SET_STRIKE_DISPERSION":
 		taskID := list[0].TaskID
 		mode := "集中攻击"
@@ -860,6 +1132,8 @@ func ApplyGroundAirOrder(state *State, order Order) []EngineEvent {
 	case "RETURN_TO_HANGAR":
 		for _, aircraft := range list {
 			aircraft.Status = "hangar"
+			// 规则书 190 行：主动撤回的算子同时取消自动循环。
+			disarmGroundTaskCycle(aircraft)
 			aircraft.TaskID = ""
 			aircraft.TaskKind = ""
 			aircraft.TargetCoord = ""
@@ -871,10 +1145,35 @@ func ApplyGroundAirOrder(state *State, order Order) []EngineEvent {
 		for _, aircraft := range list {
 			aircraft.Status = "recovery"
 			aircraft.Returning = true
+			// 规则书 190 行：主动回收的飞机会取消循环任务。
+			disarmGroundTaskCycle(aircraft)
 			aircraft.TaskID = ""
 			aircraft.TaskKind = ""
 		}
 		return []EngineEvent{{Type: "air_recovered", Audience: airfield.Faction, Text: "机场CAP算子开始返航"}}
+	case "SET_AIR_CYCLE":
+		// 规则书 191 行：点算子开关自动任务循环，机场算子和舰载机同一套语义。
+		toggled := 0
+		for _, aircraft := range list {
+			if order.Cycle {
+				kind := aircraft.TaskKind
+				if kind == "" {
+					kind = aircraft.CycleKind
+				}
+				if kind == "" && aircraft.Status == string(MissionCap) {
+					kind = string(MissionCap)
+				}
+				enableGroundTaskCycle(aircraft, kind)
+			} else {
+				disarmGroundTaskCycle(aircraft)
+			}
+			toggled++
+		}
+		label := "已开启"
+		if !order.Cycle {
+			label = "已取消"
+		}
+		return []EngineEvent{{Type: "air_cycle_toggled", Audience: airfield.Faction, Text: fmt.Sprintf("%d个机场算子的自动任务循环%s", toggled, label)}}
 	case "PRIORITIZE_AIR_TASK":
 		selected := list[0]
 		for _, aircraft := range state.GroundAir {
@@ -903,6 +1202,8 @@ func launchGroundAircraft(state *State, aircraft *AirfieldAirUnit, airfield *Air
 	aircraft.ReconDistance = 0
 	aircraft.Returning = false
 	aircraft.TrackingFleetID = ""
+	// 新的出击重新计"回不回得来"：上一轮留下的警告标记必须清掉。
+	aircraft.NightWarned = false
 }
 
 // AdvanceGroundAir 推进机场上的空中算子：CAP 盘旋、侦察扇面、攻击编队飞行与接敌、返航降落。
@@ -923,14 +1224,32 @@ func AdvanceGroundAir(state *State) []EngineEvent {
 			if aircraft.Status == "hangar" {
 				refillGroundFuelForLoadout(aircraft)
 			}
+			// 检修与损伤修复：以前只有舰载机会递减 Maintenance、掷修复判定，
+			// 机场算子一旦带着待修标记落地就永远不能再分配任务（表现为"飞机明明停在
+			// 机库里，却一直提示检修中"）。这里按同一套节奏处理。
+			if aircraft.Maintenance > 0 {
+				aircraft.Maintenance--
+			}
+			if aircraft.Damaged && aircraft.Status == "hangar" {
+				if probabilityRoll(&state.RNGState) < aircraftRepairChance(aircraft.Faction, state.Doctrines) {
+					aircraft.Damaged = false
+					events = append(events, EngineEvent{Type: "aircraft_repaired", Audience: aircraft.Faction, Text: aircraft.Model + "损伤修复完成，可以重新分配任务"})
+				}
+			}
+			// 任务循环：落回机库的 CAP／空中掩护／侦察按原参数重新整备再出动（规则书 188 行）。
+			events = append(events, restartCycledGroundTask(state, aircraft)...)
 			continue
 		}
 		switch aircraft.Status {
 		case "cap":
+			// CAP 和空中掩护是同一套机制：飞向指定目标（舰队或机场）上空，
+			// 覆盖目标周围 1 格，敌机进入就爆发空战。以前 CAP 只是原地烧油，
+			// 指定别处舰队上空无异于设了不用。
 			if aircraft.Returning {
 				events = append(events, advanceGroundAirReturn(state, aircraft)...)
-			} else {
-				aircraft.Spend(1)
+			} else if !processedAttack[aircraft.TaskID] {
+				events = append(events, advanceGroundPatrol(state, aircraft, "cap")...)
+				processedAttack[aircraft.TaskID] = true
 			}
 		case "recon":
 			events = append(events, advanceGroundRecon(state, aircraft)...)
@@ -952,12 +1271,103 @@ func AdvanceGroundAir(state *State) []EngineEvent {
 				events = append(events, advanceGroundAttack(state, aircraft)...)
 				processedAttack[aircraft.TaskID] = true
 			}
+		case "cover":
+			if !processedAttack[aircraft.TaskID] {
+				events = append(events, advanceGroundPatrol(state, aircraft, "cover")...)
+				processedAttack[aircraft.TaskID] = true
+			}
+		case "transfer":
+			if !processedAttack[aircraft.TaskID] {
+				events = append(events, advanceGroundTransfer(state, aircraft)...)
+				processedAttack[aircraft.TaskID] = true
+			}
 		}
 	}
 	return events
 }
 
-// advanceGroundAttack 六个方向按"正前方1格 + 两个斜前方各1格"移动；到目标 hex 后调用空袭结算。
+// groundAirSpeed 返回机场算子每回合能飞几格。
+// 规则书 197 行：水上飞机和双翼机每回合移动 1 hex，其他飞机 2 hex。
+// 机场算子上没有独立的水上飞机标记——水上飞机只可能停在水上基地，按基地类型判断。
+func groundAirSpeed(state State, aircraft *AirfieldAirUnit) int {
+	if aircraft == nil {
+		return 2
+	}
+	if airfield := airfieldFor(&state, aircraft.AirfieldID); airfield != nil && airfield.Type == AirfieldSeaplane {
+		return 1
+	}
+	return 2
+}
+
+// groundStrikeTargetPresent 判断目标 hex 上现在还有没有可打的目标（敌方舰队或机场）。
+func groundStrikeTargetPresent(state State, faction, coord string) bool {
+	if coord == "" {
+		return false
+	}
+	for _, unit := range state.Units {
+		if unit != nil && unit.Faction != faction && unit.Coord == coord {
+			return true
+		}
+	}
+	for _, airfield := range state.Airfields {
+		if airfield != nil && airfield.Faction != faction && airfield.Coord == coord {
+			return true
+		}
+	}
+	return false
+}
+
+// groundStrikeSearch 目标 hex 上已经无敌舰时继续搜索：沿当前航向外扩一格，
+// 剩余航程只够回家就停止搜索返航。
+// 以前机场编队到了空 hex 就原地不动——既不搜索也不返航，油耗停在原地，
+// 一队陆攻会在空中僵住几十回合。
+func groundStrikeSearch(state *State, aircraft *AirfieldAirUnit, budget int) []EngineEvent {
+	// budget 是本回合还剩几步可走：赶路已经用完整回合的 2 hex 时，这回合只做判定不再移动。
+	if budget <= 0 {
+		return nil
+	}
+	members := groundTaskAircraft(*state, aircraft.TaskID)
+	events := []EngineEvent{}
+	moved := false
+	for _, member := range members {
+		if member.Returning {
+			continue
+		}
+		if member.Heading == "" {
+			if heading := headingBetween(member.OriginCoord, member.TargetCoord); heading != "" {
+				member.Heading = heading
+			} else {
+				member.Heading = "E"
+			}
+		}
+		if member.Range() <= airfieldRtbDistance(*state, member)+2 {
+			member.Returning = true
+			events = append(events, EngineEvent{Type: "attack_rtb", Audience: member.Faction, Text: fmt.Sprintf("%s剩余航程%d，只够返航，停止搜索", member.Model, member.Range())})
+			continue
+		}
+		next := nextReconCoord(state.Map, member.Coord, member.Heading)
+		if next == "" {
+			member.Returning = true
+			continue
+		}
+		member.Coord = next
+		// 把目标点跟着搜索位置一起前移：下一回合仍然走"已抵达目标格"的分支，
+		// 继续判定有没有敌舰，而不是因为目标在身后就再也推进不了。
+		member.TargetCoord = next
+		member.Spend(1)
+		moved = true
+	}
+	if len(members) > 0 {
+		aircraft.TargetCoord = members[0].TargetCoord
+	}
+	if moved {
+		events = append(events, EngineEvent{Type: "attack_searching_move", Audience: aircraft.Faction, Text: fmt.Sprintf("%s编队在%s没有发现敌舰，继续向外搜索", aircraft.Model, aircraft.Coord)})
+	}
+	return events
+}
+
+// advanceGroundAttack 让机场打击编队朝目标推进：非水上飞机每回合 2 格（规则书 197 行），
+// 抵达目标 hex 后调用空袭结算；燃油只够回家时提前掉头。
 func advanceGroundAttack(state *State, aircraft *AirfieldAirUnit) []EngineEvent {
 	members := groundTaskAircraft(*state, aircraft.TaskID)
 	if aircraft.TargetCoord == "" {
@@ -966,34 +1376,58 @@ func advanceGroundAttack(state *State, aircraft *AirfieldAirUnit) []EngineEvent 
 		}
 		return nil
 	}
+	// 编队认的是"那支舰队"，不是起飞时那一格 hex：出航途中每一回合都按最新情报
+	// 校正一次目标，再朝它飞。以前只在抵达之后才校正，于是整队对着旧坐标飞一整段、
+	// 扑空、再掉头去追——白扔航程，还经常追不上。
+	events := retargetGroundStrikeToContact(state, aircraft, members)
+	// 本回合已经飞了几格：接敌失败后的外扩搜索同样受"每回合不超过 2 hex"限制。
+	groundStepsFlown := 0
 	for _, member := range members {
-		if member.Returning || member.Coord == member.TargetCoord {
+		if member.Returning {
 			continue
 		}
-		next := nextGroundFlightCoord(*state, member, member.Coord, member.TargetCoord)
-		if next == "" {
-			continue
+		// 规则书 197 行：水上飞机和双翼机每回合移动 1 hex，其他飞机 2 hex。
+		// 这里以前固定只走 1 格，拉包尔到莫尔兹比（19 hex）要 19 回合单程，
+		// 于是任何一次陆攻都在入夜召回判定里"走完任务再加返航要 38 回合"——
+		// 表现就是刚起飞就掉头，永远打不到莫尔兹比。
+		groundStepsFlown = 0
+		for step := 0; step < groundAirSpeed(*state, member) && member.Coord != member.TargetCoord; step++ {
+			next := nextGroundFlightCoord(*state, member, member.Coord, member.TargetCoord)
+			if next == "" {
+				break
+			}
+			// 剩余航程 <= 回到机场所需距离时停止前进并返航（规则书 618 行），用路径距离而非直线距离。
+			probe := *member
+			probe.Coord = next
+			probe.SetRange(member.Range() - 1)
+			if airfieldFor(state, member.AirfieldID) != nil && probe.Range() <= airfieldRtbDistance(*state, &probe) {
+				member.Returning = true
+				break
+			}
+			member.Coord = next
+			member.Spend(1)
+			groundStepsFlown++
 		}
-		// 剩余航程 <= 回到机场所需距离时停止前进并返航（规则书 618 行），用路径距离而非直线距离。
-		probe := *member
-		probe.Coord = next
-		probe.SetRange(member.Range() - 1)
-		if airfieldFor(state, member.AirfieldID) != nil && probe.Range() <= airfieldRtbDistance(*state, &probe) {
-			member.Returning = true
-			continue
-		}
-		member.Coord = next
-		member.Spend(1)
 	}
 	if aircraft.Coord != aircraft.TargetCoord {
-		return nil
+		// 还没到目标：把本回合已经攒下的战报（改向、接敌之类）带出去，不能吞掉。
+		return events
 	}
 	// 空袭结算（对舰/对地）都按 state.Aircraft 里的舰载机算子实现。
 	// 机场编队住在 state.GroundAir，直接调用会找不到攻击者，所以先投影进去、
 	// 结算完再同步回机场算子（航程、损伤、投弹标记都要回写）。
-	events := retargetGroundStrikeToContact(state, aircraft, members)
+	events = append(events, retargetGroundStrikeToContact(state, aircraft, members)...)
+	// 目标格上已经没有敌舰：不能原地干等（既不搜索也不返航），
+	// 按舰载编队的规则继续外扩搜索，燃油不够就掉头。
+	if aircraft.Coord == aircraft.TargetCoord && !groundStrikeTargetPresent(*state, aircraft.Faction, aircraft.TargetCoord) {
+		budget := groundAirSpeed(*state, aircraft) - groundStepsFlown
+		if budget < 0 {
+			budget = 0
+		}
+		return append(events, groundStrikeSearch(state, aircraft, budget)...)
+	}
 	restore := projectGroundTaskIntoAircraft(state, aircraft.TaskID)
-	if strikeAirfieldAt(*state, aircraft.Faction, aircraft.TargetCoord) != nil {
+	if aircraft.TargetFleetID == "" && strikeAirfieldAt(*state, aircraft.Faction, aircraft.TargetCoord) != nil {
 		events = append(events, resolveGroundStrike(state, aircraft.TaskID, aircraft.TargetCoord)...)
 	} else {
 		events = append(events, resolveAirStrike(state, aircraft.TaskID, aircraft.TargetCoord)...)
@@ -1030,7 +1464,53 @@ func retargetGroundStrikeToContact(state *State, aircraft *AirfieldAirUnit, memb
 	for _, member := range members {
 		member.TargetCoord = coord
 	}
-	return []EngineEvent{{Type: "strike_retarget", Audience: aircraft.Faction, Text: fmt.Sprintf("打击目标%s已无敌舰，按最新情报改追%s", previous, coord)}}
+	return []EngineEvent{{Type: "strike_retarget", Audience: aircraft.Faction, Text: fmt.Sprintf("打击编队按最新情报把目标从%s改到%s", previous, coord)}}
+}
+
+// projectDefendingGroundAir 把落在 coord 附近的机场 CAP / 空中掩护任务临时投影进
+// state.Aircraft，让 strikeCAPGroups、airfieldCAPGroups、capGroupsWithin 这些
+// 只扫 state.Aircraft 的防守判定能看到它们。返回回写函数，结算完必须调用。
+//
+// 之前陆基战斗机升空后在 GroundAir 里执勤，三处防守判定全都看不到，
+// 机场挨炸时不会有一架起飞迎击——CAP/掩护任务对陆基飞机等于没做。
+func projectDefendingGroundAir(state *State, faction, coord string, distance int) func() {
+	if state == nil || coord == "" {
+		return func() {}
+	}
+	tasks := map[string]bool{}
+	for _, aircraft := range state.GroundAir {
+		if aircraft == nil || aircraft.Faction != faction || aircraft.Returning || aircraft.TaskID == "" {
+			continue
+		}
+		if aircraft.Status != "cap" && aircraft.Status != "cover" {
+			continue
+		}
+		// 已经在投影里（同回合多层结算）：不重复投影，否则回写会互相覆盖。
+		if state.Aircraft[aircraft.ID] != nil {
+			continue
+		}
+		if Distance(aircraft.Coord, coord) > distance {
+			continue
+		}
+		tasks[aircraft.TaskID] = true
+	}
+	if len(tasks) == 0 {
+		return func() {}
+	}
+	ids := make([]string, 0, len(tasks))
+	for id := range tasks {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	restores := make([]func(), 0, len(ids))
+	for _, id := range ids {
+		restores = append(restores, projectGroundTaskIntoAircraft(state, id))
+	}
+	return func() {
+		for i := len(restores) - 1; i >= 0; i-- {
+			restores[i]()
+		}
+	}
 }
 
 // projectGroundTaskIntoAircraft 把机场任务临时投影成舰载机算子，返回一个回写函数。
@@ -1056,8 +1536,18 @@ func projectGroundTaskIntoAircraft(state *State, taskID string) func() {
 				delete(state.Aircraft, unit.ID)
 				continue
 			}
+			// 被击落：applyAircraftHit 会把它从 state.Aircraft 里删掉。
+			// 以前这里只回写损伤/返航/航程，被打成"摧毁"的机场算子会原地复活，
+			// 陆基 CAP 和轰炸机于是永远打不死。
+			if state.Aircraft[unit.ID] == nil {
+				delete(state.GroundAir, unit.ID)
+				continue
+			}
 			original.Damaged = original.Damaged || unit.Damaged
 			original.Returning = unit.Returning
+			original.Strength = unit.Strength
+			// 空战打出"撤退"会进入检修，这条也要带回机场算子，否则落地就能再战。
+			original.Maintenance = unit.Maintenance
 			original.SetRange(unit.Range())
 			delete(state.Aircraft, unit.ID)
 		}
@@ -1103,6 +1593,8 @@ func landGroundAircraft(state *State, aircraft *AirfieldAirUnit, airfield *Airfi
 	}
 	aircraft.Status = "recovery"
 	aircraft.Returning = true
+	// 落地会清空任务参数：循环必须在清空之前把航向/扇面/掩护点抄进 Cycle*（规则书 188 行）。
+	rememberGroundCycleParams(aircraft, aircraft.TaskKind)
 	aircraft.TaskID = ""
 	aircraft.TaskKind = ""
 	aircraft.TargetCoord = ""
@@ -1117,6 +1609,125 @@ func landGroundAircraft(state *State, aircraft *AirfieldAirUnit, airfield *Airfi
 	return append(events, EngineEvent{Type: "air_landed", Audience: airfield.Faction, Text: fmt.Sprintf("%s降落在%s", aircraft.Model, airfield.Name)})
 }
 
+// advanceGroundPatrol 是机场版 CAP / 空中掩护：飞到指定目标 hex 上空（舰队所在格或机场格），
+// 覆盖目标周围 1 格；敌机进入这个范围就由 strikeCAPGroups 拉进空战（前提是这些算子被投影进
+// state.Aircraft，见 projectDefendingGroundAir）。燃料只够回家就自动撤出，不用手动召回。
+func advanceGroundPatrol(state *State, aircraft *AirfieldAirUnit, kind string) []EngineEvent {
+	members := groundTaskAircraft(*state, aircraft.TaskID)
+	if len(members) == 0 {
+		return nil
+	}
+	home := airfieldFor(state, aircraft.AirfieldID)
+	events := []EngineEvent{}
+	for _, member := range members {
+		if member.Returning {
+			continue
+		}
+		// 空中掩护跟着被掩护的舰队走：认领目标 hex 上的一艘友军，
+		// 舰队移动后把掩护点更新到它当前位置。
+		if kind == "cover" && member.CoverUnitID != "" {
+			if guarded := state.Units[member.CoverUnitID]; guarded != nil && guarded.Faction == member.Faction {
+				member.TargetCoord = guarded.Coord
+			} else {
+				member.CoverUnitID = ""
+			}
+		}
+		// 回家只剩一格油时就撤：盘旋每回合都要烧 1 点。
+		homeCoord := member.OriginCoord
+		if home != nil && home.Faction == member.Faction {
+			homeCoord = home.Coord
+		}
+		if member.TargetCoord == "" {
+			member.TargetCoord = homeCoord
+		}
+		if member.Range() <= Distance(member.Coord, homeCoord)+1 {
+			member.Returning = true
+			label := "空中掩护"
+			if kind == "cap" {
+				label = "CAP"
+			}
+			events = append(events, EngineEvent{Type: "cover_rtb", Audience: member.Faction, Text: fmt.Sprintf("%s燃料只够返航，撤出%s的%s", member.Model, member.TargetCoord, label)})
+			continue
+		}
+		if member.Coord != member.TargetCoord {
+			for steps := 0; steps < 2 && member.Coord != member.TargetCoord; steps++ {
+				next := nextGroundFlightCoord(*state, member, member.Coord, member.TargetCoord)
+				if next == "" {
+					break
+				}
+				member.Coord = next
+				member.Spend(1)
+			}
+			if member.Coord == member.TargetCoord {
+				label := "空中掩护"
+				if kind == "cap" {
+					label = "CAP"
+				}
+				events = append(events, EngineEvent{Type: "cover_on_station", Audience: member.Faction, Text: fmt.Sprintf("%s抵达%s上空，开始执行%s，覆盖周围1格", member.Model, member.TargetCoord, label)})
+			}
+			continue
+		}
+		// 在掩护点上空值班：每回合消耗 1 点航程。
+		member.Spend(1)
+	}
+	return events
+}
+
+// advanceGroundTransfer 让转场编队飞向目标机场：每回合 2 格，全部抵达后落到新基地。
+//
+// 目的地中途被敌方打掉（机场被占）就返航原基地，而不是凭空消失。
+// 落地沿用 landGroundAircraft，所以无跑道迫降、损伤这些判定和正常回收一致。
+func advanceGroundTransfer(state *State, aircraft *AirfieldAirUnit) []EngineEvent {
+	members := groundTaskAircraft(*state, aircraft.TaskID)
+	if len(members) == 0 {
+		return nil
+	}
+	dest := friendlyAirfieldAtCoord(*state, aircraft.Faction, aircraft.TargetCoord)
+	if dest == nil {
+		for _, member := range members {
+			member.Returning = true
+			member.TargetCoord = member.OriginCoord
+		}
+		return []EngineEvent{{Type: "transfer_aborted", Audience: aircraft.Faction, Text: fmt.Sprintf("%s的目的地已不再是我方机场，转场中止返航", aircraft.Model)}}
+	}
+	events := []EngineEvent{}
+	moved := false
+	arrived := 0
+	for _, member := range members {
+		for steps := 0; steps < 2 && member.Coord != dest.Coord; steps++ {
+			next := nextGroundFlightCoord(*state, member, member.Coord, dest.Coord)
+			if next == "" {
+				break
+			}
+			member.Coord = next
+			member.Spend(1)
+			moved = true
+		}
+		if member.Coord == dest.Coord {
+			arrived++
+		}
+	}
+	if arrived < len(members) {
+		if moved {
+			events = append(events, EngineEvent{Type: "transfer_enroute", Audience: aircraft.Faction, Text: fmt.Sprintf("%s转场编队飞往%s，当前在%s", aircraft.Model, dest.Name, aircraft.Coord)})
+		}
+		return events
+	}
+	for _, member := range members {
+		events = append(events, landGroundAircraft(state, member, dest)...)
+		if state.GroundAir[member.ID] == nil {
+			continue
+		}
+		member.AirfieldID = dest.ID
+		member.Coord = dest.Coord
+		member.OriginCoord = dest.Coord
+		member.TargetCoord = ""
+		member.Returning = false
+	}
+	events = append(events, EngineEvent{Type: "transfer_arrived", Audience: aircraft.Faction, Text: fmt.Sprintf("%s转场抵达%s", aircraft.Model, dest.Name)})
+	return events
+}
+
 // advanceGroundRecon 与舰载侦察相同的扇面搜索规则，顶点是机场。
 func advanceGroundRecon(state *State, aircraft *AirfieldAirUnit) []EngineEvent {
 	airfield := airfieldFor(state, aircraft.AirfieldID)
@@ -1126,6 +1737,7 @@ func advanceGroundRecon(state *State, aircraft *AirfieldAirUnit) []EngineEvent {
 	if aircraft.OriginCoord == "" {
 		aircraft.OriginCoord = airfield.Coord
 	}
+	origin := aircraft.OriginCoord
 	events := []EngineEvent{}
 	for steps := 0; steps < 2; steps++ {
 		if aircraft.Returning {
@@ -1135,14 +1747,18 @@ func advanceGroundRecon(state *State, aircraft *AirfieldAirUnit) []EngineEvent {
 		} else if aircraft.ReconDistance >= aircraft.ReconRadius || aircraft.Range() <= Distance(aircraft.Coord, airfield.Coord) {
 			aircraft.Returning = true
 		}
-		// 与舰载侦察一致：每步判"当前格 + 正前方一格"，去程返程各扫一遍。
 		forward := ""
 		if aircraft.Returning {
 			forward = nextGroundFlightCoord(*state, aircraft, aircraft.Coord, airfield.Coord)
 		} else {
 			forward = nextReconCoord(state.Map, aircraft.Coord, aircraft.Heading)
 		}
-		events = append(events, searchGroundReconStep(state, aircraft, forward)...)
+		// 岸基巡逻机飞的是搜索扇面，不是航迹上的一条窄带：每步扫掉"当前距离圈 +
+		// 下一距离圈"里落在扇面内的整段弧，和舰载侦察同一套几何。
+		// 以前这里只判"本格 + 正前方一格"，H6K 从敌舰队旁边两格飞过去也发现不了。
+		ring := Distance(origin, aircraft.Coord)
+		coords := ReconScannedRingHexes(state.Map, origin, aircraft.Coord, aircraft.Heading, aircraft.SectorWidth, aircraft.ReconRadius)
+		events = append(events, searchGroundReconStep(state, aircraft, coords, ring)...)
 		if forward == "" {
 			aircraft.Returning = true
 			aircraft.Spend(1)
@@ -1156,14 +1772,7 @@ func advanceGroundRecon(state *State, aircraft *AirfieldAirUnit) []EngineEvent {
 }
 
 // searchGroundReconStep 判定机场侦察机当前格与前方一格的敌方舰队和机场。
-func searchGroundReconStep(state *State, aircraft *AirfieldAirUnit, forward string) []EngineEvent {
-	coords := make([]string, 0, 2)
-	if aircraft.Coord != "" {
-		coords = append(coords, aircraft.Coord)
-	}
-	if forward != "" && forward != aircraft.Coord {
-		coords = append(coords, forward)
-	}
+func searchGroundReconStep(state *State, aircraft *AirfieldAirUnit, coords []string, ring int) []EngineEvent {
 	if len(coords) == 0 {
 		return nil
 	}
@@ -1177,7 +1786,16 @@ func searchGroundReconStep(state *State, aircraft *AirfieldAirUnit, forward stri
 			groups[FleetKey(unit)] = append(groups[FleetKey(unit)], *unit)
 		}
 	}
-	events := []EngineEvent{{Type: "recon_step_searched", Audience: aircraft.Faction, Text: fmt.Sprintf("%s扫描%s（前方%s）", aircraft.Model, strings.Join(coords, "、"), forward)}}
+	// 扇面全展开后一次可能覆盖十几格，战报只列前 24 格，避免刷屏。
+	listed := coords
+	if len(listed) > 24 {
+		listed = listed[:24]
+	}
+	detail := strings.Join(listed, "、")
+	if len(coords) > len(listed) {
+		detail += fmt.Sprintf("等%d格", len(coords))
+	}
+	events := []EngineEvent{{Type: "recon_step_searched", Audience: aircraft.Faction, Text: fmt.Sprintf("%s扫描第%d圈%s", aircraft.Model, ring, detail)}}
 	for _, fleetID := range sortedFleetIDs(groups) {
 		members := groups[fleetID]
 		sort.Slice(members, func(i, j int) bool { return members[i].ID < members[j].ID })
@@ -1208,7 +1826,8 @@ func groundReconChance(state State, aircraft *AirfieldAirUnit, members []Unit) f
 		case "storm":
 			chance -= 15
 		}
-		chance -= 2 * float64(Distance(aircraft.OriginCoord, members[0].Coord))
+		// 与舰载侦察一致：每 hex -1%（规则书原值 -2%，实测有效半径太短）。
+		chance -= float64(Distance(aircraft.OriginCoord, members[0].Coord))
 	}
 	if aircraft.SectorWidth == 120 {
 		chance /= 2
@@ -1261,7 +1880,15 @@ func GroundAviationView(state State, faction string) AviationView {
 			task.AircraftIDs = append(task.AircraftIDs, member.ID)
 			if airfieldAirborne(member) {
 				task.AirborneCount++
+				// "这波天黑前回不回得来"：服务器不再替打击编队强制掉头，
+				// 这条折算就是玩家唯一的护栏，前端据此显示"这波回不来"。
+				if need := groundTurnsToLanded(state, member); need > task.ReturnTurns {
+					task.ReturnTurns = need
+				}
 			}
+		}
+		if task.AirborneCount > 0 && state.TurnsPerDay > 0 {
+			task.NightSafe = task.ReturnTurns < turnsUntilNight(state)
 		}
 		task.Phase = "servicing"
 		if task.AirborneCount > 0 {
@@ -1271,19 +1898,47 @@ func GroundAviationView(state State, faction string) AviationView {
 			task.TargetCoord = leader.TargetCoord
 			task.Disperse = leader.Disperse
 			task.CurrentCoord = leader.Coord
+			task.Returning = leader.Returning
 			task.Name = "攻击编队 · " + leader.Model
 		} else if leader.TaskKind == "cap" {
-			airfield := airfieldFor(&state, leader.AirfieldID)
-			if airfield != nil {
-				task.CurrentCoord = airfield.Coord
+			// CAP 是"指定空域"：位置必须用飞机的实际坐标（它可能正飞往某支舰队上空），
+			// 以前写死机场坐标，地图上的 CAP 牌永远挂在机场上，看不出它到底去哪儿值班。
+			task.CurrentCoord = leader.Coord
+			if task.CurrentCoord == "" {
+				if airfield := airfieldFor(&state, leader.AirfieldID); airfield != nil {
+					task.CurrentCoord = airfield.Coord
+				}
 			}
+			task.TargetCoord = leader.TargetCoord
 			task.Name = "CAP · " + leader.Model
+		} else if leader.TaskKind == "cover" {
+			// 空中掩护同样是"指定一个目标"，任务卡要带目标 hex 才能在地图上点选/改目标。
+			task.TargetCoord = leader.TargetCoord
+			task.CurrentCoord = leader.Coord
+			task.Name = "空中掩护 · " + leader.Model
+		} else if leader.TaskKind == "transfer" {
+			// 转场任务必须带上目的地，否则界面只会显示"目标未设置"，
+			// 玩家没法确认这队飞机到底要去哪儿（也点不了选目的地）。
+			task.TargetCoord = leader.TargetCoord
+			task.CurrentCoord = leader.Coord
+			task.Name = "转场 · " + leader.Model
 		} else {
 			task.Name = "扇面侦察 · " + leader.Model
 			task.CurrentCoord = leader.Coord
 			task.Heading = leader.Heading
 			task.SectorWidth = leader.SectorWidth
 			task.ReconRadius = leader.ReconRadius
+			// 机场侦察也要给出扇面几何：以前只给航向和宽度，地图上没有黄色扇面，
+			// 玩家根本不知道这架飞机到底在扫哪一片，只能看着它飞出去又飞回来。
+			task.ReconSectors = []ReconSector{}
+			for _, member := range members {
+				task.ReconSectors = append(task.ReconSectors, projectGroundReconSector(state, member))
+			}
+			if len(task.ReconSectors) > 0 {
+				task.OriginCoord = task.ReconSectors[0].OriginCoord
+				task.SectorHexes = task.ReconSectors[0].SectorHexes
+				task.CurrentRingHexes = task.ReconSectors[0].CurrentRingHexes
+			}
 		}
 		if len(members) > 1 {
 			task.Name += fmt.Sprintf(" ×%d", len(members))
@@ -1302,17 +1957,53 @@ func GroundAviationView(state State, faction string) AviationView {
 	return view
 }
 
+// projectGroundReconSector 是机场侦察的扇面投影：顶点是机场，航向/宽度/半径与判定完全一致。
+func projectGroundReconSector(state State, aircraft *AirfieldAirUnit) ReconSector {
+	origin := aircraft.OriginCoord
+	if airfield := airfieldFor(&state, aircraft.AirfieldID); airfield != nil {
+		origin = airfield.Coord
+	}
+	current := aircraft.Coord
+	if aircraft.Status != "recon" {
+		current = origin
+	}
+	sector := ReconSector{
+		AircraftID: aircraft.ID, Status: aircraft.Status, OriginCoord: origin, CurrentCoord: current,
+		Heading: aircraft.Heading, SectorWidth: aircraft.SectorWidth, ReconRadius: aircraft.ReconRadius,
+		ReconDistance: aircraft.ReconDistance, Returning: aircraft.Returning, TrackingFleetID: aircraft.TrackingFleetID,
+	}
+	if aircraft.Status == "recon" {
+		sector.SectorHexes = ReconScanBandHexes(state.Map, origin, aircraft.Heading, aircraft.SectorWidth, aircraft.ReconRadius)
+		sector.CurrentRingHexes = ReconScannedRingHexes(state.Map, origin, current, aircraft.Heading, aircraft.SectorWidth, aircraft.ReconRadius)
+		if current != "" {
+			sector.DistanceReference = BuildDistanceReference(state.Map, current, 8)
+		}
+	}
+	return sector
+}
+
 // groundAirUnit 把机场算子投影成前端通用的 AirUnit，地图与任务栏因此可以复用同一套渲染。
 func groundAirUnit(state State, aircraft *AirfieldAirUnit) AirUnit {
 	return AirUnit{
-		ID: aircraft.ID, DefinitionID: aircraft.DefinitionID, CarrierID: aircraft.AirfieldID, Faction: aircraft.Faction, Model: aircraft.Model, Kind: aircraft.Kind,
+		ID: aircraft.ID, DefinitionID: aircraft.DefinitionID, CarrierID: aircraft.AirfieldID, Faction: aircraft.Faction, Model: aircraft.Model, Kind: aircraft.Kind, Picture: aircraft.Picture, PictureMode: aircraft.PictureMode,
 		Status: aircraft.Status, Strength: aircraft.Strength, MaxRange: aircraft.MaxRange, RemainingRange: aircraft.Range(),
 		AirCombat: aircraft.AirCombat, AntiShip: aircraft.AntiShip, AntiGround: aircraft.AntiGround,
-		TaskID: aircraft.TaskID, TaskKind: aircraft.TaskKind, Priority: aircraft.Priority,
+		// 陆基机型标记必须带出去：前端靠它区分"航母舰载机"和"机场起降的陆基机"，
+		// 漏掉这面旗子，陆攻的航程块会被画成舰载机的蓝底样式，看着像从航母上起飞的。
+		AirfieldOnly: aircraft.AirfieldOnly,
+		TaskID:       aircraft.TaskID, TaskKind: aircraft.TaskKind, Priority: aircraft.Priority,
 		Coord: aircraft.Coord, OriginCoord: aircraft.OriginCoord, TargetCoord: aircraft.TargetCoord, Heading: aircraft.Heading,
 		SectorWidth: aircraft.SectorWidth, ReconRadius: aircraft.ReconRadius, ReconDistance: aircraft.ReconDistance,
 		ReconRadiusLimit: aircraft.ReconRadiusLimit, Returning: aircraft.Returning, TrackingFleetID: aircraft.TrackingFleetID,
 		Confusion: aircraft.Damaged, Damaged: aircraft.Damaged, Maintenance: aircraft.Maintenance,
+		// 挂载与航程账面也要投影：机库里的陆基机同样能换挂载，
+		// 少了这几个字段前端只能显示一个空的下拉框和"未配置"。
+		BaseRange: aircraft.BaseRange, Loadout: aircraft.Loadout, LoadoutManual: aircraft.LoadoutManual,
+		TankDropped: aircraft.TankDropped, Bombed: aircraft.Bombed,
+		// 循环开关也要投影出去：机场算子的任务卡和舰载机共用一套渲染，
+		// 少了 on_cycle 这里就永远画不出蓝色循环角标，玩家也点不到那盏灯。
+		OnCycle: aircraft.OnCycle, CycleKind: aircraft.CycleKind, CycleTarget: aircraft.CycleTarget,
+		CycleOptOut: aircraft.CycleOptOut,
 	}
 }
 
@@ -1360,25 +2051,29 @@ func forwardIntercept(state *State, faction, coord string, attackers []*AirUnit,
 	if state == nil || len(attackers) == 0 || defender == "" {
 		return nil
 	}
+	restoreDefenders := projectDefendingGroundAir(state, defender, coord, 2)
+	defer restoreDefenders()
 	groups := capGroupsWithin(*state, defender, coord, 2)
 	if len(groups) == 0 {
 		return nil
 	}
 	report := AirCombatReport{
-		ID:              fmt.Sprintf("air-intercept-%x", nextUint64(&state.RNGState)),
-		Coord:           coord,
-		Target:          "intercept",
-		TargetName:      "雷达引导拦截",
-		AttackerFaction: faction,
-		DefenderFaction: defender,
-		AttackerModels:  aircraftModels(attackers),
-		AttackerCount:   len(attackers),
+		ID:               fmt.Sprintf("air-intercept-%x", nextUint64(&state.RNGState)),
+		Coord:            coord,
+		Target:           "intercept",
+		TargetName:       "雷达引导拦截",
+		AttackerFaction:  faction,
+		DefenderFaction:  defender,
+		AttackerModels:   aircraftModels(attackers),
+		AttackerPictures: pictureCardsFor(attackers),
+		AttackerCount:    len(attackers),
 	}
+	defenders := []*AirUnit{}
 	for _, group := range groups {
-		report.DefenderModels = append(report.DefenderModels, aircraftModels(group)...)
+		defenders = append(defenders, group...)
 		report.DefenderCount += len(group)
 	}
-	report.DefenderModels = aircraftModelsFromNames(report.DefenderModels)
+	report.DefenderModels, report.DefenderPictures = aircraftModelCards(defenders)
 	events := []EngineEvent{}
 	for _, group := range groups {
 		events = append(events, resolveDogfight(state, attackers, group, &report)...)
@@ -1403,6 +2098,7 @@ func forwardIntercept(state *State, faction, coord string, attackers []*AirUnit,
 		report.Winner = faction
 	}
 	report.Summary = fmt.Sprintf("%s雷达截获来袭编队，CAP 前出拦截：攻击方%s，CAP%s", coord, airLossText(&report, true), airLossText(&report, false))
+	report.Turn = state.Turn
 	state.AirCombats = append(state.AirCombats, report)
 	if len(state.AirCombats) > 20 {
 		state.AirCombats = state.AirCombats[len(state.AirCombats)-20:]
@@ -1508,6 +2204,11 @@ func canBombard(state State, unit *Unit) *Airfield {
 	if unit == nil || unit.Card.Gunnery <= 0 || unitSmoking(unit) {
 		return nil
 	}
+	// 舰队必须真的能待在这个 hex 上：旧存档里可能有航母编队停在机场格/浅滩上，
+	// 那种"非法驻留"不能凭坐标蹭到岸轰。
+	if !fleetCanEnter(state, unit.Coord, FleetHasCarrier(state, FleetKey(unit))) {
+		return nil
+	}
 	if state.FleetStays[FleetKey(unit)] != unit.Coord {
 		return nil
 	}
@@ -1574,7 +2275,7 @@ func bombardFleet(state *State, fleetID string, airfield *Airfield) []EngineEven
 	// 舰队炮击机场：普通舰每次命中 -1 生命值并摧毁至多 1 架地面飞机，战列舰 -2 / 至多 2 架
 	// 舰队在开火前指定目标，同一次齐射只结算一类（规则书 513 行）：
 	// 滩头物资仍有余量就打物资，否则打机场。
-	gunneryHits, airfieldDamage, groundLoss := 0, 0, 0
+	gunneryHits, airfieldDamage, groundLoss, coastalLoss := 0, 0, 0, 0
 	supplyHits := 0
 	bombardFaction := ""
 	for _, member := range fleetMembers(state, fleetID) {
@@ -1607,6 +2308,11 @@ func bombardFleet(state *State, fleetID string, airfield *Airfield) []EngineEven
 				airfieldDamage += appliedDamage
 			}
 			groundLoss += destroyGroundAircraft(state, airfield, aircraft)
+			// 舰炮命中也会压制岸炮：每命中一次岸炮-1，最低为 0（与空袭对地攻击一致）。
+			if airfield.Coastal > 0 {
+				airfield.Coastal--
+				coastalLoss++
+			}
 			if airfield.Strength <= 0 {
 				break
 			}
@@ -1618,6 +2324,9 @@ func bombardFleet(state *State, fleetID string, airfield *Airfield) []EngineEven
 			ship.Confusion += 4
 		}
 	}
+	// 炮击的舰队对敌方完全暴露（规则书 535 行），无论白天黑夜：
+	// 上岸轰的舰必须把位置和编成一次交出来，不能再靠"没被发现"藏着。
+	events = append(events, exposeFleetAtMaxIntel(state, fleetID, "对岸轰击")...)
 	leaderName := fleetID
 	for _, member := range fleetMembers(state, fleetID) {
 		leaderName = member.FleetName
@@ -1630,7 +2339,11 @@ func bombardFleet(state *State, fleetID string, airfield *Airfield) []EngineEven
 	if supplyHits > 0 {
 		supText = fmt.Sprintf("，摧毁滩头物资%d点", supplyHits)
 	}
-	events = append(events, EngineEvent{Type: "shore_bombardment", Audience: "all", Text: fmt.Sprintf("%s在%s对%s岸轰：命中机场%d次（生命值-%d，摧毁地面飞机%d%s），岸炮反击命中%d次，舰队混乱+4", leaderName, airfield.Coord, airfield.Name, gunneryHits, airfieldDamage, groundLoss, supText, coastalHits)})
+	coastalText := ""
+	if coastalLoss > 0 {
+		coastalText = fmt.Sprintf("，岸炮-%d", coastalLoss)
+	}
+	events = append(events, EngineEvent{Type: "shore_bombardment", Audience: "all", Text: fmt.Sprintf("%s在%s对%s岸轰：命中机场%d次（生命值-%d，摧毁地面飞机%d%s%s），岸炮反击命中%d次，舰队混乱+4", leaderName, airfield.Coord, airfield.Name, gunneryHits, airfieldDamage, groundLoss, supText, coastalText, coastalHits)})
 	return events
 }
 
@@ -1786,10 +2499,6 @@ func capGroupsWithin(state State, defender, coord string, distance int) [][]*Air
 	groups := map[string][]*AirUnit{}
 	for _, aircraft := range state.Aircraft {
 		if aircraft.Faction != defender || aircraft.Status != "cap" || aircraft.Returning || aircraft.TaskID == "" {
-			continue
-		}
-		// 一回合只能前出拦截一次：多支攻击编队同回合经过时，同一队 CAP 不会被反复拉出去打架。
-		if aircraft.InterceptedThisTurn {
 			continue
 		}
 		if Distance(capCoord(state, aircraft), coord) <= distance {

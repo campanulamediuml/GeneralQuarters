@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
@@ -8,8 +9,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"runtime/debug"
 	"strconv"
@@ -75,20 +78,21 @@ type joinRoomRequest struct {
 }
 
 type commandRequest struct {
-	CommandID    string            `json:"command_id"`
-	BaseVersion  int64             `json:"base_version"`
-	Type         string            `json:"type"`
-	UnitID       string            `json:"unit_id"`
-	TargetUnitID string            `json:"target_unit_id"`
-	AircraftID   string            `json:"aircraft_id"`
-	AircraftIDs  []string          `json:"aircraft_ids"`
-	TaskID       string            `json:"task_id"`
-	Coord        string            `json:"coord"`
-	Heading      string            `json:"heading"`
-	SectorWidth  int               `json:"sector_width"`
-	Assignments  map[string]string `json:"assignments"`
-	TaskKind     string            `json:"task_kind"`
-	Loadout      string            `json:"loadout"`
+	CommandID     string            `json:"command_id"`
+	BaseVersion   int64             `json:"base_version"`
+	Type          string            `json:"type"`
+	UnitID        string            `json:"unit_id"`
+	TargetUnitID  string            `json:"target_unit_id"`
+	AircraftID    string            `json:"aircraft_id"`
+	AircraftIDs   []string          `json:"aircraft_ids"`
+	TaskID        string            `json:"task_id"`
+	Coord         string            `json:"coord"`
+	TargetFleetID string            `json:"target_fleet_id"`
+	Heading       string            `json:"heading"`
+	SectorWidth   int               `json:"sector_width"`
+	Assignments   map[string]string `json:"assignments"`
+	TaskKind      string            `json:"task_kind"`
+	Loadout       string            `json:"loadout"`
 	// Disperse：SET_STRIKE_DISPERSION 用（true=分散攻击）。
 	Disperse bool `json:"disperse"`
 	// Cycle：SET_AIR_CYCLE 用（true=开启自动任务循环，false=取消）。
@@ -123,6 +127,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/rooms/join", s.joinRoom)
 	mux.HandleFunc("GET /api/v1/rooms/", s.roomRoutes)
 	mux.HandleFunc("POST /api/v1/rooms/", s.roomRoutes)
+	mux.HandleFunc("GET /watch/", s.watchPage)
 	mux.HandleFunc("GET /ws", s.webSocket)
 	// content/ 下的静态素材（兵牌剪影等）：路径由舰船卡的 picture 字段给出，
 	// 例如 /content/misc/image/ship/new_orleans.png。换图只要替换数据目录里的文件，
@@ -137,6 +142,11 @@ func (s *Server) roomRoutes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	roomID, action := parts[3], parts[4]
+	// 观战接口不走玩家 Cookie：它用房间 join_token 认证，返回合并后的双方视图。
+	if r.Method == http.MethodGet && action == "spectate" {
+		s.submitRoom(roomID, func() { s.spectate(w, r, roomID) })
+		return
+	}
 	player, ok := s.authenticate(w, r)
 	if !ok {
 		return
@@ -248,7 +258,7 @@ func (s *Server) joinRoom(w http.ResponseWriter, r *http.Request) {
 func commandFingerprint(request commandRequest) string {
 	parts := []string{
 		request.Type, request.UnitID, request.TargetUnitID, request.AircraftID,
-		strings.Join(request.AircraftIDs, ","), request.TaskID, request.Coord, request.Heading,
+		strings.Join(request.AircraftIDs, ","), request.TaskID, request.Coord, request.TargetFleetID, request.Heading,
 		strconv.Itoa(request.SectorWidth),
 		request.TaskKind, request.Loadout, fmt.Sprintf("%t", request.Disperse), request.Engagement,
 	}
@@ -283,11 +293,18 @@ func (s *Server) handleCommand(w http.ResponseWriter, r *http.Request, roomID st
 		writeError(w, http.StatusNotFound, "房间不存在")
 		return
 	}
+	// 就绪即冻结：点"完成部署"那一刻本回合的操作就锁死了，之后服务端拒绝任何修改。
+	// 以前这里会自动把 ready 撤回再接受命令，等于"准备"完全没有约束力：
+	// 玩家点了准备还能继续改，对手以为局面定了，结算出来的却是改过的版本。
+	if player.Ready {
+		writeError(w, http.StatusConflict, "本回合已就绪，操作已锁定：双方就绪后由服务器统一结算，下一回合才能再操作")
+		return
+	}
 	if room.Version != request.BaseVersion {
 		writeError(w, http.StatusConflict, "状态已更新，请刷新后重试")
 		return
 	}
-	order := game.Order{Type: request.Type, UnitID: request.UnitID, TargetUnitID: request.TargetUnitID, AircraftID: request.AircraftID, AircraftIDs: request.AircraftIDs, TaskID: request.TaskID, Coord: game.NormalizeToken(request.Coord), Heading: strings.ToUpper(request.Heading), SectorWidth: request.SectorWidth, Assignments: request.Assignments, TaskKind: strings.ToLower(request.TaskKind), Loadout: strings.ToLower(request.Loadout), Disperse: request.Disperse, Engagement: strings.ToLower(request.Engagement), Cycle: request.Cycle}
+	order := game.Order{Type: request.Type, UnitID: request.UnitID, TargetUnitID: request.TargetUnitID, AircraftID: request.AircraftID, AircraftIDs: request.AircraftIDs, TaskID: request.TaskID, Coord: game.NormalizeToken(request.Coord), TargetFleetID: request.TargetFleetID, Heading: strings.ToUpper(request.Heading), SectorWidth: request.SectorWidth, Assignments: request.Assignments, TaskKind: strings.ToLower(request.TaskKind), Loadout: strings.ToLower(request.Loadout), Disperse: request.Disperse, Engagement: strings.ToLower(request.Engagement), Cycle: request.Cycle}
 	if err := game.ValidateOrder(room.State, player.Faction, order); err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
@@ -346,9 +363,6 @@ func (s *Server) handleCommand(w http.ResponseWriter, r *http.Request, roomID st
 	if err := s.store.SaveOrder(r.Context(), roomID, room.Turn, player.ID, request.CommandID, order, string(response), fingerprint); err != nil {
 		writeError(w, http.StatusInternalServerError, "保存命令失败")
 		return
-	}
-	if player.Ready {
-		_ = s.store.SetReady(r.Context(), player.ID, false)
 	}
 	s.hub.broadcast(roomID, "orders_updated", room.Version)
 	w.Header().Set("Content-Type", "application/json")
@@ -414,6 +428,12 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request, roomID stri
 	}
 	if room.Version != request.BaseVersion {
 		writeError(w, http.StatusConflict, "状态已更新，请刷新后重试")
+		return
+	}
+	// 就绪必须不可逆：ready 之后不能再改主意，也不能用 ready:false 解锁。
+	// 需要改部署就等本回合结算。前端已经没有撤销按钮，脚本也必须遵守同一规则。
+	if !request.Ready {
+		writeError(w, http.StatusBadRequest, "ready 一旦提交不可撤销；请等待本回合结算")
 		return
 	}
 	if room.State.Outcome != nil && request.Ready {
@@ -524,11 +544,13 @@ func (s *Server) writeState(w http.ResponseWriter, r *http.Request, roomID strin
 		"clock":           game.Clock(room.State),
 		"enemy_air":       game.VisibleEnemyAir(room.State, player.Faction),
 		"losses":          game.VisibleLosses(room.State, player.Faction),
-		"outcome":         room.State.Outcome,
-		"objectives":      room.State.Objectives,
-		"you": player, "players": players, "orders": ownOrders, "events": events,
+		// scores 是击沉战果分（航母按机库容量，其余按舰种），剧本用 score 目标时按它判定。
+		"scores":     game.VictoryPoints(room.State),
+		"outcome":    room.State.Outcome,
+		"objectives": room.State.Objectives,
+		"you":        player, "players": players, "orders": ownOrders, "events": events,
 		// solo 让前端把"完成部署"换成"等待对手进房"，别让玩家点了才发现结算不了。
-		"solo": room.Solo,
+		"solo":        room.Solo,
 		"server_time": time.Now().UTC(),
 	}
 	if player.IsHost {
@@ -644,10 +666,27 @@ type hub struct {
 }
 
 type wsClient struct {
-	conn     *websocket.Conn
-	send     chan []byte
-	roomID   string
-	playerID string
+	conn          *websocket.Conn
+	send          chan []byte
+	roomID        string
+	playerID      string
+	spectator     bool
+	spectateToken string
+}
+
+type wsRequest struct {
+	Type   string          `json:"type"`
+	ID     string          `json:"id"`
+	Method string          `json:"method"`
+	Path   string          `json:"path"`
+	Body   json.RawMessage `json:"body,omitempty"`
+}
+
+type wsResponse struct {
+	Type   string          `json:"type"`
+	ID     string          `json:"id"`
+	Status int             `json:"status"`
+	Body   json.RawMessage `json:"body"`
 }
 
 func newHub() *hub { return &hub{clients: map[string]map[*wsClient]bool{}} }
@@ -678,13 +717,64 @@ func (h *hub) broadcast(roomID, eventType string, version int64) {
 		select {
 		case client.send <- message:
 		default:
+			_ = client.conn.Close() // Slow clients must reconnect, never silently miss the final update.
 		}
 	}
 }
 
+func (s *Server) dispatchWebSocketRPC(handshake *http.Request, player store.Player, request wsRequest) wsResponse {
+	response := wsResponse{Type: "rpc_response", ID: request.ID, Status: http.StatusBadRequest}
+	if request.ID == "" || len(request.ID) > 128 || request.Method == "" || len(request.Path) > 512 || len(request.Body) > 1<<20 {
+		response.Body = json.RawMessage(`{"error":"无效的 WebSocket 请求"}`)
+		return response
+	}
+	parsed, err := url.ParseRequestURI(request.Path)
+	if err != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+		response.Body = json.RawMessage(`{"error":"不允许的 WebSocket 路径"}`)
+		return response
+	}
+	parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
+	if len(parts) != 5 || parts[0] != "api" || parts[1] != "v1" || parts[2] != "rooms" || parts[3] != player.RoomID {
+		response.Status = http.StatusForbidden
+		response.Body = json.RawMessage(`{"error":"WebSocket 请求必须属于当前房间"}`)
+		return response
+	}
+	action := parts[4]
+	allowed := (request.Method == http.MethodGet && (action == "state" || action == "events")) || (request.Method == http.MethodPost && (action == "commands" || action == "ready"))
+	if !allowed {
+		response.Status = http.StatusForbidden
+		response.Body = json.RawMessage(`{"error":"不允许通过 WebSocket 调用此接口"}`)
+		return response
+	}
+	clone := handshake.Clone(handshake.Context())
+	clone.Method = request.Method
+	clone.URL = parsed
+	clone.Body = io.NopCloser(bytes.NewReader(request.Body))
+	clone.ContentLength = int64(len(request.Body))
+	clone.Header = handshake.Header.Clone()
+	clone.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	s.roomRoutes(recorder, clone)
+	response.Status = recorder.Code
+	if response.Status == 0 {
+		response.Status = http.StatusOK
+	}
+	body := bytes.TrimSpace(recorder.Body.Bytes())
+	if len(body) == 0 {
+		response.Status = http.StatusInternalServerError
+		body = []byte(`{"error":"房间处理未返回响应"}`)
+	}
+	response.Body = append(json.RawMessage(nil), body...)
+	return response
+}
+
 func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
-	player, ok := s.authenticate(w, r)
-	if !ok {
+	player, playerAuthed := s.webSocketPlayer(r)
+	if r.URL.Query().Get("mode") == "spectator" {
+		playerAuthed = false
+	}
+	if playerAuthed && r.URL.Query().Get("room_id") != "" && r.URL.Query().Get("room_id") != player.RoomID {
+		http.Error(w, "当前会话不属于此房间", http.StatusForbidden)
 		return
 	}
 	upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool {
@@ -699,17 +789,81 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
-	client := &wsClient{conn: conn, send: make(chan []byte, 32), roomID: player.RoomID, playerID: player.ID}
+	conn.SetReadLimit(1 << 20)
+	client := &wsClient{conn: conn, send: make(chan []byte, 32)}
+	if playerAuthed {
+		client.roomID, client.playerID = player.RoomID, player.ID
+	} else {
+		_ = conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+		// 无 Cookie 连接有两种意图：观战（第一条是 subscribe）和玩家会话过期
+		// （客户端不假思索先发 rpc_request）。以前后者会被当成"观战订阅无效"直接关掉，
+		// 前端只能看到断线重连，永远不知道该回首页重新加入。
+		var first struct {
+			Type   string `json:"type"`
+			ID     string `json:"id"`
+			RoomID string `json:"room_id"`
+			Token  string `json:"token"`
+		}
+		if err := conn.ReadJSON(&first); err != nil {
+			_ = conn.Close()
+			return
+		}
+		if first.Type == "rpc_request" {
+			body := json.RawMessage(`{"error":"请先创建或加入房间"}`)
+			_ = conn.WriteJSON(wsResponse{Type: "rpc_response", ID: first.ID, Status: http.StatusUnauthorized, Body: body})
+			_ = conn.Close()
+			return
+		}
+		if first.Type != "subscribe" || first.RoomID == "" || len(first.RoomID) > 128 {
+			_ = conn.WriteJSON(map[string]any{"type": "error", "error": "观战订阅请求无效"})
+			_ = conn.Close()
+			return
+		}
+		room, err := s.store.Room(r.Context(), first.RoomID)
+		if err != nil || game.NormalizeToken(first.Token) != room.JoinToken {
+			_ = conn.WriteJSON(map[string]any{"type": "error", "error": "观战 token 不正确或房间不存在"})
+			_ = conn.Close()
+			return
+		}
+		client.roomID, client.spectator, client.spectateToken = first.RoomID, true, first.Token
+	}
+	_ = conn.SetReadDeadline(time.Now().Add(90 * time.Second))
+	conn.SetPongHandler(func(string) error { return conn.SetReadDeadline(time.Now().Add(90 * time.Second)) })
 	s.hub.add(client)
-	s.submitRoom(player.RoomID, func() {
-		_ = s.store.SetConnected(context.Background(), player.ID, true)
-	})
-	s.hub.broadcast(player.RoomID, "presence_changed", 0)
+	if !client.spectator {
+		s.submitRoom(client.roomID, func() { _ = s.store.SetConnected(context.Background(), client.playerID, true) })
+		s.hub.broadcast(client.roomID, "presence_changed", 0)
+	} else if initial, err := s.spectatorSnapshot(client.roomID, client.spectateToken); err == nil {
+		select {
+		case client.send <- initial:
+		default:
+		}
+	} else {
+		s.hub.remove(client)
+		_ = conn.WriteJSON(map[string]any{"type": "error", "error": err.Error()})
+		_ = conn.Close()
+		return
+	}
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
 		for {
-			if _, _, err := conn.ReadMessage(); err != nil {
+			messageType, payload, err := conn.ReadMessage()
+			if err != nil {
+				return
+			}
+			if client.spectator || messageType != websocket.TextMessage {
+				continue
+			}
+			var request wsRequest
+			if err := json.Unmarshal(payload, &request); err != nil || request.Type != "rpc_request" {
+				continue
+			}
+			response := s.dispatchWebSocketRPC(r, player, request)
+			encoded, _ := json.Marshal(response)
+			select {
+			case client.send <- encoded:
+			default:
 				return
 			}
 		}
@@ -718,19 +872,28 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		ticker.Stop()
 		s.hub.remove(client)
-		s.submitRoom(player.RoomID, func() {
-			_ = s.store.SetConnected(context.Background(), player.ID, false)
-		})
-		s.hub.broadcast(player.RoomID, "presence_changed", 0)
-		conn.Close()
+		if !client.spectator {
+			s.submitRoom(client.roomID, func() { _ = s.store.SetConnected(context.Background(), client.playerID, false) })
+			s.hub.broadcast(client.roomID, "presence_changed", 0)
+		}
+		_ = conn.Close()
 	}()
 	for {
 		select {
 		case message := <-client.send:
+			if client.spectator {
+				if snapshot, err := s.spectatorSnapshot(client.roomID, client.spectateToken); err == nil {
+					message = snapshot
+				} else {
+					message, _ = json.Marshal(map[string]any{"type": "error", "error": err.Error()})
+				}
+			}
+			_ = conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {
 				return
 			}
 		case <-ticker.C:
+			_ = conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
@@ -738,6 +901,30 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+}
+
+func (s *Server) webSocketPlayer(r *http.Request) (store.Player, bool) {
+	cookie, err := r.Cookie("gq_session")
+	if err != nil {
+		return store.Player{}, false
+	}
+	player, err := s.store.PlayerBySession(r.Context(), hashToken(cookie.Value))
+	return player, err == nil
+}
+
+func (s *Server) spectatorSnapshot(roomID, token string) ([]byte, error) {
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/rooms/"+url.PathEscape(roomID)+"/spectate?token="+url.QueryEscape(token), nil)
+	recorder := httptest.NewRecorder()
+	s.submitRoom(roomID, func() { s.spectate(recorder, req, roomID) })
+	if recorder.Code != http.StatusOK {
+		var body errorResponse
+		_ = json.Unmarshal(recorder.Body.Bytes(), &body)
+		if body.Error == "" {
+			body.Error = "观战快照读取失败"
+		}
+		return nil, errors.New(body.Error)
+	}
+	return json.Marshal(map[string]any{"type": "snapshot", "view": json.RawMessage(recorder.Body.Bytes())})
 }
 
 var errNotFound = errors.New("not found")

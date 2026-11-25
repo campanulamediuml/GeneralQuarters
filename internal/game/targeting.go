@@ -72,6 +72,7 @@ func setStrikeTarget(state *State, aircraft *AirUnit, faction, coord string) {
 	aircraft.TargetCoord = coord
 	aircraft.TargetFleetID = ""
 	aircraft.SearchTurns = 0
+	aircraft.SearchHeading = ""
 	// 认领必须发生在"下命令"这一刻：玩家点是哪个情报标记就去追哪支舰队。
 	// 等到编队飞到目标 hex 再认领就晚了——舰队常常已经挪走，届时目标 hex 上
 	// 已经没有任何情报，编队会失去追踪对象、对着空 hex 兜圈子。
@@ -151,10 +152,11 @@ func retargetStrikeToContact(state *State, aircraft *AirUnit, members []*AirUnit
 	for _, member := range members {
 		member.TargetCoord = coord
 		member.Engaged = false
-		// 目标换了地方，搜索计时重新开始。
+		// 目标换了地方，搜索计时和搜索航向重新开始。
 		member.SearchTurns = 0
+		member.SearchHeading = ""
 	}
-	return []EngineEvent{{Type: "strike_retarget", Audience: aircraft.Faction, Text: fmt.Sprintf("打击目标%s已无敌舰，按最新情报改追%s", previous, coord)}}
+	return []EngineEvent{{Type: "strike_retarget", Audience: aircraft.Faction, Text: fmt.Sprintf("打击编队按最新情报把目标从%s改到%s", previous, coord)}}
 }
 
 // interceptAirTask 在编队飞行途中触发雷达引导的 CAP 前出接敌（每个编队每回合一次）。
@@ -258,13 +260,16 @@ func advanceAttack(state *State, aircraft *AirUnit) []EngineEvent {
 		}
 		return nil
 	}
+	// 本回合每个算子已经飞了几格：一回合的移动预算只有 2 hex（规则书 196 行），
+	// 接敌失败后的"继续搜索"也得从这个预算里扣，不能变成"飞 2 格再搜索 1 格"。
+	stepsUsed := map[string]int{}
 	// 已经接敌成功的编队：本回合直接发起空袭，不再前进、不再搜索。
 	// 这一步必须放在"移动 / 雷达拦截"之前——一旦先移动，编队就会从接敌点飞走，
 	// 之后既不在 TargetCoord 上、接敌标记也还在，形成"永远接敌但永远不打"的死循环。
 	events := []EngineEvent{}
 	if aircraft.Engaged && !aircraft.Returning {
 		var strikeEvents []EngineEvent
-		if strikeAirfieldAt(*state, aircraft.Faction, aircraft.TargetCoord) != nil {
+		if aircraft.TargetFleetID == "" && strikeAirfieldAt(*state, aircraft.Faction, aircraft.TargetCoord) != nil {
 			strikeEvents = resolveGroundStrike(state, aircraft.TaskID, aircraft.TargetCoord)
 		} else {
 			strikeEvents = resolveAirStrike(state, aircraft.TaskID, aircraft.TargetCoord)
@@ -310,6 +315,7 @@ func advanceAttack(state *State, aircraft *AirUnit) []EngineEvent {
 			}
 			member.Coord = next
 			member.Spend(1)
+			stepsUsed[member.ID]++
 		}
 	}
 	if !arrived && aircraft.Coord == aircraft.TargetCoord {
@@ -338,7 +344,11 @@ func advanceAttack(state *State, aircraft *AirUnit) []EngineEvent {
 			}
 			// 接敌失败：每回合沿当前航向继续搜索（规则书 617 行），
 			// 正前方 50%、两个斜前方各 25%；移动后仍失败就留在新位置，下一回合再判定。
-			return append(events, searchAfterFailedEngage(state, aircraft)...)
+			budget := 2 - stepsUsed[aircraft.ID]
+			if budget < 0 {
+				budget = 0
+			}
+			return append(events, searchAfterFailedEngage(state, aircraft, budget)...)
 		}
 		// 已接敌：本回合发起空袭（目标 hex 上有敌方机场走对地攻击，否则对舰）
 		if strikeAirfieldAt(*state, aircraft.Faction, aircraft.TargetCoord) != nil {
@@ -363,11 +373,9 @@ func engagedThisTurn(state *State, aircraft *AirUnit) bool {
 	return state.EngageTried[aircraft.TaskID]
 }
 
-// maxStrikeSearchTurns 是打击编队在目标空域连续搜索却接不上敌的回合上限。
-const maxStrikeSearchTurns = 4
-
-func searchAfterFailedEngage(state *State, aircraft *AirUnit) []EngineEvent {
-	if aircraft == nil || aircraft.Returning {
+func searchAfterFailedEngage(state *State, aircraft *AirUnit, budget int) []EngineEvent {
+	// budget 是本回合还剩几步可走：赶路已经把 2 hex 用完时，这回合只做接敌判定、不再移动。
+	if aircraft == nil || aircraft.Returning || budget <= 0 {
 		return nil
 	}
 	members := []*AirUnit{aircraft}
@@ -380,8 +388,8 @@ func searchAfterFailedEngage(state *State, aircraft *AirUnit) []EngineEvent {
 			continue
 		}
 		// 搜索是有成本的：对着过期情报在空海上兜圈，每一回合都在烧油。
-		// 走之前先确认回得去（留 2 点余量），再给搜索一个回合上限，超了就放弃返航并明确报出来，
-		// 而不是等油烧到 1 点才悄悄掉头。
+		// 走之前先确认回得去（留 2 点余量），烧到临界点就停止搜索返航；
+		// 不设固定回合上限——规则书 622 行只要求"剩余航程不够返航时才停止搜索"。
 		if hasRTBDestination(*state, member) {
 			if need := rtbDistance(*state, member); member.Range() <= need+2 {
 				member.Returning = true
@@ -390,63 +398,66 @@ func searchAfterFailedEngage(state *State, aircraft *AirUnit) []EngineEvent {
 			}
 		}
 		member.SearchTurns++
-		if member.SearchTurns > maxStrikeSearchTurns {
-			member.Returning = true
-			events = append(events, EngineEvent{Type: "attack_search_exhausted", Audience: member.Faction, Text: fmt.Sprintf("%s在%s搜索%d回合仍未接敌，放弃目标返航", member.Model, member.TargetCoord, member.SearchTurns-1)})
-			continue
+		// 搜索方向只有一个初始值：第一次搜索时朝最后已知位置（或者母舰航向）。
+		// 之后再也不用"往坐标飞"来算方向——那样编队一到目标点就会折回去，
+		// 26 架飞机在 2 格见方里来回摆，等于原地打转。
+		if member.SearchHeading == "" {
+			member.SearchHeading = initialSearchHeading(*state, member)
 		}
-		// 搜索方向必须朝目标（最后已知位置），不能用舰队航向：编队离场时沿用的是母舰舰艏，
-		// 照那个方向搜会一路偏离目标，20 架大编队最后只有 3 架摸到投弹位置。
-		heading := ""
-		if member.TargetCoord != "" && member.Coord != member.TargetCoord {
-			heading = headingBetween(member.Coord, member.TargetCoord)
+		type step struct {
+			heading string
+			coord   string
 		}
-		if heading == "" {
-			heading = member.Heading
-		}
-		if heading == "" {
-			heading = originHeading(*member)
-		}
-		if heading == "" {
-			heading = "E"
-		}
-		options := searchHeadings(heading)
-		candidates := []string{}
+		options := searchHeadings(member.SearchHeading)
+		candidates := []step{}
 		for _, candidateHeading := range options {
-			next := nextSearchStep(*state, member, candidateHeading)
-			if next != "" {
-				candidates = append(candidates, next)
+			if next := nextSearchStep(*state, member, candidateHeading); next != "" {
+				candidates = append(candidates, step{heading: candidateHeading, coord: next})
 			}
 		}
 		if len(candidates) == 0 {
 			continue
 		}
 		// 正前方权重 2/4（50%），两个斜前方各 1/4（25%）；方向不可用时在剩余方向里等概率。
-		pick := ""
+		chosen := candidates[0]
 		if len(candidates) == len(options) {
-			roll := nextUint64(&state.RNGState) % 4
-			switch {
-			case roll < 2:
-				pick = candidates[0]
-			case roll < 3:
-				pick = candidates[1]
+			switch nextUint64(&state.RNGState) % 4 {
+			case 0, 1:
+				chosen = candidates[0]
+			case 2:
+				chosen = candidates[1]
 			default:
-				pick = candidates[2]
+				chosen = candidates[2]
 			}
 		} else {
-			pick = candidates[nextUint64(&state.RNGState)%uint64(len(candidates))]
+			chosen = candidates[nextUint64(&state.RNGState)%uint64(len(candidates))]
 		}
-		if pick == "" {
-			continue
-		}
-		member.Coord = pick
+		member.Coord = chosen.coord
+		member.SearchHeading = chosen.heading
 		member.Returning = false
 		if member.Range() > 0 {
 			member.Spend(1)
 		}
-		events = append(events, EngineEvent{Type: "attack_searching_move", Audience: aircraft.Faction, Text: fmt.Sprintf("%s沿%s方向继续搜索，转移至%s", member.Model, heading, pick)})
+		events = append(events, EngineEvent{Type: "attack_searching_move", Audience: aircraft.Faction, Text: fmt.Sprintf("%s沿%s方向继续搜索，转移至%s", member.Model, chosen.heading, chosen.coord)})
 	}
 	return events
+}
+
+// initialSearchHeading 给出搜索的起始航向：优先朝最后已知位置，
+// 已经站在那个 hex 上时就顺着编队自己的航向往前压。
+func initialSearchHeading(state State, aircraft *AirUnit) string {
+	if aircraft.TargetCoord != "" && aircraft.Coord != aircraft.TargetCoord {
+		if heading := headingBetween(aircraft.Coord, aircraft.TargetCoord); heading != "" {
+			return heading
+		}
+	}
+	if aircraft.Heading != "" {
+		return aircraft.Heading
+	}
+	if heading := originHeading(*aircraft); heading != "" {
+		return heading
+	}
+	return "E"
 }
 
 // searchHeadings 返回搜索时可选的三个方向：正前、左斜前、右斜前。
@@ -479,4 +490,27 @@ func originHeading(aircraft AirUnit) string {
 		return ""
 	}
 	return headingBetween(aircraft.OriginCoord, aircraft.Coord)
+}
+
+// ValidateStrikeFleetTarget 校验“显式指定打某支舰队”。
+// 同一 hex 同时有敌方机场和舰队时，玩家用 target_fleet_id 选择舰队；
+// coord 可以为空，服务端会取该舰队当前的情报显示位置。
+func ValidateStrikeFleetTarget(state State, faction, fleetID, coord string) error {
+	contact := state.Contacts[faction][fleetID]
+	if contact == nil || contact.Faction == faction || contact.Level <= 0 {
+		return fmt.Errorf("没有这支舰队的情报，不能指定为打击目标")
+	}
+	if coord != "" && intelDisplayCoord(*contact) != coord && contact.Coord != coord {
+		return fmt.Errorf("舰队%s当前不在%s", fleetID, coord)
+	}
+	return nil
+}
+
+// strikeFleetCoord 返回显式指定舰队时应使用的目标坐标。
+func strikeFleetCoord(state State, faction, fleetID string) (string, bool) {
+	contact := state.Contacts[faction][fleetID]
+	if contact == nil || contact.Faction == faction || contact.Level <= 0 {
+		return "", false
+	}
+	return intelDisplayCoord(*contact), true
 }

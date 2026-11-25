@@ -4,7 +4,7 @@ import "testing"
 
 // 回归：机场侦察机分配侦察任务时必须拿到侦察半径。
 // 以前这里不赋值，ReconRadius 停在 0，起飞当回合就满足"扫完扇面"直接返航，
-// 图拉吉的 4 架 H6K（半径 31）因此完全用不了。
+// 水上飞机基地的 H6K（半径 31）因此完全用不了。
 func TestGroundReconGetsRadiusOnAssignment(t *testing.T) {
 	state := sandboxState(t)
 	unit := state.GroundAir["af-b-fighter-1"]

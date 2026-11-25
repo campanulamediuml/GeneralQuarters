@@ -1,6 +1,6 @@
 {
  "id": "_coral_real",
- "version": 20,
+ "version": 33,
  "name": "珊瑚海 · 1942年5月（25海里/hex）",
  "map": "_coral_real",
  "units": "sandbox",
@@ -9,7 +9,7 @@
  "day_hours": 0,
  "turns_per_day": 72,
  "weather_turns": 6,
- "max_turns": 288,
+ "max_turns": 360,
  "doctrines": {
   "A": "us",
   "B": "japan"
@@ -21,23 +21,21 @@
   "recover_by": "19:40",
   "night_loss": true
  },
- "description": "战役简报：日军将在珊瑚海展开对莫尔兹比港的攻势，第五航空战队已经出动，MO 机动部队（翔鹤、瑞鹤、妙高、羽黑、第27驱逐队）从拉包尔方向南下。美军以第17特混舰队（列克星敦、约克城及巡洋舰、驱逐队）从新赫布里底方向迎击，任务是不让日本人的登陆船队靠近莫尔兹比港。\n双方舰艇编组与史实相同，但出现位置每局随机——没有既定航路，必须自己派水上侦察机和舰载搜索机找出对方，再把全甲板打击砸下去。\n一回合 20 分钟：04:00 开始甲板整备，05:20 首轮升空，19:40 前必须全员回收；超过这个点还在天上的只能摸黑返航，按燃油和夜间着舰风险逐架判定。",
+ "description": "战役目标：日军必须把至少 20 点货物送上莫尔兹比港（1611），只要达成即获胜；美军必须阻止这次投送，拖到回合上限而日军仍未达成 20 点即美军获胜。战果分（VP）仅作参考。\n\n战役简报：日军将在珊瑚海展开对莫尔兹比港的攻势，第五航空战队已经出动，MO 机动部队（翔鹤、瑞鹤、妙高、羽黑、第27驱逐队）从拉包尔方向南下。美军以第17、第11特混舰队（约克城、列克星敦）从新赫布里底方向迎击，第44特混舰队（澳大利亚、霍巴特、芝加哥）掩护约马德海峡，任务是不让日本人的登陆船队靠近莫尔兹比港。\n双方舰艇编组与史实相同，但出现位置每局随机——没有既定航路，必须自己派水上侦察机和舰载搜索机找出对方，再把全甲板打击砸下去。\n一回合 20 分钟：04:00 开始甲板整备，05:20 首轮升空，19:40 前必须全员回收；超过这个点还在天上的只能摸黑返航，按燃油和夜间着舰风险逐架判定。对局上限 5 天，共 360 回合。",
  "objectives": [
   {
-   "id": "a-sink",
-   "text": "消灭日军水面力量：击沉全部 8 艘日军舰艇",
-   "kind": "sink",
-   "faction": "A",
-   "value": 8,
-   "points": 10
+   "id": "moresby-supply",
+   "text": "日军必须向莫尔兹比港（1611）投送至少 20 点货物；达成即胜，回合上限仍未达成则美军获胜",
+   "kind": "supplies",
+   "coord": "1611",
+   "faction": "B",
+   "value": 20,
+   "decisive": true
   },
   {
-   "id": "b-sink",
-   "text": "消灭美军水面力量：击沉全部 10 艘美军舰艇",
-   "kind": "sink",
-   "faction": "B",
-   "value": 10,
-   "points": 10
+   "id": "victory-points",
+   "text": "战果分仅作参考：航母、轻母、护航航母按机库容量计分，战列舰/战列巡洋舰 6 分、重巡 3 分、轻巡 2 分、驱逐 1 分、运输船 1 分，每摧毁一个航空算子 0.25 分",
+   "kind": "score"
   }
  ],
  "deployments": [
@@ -49,10 +47,10 @@
    "fleet_name": "MO机动部队",
    "ship": "shokaku",
    "box": {
-    "col_max": 38,
-    "col_min": 30,
-    "row_max": 16,
-    "row_min": 8
+    "row_min": 1,
+    "row_max": 10,
+    "col_min": 33,
+    "col_max": 42
    }
   },
   {
@@ -63,10 +61,10 @@
    "fleet_name": "MO机动部队",
    "ship": "zuikaku",
    "box": {
-    "col_max": 38,
-    "col_min": 30,
-    "row_max": 16,
-    "row_min": 8
+    "row_min": 1,
+    "row_max": 10,
+    "col_min": 33,
+    "col_max": 42
    }
   },
   {
@@ -78,10 +76,10 @@
    "hangar_capacity": 2,
    "ship": "myoko",
    "box": {
-    "col_max": 38,
-    "col_min": 30,
-    "row_max": 16,
-    "row_min": 8
+    "row_min": 1,
+    "row_max": 10,
+    "col_min": 33,
+    "col_max": 42
    }
   },
   {
@@ -93,10 +91,10 @@
    "hangar_capacity": 2,
    "ship": "haguro",
    "box": {
-    "col_max": 38,
-    "col_min": 30,
-    "row_max": 16,
-    "row_min": 8
+    "row_min": 1,
+    "row_max": 10,
+    "col_min": 33,
+    "col_max": 42
    }
   },
   {
@@ -107,10 +105,10 @@
    "fleet_name": "MO机动部队",
    "ship": "ariake",
    "box": {
-    "col_max": 38,
-    "col_min": 30,
-    "row_max": 16,
-    "row_min": 8
+    "row_min": 1,
+    "row_max": 10,
+    "col_min": 33,
+    "col_max": 42
    }
   },
   {
@@ -121,10 +119,10 @@
    "fleet_name": "MO机动部队",
    "ship": "yugure",
    "box": {
-    "col_max": 38,
-    "col_min": 30,
-    "row_max": 16,
-    "row_min": 8
+    "row_min": 1,
+    "row_max": 10,
+    "col_min": 33,
+    "col_max": 42
    }
   },
   {
@@ -135,10 +133,10 @@
    "fleet_name": "MO机动部队",
    "ship": "shiratsuyu",
    "box": {
-    "col_max": 38,
-    "col_min": 30,
-    "row_max": 16,
-    "row_min": 8
+    "row_min": 1,
+    "row_max": 10,
+    "col_min": 33,
+    "col_max": 42
    }
   },
   {
@@ -149,155 +147,10 @@
    "fleet_name": "MO机动部队",
    "ship": "shigure",
    "box": {
-    "col_max": 38,
-    "col_min": 30,
-    "row_max": 16,
-    "row_min": 8
-   }
-  },
-  {
-   "id": "a-cv-01",
-   "faction": "A",
-   "name": "列克星敦",
-   "fleet_id": "TF17",
-   "fleet_name": "第17特混舰队",
-   "ship": "lexington",
-   "box": {
-    "row_min": 25,
-    "row_max": 30,
-    "col_min": 11,
-    "col_max": 21
-   }
-  },
-  {
-   "id": "a-cv-02",
-   "faction": "A",
-   "name": "约克城",
-   "fleet_id": "TF17",
-   "fleet_name": "第17特混舰队",
-   "ship": "yorktown",
-   "box": {
-    "row_min": 25,
-    "row_max": 30,
-    "col_min": 11,
-    "col_max": 21
-   }
-  },
-  {
-   "id": "a-ca-01",
-   "faction": "A",
-   "name": "明尼阿波利斯",
-   "fleet_id": "TF17",
-   "fleet_name": "第17特混舰队",
-   "hangar_capacity": 2,
-   "ship": "minneapolis",
-   "box": {
-    "row_min": 25,
-    "row_max": 30,
-    "col_min": 11,
-    "col_max": 21
-   }
-  },
-  {
-   "id": "a-ca-02",
-   "faction": "A",
-   "name": "新奥尔良",
-   "fleet_id": "TF17",
-   "fleet_name": "第17特混舰队",
-   "hangar_capacity": 2,
-   "ship": "new_orleans",
-   "box": {
-    "row_min": 25,
-    "row_max": 30,
-    "col_min": 11,
-    "col_max": 21
-   }
-  },
-  {
-   "id": "a-ca-03",
-   "faction": "A",
-   "name": "阿斯托里亚",
-   "fleet_id": "TF17",
-   "fleet_name": "第17特混舰队",
-   "hangar_capacity": 2,
-   "ship": "astoria",
-   "box": {
-    "row_min": 25,
-    "row_max": 30,
-    "col_min": 11,
-    "col_max": 21
-   }
-  },
-  {
-   "id": "a-ca-04",
-   "faction": "A",
-   "name": "切斯特",
-   "fleet_id": "TF17",
-   "fleet_name": "第17特混舰队",
-   "hangar_capacity": 2,
-   "ship": "chester",
-   "box": {
-    "row_min": 25,
-    "row_max": 30,
-    "col_min": 11,
-    "col_max": 21
-   }
-  },
-  {
-   "id": "a-ca-05",
-   "faction": "A",
-   "name": "波特兰",
-   "fleet_id": "TF17",
-   "fleet_name": "第17特混舰队",
-   "hangar_capacity": 2,
-   "ship": "portland",
-   "box": {
-    "row_min": 25,
-    "row_max": 30,
-    "col_min": 11,
-    "col_max": 21
-   }
-  },
-  {
-   "id": "a-dd-01",
-   "faction": "A",
-   "name": "法拉格特",
-   "fleet_id": "TF17",
-   "fleet_name": "第17特混舰队",
-   "ship": "farragut",
-   "box": {
-    "row_min": 25,
-    "row_max": 30,
-    "col_min": 11,
-    "col_max": 21
-   }
-  },
-  {
-   "id": "a-dd-02",
-   "faction": "A",
-   "name": "莫里斯",
-   "fleet_id": "TF17",
-   "fleet_name": "第17特混舰队",
-   "ship": "morris",
-   "box": {
-    "row_min": 25,
-    "row_max": 30,
-    "col_min": 11,
-    "col_max": 21
-   }
-  },
-  {
-   "id": "a-dd-03",
-   "faction": "A",
-   "name": "安德森",
-   "fleet_id": "TF17",
-   "fleet_name": "第17特混舰队",
-   "ship": "anderson",
-   "box": {
-    "row_min": 25,
-    "row_max": 30,
-    "col_min": 11,
-    "col_max": 21
+    "row_min": 1,
+    "row_max": 10,
+    "col_min": 33,
+    "col_max": 42
    }
   },
   {
@@ -308,10 +161,10 @@
    "fleet_name": "第六战队",
    "ship": "aoba",
    "box": {
-    "col_max": 30,
-    "col_min": 26,
-    "row_max": 12,
-    "row_min": 9
+    "row_min": 9,
+    "row_max": 19,
+    "col_min": 21,
+    "col_max": 32
    }
   },
   {
@@ -322,10 +175,10 @@
    "fleet_name": "第六战队",
    "ship": "kako",
    "box": {
-    "col_max": 30,
-    "col_min": 26,
-    "row_max": 12,
-    "row_min": 9
+    "row_min": 9,
+    "row_max": 19,
+    "col_min": 21,
+    "col_max": 32
    }
   },
   {
@@ -336,10 +189,10 @@
    "fleet_name": "第六战队",
    "ship": "furutaka",
    "box": {
-    "col_max": 30,
-    "col_min": 26,
-    "row_max": 12,
-    "row_min": 9
+    "row_min": 9,
+    "row_max": 19,
+    "col_min": 21,
+    "col_max": 32
    }
   },
   {
@@ -350,10 +203,521 @@
    "fleet_name": "第六战队",
    "ship": "kinugasa",
    "box": {
-    "col_max": 30,
-    "col_min": 26,
-    "row_max": 12,
-    "row_min": 9
+    "row_min": 9,
+    "row_max": 19,
+    "col_min": 21,
+    "col_max": 32
+   }
+  },
+  {
+   "id": "b-6s-dd-01",
+   "faction": "B",
+   "name": "涟",
+   "fleet_id": "6S",
+   "fleet_name": "第六战队",
+   "ship": "sazanami",
+   "box": {
+    "row_min": 9,
+    "row_max": 19,
+    "col_min": 21,
+    "col_max": 32
+   }
+  },
+  {
+   "id": "b-6s-cvl-01",
+   "faction": "B",
+   "name": "祥凤",
+   "fleet_id": "6S",
+   "fleet_name": "第六战队",
+   "ship": "shoho",
+   "box": {
+    "row_min": 9,
+    "row_max": 19,
+    "col_min": 21,
+    "col_max": 32
+   }
+  },
+  {
+   "id": "b-6ds-cl-01",
+   "faction": "B",
+   "name": "夕张",
+   "fleet_id": "6DS",
+   "fleet_name": "第六水雷战队",
+   "ship": "yubari",
+   "box": {
+    "row_min": 12,
+    "row_max": 20,
+    "col_min": 33,
+    "col_max": 44
+   }
+  },
+  {
+   "id": "b-6ds-dd-01",
+   "faction": "B",
+   "name": "追風",
+   "fleet_id": "6DS",
+   "fleet_name": "第六水雷战队",
+   "unit": "mutsuki",
+   "box": {
+    "row_min": 12,
+    "row_max": 20,
+    "col_min": 33,
+    "col_max": 44
+   }
+  },
+  {
+   "id": "b-6ds-dd-02",
+   "faction": "B",
+   "name": "朝凪",
+   "fleet_id": "6DS",
+   "fleet_name": "第六水雷战队",
+   "unit": "mutsuki",
+   "box": {
+    "row_min": 12,
+    "row_max": 20,
+    "col_min": 33,
+    "col_max": 44
+   }
+  },
+  {
+   "id": "b-6ds-dd-03",
+   "faction": "B",
+   "name": "睦月",
+   "fleet_id": "6DS",
+   "fleet_name": "第六水雷战队",
+   "unit": "mutsuki",
+   "box": {
+    "row_min": 12,
+    "row_max": 20,
+    "col_min": 33,
+    "col_max": 44
+   }
+  },
+  {
+   "id": "b-6ds-dd-04",
+   "faction": "B",
+   "name": "弥生",
+   "fleet_id": "6DS",
+   "fleet_name": "第六水雷战队",
+   "unit": "mutsuki",
+   "box": {
+    "row_min": 12,
+    "row_max": 20,
+    "col_min": 33,
+    "col_max": 44
+   }
+  },
+  {
+   "id": "b-6ds-dd-05",
+   "faction": "B",
+   "name": "望月",
+   "fleet_id": "6DS",
+   "fleet_name": "第六水雷战队",
+   "unit": "mutsuki",
+   "box": {
+    "row_min": 12,
+    "row_max": 20,
+    "col_min": 33,
+    "col_max": 44
+   }
+  },
+  {
+   "id": "b-6ds-trs-01",
+   "faction": "B",
+   "name": "堪培拉丸",
+   "fleet_id": "6DS",
+   "fleet_name": "第六水雷战队",
+   "unit": "transport",
+   "box": {
+    "row_min": 12,
+    "row_max": 20,
+    "col_min": 33,
+    "col_max": 44
+   }
+  },
+  {
+   "id": "b-6ds-trs-02",
+   "faction": "B",
+   "name": "巴西丸",
+   "fleet_id": "6DS",
+   "fleet_name": "第六水雷战队",
+   "unit": "transport",
+   "box": {
+    "row_min": 12,
+    "row_max": 20,
+    "col_min": 33,
+    "col_max": 44
+   }
+  },
+  {
+   "id": "b-6ds-trs-03",
+   "faction": "B",
+   "name": "爱洋丸",
+   "fleet_id": "6DS",
+   "fleet_name": "第六水雷战队",
+   "unit": "transport",
+   "box": {
+    "row_min": 12,
+    "row_max": 20,
+    "col_min": 33,
+    "col_max": 44
+   }
+  },
+  {
+   "id": "b-6ds-trs-04",
+   "faction": "B",
+   "name": "名城丸",
+   "fleet_id": "6DS",
+   "fleet_name": "第六水雷战队",
+   "unit": "transport",
+   "box": {
+    "row_min": 12,
+    "row_max": 20,
+    "col_min": 33,
+    "col_max": 44
+   }
+  },
+  {
+   "id": "b-6ds-trs-05",
+   "faction": "B",
+   "name": "大井川丸",
+   "fleet_id": "6DS",
+   "fleet_name": "第六水雷战队",
+   "unit": "transport",
+   "box": {
+    "row_min": 12,
+    "row_max": 20,
+    "col_min": 33,
+    "col_max": 44
+   }
+  },
+  {
+   "id": "b-6ds-trs-06",
+   "faction": "B",
+   "name": "山月丸",
+   "fleet_id": "6DS",
+   "fleet_name": "第六水雷战队",
+   "unit": "transport",
+   "box": {
+    "row_min": 12,
+    "row_max": 20,
+    "col_min": 33,
+    "col_max": 44
+   }
+  },
+  {
+   "id": "a-cv-02",
+   "faction": "A",
+   "name": "约克城",
+   "fleet_id": "TF17",
+   "fleet_name": "第17特混舰队",
+   "ship": "yorktown",
+   "box": {
+    "row_min": 28,
+    "row_max": 40,
+    "col_min": 41,
+    "col_max": 52
+   }
+  },
+  {
+   "id": "a-ca-03",
+   "faction": "A",
+   "name": "阿斯托里亚",
+   "fleet_id": "TF17",
+   "fleet_name": "第17特混舰队",
+   "hangar_capacity": 1,
+   "ship": "astoria",
+   "box": {
+    "row_min": 28,
+    "row_max": 40,
+    "col_min": 41,
+    "col_max": 52
+   }
+  },
+  {
+   "id": "a-ca-04",
+   "faction": "A",
+   "name": "切斯特",
+   "fleet_id": "TF17",
+   "fleet_name": "第17特混舰队",
+   "hangar_capacity": 1,
+   "ship": "chester",
+   "box": {
+    "row_min": 28,
+    "row_max": 40,
+    "col_min": 41,
+    "col_max": 52
+   }
+  },
+  {
+   "id": "a-dd-02",
+   "faction": "A",
+   "name": "莫里斯",
+   "fleet_id": "TF17",
+   "fleet_name": "第17特混舰队",
+   "ship": "morris",
+   "box": {
+    "row_min": 28,
+    "row_max": 40,
+    "col_min": 41,
+    "col_max": 52
+   }
+  },
+  {
+   "id": "a-dd-04",
+   "faction": "A",
+   "name": "拉塞尔",
+   "fleet_id": "TF17",
+   "fleet_name": "第17特混舰队",
+   "ship": "russell",
+   "box": {
+    "row_min": 28,
+    "row_max": 40,
+    "col_min": 41,
+    "col_max": 52
+   }
+  },
+  {
+   "id": "a-dd-01",
+   "faction": "A",
+   "name": "法拉格特",
+   "fleet_id": "TF17",
+   "fleet_name": "第17特混舰队",
+   "ship": "farragut",
+   "box": {
+    "row_min": 28,
+    "row_max": 40,
+    "col_min": 41,
+    "col_max": 52
+   }
+  },
+  {
+   "id": "a-dd-05",
+   "faction": "A",
+   "name": "瓦尔克",
+   "fleet_id": "TF17",
+   "fleet_name": "第17特混舰队",
+   "ship": "walke",
+   "box": {
+    "row_min": 28,
+    "row_max": 40,
+    "col_min": 41,
+    "col_max": 52
+   }
+  },
+  {
+   "id": "a-dd-06",
+   "faction": "A",
+   "name": "杜威",
+   "fleet_id": "TF17",
+   "fleet_name": "第17特混舰队",
+   "ship": "dewey",
+   "box": {
+    "row_min": 28,
+    "row_max": 40,
+    "col_min": 41,
+    "col_max": 52
+   }
+  },
+  {
+   "id": "a-cv-01",
+   "faction": "A",
+   "name": "列克星敦",
+   "fleet_id": "TF11",
+   "fleet_name": "第11特混舰队",
+   "ship": "lexington",
+   "box": {
+    "row_min": 33,
+    "row_max": 44,
+    "col_min": 53,
+    "col_max": 62
+   }
+  },
+  {
+   "id": "a-ca-01",
+   "faction": "A",
+   "name": "明尼阿波利斯",
+   "fleet_id": "TF11",
+   "fleet_name": "第11特混舰队",
+   "hangar_capacity": 1,
+   "ship": "minneapolis",
+   "box": {
+    "row_min": 33,
+    "row_max": 44,
+    "col_min": 53,
+    "col_max": 62
+   }
+  },
+  {
+   "id": "a-ca-02",
+   "faction": "A",
+   "name": "新奥尔良",
+   "fleet_id": "TF11",
+   "fleet_name": "第11特混舰队",
+   "hangar_capacity": 1,
+   "ship": "new_orleans",
+   "box": {
+    "row_min": 33,
+    "row_max": 44,
+    "col_min": 53,
+    "col_max": 62
+   }
+  },
+  {
+   "id": "a-ca-05",
+   "faction": "A",
+   "name": "波特兰",
+   "fleet_id": "TF11",
+   "fleet_name": "第11特混舰队",
+   "hangar_capacity": 1,
+   "ship": "portland",
+   "box": {
+    "row_min": 33,
+    "row_max": 44,
+    "col_min": 53,
+    "col_max": 62
+   }
+  },
+  {
+   "id": "a-dd-07",
+   "faction": "A",
+   "name": "菲尔普斯",
+   "fleet_id": "TF11",
+   "fleet_name": "第11特混舰队",
+   "ship": "phelps",
+   "box": {
+    "row_min": 33,
+    "row_max": 44,
+    "col_min": 53,
+    "col_max": 62
+   }
+  },
+  {
+   "id": "a-dd-08",
+   "faction": "A",
+   "name": "艾尔文",
+   "fleet_id": "TF11",
+   "fleet_name": "第11特混舰队",
+   "ship": "elwyn",
+   "box": {
+    "row_min": 33,
+    "row_max": 44,
+    "col_min": 53,
+    "col_max": 62
+   }
+  },
+  {
+   "id": "a-dd-09",
+   "faction": "A",
+   "name": "莫纳汉",
+   "fleet_id": "TF11",
+   "fleet_name": "第11特混舰队",
+   "ship": "monaghan",
+   "box": {
+    "row_min": 33,
+    "row_max": 44,
+    "col_min": 53,
+    "col_max": 62
+   }
+  },
+  {
+   "id": "a-dd-10",
+   "faction": "A",
+   "name": "哈曼",
+   "fleet_id": "TF11",
+   "fleet_name": "第11特混舰队",
+   "ship": "hammann",
+   "box": {
+    "row_min": 33,
+    "row_max": 44,
+    "col_min": 53,
+    "col_max": 62
+   }
+  },
+  {
+   "id": "a-dd-03",
+   "faction": "A",
+   "name": "安德森",
+   "fleet_id": "TF11",
+   "fleet_name": "第11特混舰队",
+   "ship": "anderson",
+   "box": {
+    "row_min": 33,
+    "row_max": 44,
+    "col_min": 53,
+    "col_max": 62
+   }
+  },
+  {
+   "id": "a-ca-06",
+   "faction": "A",
+   "name": "芝加哥",
+   "fleet_id": "TF44",
+   "fleet_name": "第44特混舰队",
+   "hangar_capacity": 1,
+   "ship": "chicago",
+   "box": {
+    "row_min": 20,
+    "row_max": 26,
+    "col_min": 18,
+    "col_max": 26
+   }
+  },
+  {
+   "id": "a-ca-07",
+   "faction": "A",
+   "name": "澳大利亚",
+   "fleet_id": "TF44",
+   "fleet_name": "第44特混舰队",
+   "hangar_capacity": 1,
+   "ship": "australia",
+   "box": {
+    "row_min": 20,
+    "row_max": 26,
+    "col_min": 18,
+    "col_max": 26
+   }
+  },
+  {
+   "id": "a-cl-01",
+   "faction": "A",
+   "name": "霍巴特",
+   "fleet_id": "TF44",
+   "fleet_name": "第44特混舰队",
+   "ship": "hobart",
+   "box": {
+    "row_min": 20,
+    "row_max": 26,
+    "col_min": 18,
+    "col_max": 26
+   }
+  },
+  {
+   "id": "a-dd-11",
+   "faction": "A",
+   "name": "帕金斯",
+   "fleet_id": "TF44",
+   "fleet_name": "第44特混舰队",
+   "ship": "perkins",
+   "box": {
+    "row_min": 20,
+    "row_max": 26,
+    "col_min": 18,
+    "col_max": 26
+   }
+  },
+  {
+   "id": "a-dd-12",
+   "faction": "A",
+   "name": "惠普尔",
+   "fleet_id": "TF44",
+   "fleet_name": "第44特混舰队",
+   "ship": "whipple",
+   "box": {
+    "row_min": 20,
+    "row_max": 26,
+    "col_min": 18,
+    "col_max": 26
    }
   }
  ],
@@ -559,12 +923,72 @@
    "carrier": "b-ca-02"
   },
   {
-   "id": "a-ca-01-seaplane-x1",
+   "id": "b-6s-aoba-seaplane-x1",
    "unit": "seaplane",
-   "carrier": "a-ca-01"
+   "carrier": "b-6s-aoba"
   },
   {
-   "id": "a-ca-01-seaplane-x2",
+   "id": "b-6s-aoba-seaplane-x2",
+   "unit": "seaplane",
+   "carrier": "b-6s-aoba"
+  },
+  {
+   "id": "b-6s-furutaka-seaplane-x1",
+   "unit": "seaplane",
+   "carrier": "b-6s-furutaka"
+  },
+  {
+   "id": "b-6s-furutaka-seaplane-x2",
+   "unit": "seaplane",
+   "carrier": "b-6s-furutaka"
+  },
+  {
+   "id": "b-6s-kako-seaplane-x1",
+   "unit": "seaplane",
+   "carrier": "b-6s-kako"
+  },
+  {
+   "id": "b-6s-kako-seaplane-x2",
+   "unit": "seaplane",
+   "carrier": "b-6s-kako"
+  },
+  {
+   "id": "b-6s-kinugasa-seaplane-x1",
+   "unit": "seaplane",
+   "carrier": "b-6s-kinugasa"
+  },
+  {
+   "id": "b-6s-kinugasa-seaplane-x2",
+   "unit": "seaplane",
+   "carrier": "b-6s-kinugasa"
+  },
+  {
+   "id": "b-6s-cvl-01-fighter-x1",
+   "unit": "fighter",
+   "carrier": "b-6s-cvl-01"
+  },
+  {
+   "id": "b-6s-cvl-01-fighter-x2",
+   "unit": "fighter",
+   "carrier": "b-6s-cvl-01"
+  },
+  {
+   "id": "b-6s-cvl-01-fighter-x3",
+   "unit": "fighter",
+   "carrier": "b-6s-cvl-01"
+  },
+  {
+   "id": "b-6s-cvl-01-torpedo_bomber-x1",
+   "unit": "torpedo_bomber",
+   "carrier": "b-6s-cvl-01"
+  },
+  {
+   "id": "b-6s-cvl-01-torpedo_bomber-x2",
+   "unit": "torpedo_bomber",
+   "carrier": "b-6s-cvl-01"
+  },
+  {
+   "id": "a-ca-01-seaplane-x1",
    "unit": "seaplane",
    "carrier": "a-ca-01"
   },
@@ -574,17 +998,7 @@
    "carrier": "a-ca-02"
   },
   {
-   "id": "a-ca-02-seaplane-x2",
-   "unit": "seaplane",
-   "carrier": "a-ca-02"
-  },
-  {
    "id": "a-ca-03-seaplane-x1",
-   "unit": "seaplane",
-   "carrier": "a-ca-03"
-  },
-  {
-   "id": "a-ca-03-seaplane-x2",
    "unit": "seaplane",
    "carrier": "a-ca-03"
   },
@@ -594,17 +1008,7 @@
    "carrier": "a-ca-04"
   },
   {
-   "id": "a-ca-04-seaplane-x2",
-   "unit": "seaplane",
-   "carrier": "a-ca-04"
-  },
-  {
    "id": "a-ca-05-seaplane-x1",
-   "unit": "seaplane",
-   "carrier": "a-ca-05"
-  },
-  {
-   "id": "a-ca-05-seaplane-x2",
    "unit": "seaplane",
    "carrier": "a-ca-05"
   },
@@ -772,38 +1176,69 @@
    "id": "a-cv-02-torpedo_bomber-x3",
    "unit": "torpedo_bomber",
    "carrier": "a-cv-02"
+  },
+  {
+   "id": "a-ca-06-seaplane-x1",
+   "unit": "seaplane",
+   "carrier": "a-ca-06"
+  },
+  {
+   "id": "a-ca-07-seaplane-x1",
+   "unit": "seaplane",
+   "carrier": "a-ca-07"
   }
  ],
  "airfields": [
   {
-   "id": "af-b-tulagi",
+   "id": "af-b-shortland",
    "faction": "B",
-   "name": "图拉吉水上飞机基地",
-   "coord": "1040",
+   "name": "肖特兰水上飞机基地",
+   "coord": "0831",
    "type": "seaplane",
    "runways": 4,
-   "radar": true,
+   "radar": false,
    "heavy_aa": 0,
    "light_aa": 2,
    "coastal": 0,
    "aircraft": [
-    "af-b-tulagi-h6k-1",
-    "af-b-tulagi-h6k-2",
-    "af-b-tulagi-h6k-3",
-    "af-b-tulagi-h6k-4"
+    "af-b-shortland-h6k-1",
+    "af-b-shortland-h6k-2",
+    "af-b-shortland-h6k-3",
+    "af-b-shortland-h6k-4",
+    "af-b-shortland-h6k-5",
+    "af-b-shortland-h6k-6"
+   ]
+  },
+  {
+   "id": "af-b-rekata",
+   "faction": "B",
+   "name": "莱卡塔水上飞机基地",
+   "coord": "1238",
+   "type": "seaplane",
+   "runways": 4,
+   "radar": false,
+   "heavy_aa": 0,
+   "light_aa": 2,
+   "coastal": 0,
+   "aircraft": [
+    "af-b-rekata-h6k-1",
+    "af-b-rekata-h6k-2",
+    "af-b-rekata-h6k-3",
+    "af-b-rekata-seaplane-1",
+    "af-b-rekata-seaplane-2"
    ]
   },
   {
    "id": "af-b-rabaul",
    "faction": "B",
    "name": "拉包尔机场",
-   "coord": "0428",
-   "type": "major",
+   "coord": "0323",
+   "type": "medium",
    "runways": 2,
-   "radar": true,
+   "radar": false,
    "heavy_aa": 1,
    "light_aa": 3,
-   "coastal": 0,
+   "coastal": 6,
    "aircraft": [
     "af-b-rabaul-fighter-1",
     "af-b-rabaul-fighter-2",
@@ -826,10 +1261,10 @@
    "id": "af-a-moresby",
    "faction": "A",
    "name": "莫尔兹比港机场",
-   "coord": "1612",
-   "type": "major",
+   "coord": "1611",
+   "type": "medium",
    "runways": 2,
-   "radar": true,
+   "radar": false,
    "heavy_aa": 0,
    "light_aa": 2,
    "coastal": 0,
@@ -843,6 +1278,86 @@
     "af-a-moresby-b25-1",
     "af-a-moresby-b25-2",
     "af-a-moresby-b25-3"
+   ]
+  },
+  {
+   "id": "af-a-vila",
+   "faction": "A",
+   "name": "维拉港水上飞机基地",
+   "coord": "3960",
+   "type": "seaplane",
+   "runways": 4,
+   "radar": false,
+   "heavy_aa": 0,
+   "light_aa": 2,
+   "coastal": 0,
+   "aircraft": [
+    "af-a-vila-pby-1",
+    "af-a-vila-pby-2",
+    "af-a-vila-pby-3",
+    "af-a-vila-pby-4"
+   ]
+  },
+  {
+   "id": "af-a-cairns",
+   "faction": "A",
+   "name": "凯恩斯机场",
+   "coord": "3707",
+   "type": "large",
+   "runways": 3,
+   "radar": true,
+   "heavy_aa": 0,
+   "light_aa": 2,
+   "coastal": 6,
+   "aircraft": [
+    "af-a-cairns-p40-1",
+    "af-a-cairns-p40-2",
+    "af-a-cairns-p40-3",
+    "af-a-cairns-p40-4",
+    "af-a-cairns-fighter-1",
+    "af-a-cairns-fighter-2",
+    "af-a-cairns-fighter-3",
+    "af-a-cairns-fighter-4",
+    "af-a-cairns-b17-1",
+    "af-a-cairns-b17-2",
+    "af-a-cairns-b17-3",
+    "af-a-cairns-b17-4"
+   ]
+  },
+  {
+   "id": "af-a-bowen",
+   "faction": "A",
+   "name": "鲍恩水上飞机基地",
+   "coord": "4613",
+   "type": "seaplane",
+   "runways": 4,
+   "radar": false,
+   "heavy_aa": 0,
+   "light_aa": 2,
+   "coastal": 0,
+   "aircraft": [
+    "af-a-bowen-pby-1",
+    "af-a-bowen-pby-2"
+   ]
+  },
+  {
+   "id": "af-b-lae",
+   "faction": "B",
+   "name": "莱城机场",
+   "coord": "0910",
+   "type": "medium",
+   "runways": 2,
+   "radar": false,
+   "heavy_aa": 0,
+   "light_aa": 2,
+   "coastal": 0,
+   "aircraft": [
+    "af-b-lae-a5m-1",
+    "af-b-lae-a5m-2",
+    "af-b-lae-a5m-3",
+    "af-b-lae-g4m-1",
+    "af-b-lae-g4m-2",
+    "af-b-lae-g4m-3"
    ]
   }
  ],

@@ -11,7 +11,7 @@
   "main_gun_caliber": 5,
   "heavy_aa": 2.0,
   "light_aa": 3.0,
-  "surface_radar": true,
+  "surface_radar": false,
   "air_radar": false,
   "speed_class": "fast",
   "torpedo_salvos": 3,
@@ -21,6 +21,6 @@
   "depth_charges": 6,
   "cargo": 0,
   "armored_carrier": false,
-  "gunnery": 3
+  "gunnery": 5
  }
 }

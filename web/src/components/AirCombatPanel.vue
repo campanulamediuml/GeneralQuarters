@@ -2,6 +2,7 @@
 import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import type { AirCombatReport } from '../types'
 import { aircraftSilhouette } from '../silhouettes'
+import { aircraftPictureURL } from '../silhouette-masks'
 import ShipSilhouette from './ShipSilhouette.vue'
 
 // 报告里只有机型名（如 "SB2C 地狱俯冲者" / "F6F 地狱猫"），按二战美军机代号反推剪影类型。
@@ -10,19 +11,28 @@ function kindOf(model: string) {
   if (code.startsWith('F4U') || code.startsWith('F6F') || code.startsWith('FM') || code === 'ZERO' || code.startsWith('A6M')) return 'fighter'
   if (code.startsWith('SBD') || code.startsWith('SB2C') || code.startsWith('D3A') || code.startsWith('D4Y')) return 'dive_bomber'
   if (code.startsWith('TBF') || code.startsWith('TBM') || code.startsWith('B5N')) return 'torpedo_bomber'
+  // 水平轰炸机（B-25 / B-17 / B-24）没有专用剪影，借用俯冲轰炸机的轮廓。
+  if (code.startsWith('B17') || code.startsWith('B-17') || code.startsWith('B24') || code.startsWith('B-24') || code.startsWith('B25') || code.startsWith('B-25')) return 'dive_bomber'
   if (code.startsWith('SOC') || code.startsWith('OS2U') || code.startsWith('E13A')) return 'seaplane'
   return 'recon'
 }
 
-function formation(models: string[], count: number, ids: string[] = []) {
+// 动画里的算子优先用 units/*.json 里配置的机型图片（content/misc/image/aircraft/*.png），
+// 图片缺失时才回退到内置矢量剪影，老存档和临时单位不会渲染成空白。
+function formation(models: string[], pictures: string[] | undefined, count: number, ids: string[] = []) {
   const types = models.length ? models : ['F6F']
+  const shots = pictures && pictures.length ? pictures : []
   const total = Math.max(1, Math.min(count || types.length, 8))
-  return Array.from({ length: total }, (_, index) => ({
-    key: index,
-    id: ids[index] || `slot-${index}`,
-    model: types[index % types.length],
-    path: aircraftSilhouette(kindOf(types[index % types.length])),
-  }))
+  return Array.from({ length: total }, (_, index) => {
+    const model = types[index % types.length]
+    return {
+      key: index,
+      id: ids[index] || `slot-${index}`,
+      model,
+      picture: shots.length ? aircraftPictureURL(shots[index % shots.length]) : undefined,
+      path: aircraftSilhouette(kindOf(model)),
+    }
+  })
 }
 
 function lossCount(losses: number, total: number) {
@@ -61,8 +71,14 @@ onUnmounted(() => timers.forEach(clearTimeout))
 const targetKind = computed<'ship' | 'group' | 'airfield'>(() => (props.report.target === 'airfield' ? 'airfield' : props.report.target === 'ship' ? 'ship' : 'group'))
 const isGround = computed(() => targetKind.value === 'airfield')
 const hasCAP = computed(() => props.report.defender_count > 0)
+// 打击报告（对舰/对地）：有 CAP 拦截时，closing 阶段先演双方对冲，交火阶段必须切回
+// "俯冲 + 目标舰队"，否则一场被 CAP 掩护下的空袭只看得到两排飞机、下面连船都没有，
+// 玩家会以为根本没打中（17 架打 1 架 CAP 的报告就是这种情况）。
+const isInterceptReport = computed(() => props.report.target === 'intercept')
+const showStrikeScene = computed(() => !isInterceptReport.value && (!hasCAP.value || phase.value !== 'closing'))
+const showCAPScene = computed(() => hasCAP.value && !showStrikeScene.value)
 // 没有 CAP 拦截的纯打击：飞机从上往下俯冲，下方是整支舰队（或机场）
-const isStrike = computed(() => !hasCAP.value && phase.value !== 'resolved')
+const isStrike = computed(() => showStrikeScene.value && phase.value !== 'resolved')
 const title = computed(() => (isGround.value ? '对地攻击' : '对舰攻击'))
 const subtitle = computed(() => (isGround.value ? 'AIRFIELD STRIKE' : 'ANTI-SHIP STRIKE'))
 const targetLabel = computed(() => props.report.target_name || (isGround.value ? '敌方机场' : '敌方舰队'))
@@ -71,8 +87,8 @@ const defenderTitle = computed(() => {
   return isGround.value ? `机场防空 · ${props.report.defender_faction}` : `舰队防空 · ${props.report.defender_faction}`
 })
 
-const attacker = computed(() => formation(props.report.attacker_models, props.report.attacker_count, (props.report.bombers || []).map((bomber) => bomber.attacker)))
-const defender = computed(() => formation(props.report.defender_models, props.report.defender_count))
+const attacker = computed(() => formation(props.report.attacker_models, props.report.attacker_pictures, props.report.attacker_count, (props.report.bombers || []).map((bomber) => bomber.attacker)))
+const defender = computed(() => formation(props.report.defender_models, props.report.defender_pictures, props.report.defender_count))
 const attackerDown = computed(() => lossCount(props.report.attacker_losses, props.report.attacker_count))
 const attackerHitIDs = computed(() => new Set((props.report.attacker_hits || []).filter((hit) => hit.outcome === '撤退' || hit.outcome === '损伤' || hit.outcome === '摧毁').map((hit) => hit.attacker)))
 const showLosses = computed(() => phase.value === 'losses' || phase.value === 'resolved')
@@ -125,7 +141,7 @@ function bomberLane(index: number) {
 </script>
 
 <template>
-  <section class="air-combat-view" :class="[phase, { resolved: showResult, 'no-cap': !hasCAP, strike: !hasCAP, ground: isGround }]" aria-live="polite">
+  <section class="air-combat-view" :class="[phase, { resolved: showResult, 'no-cap': !hasCAP, strike: showStrikeScene, ground: isGround }]" aria-live="polite">
     <header class="combat-header">
       <div><span class="section-kicker">{{ subtitle }} · {{ report.coord }} · {{ targetLabel }}</span><h1>{{ title }}</h1></div>
       <span class="combat-phase" :data-phase="phase">{{ phaseLabel }}</span>
@@ -146,24 +162,24 @@ function bomberLane(index: number) {
       <div class="combat-lane" aria-hidden="true"><i v-for="n in 7" :key="n" :style="{ left: (n * 14 - 6) + '%' }"></i></div>
 
       <!-- 空对空：双方对冲 -->
-      <template v-if="hasCAP">
+      <template v-if="showCAPScene">
         <div class="combat-formation formation-left" aria-hidden="true">
           <div v-for="plane in attacker" :key="plane.key" class="plane" :class="{ down: showLosses && plane.key < attackerDown }" :style="{ '--row': ((plane.key % 2) - 0.5) }">
-            <svg viewBox="0 0 62 44"><path :d="plane.path" /></svg>
+            <img v-if="plane.picture" class="plane-art" :src="plane.picture" :alt="plane.model" /><svg v-else viewBox="0 0 62 44"><path :d="plane.path" /></svg>
           </div>
         </div>
         <div class="combat-formation formation-right" aria-hidden="true">
           <div v-for="plane in defender" :key="plane.key" class="plane" :class="{ down: showLosses && plane.key < lossCount(report.defender_losses, report.defender_count) }">
-            <svg viewBox="0 0 62 44"><path :d="plane.path" /></svg>
+            <img v-if="plane.picture" class="plane-art" :src="plane.picture" :alt="plane.model" /><svg v-else viewBox="0 0 62 44"><path :d="plane.path" /></svg>
           </div>
         </div>
       </template>
 
       <!-- 对舰/对地：飞机在上方，目标编队/机场在下方，飞机俯冲到自己分配的目标上 -->
-      <template v-else>
+      <template v-if="showStrikeScene">
         <div class="strike-air" aria-hidden="true">
           <div v-for="(plane, index) in attacker" :key="plane.key" class="dive-plane" :class="{ 'lost': attackerHitIDs.has(plane.id), 'show-loss': showLosses }" :style="{ ...bomberLane(index) }">
-            <svg viewBox="0 0 62 44"><path :d="plane.path" /></svg>
+            <img v-if="plane.picture" class="plane-art" :src="plane.picture" :alt="plane.model" /><svg v-else viewBox="0 0 62 44"><path :d="plane.path" /></svg>
             <span v-if="bomberLane(index).target" class="dive-target">{{ bomberLane(index).target }}</span>
           </div>
         </div>
@@ -262,6 +278,9 @@ function bomberLane(index: number) {
 .combat-formation svg{width:64px;height:46px;fill:#83bed0;filter:drop-shadow(0 0 10px #65bad055)}
 .formation-left{left:6%;transform:translateY(-50%)}
 .formation-right{right:6%;transform:translateY(-50%)}
+.combat-formation img{width:64px;height:46px;object-fit:contain;filter:drop-shadow(0 0 10px #65bad055)}
+.formation-left img{transform:rotate(90deg)}
+.formation-right img{transform:rotate(-90deg)}
 .formation-left svg{transform:rotate(90deg)}
 .formation-right svg{transform:rotate(-90deg);fill:#d7bb7b}
 .closing .formation-left{transform:translate(calc(50% + 10px), -50%)}
@@ -275,12 +294,13 @@ function bomberLane(index: number) {
 .strike-air{position:absolute;left:4%;right:4%;top:34px;bottom:42%;z-index:2}
 .dive-plane{position:absolute;top:0;display:flex;flex-direction:column;align-items:center;gap:2px;margin-left:-34px;transition:transform 1.1s cubic-bezier(.3,.7,.3,1)}
 .dive-plane svg{width:58px;height:42px;fill:#9ed6e8;filter:drop-shadow(0 0 10px #65bad066);transform:rotate(180deg)}
+.dive-plane img{width:58px;height:42px;object-fit:contain;filter:drop-shadow(0 0 10px #65bad066);transform:rotate(180deg)}
 .dive-plane .dive-target{color:#8fb7c4;font:9px 'Noto Sans SC',sans-serif;white-space:nowrap}
 .closing .dive-plane{transform:translateY(0)}
 .clash .dive-plane{animation:dive-bomb 1.3s ease-in forwards;animation-delay:var(--delay)}
 .losses .dive-plane,.resolved .dive-plane{transform:translateY(20px);opacity:.85}
 .dive-plane.lost.show-loss{opacity:0;transition:opacity .6s}
-.dive-plane.lost.show-loss svg{animation:plane-down 1.1s ease-in forwards}
+.dive-plane.lost.show-loss svg,.dive-plane.lost.show-loss img{animation:plane-down 1.1s ease-in forwards}
 
 .fleet-deck{position:absolute;left:2%;right:2%;bottom:44px;z-index:2;display:flex;align-items:flex-end;justify-content:space-around;gap:4px;padding:10px 6px 6px;border-top:1px solid #2f4a52;background:linear-gradient(#0d2026cc,#0b1b20ee)}
 .fleet-ship{position:relative;display:flex;flex:1 1 0;min-width:0;flex-direction:column;align-items:center;gap:1px;opacity:.82;transition:transform .4s,opacity .4s}

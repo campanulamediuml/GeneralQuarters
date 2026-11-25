@@ -3,24 +3,24 @@
  "faction": "A",
  "type": "CA",
  "name": "阿斯托里亚",
- "picture": "misc/image/ship/northampton.png",
- "strength": 4,
+ "picture": "misc/image/ship/new_orleans.png",
+ "strength": 3,
  "card": {
-  "damage_control": 5,
+  "damage_control": 3,
   "main_gun_count": 8,
   "main_gun_caliber": 8,
   "heavy_aa": 2.0,
   "light_aa": 6.0,
-  "surface_radar": true,
+  "surface_radar": false,
   "air_radar": false,
   "speed_class": "normal",
   "torpedo_salvos": 2,
-  "aircraft": 2,
+  "aircraft": 1,
   "deck_capacity": 0,
   "elevator_count": 0,
   "depth_charges": 0,
   "cargo": 0,
   "armored_carrier": false,
-  "gunnery": 7
+  "gunnery": 8
  }
 }

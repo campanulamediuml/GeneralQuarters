@@ -108,8 +108,8 @@ func RefreshDeckLengths(state *State) {
 		if unit.Deck == nil {
 			continue
 		}
+		// 只改本回合可用长度；卡面的 DeckCapacity 保留基础值，供兵牌/角色卡显示。
 		unit.Deck.Length = deckLengthFor(*state, unit)
-		unit.Card.DeckCapacity = unit.Deck.Length
 	}
 }
 

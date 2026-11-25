@@ -59,6 +59,39 @@ func shipCards(ships []Unit) []AirShipCard {
 	return cards
 }
 
+// pictureCardsFor 只取图片路径，给那些已经有机型名列表的地方用。
+func pictureCardsFor(aircraftList []*AirUnit) []string {
+	_, pictures := aircraftModelCards(aircraftList)
+	return pictures
+}
+
+// aircraftModelCards 返回去重、排序后的机型名，以及一一对应的算子图片路径。
+// 前端空战动画按机型显示新算子图（content/misc/image/aircraft/*.png），
+// 只给机型名的话前端只能退回内置矢量剪影。
+func aircraftModelCards(aircraftList []*AirUnit) ([]string, []string) {
+	type card struct {
+		model   string
+		picture string
+	}
+	seen := map[string]bool{}
+	cards := []card{}
+	for _, aircraft := range aircraftList {
+		if aircraft == nil || seen[aircraft.Model] {
+			continue
+		}
+		seen[aircraft.Model] = true
+		cards = append(cards, card{aircraft.Model, aircraft.Picture})
+	}
+	sort.Slice(cards, func(i, j int) bool { return cards[i].model < cards[j].model })
+	models := make([]string, 0, len(cards))
+	pictures := make([]string, 0, len(cards))
+	for _, item := range cards {
+		models = append(models, item.model)
+		pictures = append(pictures, item.picture)
+	}
+	return models, pictures
+}
+
 func aircraftModels(aircraftList []*AirUnit) []string {
 	seen := map[string]bool{}
 	models := []string{}
@@ -235,22 +268,8 @@ func resolveDogfight(state *State, attackers, defenders []*AirUnit, report *AirC
 		}
 		bombers = append(bombers, aircraft)
 	}
-	// 规则书 809–813 行（抛弃挂载）：编队里没有护航战斗机时，挂炸弹的战斗轰炸机抛弃炸弹，
-	// 转为护航战斗机加入空战。只对俯冲轰炸机生效——鱼雷机/水平轰炸机没有空战能力，
-	// 丢掉武器等于把自己变成靶子，规则也没有授权。
-	if len(escorts) == 0 {
-		kept := bombers[:0]
-		for _, aircraft := range bombers {
-			if aircraft.Kind == "dive_bomber" && aircraft.Loadout.CarriesWeapon() && !aircraft.Bombed {
-				dropBombsForEscort(aircraft)
-				escorts = append(escorts, aircraft)
-				events = append(events, EngineEvent{Type: "bombs_dropped_for_escort", Audience: aircraft.Faction, Text: aircraft.Model + "没有护航战斗机，抛弃炸弹转为护航"})
-				continue
-			}
-			kept = append(kept, aircraft)
-		}
-		bombers = kept
-	}
+	// 约定已取消："没有护航就抛弹转护航"从规则书里删掉了。
+	// 轰炸机只能带着炸弹去投，护航是编队自己的责任，不该在结算时被悄悄改派。
 	// 第一行：攻击机（轰炸机排在最前，护航紧随其后），至少一列
 	columns := len(bombers)
 	if columns < len(attackers) {
@@ -359,11 +378,8 @@ func strikeCAPGroups(state State, defender, coord string) [][]*AirUnit {
 	groups := map[string][]*AirUnit{}
 	for _, aircraft := range state.Aircraft {
 		// 空中掩护（cover）到位后等同于该 hex 的 CAP，一起参与防守。
-		// 已经前出拦截过的 CAP 本回合已经在别处打过了，不再计入目标上空 CAP，
-		// 否则同一队战斗机一回合会打三轮（途中前出 + 投弹前 + 投弹后）。
-		if aircraft.InterceptedThisTurn {
-			continue
-		}
+		// CAP 会一直守在目标上空打，直到被击中或弹药耗尽才退出——不按"本回合已经
+		// 前出拦截过"排除，否则同一队战斗机一回合只肯打一次，第二波来了就干看着。
 		if aircraft.Faction == defender && (aircraft.Status == "cap" || aircraft.Status == "cover") && !aircraft.Returning && aircraft.TaskID != "" && Distance(capCoord(state, aircraft), coord) <= 1 {
 			groups[aircraft.TaskID] = append(groups[aircraft.TaskID], aircraft)
 		}
@@ -571,6 +587,11 @@ func resolveLightAAPool(state *State, attackers []*AirUnit, target *Unit, mixed 
 			break
 		}
 		plane := pool[nextUint64(&state.RNGState)%uint64(len(pool))]
+		// 规则书 719 行：轻型防空值不影响战略轰炸机——要求在很高高度投弹，小口径炮够不着。
+		// 骰子选中它们时这一发作废（也不产生混乱判定），骰数本身不变。
+		if isStrategicBomber(plane) {
+			continue
+		}
 		// 规则书 673、712 行：鱼雷机翻倍、复合编队减半，都落在这一颗骰子的命中率上。
 		hitChance := lightAAHitChance(*state, target, plane, mixed)
 		if probabilityRoll(&state.RNGState) < hitChance {
@@ -659,12 +680,17 @@ func strikeHitChance(state State, attacker *AirUnit, target *Unit, mixed, capRem
 	if attacker.Confusion {
 		chance -= 5
 	}
-	// 规则书 647 行：战略轰炸机攻击舰船，上述结算后的概率除以 2，单次命中概率仍至少 5%。
-	if isStrategicBomber(attacker) {
+	// 水平轰炸对舰惩罚：炸弹从高空砸机动目标，命中率按机种打折。
+	// 规则书 647 行只写了战略轰炸机，中型轰炸机（B-25/B-26）同样走水平轰炸，
+	// 这里统一成一条：水平轰炸 ×0.75，战略轰炸机 ÷2 且至少 5%。
+	switch {
+	case isStrategicBomber(attacker):
 		chance /= 2
 		if chance < 5 {
 			chance = 5
 		}
+	case isLevelBomber(attacker):
+		chance *= levelBomberShipPenalty
 	}
 	if chance < 5 {
 		return 5
@@ -675,7 +701,14 @@ func strikeHitChance(state State, attacker *AirUnit, target *Unit, mixed, capRem
 	return chance
 }
 
+// levelBomberShipPenalty 是中型轰炸机做水平轰炸攻击舰船时的命中率系数。
+// 规则书只给了战略轰炸机"除以 2"，中型机没有数值；这里取 0.75，
+// 意思是比俯冲/鱼雷差一档，但不至于像四发重轰那样基本打不中军舰。
+const levelBomberShipPenalty = 0.75
+
 // isStrategicBomber 识别战略轰炸机：按机种常量判断，没有常量时退回机型/型号关键字。
+// 注意这里不再按 "G4M" 命中：一式陆攻是鱼雷机，把它算成战略轰炸机会让它
+// 所有对舰雷击命中率被腰斩，而它恰恰是日军陆基航空队的主力。
 func isStrategicBomber(aircraft *AirUnit) bool {
 	if aircraft == nil {
 		return false
@@ -684,7 +717,19 @@ func isStrategicBomber(aircraft *AirUnit) bool {
 		return true
 	}
 	model := strings.ToUpper(aircraft.Model)
-	return strings.Contains(model, "B-17") || strings.Contains(model, "B-24") || strings.Contains(model, "B-29") || strings.Contains(model, "G4M")
+	return strings.Contains(model, "B-17") || strings.Contains(model, "B-24") || strings.Contains(model, "B-29")
+}
+
+// isLevelBomber 识别做水平轰炸的中型/重型轰炸机（B-25、B-26 这一档）。
+func isLevelBomber(aircraft *AirUnit) bool {
+	if aircraft == nil {
+		return false
+	}
+	switch aircraft.Kind {
+	case "level_bomber", "medium_bomber", "heavy_bomber":
+		return true
+	}
+	return false
 }
 
 // selectStrikeTarget 按交战权重给一个算子挑目标舰，已经沉没的船不参与（规则书 637 行）。
@@ -702,16 +747,32 @@ func selectStrikeTarget(state *State, attacker *AirUnit, ships []Unit) *Unit {
 //
 // 这个顺序本身就是战术：先到的波次打掉轻防空、点起火，后到的波次就打得更准
 // （规则书：目标燃烧 +10%、轻防空值每被打中一次 -10%），鱼雷机负责收人头。
-func bombWavePriority(kind string) int {
-	switch kind {
-	case "strategic_bomber", "level_bomber", "heavy_bomber":
+func bombWavePriority(aircraft *AirUnit) int {
+	if aircraft == nil {
+		return 1
+	}
+	switch aircraft.Kind {
+	case "strategic_bomber", "level_bomber", "medium_bomber", "heavy_bomber":
 		return 0
 	case "torpedo_bomber":
 		return 2
 	case "fighter":
-		return 3
+		// 挂弹战斗机按炸弹波处理，不是单独的"战斗机波"；不挂弹的不会进 bombers。
+		return 1
 	}
 	return 1
+}
+
+// strikeBomber 判断这架飞机这次是否携带弹药参与投弹：
+// 轰炸机按机种；战斗机只有挂炸弹时才算投弹，挂对空/侦察的是护航。
+func strikeBomber(aircraft *AirUnit) bool {
+	if aircraft == nil {
+		return false
+	}
+	if aircraft.Kind != "fighter" {
+		return true
+	}
+	return aircraft.Loadout.Weapon() == WeaponBomb
 }
 
 // resolveBombingWave 结算一次对舰攻击，顺序是：
@@ -730,7 +791,7 @@ func resolveBombingWave(state *State, bombers []*AirUnit, ships []Unit, mixed, c
 	order := []string{}
 	groups := map[string][]*AirUnit{}
 	for _, aircraft := range bombers {
-		if !operationalAircraft(state, aircraft) || aircraft.Kind == "fighter" {
+		if !operationalAircraft(state, aircraft) || !strikeBomber(aircraft) {
 			continue
 		}
 		target := selectStrikeTarget(state, aircraft, ships)
@@ -755,7 +816,7 @@ func resolveBombingWave(state *State, bombers []*AirUnit, ships []Unit, mixed, c
 		wave := make([]*AirUnit, 0, len(attackers))
 		wave = append(wave, attackers...)
 		sort.SliceStable(wave, func(i, j int) bool {
-			return bombWavePriority(wave[i].Kind) < bombWavePriority(wave[j].Kind)
+			return bombWavePriority(wave[i]) < bombWavePriority(wave[j])
 		})
 		// 这一轮投弹里所有炸弹都会砸在同一艘舰上：半路打沉不打断本轮，
 		// 沉没先挂起，等这支小队投完再处理（规则书"沉不沉影响的是第二轮轻防空"）。
@@ -784,7 +845,7 @@ func resolveBombingWave(state *State, bombers []*AirUnit, ships []Unit, mixed, c
 
 // resolveBombingOn 结算单个算子对指定舰的投弹；轻防空由 resolveBombingWave 按舰统一掷。
 func resolveBombingOn(state *State, attacker *AirUnit, target *Unit, mixed, capRemaining bool, report *AirCombatReport) []EngineEvent {
-	if !operationalAircraft(state, attacker) || attacker.Kind == "fighter" || target == nil {
+	if !operationalAircraft(state, attacker) || !strikeBomber(attacker) || target == nil {
 		return nil
 	}
 	events := []EngineEvent{}
@@ -866,6 +927,10 @@ func resolveAirStrike(state *State, taskID, coord string) []EngineEvent {
 	fleetID := FleetKey(&ships[0])
 	for level := recordContact(state, faction, fleetID, ships); level < 4; level = recordContact(state, faction, fleetID, ships) {
 	}
+	// 陆基 CAP / 空中掩护住在 state.GroundAir 里，防守判定只扫 state.Aircraft，
+	// 不投影进来就会出现"机场战斗机看着舰队挨炸"。
+	restoreDefenders := projectDefendingGroundAir(state, ships[0].Faction, coord, 1)
+	defer restoreDefenders()
 	groups := strikeCAPGroups(*state, ships[0].Faction, coord)
 	// 防守方明明有 CAP 却没来参战时说明原因（在返航、距离太远、或者还没起飞），
 	// 否则玩家只能看到 defender_count=0，以为防御失效了。
@@ -875,7 +940,8 @@ func resolveAirStrike(state *State, taskID, coord string) []EngineEvent {
 			capNote = append(capNote, EngineEvent{Type: "air_cap_unavailable", Audience: ships[0].Faction, Text: reason})
 		}
 	}
-	report := AirCombatReport{Coord: coord, AttackerFaction: faction, DefenderFaction: ships[0].Faction, AttackerModels: aircraftModels(attackers), AttackerCount: len(attackers)}
+	attackerModels, attackerPictures := aircraftModelCards(attackers)
+	report := AirCombatReport{Coord: coord, AttackerFaction: faction, DefenderFaction: ships[0].Faction, AttackerModels: attackerModels, AttackerPictures: attackerPictures, AttackerCount: len(attackers)}
 	// 任一攻击机曾被雷达截获，即视为"来袭机群已被提前发现"
 	for _, aircraft := range attackers {
 		if aircraft.WarnedIntercept {
@@ -883,17 +949,18 @@ func resolveAirStrike(state *State, taskID, coord string) []EngineEvent {
 			break
 		}
 	}
-	// bombs 单独统计"参与投弹的算子"，护航战斗机不计入
+	// bombs 单独统计"参与投弹的算子"：挂弹战斗机也算，不挂弹的护航战斗机不计入
 	for _, aircraft := range attackers {
-		if aircraft.Kind != "fighter" && operationalAircraft(state, aircraft) {
+		if strikeBomber(aircraft) && operationalAircraft(state, aircraft) {
 			report.Bombers = append(report.Bombers, AirHitDetail{Attacker: aircraft.ID, Model: aircraft.Model})
 		}
 	}
+	defenders := []*AirUnit{}
 	for _, group := range groups {
-		report.DefenderModels = append(report.DefenderModels, aircraftModels(group)...)
+		defenders = append(defenders, group...)
 		report.DefenderCount += len(group)
 	}
-	report.DefenderModels = aircraftModelsFromNames(report.DefenderModels)
+	report.DefenderModels, report.DefenderPictures = aircraftModelCards(defenders)
 	report.Target = string(StrikeTargetGroup)
 	report.TargetName = "混合舰队"
 	if len(ships) == 1 {
@@ -907,10 +974,16 @@ func resolveAirStrike(state *State, taskID, coord string) []EngineEvent {
 	bombers := []*AirUnit{}
 	mixedKinds := map[string]bool{}
 	for _, aircraft := range attackers {
-		if aircraft.Kind != "fighter" {
-			bombers = append(bombers, aircraft)
-			mixedKinds[aircraft.Kind] = true
+		if !strikeBomber(aircraft) {
+			continue
 		}
+		bombers = append(bombers, aircraft)
+		kind := aircraft.Kind
+		if kind == "fighter" {
+			// 挂弹战斗机走炸弹波，编队判定也按炸弹机算，不额外算一种"战斗机"编队。
+			kind = "dive_bomber"
+		}
+		mixedKinds[kind] = true
 	}
 	mixed := len(mixedKinds) > 1
 	// 规则书 689 行：重型防空从“当前参与空袭的算子”里随机选目标——护航战斗机同样会被打，
@@ -968,6 +1041,7 @@ func resolveAirStrike(state *State, taskID, coord string) []EngineEvent {
 	} else {
 		report.Summary = fmt.Sprintf("%s空袭%s：防空命中%d，投弹%d次命中%d次、其中有效损伤%d次（%d艘舰掉强度），攻击方%s", coord, report.TargetName, report.AAHits, report.BombAttempts, report.StrikeHits, report.DamageHits, fleetHits, airLossText(&report, true))
 	}
+	report.Turn = state.Turn
 	state.AirCombats = append(state.AirCombats, report)
 	if len(state.AirCombats) > 20 {
 		state.AirCombats = state.AirCombats[len(state.AirCombats)-20:]
@@ -1056,11 +1130,32 @@ func resolveGroundLandingRisk(state *State, aircraft *AirfieldAirUnit) (bool, []
 }
 
 func advanceAircraftReturn(state *State, aircraft *AirUnit) []EngineEvent {
+	// 母舰彻底没了（沉没/甲板报废）之后选定的备降机场：自己飞过去，到了才降落。
+	if aircraft.DivertAirfield != "" {
+		return advanceAirfieldDivert(state, aircraft)
+	}
 	carrier := state.Units[aircraft.CarrierID]
+	// 甲板被彻底摧毁等于这艘航母不再能回收飞机：换船，而不是让飞机对着废甲板盘旋。
+	if carrier != nil && carrier.Damage != nil && carrier.Damage.DeckDestroyed {
+		carrier = nil
+	}
 	if carrier == nil {
-		// 母舰沉没：不直接删除，转场到可用甲板或最近的机场（landIfCapacity 里按距离选择）
-		if landIfCapacity(state, aircraft, nil) {
-			return []EngineEvent{{Type: "air_ditched", Audience: aircraft.Faction, Text: aircraft.Model + "失去母舰，转场备降"}}
+		// 先找同阵营还有空甲的航母：哪怕隔着一整片海也要自己飞过去。
+		if host := altLanding(state, aircraft); host != nil {
+			aircraft.CarrierID = host.ID
+			carrier = host
+		}
+	}
+	if carrier == nil {
+		// 一艘能收的航母都没有了，才谈备降机场——而且是自己飞过去，到了才落地。
+		if aircraft.DivertAirfield == "" {
+			if airfield := alternateAirfield(state, aircraft); airfield != nil {
+				aircraft.DivertAirfield = airfield.ID
+				aircraft.TargetCoord = airfield.Coord
+			}
+		}
+		if aircraft.DivertAirfield != "" {
+			return advanceAirfieldDivert(state, aircraft)
 		}
 		delete(state.Aircraft, aircraft.ID)
 		return []EngineEvent{{Type: "air_destroyed", Audience: aircraft.Faction, Text: aircraft.Model + "失去母舰且无可用甲板或机场，航空算子被移除"}}

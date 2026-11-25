@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { AirUnit, Player } from '../types'
 import { aircraftFloats, aircraftSilhouette } from '../silhouettes'
+import { aircraftPictureURL } from '../silhouette-masks'
 
 // cycleClickable 默认 true：布尔型 prop 缺省时 Vue 会补成 false，必须用 withDefaults 显式给默认值，
 // 否则没传这个属性的地方（地图上的兵牌）循环角标会被渲染成拉不动的 static 按钮。
@@ -13,11 +14,27 @@ const modelCode = computed(() => props.aircraft.model.split(' ')[0])
 // 剪影按具体机型：F6F / SB2C / TBF / SOC / A6M2 / D3A1 / B5N2 / E13A 各自一条轮廓。
 const silhouette = computed(() => aircraftSilhouette(props.aircraft.kind, props.aircraft.model))
 const floats = computed(() => aircraftFloats(props.aircraft.kind, props.aircraft.model))
+// 兵牌图片走和舰船相同的 JSON 配置：units/*.json 的 aircraft[].picture → /content/...
+// 飞机默认按彩图原样渲染；picture_mode=mask 时才切成单色剪影。
+// 图片缺失或 404 时回退到内置矢量剪影，保证老存档、临时单位和坏路径都不会渲染成空白。
+const pictureURL = computed(() => aircraftPictureURL(props.aircraft.picture))
+const pictureMode = computed(() => props.aircraft.picture_mode === 'mask' ? 'mask' : 'image')
+const pictureBroken = ref(false)
+watch(pictureURL, (url) => {
+  pictureBroken.value = false
+  if (!url || typeof Image === 'undefined') return
+  const image = new Image()
+  image.onerror = () => {
+    if (pictureURL.value === url) pictureBroken.value = true
+  }
+  image.src = url
+}, { immediate: true })
+const usesPicture = computed(() => Boolean(pictureURL.value) && !pictureBroken.value)
 // 兵牌上的剪影逐机型不同，用 title 标出机型，方便一眼区分俯冲轰炸机、鱼雷机和水上侦察机。
 // 陆基机型（陆攻、P-40、B-25）不能上舰，标题和航程样式都按陆基来。
 const kindLabel = computed(() => {
   if (props.aircraft.airfield_only) {
-    return ({ fighter: '陆基战斗机', dive_bomber: '陆基轰炸机', torpedo_bomber: '陆基攻击机', recon: '陆基侦察机' } as Record<string, string>)[props.aircraft.kind] || props.aircraft.kind
+    return ({ fighter: '陆基战斗机', dive_bomber: '陆基轰炸机', torpedo_bomber: '陆基攻击机', level_bomber: '陆基中型轰炸机', strategic_bomber: '陆基战略轰炸机', recon: '陆基侦察机' } as Record<string, string>)[props.aircraft.kind] || props.aircraft.kind
   }
   return ({ fighter: '舰载战斗机', dive_bomber: '俯冲轰炸机', torpedo_bomber: '鱼雷轰炸机', recon: '舰载侦察机', seaplane: '水上侦察机' } as Record<string, string>)[props.aircraft.kind] || props.aircraft.kind
 })
@@ -46,7 +63,24 @@ const cycleLabel = computed(() => (cycleOn.value ? '自动循环已开启，点�
     </div>
     <div class="aircraft-body">
       <span class="aircraft-strength" title="机体强度">{{ aircraft.strength }}</span>
-      <svg class="aircraft-symbol" viewBox="0 0 62 44" aria-hidden="true" :data-aircraft-kind="aircraft.kind">
+      <img
+        v-if="usesPicture && pictureMode === 'image'"
+        class="aircraft-symbol aircraft-picture-image"
+        :src="pictureURL"
+        alt=""
+        :data-aircraft-kind="aircraft.kind"
+        :data-aircraft-picture="aircraft.picture"
+        @error="pictureBroken = true"
+      />
+      <span
+        v-else-if="usesPicture"
+        class="aircraft-symbol aircraft-picture"
+        aria-hidden="true"
+        :data-aircraft-kind="aircraft.kind"
+        :data-aircraft-picture="aircraft.picture"
+        :style="{ '--aircraft-picture': `url(${pictureURL})` }"
+      />
+      <svg v-else class="aircraft-symbol" viewBox="0 0 62 44" aria-hidden="true" :data-aircraft-kind="aircraft.kind">
         <path :d="silhouette" />
         <path v-if="floats" class="aircraft-floats" :d="floats" />
       </svg>
@@ -89,6 +123,8 @@ const cycleLabel = computed(() => (cycleOn.value ? '自动循环已开启，点�
 .aircraft-body{display:grid;grid-template-columns:14px minmax(0,1fr) 14px;align-items:center;min-height:0}
 .aircraft-strength{align-self:start;padding-top:3px;font:700 12px/1 'Rajdhani',sans-serif;text-align:center}
 .aircraft-symbol{width:100%;height:40px;color:#245b72;fill:currentColor;stroke:none}
+.aircraft-picture-image{display:block;width:100%;height:40px;object-fit:contain;object-position:center}
+.aircraft-picture{display:block;background:currentColor;-webkit-mask-image:var(--aircraft-picture);mask-image:var(--aircraft-picture);-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;-webkit-mask-size:contain;mask-size:contain}
 .aircraft-symbol .aircraft-floats{fill:color-mix(in srgb,#245b72 70%,#fff)}
 .seaplane .aircraft-symbol{color:#70441f}
 .aircraft-loadout{align-self:start;padding-top:3px;color:#42565b;font:10px/1 sans-serif;text-align:center}

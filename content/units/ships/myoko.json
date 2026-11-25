@@ -6,12 +6,12 @@
  "picture": "misc/image/ship/myoko.png",
  "strength": 4,
  "card": {
-  "damage_control": 5,
+  "damage_control": 3,
   "main_gun_count": 8,
   "main_gun_caliber": 8,
   "heavy_aa": 4.0,
-  "light_aa": 2.0,
-  "surface_radar": true,
+  "light_aa": 3.0,
+  "surface_radar": false,
   "air_radar": false,
   "speed_class": "normal",
   "torpedo_salvos": 2,
@@ -21,6 +21,6 @@
   "depth_charges": 0,
   "cargo": 0,
   "armored_carrier": false,
-  "gunnery": 7
+  "gunnery": 8
  }
 }

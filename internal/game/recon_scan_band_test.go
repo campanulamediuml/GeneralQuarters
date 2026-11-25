@@ -116,15 +116,38 @@ func TestWideSectorCoversMoreThanNarrow(t *testing.T) {
 	}
 }
 
-// TestReconStepHexesMatchesStep 当前回合高亮的格子必须就是这一步真正判定的格子。
-func TestReconStepHexesMatchesStep(t *testing.T) {
-	gameMap := MapDefinition{Rows: 10, Cols: 12}
-	narrow := ReconStepHexes(gameMap, "0606", "W", 60)
-	if len(narrow) != 2 {
-		t.Fatalf("60° 每回合应扫当前+前方 2 格：%v", narrow)
+// TestReconCurrentRingIsArc 本回合高亮的必须是整段弧，而不是飞机所在的那一个格子。
+// 实际判定扫的是"当前距离圈 + 下一距离圈 ∩ 扇面"，高亮必须和它一致。
+func TestReconCurrentRingIsArc(t *testing.T) {
+	state := sandboxState(t)
+	freezeFleets(&state)
+	aircraft := state.Aircraft["b-cv-04-dive_bomber-x1"]
+	carrier := state.Units[aircraft.CarrierID]
+	aircraft.Status = "recon"
+	aircraft.Heading = "W"
+	aircraft.SectorWidth = 60
+	aircraft.ReconRadius = 4
+	aircraft.OriginCoord = carrier.Coord
+	aircraft.Coord = "0606"
+
+	sector := projectReconSector(state, aircraft)
+	if len(sector.CurrentRingHexes) < 3 {
+		t.Fatalf("当前回合应该高亮整段弧（至少 3 格），实际只有 %d 格：%v", len(sector.CurrentRingHexes), sector.CurrentRingHexes)
 	}
-	wide := ReconStepHexes(gameMap, "0606", "W", 120)
-	if len(wide) < 3 {
-		t.Fatalf("120° 每回合应扫更宽：%v", wide)
+	ring := Distance(carrier.Coord, "0606")
+	for _, coord := range sector.CurrentRingHexes {
+		got := Distance(carrier.Coord, coord)
+		if got != ring && got != ring+1 {
+			t.Fatalf("高亮格 %s 不在当前/下一距离圈上（距离 %d，应为 %d 或 %d）", coord, got, ring, ring+1)
+		}
+	}
+	inside := map[string]bool{}
+	for _, coord := range sector.SectorHexes {
+		inside[coord] = true
+	}
+	for _, coord := range sector.CurrentRingHexes {
+		if !inside[coord] {
+			t.Fatalf("高亮格 %s 不在扇面覆盖范围内", coord)
+		}
 	}
 }

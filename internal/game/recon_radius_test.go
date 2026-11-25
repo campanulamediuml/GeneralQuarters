@@ -27,7 +27,7 @@ func TestReconRadiusIsFlyable(t *testing.T) {
 		if aircraft == nil || !canSearch(*aircraft) {
 			continue
 		}
-		loadout := LoadoutForTask(aircraft.Kind, aircraft.Seaplane, "recon", StrikeTargetShip)
+		loadout := LoadoutForTask(aircraft.Kind, aircraft.Seaplane, aircraft.AntiGround, aircraft.AntiShip, "recon", StrikeTargetShip)
 		sortie := SortieBaseRange(aircraft.BaseRange, loadout)
 		limit := ReconRadiusLimit(*aircraft)
 		if limit*2 > sortie {

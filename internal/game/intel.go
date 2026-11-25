@@ -8,10 +8,14 @@ import (
 
 // —— 情报等级的位置误差（规则书 142–147 行）——
 //
-// 情报等级 1：只显示阵营方块，位置误差可达 5 hex；
-// 情报等级 2：只显示编队大小，误差可达 3 hex；
-// 情报等级 3：显示船只类型，误差可达 1 hex；
+// 情报等级 1：只显示阵营方块，位置误差 2 hex；
+// 情报等级 2：只显示编队大小，误差 1 hex；
+// 情报等级 3：显示船只类型，位置准确；
 // 情报等级 4：显示前两艘船剪影，位置准确。
+//
+// 规则书原表给的是 5/3/1：5 hex 的误差比打击链路能承受的还大（整备 3 回合 +
+// 每回合飞 2 hex），标记和真身隔着 5 格时飞行员连往哪飞都不知道，
+// 结果是"有情报也打不着"。这里按实测下调为 2/1/0/0。
 // 误差是针对"最后发现位置"的固定偏移：同一份情报每次投影到屏幕的位置应保持一致，
 // 否则玩家每刷新一次看到的位置都在跳，反而比不显示更糟。
 
@@ -19,10 +23,8 @@ import (
 func intelErrorRadius(level int) int {
 	switch {
 	case level <= 1:
-		return 5
+		return 2
 	case level == 2:
-		return 3
-	case level == 3:
 		return 1
 	}
 	return 0
@@ -87,7 +89,7 @@ func stepInDirection(coord string, axis, steps int) string {
 	heading := directions[((axis%6)+6)%6]
 	current := coord
 	for index := 0; index < steps; index++ {
-		next := neighborToward(MapDefinition{Rows: 99, Cols: 99}, current, directionVector(heading))
+		next := neighborToward(MapDefinition{Rows: 99, Cols: 99}, current, directionVector(heading), nil)
 		if next == "" {
 			break
 		}

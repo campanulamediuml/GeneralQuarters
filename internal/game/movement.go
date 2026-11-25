@@ -58,6 +58,16 @@ func FleetMoveInterval(state State, unit *Unit) int {
 	return interval
 }
 
+// movementCooldownAfterMove 把"每 N 回合移动一次"换算成移动后要挂的冷却值。
+// 冷却在回合结算开始时递减，所以 N 回合周期要挂 N-1：普通舰队挂 2，
+// 第 1 回合动完，第 2、3 回合递减，第 4 回合（即第 3 个回合后）重新可动。
+func movementCooldownAfterMove(interval int) int {
+	if interval <= 1 {
+		return 0
+	}
+	return interval - 1
+}
+
 func FleetMoveCooldown(state State, fleetID string) int {
 	cooldown := 0
 	for _, unit := range state.Units {

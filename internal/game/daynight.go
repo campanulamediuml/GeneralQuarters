@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"math"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -308,6 +309,51 @@ func TurnsToLanded(state State, aircraft *AirUnit) int {
 	return (distance+speed-1)/speed + 1
 }
 
+// groundTurnsToLanded 估算机场编队"走完任务再落回机场"还要几回合。
+// 机场编队每回合按格推进（攻击 1 格、侦察 2 格），速度和舰载机不同，不能直接套 TurnsToLanded。
+func groundTurnsToLanded(state State, aircraft *AirfieldAirUnit) int {
+	airfield := airfieldFor(&state, aircraft.AirfieldID)
+	if airfield == nil || aircraft.Coord == "" {
+		return 1
+	}
+	home := airfield.Coord
+	// 速度必须和实际推进一致，否则召回判定会凭空多算一倍回合：
+	// 以前把攻击编队按 1 hex/回合估算，19 hex 外的目标被算成"往返 38 回合"，
+	// 中午起飞也判定赶不上天黑，直接把编队遣返回场。
+	speed := groundAirSpeed(state, aircraft)
+	distance := Distance(aircraft.Coord, home)
+	switch aircraft.Status {
+	case "attack", "attack_holding":
+		target := aircraft.TargetCoord
+		if target == "" {
+			target = home
+		}
+		distance = Distance(aircraft.Coord, target) + Distance(target, home)
+	case "recon":
+		distance = Distance(aircraft.Coord, home)
+	}
+	if speed < 1 {
+		speed = 1
+	}
+	return (distance+speed-1)/speed + 1
+}
+
+// groundAirborneUnits 返回所有在空中的机场算子（按 ID 排序，保证结算顺序稳定）。
+func groundAirborneUnits(state State) []*AirfieldAirUnit {
+	ids := make([]string, 0, len(state.GroundAir))
+	for id := range state.GroundAir {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	out := make([]*AirfieldAirUnit, 0, len(ids))
+	for _, id := range ids {
+		if aircraft := state.GroundAir[id]; aircraft != nil && airfieldAirborne(aircraft) {
+			out = append(out, aircraft)
+		}
+	}
+	return out
+}
+
 // recallLoopingAircraftBeforeNight 让飞行任务在入夜前统一返航（规则书 199 行）。
 // 触发条件是"这架飞机按自己离母舰的距离算，已经不够时间回家了"，
 // 而不是全局固定提前两回合：同样的两回合，对 1 hex 外的 CAP 是浪费，对 13 hex 外的
@@ -324,9 +370,25 @@ func recallLoopingAircraftBeforeNight(state *State) []EngineEvent {
 			continue
 		}
 		need := TurnsToLanded(*state, aircraft)
+		// 打击编队是一次性出击，来不来得及完全由玩家自己决定：服务器只提醒一次，不替玩家掉头。
+		// 以前这里一刀切强制返航，于是傍晚从拉包尔打莫尔兹比（19 hex）在起飞那一刻就被判
+		// "走完任务再返航要 38 回合"直接弹回机场，等于取消了整个远程陆攻。
+		if aircraft.Status == "attack" || aircraft.Status == "attack_holding" {
+			if need >= remaining && !aircraft.NightWarned {
+				aircraft.NightWarned = true
+				events = append(events, EngineEvent{Type: "night_warning", Audience: aircraft.Faction, Text: fmt.Sprintf("%s打击编队天黑前回不来：走完任务再返航要%d回合，距天黑只剩%d回合", aircraft.Model, need, remaining)})
+			}
+			continue
+		}
 		// 按"这架飞机自己的计划"折算：走完任务再回家要多少回合 vs 距天黑还剩多少回合。
-		// 不管赶不赶得上，都必须掉头——玩家要的是自动返航，不是死在天上。
-		if need >= remaining-1 {
+		// CAP／侦察这类要一直留在空中的任务，赶不上就掉头——它们本来也没有"打完就回家"的终点。
+		//
+		// 余量要留两回合，不是一回合：
+		//   - 召回在回合结束时登记，飞机下一回合才真的往回飞（这一回合已经往外飞过了）；
+		//   - 侦察机每继续飞一回合，"要回家的回合数"+1、可用回合数−1，一来一回差两回合。
+		// 只留一回合余量时，最后一刻的召回已经来不及落地：珊瑚海第 59 回合那 8 架 E13A
+		// 就是"距天黑只剩 7 回合、返航要 7 回合"被召回的，落地前一格被判失联。
+		if need+1 >= remaining-1 {
 			label := map[string]string{"cap": "CAP", "cover": "空中掩护", "recon": "侦察", "attack": "打击编队", "attack_holding": "打击编队"}[aircraft.Status]
 			if label == "" {
 				label = "飞行任务"
@@ -351,6 +413,33 @@ func recallLoopingAircraftBeforeNight(state *State) []EngineEvent {
 			events = append(events, EngineEvent{Type: "night_recall", Audience: aircraft.Faction, Text: fmt.Sprintf("%s天黑前结束%s循环返航", aircraft.Model, cycleKindName(aircraft.CycleKind))})
 		}
 	}
+	// 机场编队同样要入夜返航：以前这里只遍历舰载机，陆攻会一直挂在天上不回来了。
+	for _, aircraft := range groundAirborneUnits(*state) {
+		if aircraft.Returning {
+			continue
+		}
+		need := groundTurnsToLanded(*state, aircraft)
+		// 机场打击编队同理：打得完打不完是玩家的赌注，服务器只提醒一次。
+		if aircraft.Status == "attack" || aircraft.Status == "attack_holding" {
+			if need >= remaining && !aircraft.NightWarned {
+				aircraft.NightWarned = true
+				events = append(events, EngineEvent{Type: "night_warning", Audience: aircraft.Faction, Text: fmt.Sprintf("%s陆攻编队天黑前回不来：走完任务再返航要%d回合，距天黑只剩%d回合", aircraft.Model, need, remaining)})
+			}
+			continue
+		}
+		// 同样的两回合余量：落地判定的那一回合也算在航程里。
+		if need+1 < remaining-1 {
+			continue
+		}
+		aircraft.Returning = true
+		aircraft.TargetCoord = ""
+		aircraft.TrackingFleetID = ""
+		if need <= remaining {
+			events = append(events, EngineEvent{Type: "night_recall", Audience: aircraft.Faction, Text: fmt.Sprintf("%s走完任务再返航还要%d回合、距天黑只剩%d回合，强制返航", aircraft.Model, need, remaining)})
+		} else {
+			events = append(events, EngineEvent{Type: "night_warning", Audience: aircraft.Faction, Text: fmt.Sprintf("%s已经赶不上了：返航要%d回合，距天黑只剩%d回合，立即掉头", aircraft.Model, need, remaining)})
+		}
+	}
 	return events
 }
 
@@ -361,6 +450,7 @@ func recallLoopingAircraftBeforeNight(state *State) []EngineEvent {
 //   - 全部强制转入返航（还在执行任务的一律终止）；
 //   - 燃油够不够决定它能不能回家，不够的按燃油耗尽坠毁；
 //   - 回到甲板的按夜间着舰判定（航母 70% 摔毁、机场 20%），回来一架算一架。
+//
 // 也就是说 19:40 之后不是"全灭"，而是"摸黑返航，然后各凭运气"。
 func forceNightLanding(state *State) []EngineEvent {
 	events := []EngineEvent{}
@@ -369,18 +459,36 @@ func forceNightLanding(state *State) []EngineEvent {
 		if aircraft == nil || !airborne(aircraft) {
 			continue
 		}
-		if aircraft.Returning {
+		carrier := state.Units[aircraft.CarrierID]
+		if carrier != nil && !aircraft.Seaplane && Distance(aircraft.Coord, carrier.Coord) <= 2 {
+			// 天黑前最后一个机会：够得着母舰就当场强制着舰（夜间着舰照常判摔毁）。
+			aircraft.Coord = carrier.Coord
+			aircraft.Returning = true
+			forward := aircraft.ForwardCoord
+			aircraft.ForwardCoord = ""
+			events = append(events, advanceAircraftReturn(state, aircraft)...)
+			_ = forward
+			if state.Aircraft[aircraft.ID] != nil && airborne(aircraft) {
+				// 甲板满了、或者升降机排队排不下：天黑之后不可能再等，按坠海处理。
+				delete(state.Aircraft, aircraft.ID)
+				events = append(events, EngineEvent{Type: "air_destroyed", Audience: aircraft.Faction, Text: fmt.Sprintf("%s天黑未能落回甲板，坠毁", aircraft.Model)})
+			}
 			continue
 		}
-		aircraft.Returning = true
-		aircraft.ForwardCoord = ""
-		aircraft.TrackingFleetID = ""
-		aircraft.TargetCoord = ""
-		risk := "70%"
-		if aircraft.Seaplane {
-			risk = "20%"
+		delete(state.Aircraft, aircraft.ID)
+		events = append(events, EngineEvent{Type: "air_destroyed", Audience: aircraft.Faction, Text: fmt.Sprintf("%s天黑时仍在空中，未能返航", aircraft.Model)})
+	}
+	// 机场编队同理：够得着机场就当场降落，够不着就算损失。
+	for _, aircraft := range groundAirborneUnits(*state) {
+		airfield := airfieldFor(state, aircraft.AirfieldID)
+		if airfield != nil && Distance(aircraft.Coord, airfield.Coord) <= 2 {
+			aircraft.Coord = airfield.Coord
+			aircraft.Returning = true
+			events = append(events, landGroundAircraft(state, aircraft, airfield)...)
+			continue
 		}
-		events = append(events, EngineEvent{Type: "night_forced_return", Audience: aircraft.Faction, Text: fmt.Sprintf("%s天黑未能返航，强制摸黑返航（剩余航程%d，着舰摔毁风险%s）", aircraft.Model, aircraft.Range(), risk)})
+		delete(state.GroundAir, aircraft.ID)
+		events = append(events, EngineEvent{Type: "air_destroyed", Audience: aircraft.Faction, Text: fmt.Sprintf("%s天黑时仍在空中，未能返航", aircraft.Model)})
 	}
 	return events
 }

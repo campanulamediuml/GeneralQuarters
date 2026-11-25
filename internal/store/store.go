@@ -453,6 +453,26 @@ func (s *Store) Resolve(ctx context.Context, room Room, newState game.State, eve
 	return room, nil
 }
 
+// AllEvents 是观战视角的战报：不按 audience 过滤，双方阵营的内部事件都能看到。
+func (s *Store) AllEvents(ctx context.Context, roomID string) ([]Event, error) {
+	rows, err := s.DB.QueryContext(ctx, `SELECT id,turn,sequence,type,text,created_at FROM events WHERE room_id=? ORDER BY id DESC LIMIT 200`, roomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	events := []Event{}
+	for rows.Next() {
+		var event Event
+		var created string
+		if err := rows.Scan(&event.ID, &event.Turn, &event.Sequence, &event.Type, &event.Text, &created); err != nil {
+			return nil, err
+		}
+		event.CreatedAt, _ = time.Parse(time.RFC3339Nano, created)
+		events = append(events, event)
+	}
+	return events, rows.Err()
+}
+
 func (s *Store) Events(ctx context.Context, roomID, faction string) ([]Event, error) {
 	rows, err := s.DB.QueryContext(ctx, `SELECT id,turn,sequence,type,text,created_at FROM events WHERE room_id=? AND (audience='all' OR audience=?) ORDER BY id DESC LIMIT 100`, roomID, faction)
 	if err != nil {

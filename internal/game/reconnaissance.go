@@ -35,7 +35,7 @@ func ReconRadiusLimit(aircraft AirUnit) int {
 	// 按侦察任务实际会挂的那套算（recon + 副油箱），不是转场挂载：
 	// 用转场航程 ÷2 算出来的半径，飞机根本飞不到——燃油会在半路把它叫回来，
 	// 于是面板写着 12 hex、实际只能扫 10 hex。
-	loadout := LoadoutForTask(aircraft.Kind, aircraft.Seaplane, "recon", StrikeTargetShip)
+	loadout := LoadoutForTask(aircraft.Kind, aircraft.Seaplane, aircraft.AntiGround, aircraft.AntiShip, "recon", StrikeTargetShip)
 	limit := SortieBaseRange(base, loadout) / 2
 	if limit < 1 {
 		return 1
@@ -394,26 +394,6 @@ func ReconScanBandHexes(gameMap MapDefinition, origin, heading string, width, ra
 
 // ReconScannedRingHexes 返回编队此刻所在的这一"扫描带"：当前距离圈 + 下一距离圈里属于本扇面的格子。
 // 供 UI 高亮本回合真正判定的范围，避免再出现"画的是一块、判定的是一条线"。
-// ReconStepHexes 返回某一格在当前位置这一回合会判定的格子（自己 + 前方，120° 再带两侧）。
-func ReconStepHexes(gameMap MapDefinition, coord, heading string, width int) []string {
-	if coord == "" {
-		return []string{}
-	}
-	out := []string{coord}
-	forward := nextReconCoord(gameMap, coord, heading)
-	if forward != "" && forward != coord {
-		out = append(out, forward)
-		if width >= 120 {
-			for _, side := range searchHeadings(heading)[1:] {
-				if next := nextReconCoord(gameMap, forward, side); next != "" && !containsCoord(out, next) {
-					out = append(out, next)
-				}
-			}
-		}
-	}
-	return out
-}
-
 func ReconScannedRingHexes(gameMap MapDefinition, origin, coord, heading string, width, radius int) []string {
 	if origin == "" || coord == "" {
 		return []string{}
@@ -604,13 +584,15 @@ func reconDetectionChance(state State, aircraft *AirUnit, members []Unit) float6
 		case "storm":
 			chance -= 15
 		}
-		// 规则书 543 行：按距离“己方出发母舰”每 hex -2%。母舰一直在动，
-		// 用起飞点算会让航母一边前进一边给侦察机白送距离加成。
+		// 规则书 543 行原值是每 hex -2%，实测太狠：8 格外基本搜不到，
+		// 而整备 + 飞行 + 空袭这条链路根本来不及。这里下调为每 hex -1%，
+		// 有效搜索半径从 6–8 格放宽到 12–15 格。
+		// 母舰一直在动，用起飞点算会让航母一边前进一边给侦察机白送距离加成。
 		origin := aircraft.OriginCoord
 		if mother := state.Units[aircraft.CarrierID]; mother != nil {
 			origin = mother.Coord
 		}
-		chance -= 2 * float64(Distance(origin, members[0].Coord))
+		chance -= float64(Distance(origin, members[0].Coord))
 		if contact := state.Contacts[aircraft.Faction][FleetKey(&members[0])]; contact != nil && contact.Level >= 1 {
 			chance += 5
 		}
@@ -753,6 +735,17 @@ func refreshContactMembers(state *State) {
 					aircraft.TargetCoord = display
 					aircraft.SearchTurns = 0
 				}
+			}
+			// 机场打击编队同样跟着情报走：它们住在 GroundAir 里，以前这段只扫舰载机，
+			// 于是陆攻的目标 hex 永远停在出航时那一格，情报更新了也不掉头。
+			for _, aircraft := range state.GroundAir {
+				if aircraft == nil || aircraft.Faction != observer || aircraft.TargetFleetID != fleetID {
+					continue
+				}
+				if aircraft.TargetCoord == display {
+					continue
+				}
+				aircraft.TargetCoord = display
 			}
 		}
 	}

@@ -101,7 +101,7 @@ function number(value: number) {
       <div v-if="unit.card.hangar_capacity"><dt>{{ isCarrier ? '舰载机 / 机库' : '水机 / 机库' }}</dt><dd>{{ unit.card.aircraft }} / {{ unit.card.hangar_capacity }}</dd></div>
       <div v-if="unit.card.torpedo_salvos"><dt>鱼雷齐射</dt><dd>{{ unit.card.torpedo_salvos }} 轮</dd></div>
       <div v-if="unit.card.depth_charges"><dt>深水炸弹</dt><dd>{{ unit.card.depth_charges }} 组</dd></div>
-      <div v-if="unit.card.cargo"><dt>货物</dt><dd>{{ unit.card.cargo }}</dd></div>
+      <div v-if="unit.type === 'TRS' || unit.card.cargo"><dt>货物</dt><dd>{{ unit.card.cargo }}</dd></div>
     </dl>
 
     <section v-if="damageLabels.length" class="ship-damage-report"><strong>当前损伤</strong><div><span v-for="label in damageLabels" :key="label">{{ label }}</span></div></section>

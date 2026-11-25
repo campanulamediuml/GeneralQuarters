@@ -103,7 +103,8 @@ func TestTransportUnloadsAfterThreeTurns(t *testing.T) {
 	}
 	state.FleetSessions["TG-TRS"] = 3
 	events := resolveUnloading(&state)
-	if len(events) != 1 || events[0].Type != "troop_unloading" {
+	// 卸载的舰队同时会向敌方完全暴露（规则书 535 行），所以这里只筛卸载事件本身。
+	if !hasEvent(events, "troop_unloading") {
 		t.Fatalf("停留满 3 回合没有卸载：%+v", events)
 	}
 	if supply := shoreSupplies(state, "A", "0207"); supply != 1 {
@@ -133,7 +134,7 @@ func TestTransportWithdrawsWhenEmpty(t *testing.T) {
 	}
 }
 
-// 舰队在同一 hex 连续停留才累计停留回合数。
+// 舰队在同一 hex 连续停留才累计停留回合数；换 hex 后从到达当回合算第 1 回合。
 func TestFleetSessionsCountConsecutiveStays(t *testing.T) {
 	state := sandboxState(t)
 	state.FleetStays = map[string]string{"TG-A": "0202"}
@@ -144,8 +145,8 @@ func TestFleetSessionsCountConsecutiveStays(t *testing.T) {
 	}
 	state.FleetStays["TG-A"] = "0203"
 	trackFleetSessions(&state)
-	if state.FleetSessions["TG-A"] != 0 {
-		t.Fatalf("换 hex 后停留计数应清零：%d", state.FleetSessions["TG-A"])
+	if state.FleetSessions["TG-A"] != 1 {
+		t.Fatalf("换 hex 后停留计数应从 1 重新算：%d", state.FleetSessions["TG-A"])
 	}
 }
 

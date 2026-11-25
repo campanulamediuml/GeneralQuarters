@@ -4,14 +4,14 @@
  "type": "CA",
  "name": "青叶",
  "picture": "misc/image/ship/furutaka.png",
- "strength": 4,
+ "strength": 3,
  "card": {
-  "damage_control": 5,
+  "damage_control": 2,
   "main_gun_count": 6,
   "main_gun_caliber": 8,
-  "heavy_aa": 4.0,
+  "heavy_aa": 1.0,
   "light_aa": 2.0,
-  "surface_radar": true,
+  "surface_radar": false,
   "air_radar": false,
   "speed_class": "normal",
   "torpedo_salvos": 2,
@@ -21,7 +21,7 @@
   "depth_charges": 0,
   "cargo": 0,
   "armored_carrier": false,
-  "gunnery": 5,
+  "gunnery": 8,
   "hangar_capacity": 2
  }
 }

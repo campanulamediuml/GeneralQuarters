@@ -10,8 +10,8 @@ func TestCompositePackageRollsLightAAOncePerSide(t *testing.T) {
 		total := 0
 		for i := 0; i < runs; i++ {
 			state := &State{
-				RNGState: uint64(7919*i+13)*2654435761 + 1,
-				Map:      MapDefinition{Rows: 7, Cols: 9},
+				RNGState:  uint64(7919*i+13)*2654435761 + 1,
+				Map:       MapDefinition{Rows: 7, Cols: 9},
 				Doctrines: map[string]string{"A": "us", "B": "japan"},
 				Units: map[string]*Unit{
 					"bb": {ID: "bb", Faction: "B", FleetID: "b", Type: "BB", Coord: "0202", Name: "bb",

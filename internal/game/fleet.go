@@ -196,7 +196,7 @@ func edgeHeadingToward(state State, unit *Unit) string {
 	options := []sectorPoint{{x: axis.x, y: axis.y}, {x: axis.x*0.5 - axis.y*0.866, y: axis.x*0.866 + axis.y*0.5}, {x: axis.x*0.5 + axis.y*0.866, y: -axis.x*0.866 + axis.y*0.5}}
 	best, bestGap := "", 999
 	for _, option := range options {
-		next := neighborToward(state.Map, unit.Coord, option)
+		next := neighborToward(state.Map, unit.Coord, option, nil)
 		if next == "" {
 			continue
 		}
@@ -215,7 +215,9 @@ func centerCoord(gameMap MapDefinition) string {
 }
 
 // neighborToward 找出当前 hex 里最接近给定方向的相邻可通行 hex。
-func neighborToward(gameMap MapDefinition, coord string, direction sectorPoint) string {
+// 暗礁一律跳过；allowed 非空时再叠一层通行判定——舰队撤离用 fleetCanEnter，
+// 情报投影这类纯几何用途传 nil。
+func neighborToward(gameMap MapDefinition, coord string, direction sectorPoint, allowed func(string) bool) string {
 	fromRow, fromCol, err := ParseCoord(coord)
 	if err != nil {
 		return ""
@@ -228,6 +230,9 @@ func neighborToward(gameMap MapDefinition, coord string, direction sectorPoint) 
 			continue
 		}
 		if terrainAt(gameMap, candidate) == "reef" {
+			continue
+		}
+		if allowed != nil && !allowed(candidate) {
 			continue
 		}
 		x, y := hexCenter(row, col)
@@ -313,6 +318,85 @@ func removeFleet(state *State, fleetID, faction string) []EngineEvent {
 	return []EngineEvent{{Type: "fleet_withdrawn", Audience: faction, Text: fmt.Sprintf("%s退出战场：%s", strings.Join(removed, "、"), "撤出地图边缘")}}
 }
 
+// —— 岸轰 / 卸载的暴露（规则书 535 行）——
+
+// enemyFactionOf 返回对手阵营。剧本只有 A/B 两方，未知阵营直接返回空串（不做暴露）。
+func enemyFactionOf(faction string) string {
+	switch faction {
+	case "A":
+		return "B"
+	case "B":
+		return "A"
+	}
+	return ""
+}
+
+// exposeFleetAtMaxIntel 把正在岸轰或卸载的舰队对敌方暴露到最高情报等级。
+// 规则书 535 行："运输船卸货和炮击的舰队会自动以最高情报等级暴露行踪，无论白天和黑夜。"
+//
+// 三点实现约定：
+//  1. 直接写满级而不是走 recordContact 的 +1 累加——炮击本身就该一次给到 4 级；
+//  2. 满级情报含真实位置与完整编成，Coord / DisplayCoord / Members 一起刷新，不给误差；
+//  3. 打上 IntelFresh 并清掉过时计数，否则回合末的 decayContactIntel 会在同一回合
+//     就把这条刚暴露的情报降一级（岸轰结算在衰减之前）。
+//
+// 已经满级时不重复发事件，但位置/编成仍会刷新：同一回合先岸轰后卸载的舰队只报一次。
+func exposeFleetAtMaxIntel(state *State, fleetID, reason string) []EngineEvent {
+	members := fleetMembers(state, fleetID)
+	if len(members) == 0 {
+		return nil
+	}
+	observer := enemyFactionOf(members[0].Faction)
+	if observer == "" {
+		return nil
+	}
+	if state.Contacts == nil {
+		state.Contacts = map[string]map[string]*FleetContact{}
+	}
+	if state.Contacts[observer] == nil {
+		state.Contacts[observer] = map[string]*FleetContact{}
+	}
+	contact := state.Contacts[observer][fleetID]
+	if contact == nil {
+		contact = &FleetContact{FleetID: fleetID}
+		state.Contacts[observer][fleetID] = contact
+	}
+	wasLevel := contact.Level
+	contact.Faction = members[0].Faction
+	contact.Level = intelMaxLevel
+	contact.Coord = members[0].Coord
+	// 满级情报的位置就是真实位置：误差为 0，显示位置也只能跟着真实坐标走。
+	contact.DisplayCoord = members[0].Coord
+	contact.Heading = members[0].Heading
+	contact.Count = len(members)
+	contact.Members = make([]Unit, len(members))
+	copy(contact.Members, members)
+	for index := range contact.Members {
+		contact.Members[index].LegalMoves = nil
+	}
+	// 本回合新情报：回合末的情报衰减跳过这一条（规则书 535 行的暴露不会同回合掉级）。
+	if state.IntelFresh == nil {
+		state.IntelFresh = map[string]bool{}
+	}
+	key := observer + "|" + fleetID
+	state.IntelFresh[key] = true
+	if state.IntelStaleTurns != nil {
+		delete(state.IntelStaleTurns, key)
+	}
+	if wasLevel >= intelMaxLevel {
+		return nil
+	}
+	name := members[0].FleetName
+	if name == "" {
+		name = fleetID
+	}
+	return []EngineEvent{{
+		Type:     "fleet_exposed",
+		Audience: observer,
+		Text:     fmt.Sprintf("%s在%s%s，行踪完全暴露：位置与编成已知（情报4）", name, members[0].Coord, reason),
+	}}
+}
+
 // —— 运输卸载（规则书 493–497 行）——
 
 // unitUnloading 判断一艘运输船本回合能不能卸载物资：
@@ -322,6 +406,11 @@ func unitUnloading(state State, unit *Unit) *Airfield {
 		return nil
 	}
 	if SessionOf(state, FleetKey(unit)) < 3 {
+		return nil
+	}
+	// 舰队必须真的能待在这个 hex 上：旧存档里可能有航母编队停在机场格/浅滩上，
+	// 那种"非法驻留"不能凭坐标蹭到卸载或岸轰。
+	if !fleetCanEnter(state, unit.Coord, FleetHasCarrier(state, FleetKey(unit))) {
 		return nil
 	}
 	airfield := shoreTargetAt(state, unit.Faction, unit.Coord)
@@ -439,6 +528,9 @@ func resolveUnloading(state *State) []EngineEvent {
 			total := addShoreSupplies(state, unit.Faction, unit.Coord, delivered)
 			events = append(events, EngineEvent{Type: "troop_unloading", Audience: unit.Faction, Text: fmt.Sprintf("%s在%s卸载物资%d点（累计%d点）", unit.FleetName, airfield.Name, delivered, total)})
 		}
+		// 卸货的舰队对敌方完全暴露（规则书 535 行），无论白天黑夜。
+		// 放在卸载战报之后：玩家先看到"卸了多少"，再看到"因此暴露了"。
+		events = append(events, exposeFleetAtMaxIntel(state, fleetID, "卸载物资")...)
 		// 运输船卸空后舰队强制撤离
 		left := false
 		for _, member := range fleetMembers(state, fleetID) {
@@ -462,7 +554,8 @@ func resolveUnloading(state *State) []EngineEvent {
 }
 
 // trackFleetSessions 在每回合结束时更新停留计数：
-// 与上一回合同一 hex 则 +1，否则清零重来。岸轰用"停留满 1 回合"，运输卸载用"停留满 3 回合"。
+// 与上一回合同一 hex 则 +1，否则按新到达记 1（到达当回合算第 1 回合）。
+// 岸轰用"停留满 1 回合"，运输卸载用"停留满 3 回合"。
 func trackFleetSessions(state *State) {
 	if state.FleetSessions == nil {
 		state.FleetSessions = map[string]int{}
@@ -486,7 +579,8 @@ func trackFleetSessions(state *State) {
 		if state.FleetStays[fleetID] == coord {
 			state.FleetSessions[fleetID]++
 		} else {
-			state.FleetSessions[fleetID] = 0
+			// 新到达（或刚移动过）：到达当回合算第 1 回合，所以不是 0。
+			state.FleetSessions[fleetID] = 1
 		}
 	}
 }

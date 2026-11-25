@@ -118,6 +118,30 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 	if err != nil {
 		return state, err
 	}
+	airfieldCoords := make(map[string]bool, len(scenario.Airfields))
+	for _, airfield := range scenario.Airfields {
+		airfieldCoords[airfield.Coord] = true
+	}
+	// 同一舰队只要有一艘航母，整队的出生点就必须避开浅滩和机场格；
+	// 否则第一艘是巡洋舰时选到浅滩，后面加入的航母会直接实例化失败。
+	fleetCarrier := map[string]bool{}
+	for _, deployment := range scenario.Deployments {
+		fleetID := deployment.FleetID
+		if fleetID == "" {
+			fleetID = deployment.ID
+		}
+		lookupID := deployment.Unit
+		if deployment.Ship != "" {
+			lookupID = deployment.Ship
+		}
+		definition, ok := definitions.lookup(deployment.Faction, lookupID)
+		if !ok {
+			continue
+		}
+		if isCarrierType(definition.Type) {
+			fleetCarrier[fleetID] = true
+		}
+	}
 	fleetHomes := map[string]Deployment{}
 	for _, deployment := range scenario.Deployments {
 		if deployment.Faction != "A" && deployment.Faction != "B" {
@@ -143,30 +167,6 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		if definition.Strength <= 0 {
 			return state, fmt.Errorf("单位%s生命值必须大于0", definition.ID)
 		}
-		// 出生点：写了 coord 就用固定点位；写了 coords 就在候选区里按种子随机，
-		// 同一舰队的所有舰船必须落在同一个 hex。
-		coord := deployment.Coord
-		if coord == "" {
-			candidates := deployment.Coords
-			if len(candidates) == 0 && deployment.Box != nil {
-				candidates = boxCoords(gameMap, *deployment.Box, isCarrierType(definition.Type))
-			}
-			if len(candidates) == 0 {
-				return state, fmt.Errorf("部署%s没有指定坐标", deployment.ID)
-			}
-			if home, exists := fleetHomes[deployment.FleetID]; exists && home.Coord != "" {
-				coord = home.Coord
-			} else if len(candidates) == 1 {
-				coord = candidates[0]
-			} else {
-				coord = candidates[nextUint64(&state.RNGState)%uint64(len(candidates))]
-			}
-		}
-		terrain := terrainAt(gameMap, coord)
-		// 剧本规则：只有含 CV/CVL/CVE 的舰队不能进入机场格（陆地 hex）；暗礁不可通行，浅滩仅限制航母。
-		if !inBounds(gameMap, coord) || terrain == "reef" || (terrain == "shoal" && isCarrierType(definition.Type)) || (terrain == "island" && isCarrierType(definition.Type)) {
-			return state, fmt.Errorf("部署%s坐标不可通行：%s", deployment.ID, coord)
-		}
 		fleetID := deployment.FleetID
 		if fleetID == "" {
 			fleetID = deployment.ID
@@ -174,6 +174,29 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		fleetName := deployment.FleetName
 		if fleetName == "" {
 			fleetName = fleetID
+		}
+		// 出生点：写了 coord 就用固定点位；写了 coords 就在候选区里按种子随机，
+		// 同一舰队的所有舰船必须落在同一个 hex。
+		carrierFleet := fleetCarrier[fleetID]
+		coord := deployment.Coord
+		if coord == "" {
+			candidates := deployment.Coords
+			if len(candidates) == 0 && deployment.Box != nil {
+				candidates = boxCoords(gameMap, *deployment.Box, carrierFleet, airfieldCoords)
+			}
+			if len(candidates) == 0 {
+				return state, fmt.Errorf("部署%s没有指定坐标", deployment.ID)
+			}
+			if home, exists := fleetHomes[fleetID]; exists && home.Coord != "" {
+				coord = home.Coord
+			} else if len(candidates) == 1 {
+				coord = candidates[0]
+			} else {
+				coord = candidates[nextUint64(&state.RNGState)%uint64(len(candidates))]
+			}
+		}
+		if !fleetTerrainAllowsEntry(gameMap, coord, carrierFleet, airfieldCoords[coord]) {
+			return state, fmt.Errorf("部署%s坐标不可通行：%s", deployment.ID, coord)
 		}
 		if home, exists := fleetHomes[fleetID]; exists && (home.Faction != deployment.Faction || home.Coord != coord) {
 			return state, fmt.Errorf("舰队%s的初始成员必须属于同一阵营和hex", fleetID)
@@ -287,12 +310,12 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		// 这样空战后抛弃副油箱就能准确扣掉它还没烧掉的那部分里程（规则书 48 行）。
 		// 机库待命时按机种给一个合法的默认挂载（不是 air+tank），
 		// 否则侦察机/轰炸机一开始就处于"挂不了的组合"；真正出击时再按任务换成对应挂载。
-		initialLoadout := DefaultLoadout(definition.Kind, definition.Seaplane, "cap", StrikeTargetShip)
+		initialLoadout := DefaultLoadout(definition.Kind, definition.Seaplane, definition.AntiGround, definition.AntiShip, "cap", StrikeTargetShip)
 		fuel := MountedFuel(definition.Range, initialLoadout)
 		airCombat, antiShip := elitePilotBonus(state, carrier.Faction, definition.Kind, definition.AirCombat, definition.AntiShip)
 		state.Aircraft[deployment.ID] = &AirUnit{
 			ID: deployment.ID, DefinitionID: definition.ID, CarrierID: carrier.ID, Faction: carrier.Faction,
-			Name: definition.Name, Model: definition.Model, Kind: definition.Kind, Status: "hangar", Strength: definition.Strength,
+			Name: definition.Name, Model: definition.Model, Kind: definition.Kind, Picture: definition.Picture, PictureMode: definition.PictureMode, Status: "hangar", Strength: definition.Strength,
 			BaseRange: definition.Range, Loadout: initialLoadout,
 			MaxRange: fuel.Available(), Fuel: fuel, RemainingRange: fuel.Available(), AirCombat: airCombat, AntiShip: antiShip, AntiGround: definition.AntiGround, Seaplane: definition.Seaplane, AirfieldOnly: definition.AirfieldOnly,
 		}
@@ -358,14 +381,16 @@ func deployAirfields(state *State, scenario ScenarioDefinition, airDefinitions a
 		if definition.Runways < 1 || definition.Runways > 9 {
 			return fmt.Errorf("机场%s跑道数量必须在1到9之间", definition.ID)
 		}
-		switch definition.Type {
-		case AirfieldField, AirfieldHeavy, AirfieldMajor, AirfieldSeaplane:
+		switch NormalizeAirfieldType(definition.Type) {
+		case AirfieldSmall, AirfieldMedium, AirfieldLarge, AirfieldSeaplane:
 		default:
-			return fmt.Errorf("机场%s类型无效：%s", definition.ID, definition.Type)
+			return fmt.Errorf("机场%s类型无效：%s（应为 small / medium / large / seaplane）", definition.ID, definition.Type)
 		}
+		definition.Type = NormalizeAirfieldType(definition.Type)
 		airfield := &Airfield{
 			ID: definition.ID, Faction: definition.Faction, Name: definition.Name, Coord: definition.Coord,
-			Type: definition.Type, Runways: definition.Runways, MaxStrength: definition.Runways * 5,
+			Type: definition.Type, Picture: AirfieldPicture(definition.Type, definition.Picture),
+			Runways: definition.Runways, MaxStrength: definition.Runways * 5,
 			Radar: definition.Radar, HeavyAA: definition.HeavyAA, LightAA: definition.LightAA, Coastal: definition.Coastal,
 		}
 		airfield.Strength = airfield.MaxStrength
@@ -380,19 +405,19 @@ func deployAirfields(state *State, scenario ScenarioDefinition, airDefinitions a
 			if !ok {
 				return fmt.Errorf("地面航空单位定义不存在：%s", aircraftID)
 			}
-			if !airfield.HardensFor(aircraftDef.Kind) {
-				return fmt.Errorf("机场%s（%s）无法起降%s", definition.ID, definition.Type, aircraftDef.Kind)
+			if !airfield.HardensFor(aircraftDef.Kind, aircraftDef.Seaplane) {
+				return fmt.Errorf("机场%s（%s）无法起降%s", definition.ID, definition.Type, aircraftDef.Model)
 			}
-			initialGroundLoadout := DefaultLoadout(aircraftDef.Kind, false, "cap", StrikeTargetShip)
+			initialGroundLoadout := DefaultLoadout(aircraftDef.Kind, false, aircraftDef.AntiGround, aircraftDef.AntiShip, "cap", StrikeTargetShip)
 			fuel := MountedFuel(aircraftDef.Range, initialGroundLoadout)
 			groundAirCombat, groundAntiShip := elitePilotBonus(*state, airfield.Faction, aircraftDef.Kind, aircraftDef.AirCombat, aircraftDef.AntiShip)
 			state.GroundAir[aircraftID] = &AirfieldAirUnit{
 				ID: aircraftID, DefinitionID: aircraftDef.ID, AirfieldID: airfield.ID, Faction: airfield.Faction,
-				Model: aircraftDef.Model, Kind: aircraftDef.Kind, Status: "hangar", Strength: aircraftDef.Strength,
+				Model: aircraftDef.Model, Kind: aircraftDef.Kind, Picture: aircraftDef.Picture, PictureMode: aircraftDef.PictureMode, Status: "hangar", Strength: aircraftDef.Strength,
 				BaseRange: aircraftDef.Range, Loadout: initialGroundLoadout,
 				MaxRange: fuel.Available(), RemainingRange: fuel.Available(),
 				AirCombat: groundAirCombat, AntiShip: groundAntiShip, AntiGround: aircraftDef.AntiGround,
-				AirfieldOnly: aircraftDef.AirfieldOnly,
+				AirfieldOnly: aircraftDef.AirfieldOnly, Seaplane: aircraftDef.Seaplane,
 				// 侦察半径按"不含备用油"的航程折半：备用油只够回家，不能用来搜索（规则书 69 行）。
 				ReconRadiusLimit: max(1, fuel.Available()/2),
 			}
@@ -555,20 +580,9 @@ func LegalMoves(state State, unit *Unit) []string {
 	if MovementBlocked(state, unit) {
 		return []string{}
 	}
-	carrierFleet := false
-	for _, member := range state.Units {
-		if FleetKey(member) != FleetKey(unit) {
-			continue
-		}
-		if IsCarrier(member) {
-			carrierFleet = true
-		}
-	}
+	carrierFleet := IsCarrier(unit) || FleetHasCarrier(state, FleetKey(unit))
 	moves := []string{}
 	for _, coord := range Neighbors(unit.Coord) {
-		if !inBounds(state.Map, coord) {
-			continue
-		}
 		if !fleetCanEnter(state, coord, carrierFleet) {
 			continue
 		}
@@ -577,17 +591,39 @@ func LegalMoves(state State, unit *Unit) []string {
 	return moves
 }
 
-// fleetCanEnter 判断舰队能否进入某 hex（剧本规则）：
-// 含 CV/CVL/CVE 的舰队不能进入陆地 hex（机场格）与浅滩；纯水面舰队可以靠岸补给上岸轰，但暗礁一律不可通行。
+// fleetCanEnter 统一手动移动、自动航行及岸上行动的通行规则。
 func fleetCanEnter(state State, coord string, carrierFleet bool) bool {
-	terrain := terrainAt(state.Map, coord)
+	for _, airfield := range state.Airfields {
+		if airfield.Coord == coord {
+			return fleetTerrainAllowsEntry(state.Map, coord, carrierFleet, true)
+		}
+	}
+	return fleetTerrainAllowsEntry(state.Map, coord, carrierFleet, false)
+}
+
+func fleetTerrainAllowsEntry(gameMap MapDefinition, coord string, carrierFleet, airfieldHex bool) bool {
+	if !inBounds(gameMap, coord) {
+		return false
+	}
+	terrain := terrainAt(gameMap, coord)
 	if terrain == "reef" {
 		return false
 	}
-	if carrierFleet && (terrain == "island" || terrain == "shoal") {
+	if airfieldHex {
+		if carrierFleet {
+			return false
+		}
+		for _, neighbor := range Neighbors(coord) {
+			if inBounds(gameMap, neighbor) && terrainAt(gameMap, neighbor) == "water" {
+				return true
+			}
+		}
 		return false
 	}
-	return true
+	if terrain == "island" {
+		return false
+	}
+	return !carrierFleet || terrain != "shoal"
 }
 
 func FleetKey(unit *Unit) string {
@@ -621,27 +657,17 @@ func headingBetween(from, to string) string {
 	return "SE"
 }
 
-// boxCoords 把矩形出生区展开成可用候选 hex：跳过越界、暗礁，以及航母不能进入的
-// 陆地与浅滩。无航母的舰队可以用浅滩格，所以"能否进浅滩"由调用方按舰型决定。
-func boxCoords(gameMap MapDefinition, box DeployBox, carrier bool) []string {
+// boxCoords 把矩形出生区展开成可用候选 hex，使用与移动相同的地形规则。
+func boxCoords(gameMap MapDefinition, box DeployBox, carrier bool, airfieldCoords map[string]bool) []string {
 	rowMin, rowMax := min(box.RowMin, box.RowMax), max(box.RowMin, box.RowMax)
 	colMin, colMax := min(box.ColMin, box.ColMax), max(box.ColMin, box.ColMax)
 	coords := []string{}
 	for row := rowMin; row <= rowMax; row++ {
 		for col := colMin; col <= colMax; col++ {
 			coord := Coord(row, col)
-			if !inBounds(gameMap, coord) {
-				continue
+			if fleetTerrainAllowsEntry(gameMap, coord, carrier, airfieldCoords[coord]) {
+				coords = append(coords, coord)
 			}
-			switch terrainAt(gameMap, coord) {
-			case "reef":
-				continue
-			case "island", "shoal":
-				if carrier {
-					continue
-				}
-			}
-			coords = append(coords, coord)
 		}
 	}
 	return coords
@@ -766,11 +792,10 @@ func ApplyImmediateMove(state *State, order Order) []EngineEvent {
 	if leader == nil {
 		return nil
 	}
-	if MovesBlocked(*state, leader) {
+	if MovesBlocked(*state, leader) || !fleetCanEnter(*state, order.Coord, FleetHasCarrier(*state, FleetKey(leader))) {
 		return nil
 	}
-	// 没在冷却里走上面的分支；规划移动时只置标志，冷却真正开始递减放到回合结算。
-	state.DeferCooldown = true
+	// 没在冷却里走上面的分支。
 	interval := FleetMoveInterval(*state, leader)
 	qwe := FleetMoveCooldown(*state, FleetKey(leader))
 	_ = qwe
@@ -783,10 +808,10 @@ func ApplyImmediateMove(state *State, order Order) []EngineEvent {
 		unit.Coord = order.Coord
 		unit.Heading = headingBetween(from, order.Coord)
 		unit.Moved = true
-		if interval > unit.MoveCooldown {
-			unit.MoveCooldown = interval
+		if cooldown := movementCooldownAfterMove(interval); cooldown > unit.MoveCooldown {
+			unit.MoveCooldown = cooldown
 		}
-		events = append(events, EngineEvent{Type: "unit_moved", Audience: unit.Faction, Text: fmt.Sprintf("%s从%s移动至%s，%d回合后可再次移动", unit.Name, from, order.Coord, interval)})
+		events = append(events, EngineEvent{Type: "unit_moved", Audience: unit.Faction, Text: fmt.Sprintf("%s从%s移动至%s，每%d回合移动一次", unit.Name, from, order.Coord, interval)})
 	}
 	// 移动后岸轰停留计时重新开始
 	clearFleetStay(state, FleetKey(leader))
@@ -952,7 +977,7 @@ func ResolveOrders(state *State, orders []Order) []EngineEvent {
 			continue
 		}
 		leader, ok := state.Units[order.UnitID]
-		if !ok {
+		if !ok || !fleetCanEnter(*state, order.Coord, FleetHasCarrier(*state, FleetKey(leader))) {
 			continue
 		}
 		for _, unit := range state.Units {
@@ -972,17 +997,16 @@ func ResolveOrders(state *State, orders []Order) []EngineEvent {
 			events = append(events, EngineEvent{Type: "movement_delayed", Audience: unit.Faction, Text: fmt.Sprintf("%s还需等待%d回合才能移动", unit.Name, unit.MoveCooldown)})
 			continue
 		}
-		// 不再复核地形：移动规划在下达时已经按当回合规则校验过，
-		// 结算阶段只按"依然可动"执行，避免出现规划成功却整体作废的哑火回合。
 		from := unit.Coord
 		unit.Coord = coord
 		unit.Heading = headingBetween(from, coord)
 		unit.Moved = true
-		if interval := FleetMoveInterval(*state, unit); interval > unit.MoveCooldown {
-			unit.MoveCooldown = interval
+		interval := FleetMoveInterval(*state, unit)
+		if cooldown := movementCooldownAfterMove(interval); cooldown > unit.MoveCooldown {
+			unit.MoveCooldown = cooldown
 		}
 		clearFleetStay(state, FleetKey(unit))
-		events = append(events, EngineEvent{Type: "unit_moved", Audience: unit.Faction, Text: fmt.Sprintf("%s从%s移动至%s，%d回合后可再次移动", unit.Name, from, coord, unit.MoveCooldown)})
+		events = append(events, EngineEvent{Type: "unit_moved", Audience: unit.Faction, Text: fmt.Sprintf("%s从%s移动至%s，每%d回合移动一次", unit.Name, from, coord, interval)})
 	}
 	// 自动航行（规则书 280–283 行）：手动移动与自动移动共用移动机会，
 	// 所以放在手动位移之后统一结算——本回合手动动过的舰队自动航行自然不生效。
@@ -1011,8 +1035,10 @@ func ResolveOrders(state *State, orders []Order) []EngineEvent {
 	// 战斗之后舰船强度/损伤已经变化，情报里的成员快照要同步刷新，
 	// 否则 4 级情报会滞后一回合显示旧数据（战报说掉强度、舰队面板还是满的）。
 	refreshContactMembers(state)
-	trackFleetStay(state)
+	// 先结算停留计数，再记录本回合位置：trackFleetSessions 需要拿"上一回合结束时的
+	// FleetStays"和当前位置比较；顺序反了的话 FleetStays 已经被覆盖，移动永远不会清零。
 	trackFleetSessions(state)
+	trackFleetStay(state)
 	events = append(events, advanceTowardEdge(state)...)
 	// 敌方飞行编队的可见性：雷达/侦察/目视发现后对对手可见。
 	events = append(events, resolveAirVisibility(state)...)
@@ -1037,7 +1063,7 @@ func syncArmedAircraft(state *State, events []EngineEvent) []EngineEvent {
 		if aircraft == nil {
 			continue
 		}
-		if !armedTaskMatches(aircraft.TaskKind, aircraft.Kind) {
+		if !armedTaskMatches(aircraft.TaskKind, aircraft) {
 			if aircraft.Armed {
 				aircraft.Armed = false
 				events = append(events, EngineEvent{Type: "air_rearm", Audience: aircraft.Faction, Text: aircraft.Model + "任务挂载不符，需要额外1回合在机库更换挂载"})
@@ -1053,16 +1079,22 @@ func syncArmedAircraft(state *State, events []EngineEvent) []EngineEvent {
 
 // armedTaskMatches 判断机型能否直接执行某类任务：
 // 战斗机只能挂 CAP/护航，轰炸/侦察机型可以承担侦察，攻击/转场任务需要轰炸能力。
-func armedTaskMatches(taskKind, aircraftKind string) bool {
+// 挂弹战斗机是战斗轰炸型，攻击任务同样算"整装待发"。
+func armedTaskMatches(taskKind string, aircraft *AirUnit) bool {
+	if aircraft == nil {
+		return false
+	}
 	switch taskKind {
 	case "":
 		return false
 	case "cap", "cover":
-		return aircraftKind == "fighter"
+		return aircraft.Kind == "fighter"
 	case "recon":
-		return canSearch(AirUnit{Kind: aircraftKind})
-	case "attack", "transfer":
-		return aircraftKind != "fighter"
+		return canSearch(*aircraft)
+	case "attack":
+		return aircraft.Kind != "fighter" || aircraft.Loadout.Weapon() == WeaponBomb
+	case "transfer":
+		return aircraft.Kind != "fighter"
 	}
 	return false
 }
