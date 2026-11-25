@@ -485,10 +485,10 @@ export interface GameView {
   enemy_air?: EnemyAirContact[]
   /** 战果台账：按阵营（A/B）分组的沉没舰船与飞机损失 */
   losses?: Record<string, FactionLosses>
-  /** 战果分：按阵营（A/B）累计的击沉与击落折算值，剧本声明 kind:"score" 目标时用于判胜负 */
+  /** 战果分：击沉/击落折算值 + 已完成的投送目标，剧本声明 kind:"score" 目标时用于判胜负 */
   scores?: Record<string, number>
-  /** 对局结果：存在即表示已经结束 */
-  outcome?: { winner?: string; reason: string; scores: Record<string, number>; turn: number; turn_cap?: boolean }
+  /** 对局结果：存在即表示已经结束。level 是 VP 比值给出的等级。 */
+  outcome?: { winner?: string; level?: 'draw' | 'tactical' | 'strategic'; reason: string; scores: Record<string, number>; turn: number; turn_cap?: boolean }
   objectives?: { id: string; text?: string; kind: string; coord?: string; faction?: string; value?: number; points?: number; decisive?: boolean }[]
   join_token?: string
   server_time: string

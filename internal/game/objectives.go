@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 )
@@ -9,10 +10,10 @@ import (
 // —— 胜利条件 ——
 //
 // 剧本可以声明若干目标（Objective）：控制某 hex 的滩头物资数量达到阈值，
-// 或击沉对方若干舰船。回合上限到来时，按完成的目标点总和判定胜负。
+// 或击沉对方若干舰船。声明 kind:"score" 的剧本把战役目标和击沉战果折算成 VP，
+// 按双方比值判平分秋色/战术/战略胜利；没有 score 目标的老剧本仍按完成的目标点总和判定。
 //
-// 规则书本身没有规定具体胜利条件，这里给出的是通用实现：剧本不写 Objectives
-// 就退化成"双方全灭判定"——一方舰船与飞机全灭则另一方获胜。
+// 剧本不写 Objectives 就退化成"双方全灭判定"——一方舰船与飞机全灭则另一方获胜。
 
 // ObjectiveKind 是目标的种类。
 type ObjectiveKind string
@@ -24,9 +25,18 @@ const (
 	ObjectiveSink ObjectiveKind = "sink"
 	// ObjectiveControl：回合结束时在指定坐标有己方舰队（持续时间由 Value 决定，默认 1 回合）。
 	ObjectiveControl ObjectiveKind = "control"
-	// ObjectiveScore：不按目标条目逐条计点，而是在回合上限时按击沉战果分判定胜负
+	// ObjectiveScore：不按目标条目逐条计点，而是按战果分判定胜负
 	// （航母按机库容量，战列舰 6、重巡 3、轻巡 2、驱逐 1，见 ShipVictoryPoints）。
 	ObjectiveScore ObjectiveKind = "score"
+)
+
+// VictoryLevel 是 VP 比值给出的胜利等级。Winner 为空且 Level=draw 表示平分秋色。
+type VictoryLevel string
+
+const (
+	VictoryLevelDraw      VictoryLevel = "draw"
+	VictoryLevelTactical  VictoryLevel = "tactical"
+	VictoryLevelStrategic VictoryLevel = "strategic"
 )
 
 // Objective 是一条剧本胜利条件。
@@ -39,15 +49,16 @@ type Objective struct {
 	Faction string `json:"faction,omitempty"`
 	Value   int    `json:"value,omitempty"`
 	Points  int    `json:"points,omitempty"`
-	// Decisive 表示"一达成即结束对局"，而不是拖到回合上限再比较目标点。
-	// 到回合上限仍未达成时，声明该目标的阵营判负（对手达成阻止）。
+	// Decisive 只用于没有 score 目标的老剧本："一达成即结束对局"。
+	// 声明 score 的 VP 剧本忽略它，统一到回合上限结算。
 	Decisive bool `json:"decisive,omitempty"`
 }
 
 // GameOutcome 是对局结果。
 type GameOutcome struct {
-	// Winner 为空表示平局。
+	// Winner 为空表示平局。Level 是 VP 比值给出的等级（draw/tactical/strategic）。
 	Winner  string             `json:"winner,omitempty"`
+	Level   VictoryLevel       `json:"level,omitempty"`
 	Reason  string             `json:"reason"`
 	Scores  map[string]float64 `json:"scores"`
 	Turn    int                `json:"turn"`
@@ -126,6 +137,52 @@ func factionShipCount(state State, faction string) int {
 	return count
 }
 
+// supplyObjectiveValue 是投送目标的满分分值；没写 value 时按 1 点货物算。
+func supplyObjectiveValue(o Objective) int {
+	if o.Value > 0 {
+		return o.Value
+	}
+	return 1
+}
+
+// deliveredToObjective 返回某条投送目标已经卸下的货物，最多不超过目标值。
+func deliveredToObjective(state State, o Objective) int {
+	if o.Faction == "" || o.Coord == "" {
+		return 0
+	}
+	delivered := state.ShoreSupplies[o.Faction+"|"+o.Coord]
+	if delivered > supplyObjectiveValue(o) {
+		delivered = supplyObjectiveValue(o)
+	}
+	if delivered < 0 {
+		delivered = 0
+	}
+	return delivered
+}
+
+// factionCompletedSupplyObjective 判断某阵营是否已经完成它的全部投送目标。
+// 珊瑚海只有一个目标：向莫尔兹比港卸下 20 点货物。
+func factionCompletedSupplyObjective(state State, faction string) bool {
+	required, delivered := 0, 0
+	for _, objective := range state.Objectives {
+		if objective.Kind != ObjectiveSupplies || objective.Faction != faction {
+			continue
+		}
+		required += supplyObjectiveValue(objective)
+		delivered += deliveredToObjective(state, objective)
+	}
+	return required > 0 && delivered >= required
+}
+
+func factionHasSupplyObjective(state State, faction string) bool {
+	for _, objective := range state.Objectives {
+		if objective.Kind == ObjectiveSupplies && objective.Faction == faction {
+			return true
+		}
+	}
+	return false
+}
+
 // objectiveCompleted 判断某条目标是否已被某阵营完成。
 func objectiveCompleted(state State, faction string, o Objective) bool {
 	target := o.Faction
@@ -170,6 +227,10 @@ func objectiveCompleted(state State, faction string, o Objective) bool {
 }
 
 // EvaluateOutcome 判定对局是否结束。返回 nil 表示继续。
+//
+// 声明了 score 目标的剧本走 VP 判定：战役目标和击沉战果都折算成 VP，
+// 只有回合上限强制结算，再按双方比值给出平分秋色 / 战术胜利 / 战略胜利。
+// 没有 score 目标的老剧本仍按目标点判定，行为不变。
 func EvaluateOutcome(state State) *GameOutcome {
 	factions := map[string]bool{}
 	for _, unit := range state.Units {
@@ -196,8 +257,7 @@ func EvaluateOutcome(state State) *GameOutcome {
 	if len(state.Objectives) == 0 {
 		return nil
 	}
-	// score 目标表示"这一局按击沉战果分排名"：航母按机库容量计分，
-	// 其余按舰种折算。没有声明 score 目标的老剧本仍然按目标点计。
+
 	usesVictoryPoints := false
 	for _, objective := range state.Objectives {
 		if objective.Kind == ObjectiveScore {
@@ -205,15 +265,23 @@ func EvaluateOutcome(state State) *GameOutcome {
 			break
 		}
 	}
-	scores := map[string]float64{}
 	if usesVictoryPoints {
-		scores = VictoryPoints(state)
+		// VP 剧本只有回合上限一个强制结算点。投送完成/失败、
+		// 航母被打光都不提前结束，先让 360 回合把账算完。
+		if state.MaxTurns <= 0 || state.Turn < state.MaxTurns {
+			return nil
+		}
+		scores := FinalVictoryPoints(state)
 		for _, faction := range alive {
 			if _, ok := scores[faction]; !ok {
 				scores[faction] = 0
 			}
 		}
+		return victoryPointOutcome(state, scores, fmt.Sprintf("回合上限 %d 到达", state.MaxTurns), true)
 	}
+
+	// —— 老剧本：按目标点判定 ——
+	scores := map[string]float64{}
 
 	// 决定性目标一旦达成立即结束对局，不必等到回合上限。
 	for _, objective := range state.Objectives {
@@ -235,7 +303,6 @@ func EvaluateOutcome(state State) *GameOutcome {
 	}
 
 	// 决定性补给目标已经不可能完成：货已卸空或运输船全被击沉。
-	// 不提前结束的话，未达成的一方只能无所事事地拖到回合上限。
 	for _, objective := range state.Objectives {
 		if !objective.Decisive || objective.Kind != ObjectiveSupplies || objective.Faction == "" {
 			continue
@@ -249,12 +316,10 @@ func EvaluateOutcome(state State) *GameOutcome {
 		}
 	}
 
-	// 只有到达回合上限时才按目标点结算；否则继续打。
 	if state.MaxTurns <= 0 || state.Turn < state.MaxTurns {
 		return nil
 	}
 
-	// 回合上限：声明了决定性目标却没有完成的阵营判负，对手达成阻止。
 	declared := []Objective{}
 	for _, objective := range state.Objectives {
 		if objective.Decisive && objective.Faction != "" {
@@ -282,14 +347,10 @@ func EvaluateOutcome(state State) *GameOutcome {
 	}
 
 	reason := fmt.Sprintf("回合上限 %d 到达，按目标点判定", state.MaxTurns)
-	if usesVictoryPoints {
-		reason = fmt.Sprintf("回合上限 %d 到达，按击沉战果分判定", state.MaxTurns)
-	} else {
-		for _, faction := range alive {
-			for _, objective := range state.Objectives {
-				if objectiveCompleted(state, faction, objective) {
-					scores[faction] += float64(objectivePoints(objective))
-				}
+	for _, faction := range alive {
+		for _, objective := range state.Objectives {
+			if objectiveCompleted(state, faction, objective) {
+				scores[faction] += float64(objectivePoints(objective))
 			}
 		}
 	}
@@ -310,6 +371,82 @@ func EvaluateOutcome(state State) *GameOutcome {
 		winner = ""
 	}
 	return &GameOutcome{Winner: winner, Reason: reason, Scores: scores, Turn: state.Turn, TurnCap: true}
+}
+
+// victoryPointOutcome 按 VP 比值给出最终等级。比值小于 1.25 平分秋色，
+// 1.25 到 2 战术胜利，大于 2 战略胜利。日军没有投送满 20 单位时，
+// 即使比值进入战略档，也只算战术胜利。
+func victoryPointOutcome(state State, scores map[string]float64, reason string, turnCap bool) *GameOutcome {
+	scoreA, scoreB := scores["A"], scores["B"]
+	highFaction, high, low := "A", scoreA, scoreB
+	if scoreB > scoreA {
+		highFaction, high, low = "B", scoreB, scoreA
+	}
+	if high == low {
+		return &GameOutcome{
+			Level:   VictoryLevelDraw,
+			Reason:  fmt.Sprintf("%s；VP %s:%s，平分秋色", reason, formatVPScore(scoreA), formatVPScore(scoreB)),
+			Scores:  scores,
+			Turn:    state.Turn,
+			TurnCap: turnCap,
+		}
+	}
+
+	ratio := math.Inf(1)
+	if low > 0 {
+		ratio = high / low
+	}
+	level := VictoryLevelStrategic
+	if ratio < 1.25 {
+		level = VictoryLevelDraw
+	} else if ratio <= 2 {
+		level = VictoryLevelTactical
+	}
+
+	capNote := ""
+	if level == VictoryLevelStrategic && highFaction == "B" && factionHasSupplyObjective(state, "B") && !factionCompletedSupplyObjective(state, "B") {
+		level = VictoryLevelTactical
+		capNote = "；日军未投送满20单位，战略胜利降为战术胜利"
+	}
+
+	winner := highFaction
+	if level == VictoryLevelDraw {
+		winner = ""
+	}
+	return &GameOutcome{
+		Winner:  winner,
+		Level:   level,
+		Reason:  fmt.Sprintf("%s；VP %s:%s（%s:1），%s%s", reason, formatVPScore(scoreA), formatVPScore(scoreB), formatVPRatio(ratio), outcomeLevelLabel(level, winner), capNote),
+		Scores:  scores,
+		Turn:    state.Turn,
+		TurnCap: turnCap,
+	}
+}
+
+func outcomeLevelLabel(level VictoryLevel, winner string) string {
+	switch level {
+	case VictoryLevelDraw:
+		return "平分秋色"
+	case VictoryLevelTactical:
+		return winner + "方战术胜利"
+	case VictoryLevelStrategic:
+		return winner + "方战略胜利"
+	}
+	return ""
+}
+
+func formatVPScore(value float64) string {
+	if math.Abs(value-math.Round(value)) < 1e-9 {
+		return fmt.Sprintf("%.0f", value)
+	}
+	return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.2f", value), "0"), ".")
+}
+
+func formatVPRatio(value float64) string {
+	if math.IsInf(value, 1) {
+		return "∞"
+	}
+	return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.2f", value), "0"), ".")
 }
 
 // settleOutcome 在对局未结束时检查并记录结果，只产生一次事件。

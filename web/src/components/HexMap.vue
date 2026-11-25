@@ -233,11 +233,76 @@ function distanceAt(coord: string) {
   return distanceByCoord.value.get(coord) ?? -1
 }
 
-function distanceLabel(coord: string) {
-  const distance = distanceAt(coord)
-  // 偶数格画环，另外把 1/3 也标出来——贴身距离（相邻、隔一格）是操作里最常量的。
-  return distance > 0 && (distance % 2 === 0 || distance <= 3) ? String(distance) : ''
+type DistanceRingLabel = { x: number; y: number; text: string }
+type DistanceRing = { distance: number; path: string; labels: DistanceRingLabel[] }
+type RingHex = { coord: string; x: number; y: number }
+
+// 等高线的角必须正好落在环格中心上，不能只取“角度最接近”的格子，
+// 否则地图边缘裁掉一个角后，数字会跑到直边上。
+const LABEL_ANGLE_TOLERANCE = Math.PI / 180
+
+function angleDelta(a: number, b: number) {
+  const delta = Math.abs(a - b) % (Math.PI * 2)
+  return delta > Math.PI ? Math.PI * 2 - delta : delta
 }
+
+function ringAngle(hex: { x: number; y: number }, origin: { x: number; y: number }) {
+  return Math.atan2(hex.y - origin.y, hex.x - origin.x)
+}
+
+// 距离环是正六边形：六个顶点就是六个角上的数字位置，虚线只负责把它们连起来。
+function ringOutline(origin: { x: number; y: number }, distance: number) {
+  const radius = distance * Math.sqrt(3) * size
+  const corners = Array.from({ length: 6 }, (_, index) => {
+    const angle = index * Math.PI / 3
+    return (origin.x + radius * Math.cos(angle)) + ',' + (origin.y + radius * Math.sin(angle))
+  })
+  return 'M' + corners.join(' L') + ' Z'
+}
+
+const distanceOriginPoint = computed(() => (distanceOrigin.value ? center(distanceOrigin.value) : null))
+
+// 偶数距离一路画到地图边缘：每圈用一条淡虚线六边形连接六个角上的距离数字。
+// 所有圈同样粗细、同样透明度，不再做 2/4 强弱区分。
+const distanceRings = computed<DistanceRing[]>(() => {
+  const origin = distanceOriginPoint.value
+  if (!origin) return []
+  const buckets = new Map<number, RingHex[]>()
+  for (const hex of hexes.value) {
+    const distance = hexDistance(distanceOrigin.value, hex.coord)
+    if (distance > 0 && distance % 2 === 0) {
+      const list = buckets.get(distance)
+      if (list) list.push(hex)
+      else buckets.set(distance, [hex])
+    }
+  }
+  // 环的外轮廓是平顶六边形，六个角在 0°、60°、120°、180°、240°、300°。
+  const cornerAngles = Array.from({ length: 6 }, (_, index) => index * Math.PI / 3)
+  return Array.from(buckets.keys()).sort((a, b) => a - b).map((distance) => {
+    const ring = buckets.get(distance) || []
+    const ordered = ring.slice().sort((a, b) => ringAngle(a, origin) - ringAngle(b, origin))
+    const path = ringOutline(origin, distance)
+    const used = new Set<string>()
+    const labels: DistanceRingLabel[] = []
+    for (const target of cornerAngles) {
+      let best: RingHex | null = null
+      let bestDelta = Infinity
+      for (const hex of ordered) {
+        if (used.has(hex.coord)) continue
+        const delta = angleDelta(ringAngle(hex, origin), target)
+        if (delta < bestDelta) {
+          bestDelta = delta
+          best = hex
+        }
+      }
+      if (best && bestDelta <= LABEL_ANGLE_TOLERANCE) {
+        used.add(best.coord)
+        labels.push({ x: best.x, y: best.y, text: String(distance) })
+      }
+    }
+    return { distance, path, labels }
+  })
+})
 
 function clampCamera() {
   const map = fullView.value
@@ -590,18 +655,14 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
   <!-- 摄像机层：+ / − 只改 viewBox，拖动地图改 viewBox 原点；滚轮不再改变缩放。 -->
   <div class="map-scroll">
   <svg ref="mapElement" class="hex-map" :class="{ panning: mapPanning }" :viewBox="viewBox" :data-zoom="zoom.toFixed(1)" role="img" aria-label="沙盒海图" @pointerdown="startMapPan" @click.capture="onMapClickCapture">
-    <g v-for="hex in hexes" :key="hex.coord" class="hex-cell" :data-coord="hex.coord" :data-distance="distanceAt(hex.coord) >= 0 ? distanceAt(hex.coord) : undefined" :data-recon-current-aircraft="reconCurrentAircraftAt(hex.coord) || undefined" :class="[`terrain-${hex.terrain}`, { legal: selectedMoves.has(hex.coord), 'drop-hover': dropHover === hex.coord, 'recon-sector': reconCells.has(hex.coord), 'recon-current': reconCurrentCells.has(hex.coord), 'distance-reference': distanceAt(hex.coord) > 0 && distanceAt(hex.coord) <= 2, 'distance-outer': distanceAt(hex.coord) === 2, 'distance-origin': distanceAt(hex.coord) === 0 }]" @click="clickHex(hex.coord)">
+    <g v-for="hex in hexes" :key="hex.coord" class="hex-cell" :data-coord="hex.coord" :data-distance="distanceAt(hex.coord) >= 0 ? distanceAt(hex.coord) : undefined" :data-recon-current-aircraft="reconCurrentAircraftAt(hex.coord) || undefined" :class="[`terrain-${hex.terrain}`, { legal: selectedMoves.has(hex.coord), 'drop-hover': dropHover === hex.coord, 'recon-sector': reconCells.has(hex.coord), 'recon-current': reconCurrentCells.has(hex.coord) }]" @click="clickHex(hex.coord)">
       <polygon :points="points(hex.x, hex.y)" />
       <text class="coord-label" :x="hex.x" :y="hex.y - 23">{{ hex.coord }}</text>
       <!-- 机场格的地名由机场算子自己写，地形标签再写一遍会变成上下两个"拉包尔"。 -->
       <text v-if="hex.name && !airfieldsAt(hex.coord).length" class="terrain-label" :x="hex.x" :y="hex.y + 27">{{ hex.name }}</text>
       <circle v-if="selectedMoves.has(hex.coord)" class="legal-dot" :cx="hex.x" :cy="hex.y" r="5" />
-      <g v-if="distanceLabel(hex.coord)" class="distance-label" :data-distance-label="distanceLabel(hex.coord)">
-        <circle :cx="hex.x" :cy="hex.y" r="9" />
-        <text :x="hex.x" :y="hex.y + 3">{{ distanceLabel(hex.coord) }}</text>
-      </g>
       <g v-if="plannedFleetsAt(hex.coord).length" class="planned-here" :data-planned-here="plannedFleetsAt(hex.coord).join(',')">
-        <circle :cx="hex.x + 24" :cy="hex.y - 20" r="7" />
+        <circle :cx="hex.x + 24" :cy="hex.y - 20" r="7.5" />
         <path :d="'M' + (hex.x + 24) + ' ' + (hex.y - 24) + ' l3 4 h-6 z'" />
       </g>
       <g v-if="navDestinationAt(hex.coord).length" class="nav-destination" :data-nav-destination="navDestinationAt(hex.coord).map((route) => route.fleet.fleet_id).join(',')">
@@ -609,6 +670,16 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         <path :d="'M' + (hex.x - 5) + ' ' + (hex.y - 16) + ' h15 l-4 5 4 5 h-15 z'" />
         <title>舰队自动航行目的地</title>
       </g>
+    </g>
+    <g v-if="distanceRings.length" class="distance-contours">
+      <g v-for="ring in distanceRings" :key="'distance-ring-' + ring.distance">
+        <path class="distance-ring" :d="ring.path" :data-range-distance="ring.distance" />
+        <g v-for="(label, index) in ring.labels" :key="'distance-label-' + ring.distance + '-' + index" class="distance-ring-label" :data-range-label="ring.distance">
+          <circle :cx="label.x" :cy="label.y" r="6.5" />
+          <text :x="label.x" :y="label.y + 2.8">{{ label.text }}</text>
+        </g>
+      </g>
+      <circle v-if="distanceOriginPoint" class="distance-origin-marker" :cx="distanceOriginPoint.x" :cy="distanceOriginPoint.y" r="4" />
     </g>
     <g class="nav-routes">
       <line

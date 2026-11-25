@@ -180,19 +180,27 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		carrierFleet := fleetCarrier[fleetID]
 		coord := deployment.Coord
 		if coord == "" {
-			candidates := deployment.Coords
-			if len(candidates) == 0 && deployment.Box != nil {
-				candidates = boxCoords(gameMap, *deployment.Box, carrierFleet, airfieldCoords)
-			}
-			if len(candidates) == 0 {
-				return state, fmt.Errorf("部署%s没有指定坐标", deployment.ID)
-			}
 			if home, exists := fleetHomes[fleetID]; exists && home.Coord != "" {
 				coord = home.Coord
-			} else if len(candidates) == 1 {
-				coord = candidates[0]
+			} else if deployment.Near != nil {
+				anchor, ok := fleetHomes[deployment.Near.FleetID]
+				if !ok || anchor.Coord == "" {
+					return state, fmt.Errorf("部署%s的邻近舰队%s尚未出生", deployment.ID, deployment.Near.FleetID)
+				}
+				coord = nearFleetCoord(gameMap, deployment.Near, anchor.Coord, carrierFleet, airfieldCoords, &state.RNGState)
 			} else {
-				coord = candidates[nextUint64(&state.RNGState)%uint64(len(candidates))]
+				candidates := deployment.Coords
+				if len(candidates) == 0 && deployment.Box != nil {
+					candidates = boxCoords(gameMap, *deployment.Box, carrierFleet, airfieldCoords)
+				}
+				if len(candidates) == 0 {
+					return state, fmt.Errorf("部署%s没有指定坐标", deployment.ID)
+				}
+				if len(candidates) == 1 {
+					coord = candidates[0]
+				} else {
+					coord = candidates[nextUint64(&state.RNGState)%uint64(len(candidates))]
+				}
 			}
 		}
 		if !fleetTerrainAllowsEntry(gameMap, coord, carrierFleet, airfieldCoords[coord]) {
@@ -655,6 +663,43 @@ func headingBetween(from, to string) string {
 		return "SW"
 	}
 	return "SE"
+}
+
+// nearFleetCoord 在另一支舰队周围按方向取一个可用海格。
+// 默认距离 4–10 hex，避免两支舰队叠在同一格，也保证前哨不会离航母太远。
+func nearFleetCoord(gameMap MapDefinition, near *DeploymentNear, anchor string, carrier bool, airfieldCoords map[string]bool, rng *uint64) string {
+	direction := strings.ToUpper(strings.TrimSpace(near.Direction))
+	minDistance := near.MinDistance
+	if minDistance < 1 {
+		minDistance = 1
+	}
+	maxDistance := near.MaxDistance
+	if maxDistance < minDistance {
+		maxDistance = 10
+	}
+	candidates := []string{}
+	for row := 1; row <= gameMap.Rows; row++ {
+		for col := 1; col <= gameMap.Cols; col++ {
+			coord := Coord(row, col)
+			terrain := terrainAt(gameMap, coord)
+			if !fleetTerrainAllowsEntry(gameMap, coord, carrier, airfieldCoords[coord]) || terrain == "reef" {
+				continue
+			}
+			distance := Distance(anchor, coord)
+			if distance < minDistance || distance > maxDistance {
+				continue
+			}
+			if headingBetween(anchor, coord) != direction {
+				continue
+			}
+			candidates = append(candidates, coord)
+		}
+	}
+	if len(candidates) == 0 {
+		return ""
+	}
+	sort.Strings(candidates)
+	return candidates[nextUint64(rng)%uint64(len(candidates))]
 }
 
 // boxCoords 把矩形出生区展开成可用候选 hex，使用与移动相同的地形规则。

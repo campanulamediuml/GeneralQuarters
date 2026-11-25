@@ -81,59 +81,61 @@ func TestSinkObjective(t *testing.T) {
 	}
 }
 
-// 决定性投送目标达成时立即结束，不等回合上限。
-func TestDecisiveSupplyObjectiveWinsImmediately(t *testing.T) {
+// 投送完成只加 20 VP，不提前结束；哪怕日军已经卸完，也要打到 360 回合。
+func TestSupplyDeliveryScoresButWaitsForTurnCap(t *testing.T) {
 	state := objectiveState()
 	state.MaxTurns = 288
 	state.Turn = 5
 	state.Objectives = []Objective{
-		{ID: "moresby", Text: "向莫尔兹比港投送 20 点货物", Kind: ObjectiveSupplies, Coord: "1611", Faction: "B", Value: 20, Decisive: true},
+		{ID: "moresby", Text: "向莫尔兹比港投送 20 点货物", Kind: ObjectiveSupplies, Coord: "1611", Faction: "B", Value: 20},
 		{ID: "vp", Kind: ObjectiveScore},
 	}
 	state.ShoreSupplies["B|1611"] = 20
-	outcome := EvaluateOutcome(state)
-	if outcome == nil || outcome.Winner != "B" || outcome.TurnCap {
-		t.Fatalf("达成决定性目标应立即判 B 胜：%+v", outcome)
+	if outcome := EvaluateOutcome(state); outcome != nil {
+		t.Fatalf("投送完成不应提前结束：%+v", outcome)
 	}
-	if outcome.Reason == "" {
-		t.Fatal("应给出胜利原因")
+	if scores := VictoryPoints(state); scores["B"] != 20 {
+		t.Fatalf("投送完成应给 B 20 VP，实际 %v", scores)
 	}
 }
 
-// 到回合上限仍未完成决定性目标：宣告方判负，对手达成阻止。
-// 战果分只作为参考分数返回，不改变胜负。
-func TestDecisiveSupplyObjectiveFailsAtTurnCap(t *testing.T) {
+// 到回合上限仍未完成投送：目标分值判给阻止方，再按 VP 比值结算。
+func TestSupplyObjectiveFailsAtTurnCap(t *testing.T) {
 	state := objectiveState()
 	state.MaxTurns = 3
 	state.Turn = 3
 	state.Objectives = []Objective{
-		{ID: "moresby", Text: "向莫尔兹比港投送 20 点货物", Kind: ObjectiveSupplies, Coord: "1611", Faction: "B", Value: 20, Decisive: true},
+		{ID: "moresby", Text: "向莫尔兹比港投送 20 点货物", Kind: ObjectiveSupplies, Coord: "1611", Faction: "B", Value: 20},
 		{ID: "vp", Kind: ObjectiveScore},
 	}
 	state.ShoreSupplies["B|1611"] = 19
-	// 还有 1 点货没卸，所以不算"已不可能完成"，要拖到回合上限才判负。
 	state.Units["trs"] = &Unit{ID: "trs", Faction: "B", Type: "TRS", Coord: "0808", Card: ShipCard{Cargo: 1}}
 	outcome := EvaluateOutcome(state)
 	if outcome == nil || outcome.Winner != "A" || !outcome.TurnCap {
-		t.Fatalf("未完成决定性目标应判 A 胜：%+v", outcome)
+		t.Fatalf("未完成投送应判 A 胜：%+v", outcome)
 	}
-	if _, ok := outcome.Scores["B"]; !ok {
-		t.Fatalf("仍应返回双方战果分作参考：%+v", outcome.Scores)
+	if outcome.Scores["A"] != 20 || outcome.Scores["B"] != 0 {
+		t.Fatalf("未完成的 20 分应判给 A：%+v", outcome.Scores)
 	}
 }
 
-// 运输船全沉或货已卸空时，决定性投送目标提前失败，不必拖到回合上限。
-func TestDecisiveSupplyObjectiveFailsWhenNoCargoLeft(t *testing.T) {
+// 运输船全沉或货已卸空也不提前结束；拖到回合上限再判 20 分给阻止方。
+func TestSupplyNoCargoWaitsForTurnCap(t *testing.T) {
 	state := objectiveState()
 	state.MaxTurns = 288
 	state.Turn = 10
 	state.Objectives = []Objective{
-		{ID: "moresby", Kind: ObjectiveSupplies, Coord: "1611", Faction: "B", Value: 20, Decisive: true},
+		{ID: "moresby", Kind: ObjectiveSupplies, Coord: "1611", Faction: "B", Value: 20},
+		{ID: "vp", Kind: ObjectiveScore},
 	}
 	state.Units["trs"] = &Unit{ID: "trs", Faction: "B", Type: "TRS", Coord: "1611", Card: ShipCard{Cargo: 0}}
+	if outcome := EvaluateOutcome(state); outcome != nil {
+		t.Fatalf("无货可卸也不应提前结束：%+v", outcome)
+	}
+	state.Turn = 288
 	outcome := EvaluateOutcome(state)
-	if outcome == nil || outcome.Winner != "A" {
-		t.Fatalf("无货可卸时应提前判 A 胜：%+v", outcome)
+	if outcome == nil || outcome.Winner != "A" || !outcome.TurnCap {
+		t.Fatalf("到回合上限应判 A 胜：%+v", outcome)
 	}
 }
 

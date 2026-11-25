@@ -37,14 +37,25 @@ type Deployment struct {
 	// Box 是矩形随机出生区：按行列给一个范围，引擎自己展开成候选 hex（跳过陆地、暗礁和不可通行的格）。
 	// 珊瑚海这种"日军在索罗门群岛方向、美军在新赫布里底方向随机出现"的剧本用它，
 	// 免得把几十个候选 hex 一条条抄进 JSON。coord 与 coords 都为空时才生效。
-	Box            *DeployBox `json:"box,omitempty"`
-	FleetID        string     `json:"fleet_id"`
-	FleetName      string     `json:"fleet_name"`
-	HangarCapacity int        `json:"hangar_capacity,omitempty"`
+	Box *DeployBox `json:"box,omitempty"`
+	// Near 让舰队贴着另一支已部署舰队生成（例如 TF44 在 TF17 西北 10 hex 内）。
+	// 只有同一舰队的第一艘舰会选取坐标，后续舰沿用 fleetHomes。
+	Near           *DeploymentNear `json:"near,omitempty"`
+	FleetID        string          `json:"fleet_id"`
+	FleetName      string          `json:"fleet_name"`
+	HangarCapacity int             `json:"hangar_capacity,omitempty"`
 	// Overrides 是剧本对单舰属性的覆盖：只覆盖显式写了的字段，没写的沿用单位库。
 	// 珊瑚海这类"史实编成"需要按真实参数微调单舰（例如四艘航母统一甲板长度 8），
 	// 与其为每艘舰复制一份单位定义，不如在部署里写覆盖。
 	Overrides *DeploymentOverrides `json:"overrides,omitempty"`
+}
+
+// DeploymentNear 是相对另一支舰队的出生区。
+type DeploymentNear struct {
+	FleetID     string `json:"fleet_id"`
+	Direction   string `json:"direction"`
+	MinDistance int    `json:"min_distance,omitempty"`
+	MaxDistance int    `json:"max_distance,omitempty"`
 }
 
 // DeployBox 是矩形随机出生区，行列都是 1 起的包含边界。

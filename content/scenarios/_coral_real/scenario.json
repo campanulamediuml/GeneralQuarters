@@ -1,6 +1,6 @@
 {
  "id": "_coral_real",
- "version": 34,
+ "version": 39,
  "name": "珊瑚海 · 1942年5月（25海里/hex）",
  "map": "_coral_real",
  "units": "sandbox",
@@ -21,20 +21,19 @@
   "recover_by": "19:40",
   "night_loss": true
  },
- "description": "战役目标：日军必须把至少 20 点货物送上莫尔兹比港（1611），只要达成即获胜；美军必须阻止这次投送，拖到回合上限而日军仍未达成 20 点即美军获胜。战果分（VP）仅作参考。\n\n战役简报：日军将在珊瑚海展开对莫尔兹比港的攻势，第五航空战队已经出动，MO 机动部队（翔鹤、瑞鹤、妙高、羽黑、第27驱逐队）从拉包尔方向南下。美军以第17、第11特混舰队（约克城、列克星敦）从新赫布里底方向迎击，第44特混舰队（澳大利亚、霍巴特、芝加哥）掩护约马德海峡，任务是不让日本人的登陆船队靠近莫尔兹比港。\n双方舰艇编组与史实相同，但出现位置每局随机——没有既定航路，必须自己派水上侦察机和舰载搜索机找出对方，再把全甲板打击砸下去。\n一回合 20 分钟：04:00 开始甲板整备，05:20 首轮升空，19:40 前必须全员回收；超过这个点还在天上的只能摸黑返航，按燃油和夜间着舰风险逐架判定。对局上限 5 天，共 360 回合。",
+ "description": "战役简报：\n1942年5月，日军决定攻略莫尔兹比港，美军必须拦截这次增援。\n\n- 日军战役目标：在莫尔兹比港卸下 20 单位货物。\n- 美军战役目标：阻止日军完成投送。\n- 双方都只投入了有限的航母力量，这是人类历史上第一次航母对决；航母被击沉按机库容量计入 VP，不单独设“航母全灭”目标。\n- 360 回合上限是唯一强制结算点；投送完成或彻底失败都只影响 VP，不提前结束，最终胜负由 VP 比值决定。\n- VP 计分：航母按机库容量，战列舰/战列巡洋舰 6、重巡 3、轻巡 2、驱逐 1、运输船 1，每摧毁一个航空算子 0.25；完成 20 单位投送计 20 VP，未完成则由阻止方计 20 VP。\n- 双方 VP 比值小于 1.25 平分秋色，1.25 到 2 为战术胜利，大于 2 为战略胜利；日军未投送满 20 单位前不能获得战略胜利。\n\n一回合 20 分钟：04:00 开始甲板整备，05:20 首轮升空，19:40 前必须全员回收。对局上限 5 天，共 360 回合。",
  "objectives": [
   {
    "id": "moresby-supply",
-   "text": "日军必须向莫尔兹比港（1611）投送至少 20 点货物；达成即胜，回合上限仍未达成则美军获胜",
+   "text": "日军向莫尔兹比港（1611）投送 20 单位货物；完成计 20 VP，未完成则由美军计 20 VP",
    "kind": "supplies",
    "coord": "1611",
    "faction": "B",
-   "value": 20,
-   "decisive": true
+   "value": 20
   },
   {
    "id": "victory-points",
-   "text": "战果分仅作参考：航母、轻母、护航航母按机库容量计分，战列舰/战列巡洋舰 6 分、重巡 3 分、轻巡 2 分、驱逐 1 分、运输船 1 分，每摧毁一个航空算子 0.25 分",
+   "text": "VP 决定最终结果：双方比值小于 1.25 平分秋色，1.25 到 2 为战术胜利，大于 2 为战略胜利；日军未投送满 20 单位前不能获得战略胜利",
    "kind": "score"
   }
  ],
@@ -73,7 +72,7 @@
    "name": "妙高",
    "fleet_id": "MO",
    "fleet_name": "MO机动部队",
-   "hangar_capacity": 2,
+   "hangar_capacity": 1,
    "ship": "myoko",
    "box": {
     "row_min": 1,
@@ -88,7 +87,7 @@
    "name": "羽黑",
    "fleet_id": "MO",
    "fleet_name": "MO机动部队",
-   "hangar_capacity": 2,
+   "hangar_capacity": 1,
    "ship": "haguro",
    "box": {
     "row_min": 1,
@@ -656,11 +655,11 @@
    "fleet_name": "第44特混舰队",
    "hangar_capacity": 1,
    "ship": "chicago",
-   "box": {
-    "row_min": 20,
-    "row_max": 26,
-    "col_min": 18,
-    "col_max": 26
+   "near": {
+    "fleet_id": "TF17",
+    "direction": "NW",
+    "min_distance": 4,
+    "max_distance": 10
    }
   },
   {
@@ -671,11 +670,11 @@
    "fleet_name": "第44特混舰队",
    "hangar_capacity": 1,
    "ship": "australia",
-   "box": {
-    "row_min": 20,
-    "row_max": 26,
-    "col_min": 18,
-    "col_max": 26
+   "near": {
+    "fleet_id": "TF17",
+    "direction": "NW",
+    "min_distance": 4,
+    "max_distance": 10
    }
   },
   {
@@ -685,11 +684,11 @@
    "fleet_id": "TF44",
    "fleet_name": "第44特混舰队",
    "ship": "hobart",
-   "box": {
-    "row_min": 20,
-    "row_max": 26,
-    "col_min": 18,
-    "col_max": 26
+   "near": {
+    "fleet_id": "TF17",
+    "direction": "NW",
+    "min_distance": 4,
+    "max_distance": 10
    }
   },
   {
@@ -699,11 +698,11 @@
    "fleet_id": "TF44",
    "fleet_name": "第44特混舰队",
    "ship": "perkins",
-   "box": {
-    "row_min": 20,
-    "row_max": 26,
-    "col_min": 18,
-    "col_max": 26
+   "near": {
+    "fleet_id": "TF17",
+    "direction": "NW",
+    "min_distance": 4,
+    "max_distance": 10
    }
   },
   {
@@ -713,11 +712,11 @@
    "fleet_id": "TF44",
    "fleet_name": "第44特混舰队",
    "ship": "whipple",
-   "box": {
-    "row_min": 20,
-    "row_max": 26,
-    "col_min": 18,
-    "col_max": 26
+   "near": {
+    "fleet_id": "TF17",
+    "direction": "NW",
+    "min_distance": 4,
+    "max_distance": 10
    }
   }
  ],
@@ -908,17 +907,7 @@
    "carrier": "b-ca-01"
   },
   {
-   "id": "b-ca-01-seaplane-x2",
-   "unit": "seaplane",
-   "carrier": "b-ca-01"
-  },
-  {
    "id": "b-ca-02-seaplane-x1",
-   "unit": "seaplane",
-   "carrier": "b-ca-02"
-  },
-  {
-   "id": "b-ca-02-seaplane-x2",
    "unit": "seaplane",
    "carrier": "b-ca-02"
   },
@@ -928,17 +917,7 @@
    "carrier": "b-6s-aoba"
   },
   {
-   "id": "b-6s-aoba-seaplane-x2",
-   "unit": "seaplane",
-   "carrier": "b-6s-aoba"
-  },
-  {
    "id": "b-6s-furutaka-seaplane-x1",
-   "unit": "seaplane",
-   "carrier": "b-6s-furutaka"
-  },
-  {
-   "id": "b-6s-furutaka-seaplane-x2",
    "unit": "seaplane",
    "carrier": "b-6s-furutaka"
   },
@@ -948,17 +927,7 @@
    "carrier": "b-6s-kako"
   },
   {
-   "id": "b-6s-kako-seaplane-x2",
-   "unit": "seaplane",
-   "carrier": "b-6s-kako"
-  },
-  {
    "id": "b-6s-kinugasa-seaplane-x1",
-   "unit": "seaplane",
-   "carrier": "b-6s-kinugasa"
-  },
-  {
-   "id": "b-6s-kinugasa-seaplane-x2",
    "unit": "seaplane",
    "carrier": "b-6s-kinugasa"
   },

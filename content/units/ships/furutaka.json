@@ -15,13 +15,13 @@
   "air_radar": false,
   "speed_class": "normal",
   "torpedo_salvos": 2,
-  "aircraft": 2,
+  "aircraft": 1,
   "deck_capacity": 1,
   "elevator_count": 0,
   "depth_charges": 0,
   "cargo": 0,
   "armored_carrier": false,
   "gunnery": 8,
-  "hangar_capacity": 2
+  "hangar_capacity": 1
  }
 }

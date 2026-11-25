@@ -30,10 +30,14 @@ func TestCoralRealSpawnsInBoxes(t *testing.T) {
 		return row >= depBox.RowMin && row <= depBox.RowMax && col >= depBox.ColMin && col <= depBox.ColMax
 	}
 	// 每个舰队各自一个出生框（MO 航母本队和第六战队分开部署）。
+	// TF44 不写死框，改成贴着 TF17 西北 10 hex 内出生，后面单独校验。
 	boxes := map[string]DeployBox{}
 	for _, deployment := range scenario.Deployments {
 		if deployment.Box == nil {
-			t.Fatalf("部署%s缺少出生区", deployment.ID)
+			if deployment.Near == nil {
+				t.Fatalf("部署%s缺少出生区", deployment.ID)
+			}
+			continue
 		}
 		key := deployment.Faction + "/" + deployment.FleetID
 		if existing, ok := boxes[key]; ok && existing != *deployment.Box {
@@ -51,7 +55,7 @@ func TestCoralRealSpawnsInBoxes(t *testing.T) {
 		fleetCoords := map[string]string{}
 		for _, unit := range state.Units {
 			key := unit.Faction + "/" + unit.FleetID
-			if !inBox(boxes[key], unit.Coord) {
+			if box, ok := boxes[key]; ok && !inBox(box, unit.Coord) {
 				t.Fatalf("种子%d %s落到了出生区外：%s", seed, key, unit.Coord)
 			}
 			if existing, ok := fleetCoords[key]; ok && existing != unit.Coord {
@@ -61,6 +65,16 @@ func TestCoralRealSpawnsInBoxes(t *testing.T) {
 			if unit.FleetID == "TF17" || unit.FleetID == "MO" {
 				coords[unit.Faction] = unit.Coord
 			}
+		}
+		tf17, tf44 := fleetCoords["A/TF17"], fleetCoords["A/TF44"]
+		if tf17 == "" || tf44 == "" {
+			t.Fatalf("种子%d TF17/TF44 没有出生：%q / %q", seed, tf17, tf44)
+		}
+		if d := Distance(tf17, tf44); d < 4 || d > 10 {
+			t.Fatalf("种子%d TF44 应在 TF17 的 4-10 hex 内，实际 %d hex", seed, d)
+		}
+		if heading := headingBetween(tf17, tf44); heading != "NW" {
+			t.Fatalf("种子%d TF44 应在 TF17 西北，实际方位 %s", seed, heading)
 		}
 		distance := Distance(coords["A"], coords["B"])
 		if distance < 12 || distance > 45 {
@@ -227,7 +241,7 @@ func TestCoralRealFleetSpawnsAreRandomAndSeparate(t *testing.T) {
 	}
 }
 
-// 珊瑚海剧本的决定性目标是日军向莫尔兹比港投送 20 点货物，
+// 珊瑚海剧本的核心目标是日军向莫尔兹比港投送 20 点货物，
 // 运输船总载货必须足够，否则这个目标从开局就不可能完成。
 func TestCoralRealMoresbySupplyObjective(t *testing.T) {
 	scenario, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")
@@ -240,7 +254,7 @@ func TestCoralRealMoresbySupplyObjective(t *testing.T) {
 			found = &scenario.Objectives[index]
 		}
 	}
-	if found == nil || !found.Decisive || found.Kind != ObjectiveSupplies || found.Faction != "B" || found.Coord != "1611" || found.Value != 20 {
+	if found == nil || found.Decisive || found.Kind != ObjectiveSupplies || found.Faction != "B" || found.Coord != "1611" || found.Value != 20 {
 		t.Fatalf("莫尔兹比投送目标配置错误：%+v", found)
 	}
 	state, err := NewState(scenario, gameMap, catalog, 7)
@@ -249,6 +263,43 @@ func TestCoralRealMoresbySupplyObjective(t *testing.T) {
 	}
 	if cargo := factionCargoLeft(state, "B"); cargo < 20 {
 		t.Fatalf("日军运输船总载货不足 20 点：%d", cargo)
+	}
+}
+
+// 珊瑚海是 5 天 / 360 回合；航母不单独立目标，打沉航母只按机库容量计 VP。
+func TestCoralRealTurnCap(t *testing.T) {
+	scenario, _, _, err := LoadScenario("../../content", "_coral_real")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if scenario.MaxTurns != 360 {
+		t.Fatalf("珊瑚海回合上限应为 360（5天×72），实际 %d", scenario.MaxTurns)
+	}
+	if len(scenario.Objectives) != 2 {
+		t.Fatalf("珊瑚海只应有投送和计分两条目标，实际 %+v", scenario.Objectives)
+	}
+	for _, objective := range scenario.Objectives {
+		if objective.Kind == "carriers" {
+			t.Fatalf("航母不应再有独立目标：%+v", objective)
+		}
+	}
+}
+
+// 珊瑚海日军 6 艘重巡各只有 1 个水机单位，机库容量也是 1。
+func TestCoralRealHeavyCruisersOneFloatplane(t *testing.T) {
+	scenario, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err := NewState(scenario, gameMap, catalog, 11)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"b-ca-01", "b-ca-02", "b-6s-aoba", "b-6s-furutaka", "b-6s-kako", "b-6s-kinugasa"} {
+		unit := state.Units[id]
+		if unit == nil || unit.Card.HangarCapacity != 1 || unit.Card.Aircraft != 1 {
+			t.Fatalf("%s 应为 1 个水机单位 / 1 机库：%+v", id, unit)
+		}
 	}
 }
 

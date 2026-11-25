@@ -56,12 +56,20 @@
   .recon-sector .recon-cell{pointer-events:none}
   .recon-sector .recon-cell.current{stroke-linejoin:round}
   #distance,#distance-labels{pointer-events:none}
+  .distance-ring{fill:none;stroke:#79d4df;stroke-width:1.1;stroke-opacity:.3;stroke-dasharray:3 4;stroke-linecap:round}
+  .distance-ring-label circle{fill:#07171bdd;stroke:#79d4df;stroke-width:1;stroke-opacity:.75}
+  .distance-ring-label text{fill:#d7f7ff;font-weight:700}
+  .distance-origin-marker{fill:#f0d792;stroke:#071417;stroke-width:1}
   aside{display:flex;flex-direction:column;gap:12px;min-width:0}
   .card{background:var(--panel);border:1px solid #2a4148;padding:10px 12px}
   .card h2{margin:0 0 8px;font-size:11px;letter-spacing:1.6px;color:var(--gold);font-weight:600}
   .row{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-top:1px solid #1d3238;font-size:12px}
   .row:first-child{border-top:0}
   .row small{color:var(--muted);font-size:10px}
+  .briefing{margin:0 0 8px;border:1px solid #2a4148;background:#0b1c21}
+  .briefing summary{padding:7px 9px;color:var(--gold);font-size:11px;cursor:pointer}
+  .briefing div{padding:0 10px 9px;color:#a9bcba;font-size:11px;line-height:1.75;white-space:pre-line}
+  .outcome-reason{padding:4px 0 2px;color:var(--muted);font-size:10px;line-height:1.55}
   .tag{display:inline-block;min-width:16px;text-align:center;font-size:10px;font-weight:700;color:#0b1b20;border-radius:2px;padding:0 4px}
   .tag.a{background:var(--a)} .tag.b{background:var(--b)}
   .fleet-line{display:flex;align-items:center;gap:7px;padding:4px 0;border-top:1px solid #1d3238;font-size:12px}
@@ -168,6 +176,16 @@
     }
     return points.join(' ');
   }
+  // 距离环是正六边形：六个顶点就是六个角上的数字位置，虚线只负责把它们连起来。
+  function ringPath(origin, distance) {
+    var radius = distance * Math.sqrt(3) * SIZE;
+    var corners = [];
+    for (var i = 0; i < 6; i++) {
+      var angle = i * Math.PI / 3;
+      corners.push((origin.x + radius * Math.cos(angle)) + ',' + (origin.y + radius * Math.sin(angle)));
+    }
+    return 'M' + corners.join(' L') + ' Z';
+  }
   function pad(value) { return String(value).padStart ? String(value).padStart(2, '0') : ('0' + value).slice(-2); }
 
   function hexDistance(from, to) {
@@ -193,8 +211,9 @@
     drawDistanceRings();
   }
 
-  // 点击舰队/空中算子后，以它所在 hex 为中心画 2/4/6/8… 偶数距离环。
-  // 每个偶数距离只放一个数字牌（取该环最靠上、再靠中间的一格），避免每格都写数字糊成一片。
+  // 点击舰队/空中算子后，以它所在 hex 为中心画 2/4/6/8… 一直画到地图边缘。
+  // 每圈一条淡虚线六边形，连接六个角上的距离数字。
+  var LABEL_ANGLE_TOLERANCE = Math.PI / 180;
   function drawDistanceRings() {
     var cellsLayer = document.getElementById('distance');
     var labelsLayer = document.getElementById('distance-labels');
@@ -203,9 +222,6 @@
     labelsLayer.innerHTML = '';
     if (!DISTANCE_ORIGIN || !MAP_ROWS || !MAP_COLS) return;
     var origin = center(DISTANCE_ORIGIN);
-    var mapCenter = { x: MAP_WIDTH / 2, y: MAP_HEIGHT / 2 };
-    // 数字牌沿“指向地图中心”的方向排，避免全挤在地图边缘；距离 2/4/6… 自然成一条读数线。
-    var labelAxis = Math.atan2(mapCenter.y - origin.y, mapCenter.x - origin.x);
     var rings = {};
     for (var row = 1; row <= MAP_ROWS; row++) {
       for (var col = 1; col <= MAP_COLS; col++) {
@@ -216,52 +232,49 @@
         }
       }
     }
-    var originCell = el('polygon', {
-      points: hexPoints(origin.x, origin.y),
-      class: 'distance-origin-cell',
-      fill: '#d7bb7b',
-      'fill-opacity': 0.18,
-      stroke: '#f0d792',
-      'stroke-width': 1.6
-    });
-    cellsLayer.appendChild(originCell);
+    function angleOf(coord) {
+      var point = center(coord);
+      return Math.atan2(point.y - origin.y, point.x - origin.x);
+    }
+    function angleGap(a, b) {
+      var delta = Math.abs(a - b) % (Math.PI * 2);
+      return delta > Math.PI ? Math.PI * 2 - delta : delta;
+    }
+    cellsLayer.appendChild(el('circle', { cx: origin.x, cy: origin.y, r: 4, class: 'distance-origin-marker' }));
+    // 环的外轮廓是平顶六边形，六个角在 0°、60°、120°、180°、240°、300°。
+    var cornerAngles = [0, Math.PI / 3, 2 * Math.PI / 3, Math.PI, 4 * Math.PI / 3, 5 * Math.PI / 3];
     Object.keys(rings).map(Number).sort(function (a, b) { return a - b; }).forEach(function (distance) {
-      var ring = rings[distance];
-      var major = distance % 4 === 0;
-      var color = major ? '#d7bb7b' : '#79d4df';
-      var opacity = major ? 0.16 : 0.10;
-      ring.forEach(function (coord) {
-        var point = center(coord);
-        cellsLayer.appendChild(el('polygon', {
-          points: hexPoints(point.x, point.y),
-          class: 'distance-cell',
-          fill: color,
-          'fill-opacity': opacity,
-          stroke: color,
-          'stroke-opacity': 0.62,
-          'stroke-width': 1
-        }));
+      var ring = rings[distance].slice().sort(function (a, b) { return angleOf(a) - angleOf(b); });
+      cellsLayer.appendChild(el('path', {
+        d: ringPath(origin, distance),
+        class: 'distance-ring',
+        'data-distance': distance
+      }));
+      var used = {};
+      cornerAngles.forEach(function (target) {
+        var best = null;
+        var bestGap = Infinity;
+        ring.forEach(function (coord) {
+          if (used[coord]) return;
+          var gap = angleGap(angleOf(coord), target);
+          if (gap < bestGap) {
+            bestGap = gap;
+            best = coord;
+          }
+        });
+        if (!best || bestGap > LABEL_ANGLE_TOLERANCE) return;
+        used[best] = true;
+        var point = center(best);
+        var badge = el('g', {
+          class: 'distance-ring-label',
+          transform: 'translate(' + point.x + ',' + point.y + ')',
+          'data-distance-label': distance
+        });
+        badge.appendChild(el('circle', { r: 6.5 }));
+        var label = text(0, 2.8, String(distance), '#d7f7ff', 8, 700, 'middle');
+        badge.appendChild(label);
+        labelsLayer.appendChild(badge);
       });
-      var labelCoord = ring.slice().sort(function (a, b) {
-        var pa = center(a), pb = center(b);
-        function gap(point) {
-          var angle = Math.atan2(point.y - origin.y, point.x - origin.x);
-          var delta = Math.abs(angle - labelAxis) % (Math.PI * 2);
-          return delta > Math.PI ? Math.PI * 2 - delta : delta;
-        }
-        return gap(pa) - gap(pb);
-      })[0];
-      var point = center(labelCoord);
-      var labelX = Math.min(Math.max(point.x, 12), MAP_WIDTH - 12);
-      var labelY = Math.min(Math.max(point.y, 12), MAP_HEIGHT - 12);
-      var badge = el('g', { class: 'distance-badge', transform: 'translate(' + labelX + ',' + labelY + ')' });
-      badge.appendChild(el('circle', { r: 9, fill: '#0b1b20', 'fill-opacity': 0.88, stroke: '#79d4df', 'stroke-opacity': 0.8, 'stroke-width': 1.1 }));
-      var label = text(0, 3.5, String(distance), '#d7f7ff', 10, 700, 'middle');
-      label.setAttribute('stroke', '#071417');
-      label.setAttribute('stroke-width', '2');
-      label.setAttribute('paint-order', 'stroke');
-      badge.appendChild(label);
-      labelsLayer.appendChild(badge);
     });
   }
 
@@ -754,6 +767,9 @@
     if (clock.launch_open) phase = '可放飞';
     var target = document.getElementById('summary');
     var html = '';
+    if (data.scenario && data.scenario.description) {
+      html += '<details class="briefing"><summary>战役简报 · ' + escapeHTML(data.scenario.name || '') + '</summary><div>' + escapeHTML(data.scenario.description) + '</div></details>';
+    }
     html += row('剧本时间', (clock.day ? '第' + clock.day + '天 ' : '') + (clock.time || '–'), clock.turn_minutes ? clock.turn_minutes + ' 分钟/回合' : '');
     html += row('阶段', phase, clock.recover_by ? clock.recover_by + ' 前回收' : '');
     var wind = data.wind;
@@ -770,23 +786,27 @@
     });
     (data.objectives || []).forEach(function (objective) {
       if (objective.kind === 'score') {
-        html += row('计分', '母舰按机库容量 · 每机 0.25', 'BB/BC 6 · CA 3 · CL 2 · DD 1');
+        html += row('计分', 'VP 比值决定胜负', '<1.25 平局 · 1.25–2 战术 · >2 战略');
         return;
       }
       var side = objective.faction || '';
+      var enemy = side === 'A' ? 'B' : 'A';
       if (objective.kind === 'supplies') {
         var supplies = data.shore_supplies || {};
         var delivered = supplies[side + '|' + objective.coord] || 0;
         html += '<div class="row"><span><span class="tag ' + side.toLowerCase() + '">' + escapeHTML(side) + '</span> ' + escapeHTML(objective.text || '投送物资') + '</span><span>' + delivered + ' / ' + (objective.value || 0) + (objective.decisive ? ' · 决定' : '') + '</span></div>';
         return;
       }
-      var enemy = side === 'A' ? 'B' : 'A';
       var enemyLedger = (data.losses || {})[enemy] || {};
       var killed = enemyLedger.ship_total || 0;
       html += '<div class="row"><span><span class="tag ' + side.toLowerCase() + '">' + escapeHTML(side) + '</span> 击沉 ' + (objective.value || 0) + ' 艘</span><span>' + killed + ' / ' + (objective.value || 0) + '</span></div>';
     });
     if (data.outcome) {
-      html += '<div class="row"><span>结局</span><span>' + escapeHTML(data.outcome.reason || data.outcome.winner || '已结束') + '</span></div>';
+      var level = data.outcome.level === 'draw' ? '平分秋色' : data.outcome.level === 'tactical' ? '战术胜利' : data.outcome.level === 'strategic' ? '战略胜利' : '';
+      var winner = data.outcome.winner === 'A' ? '美军' : data.outcome.winner === 'B' ? '日军' : '';
+      var result = level ? (winner ? winner + ' · ' + level : level) : (winner ? winner + '获胜' : '已结束');
+      html += row('结局', escapeHTML(result));
+      if (data.outcome.reason) html += '<div class="outcome-reason">' + escapeHTML(data.outcome.reason) + '</div>';
     }
     target.innerHTML = html;
   }

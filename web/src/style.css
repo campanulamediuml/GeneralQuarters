@@ -71,7 +71,7 @@
 .counter-top>b.counter-cargo-strength{position:absolute;right:4px;top:19px;z-index:6;min-width:18px;height:15px;padding:0 3px;font:700 12px 'Rajdhani',sans-serif}.carrier-air-card.focused{border-color:var(--gold);box-shadow:0 0 0 2px #d7bb7b44,0 10px 30px #0005}.map-canvas{position:relative;justify-content:safe center}.hex-map{flex:none}.map-zoom-controls{position:absolute;top:10px;right:10px;z-index:8;display:flex;align-items:center;margin:0;background:#0a191eee;border:1px solid #3d5961;box-shadow:0 4px 14px #0006}.map-zoom-controls button{width:32px;height:30px;border:0;border-right:1px solid #3d5961;background:#142b33;color:#c8d8d4;font:600 18px 'Rajdhani',sans-serif}.map-zoom-controls button:hover{background:#27444c;color:var(--gold)}.map-zoom-controls .map-zoom-value{width:50px;font-size:11px}.map-zoom-controls span{padding:0 9px;color:#6f8d92;font-size:9px;white-space:nowrap}
 @media(max-width:600px){.map-zoom-controls span{display:none}.fleet-workbench-actions{flex-wrap:wrap}.counter-back-history{font-size:6px}}
 
-.hex-cell.distance-reference polygon{fill:#1d6c4b88;stroke:#55c986}.hex-cell.distance-outer polygon{stroke:#83e2a5;stroke-width:2.4}.hex-cell.distance-origin polygon{stroke:#f0d58d;stroke-width:3}.distance-label{pointer-events:none}.distance-label circle{fill:#0b5539dd;stroke:#83dfa3;stroke-width:1}.distance-label text{fill:#d1f5dc;font:700 10px 'Rajdhani',sans-serif;text-anchor:middle}.air-counter.selectable{cursor:pointer}.air-counter.selected{outline:3px solid var(--gold);outline-offset:2px}
+.distance-contours{pointer-events:none}.distance-ring{fill:none;stroke:#79d4df;stroke-width:1.1;stroke-opacity:.3;stroke-dasharray:3 4;stroke-linecap:round}.distance-ring-label circle{fill:#07171bdd;stroke:#79d4df;stroke-width:1;stroke-opacity:.75}.distance-ring-label text{fill:#d7f7ff;font:700 8px 'Rajdhani',sans-serif;text-anchor:middle}.distance-origin-marker{fill:#f0d792;stroke:#071417;stroke-width:1}.air-counter.selectable{cursor:pointer}.air-counter.selected{outline:3px solid var(--gold);outline-offset:2px}
 
 .recon-radius>strong{color:var(--gold);font:600 22px 'Rajdhani',sans-serif}.recon-preview{display:flex;align-items:center;justify-content:center;gap:22px;margin:16px 0;padding:10px;border:1px solid #304a52;background:#0b1c21}.recon-preview svg{width:180px;height:180px}.recon-preview-sector{fill:#8d793d88;stroke:#e0c573;stroke-width:1.5}.recon-compass-lines{fill:none;stroke:#48636a;stroke-width:1}.recon-compass-labels{fill:#9fb4b4;font:600 10px 'Rajdhani',sans-serif}.recon-compass-center{fill:#d7bb7b}.recon-preview>div{display:flex;flex-direction:column;gap:7px}.recon-preview b{color:#d4dfdb;font-size:13px}.recon-preview span{color:var(--gold);font:600 18px 'Rajdhani',sans-serif}.recon-preview small{max-width:140px;color:#6f8c91;font-size:9px;line-height:1.6}
 
@@ -84,7 +84,7 @@
 .task-drag-dock{position:fixed;z-index:90;top:12px;left:120px;right:16px;display:grid;grid-template-columns:82px repeat(7,minmax(100px,1fr));gap:6px;padding:9px;border:1px solid var(--gold);background:#0c1c22f5;box-shadow:0 12px 35px #000b}.task-drag-dock>span{display:grid;place-items:center;color:var(--gold);font-size:10px}.task-drag-dock>button{min-height:48px;padding:6px;border:1px solid #45636c;background:#17323a;color:#c6d6d2;font-size:10px}.task-drag-dock>button.drop-active{border-color:#8de0ad;background:#275b45;color:#e1f4e8;box-shadow:inset 0 0 0 2px #8de0ad44}
 @media(max-width:900px){.task-drag-dock{left:112px;grid-template-columns:repeat(4,minmax(90px,1fr));max-height:calc(100vh - 24px);overflow:auto}.task-drag-dock>span{display:none}}
 
-.hex-cell.distance-reference:not(.legal) polygon{fill:#173d4a66;stroke:#4f8295;stroke-dasharray:4 3}.hex-cell.distance-outer:not(.legal) polygon{stroke:#79aabd;stroke-width:1.8}.distance-label circle{fill:#173e4bdd;stroke:#79aabd}.distance-label text{fill:#d1e5ed}
+
 
 .air-task.with-air-task-counters{align-items:flex-start;flex-wrap:wrap;padding-bottom:30px;cursor:default}.air-task:not(.with-air-task-counters){cursor:pointer}.air-task-copy .air-task-phase{align-self:flex-start;padding:2px 6px;border:1px solid #58727a;color:#b9cdcb;font-size:9px}.air-task-copy .phase-servicing{border-color:#a6894e;color:#e0c47f}.air-task-copy .phase-preparing{border-color:#5c91a4;color:#9fd6e4}.air-task-copy .phase-launching{border-color:#d7bb7b;color:#f0d58d}.air-task-copy .phase-active{border-color:#64a68a;color:#a7e2c3}.air-task>div.air-task-counters{display:flex;flex:1 0 100%;flex-direction:row;flex-wrap:wrap;gap:8px;padding-top:8px;border-top:1px solid #304a52}.air-task.with-air-task-counters .task-priority{position:absolute;left:12px;bottom:9px;margin:0}.air-task-counters .air-counter{cursor:pointer}.air-task-counters>div>button{display:block;width:84px;margin-top:4px;padding:4px 2px;border:1px solid #476d7a;background:#173844;color:#d5e5e3;font-size:8px}.air-task-counters>div>button:hover{background:#245365}
 
@@ -252,6 +252,20 @@
 
 /* 雷达一栏是装备状态：坏了就划掉，具体是火控还是搜索损坏在"当前损伤"里列。 */
 .ship-card .radar-part.down{color:#e0a08c;text-decoration:underline dotted;text-underline-offset:3px;text-decoration-color:#c9695a}
+
+/* —— 战役简报 —— */
+.briefing-card{margin-bottom:18px;padding:22px 26px;border:1px solid #3d585f;background:linear-gradient(135deg,#142a31,#0e2026)}
+.briefing-card>header{display:flex;align-items:baseline;justify-content:space-between;gap:18px;border-bottom:1px solid #2a444b;padding-bottom:12px;margin-bottom:16px}
+.briefing-card h2{margin:4px 0 0;font-size:21px;color:#e4ded0;letter-spacing:.6px}
+.briefing-copy{white-space:pre-line;color:#a9bcba;font-size:13px;line-height:1.95}
+.briefing-objectives{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid #2a444b}
+.briefing-objective{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border:1px solid #2d474e;background:#0b1c21}
+.briefing-objective p{margin:0;color:#a9bcba;font-size:11px;line-height:1.7}
+.briefing-side{flex:none;padding:1px 6px;border:1px solid #4e6a70;color:#8fa8aa;font-size:9px;line-height:1.6}
+.briefing-side.side-a{border-color:#4e94a4;color:#7dc9d9}
+.briefing-side.side-b{border-color:#aa6258;color:#e59889}
+.briefing-side.side-score{border-color:#8a774c;color:#d7bb7b}
+@media(max-width:800px){.briefing-card{padding:16px}.briefing-card>header{align-items:flex-start;flex-direction:column;gap:4px}}
 .turn-clock{display:flex;align-items:center;gap:10px;padding:6px 12px;border:1px solid #2f6f96;border-radius:2px;background:#0d1c24;font-family:'Rajdhani',sans-serif}
 .turn-clock.night{border-color:#3a4a6a;background:#0b1218}
 .turn-clock .clock-day{font:700 11px/1 'Rajdhani',sans-serif;letter-spacing:1px;color:#7cc4ee}

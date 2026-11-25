@@ -40,7 +40,9 @@ func ShipVictoryPoints(shipType string, card ShipCard) int {
 	return 0
 }
 
-// VictoryPoints 返回双方已经拿到的战果分：自己击沉/击落对方舰船与航空算子的分数之和。
+// VictoryPoints 返回双方已经拿到的战果分：击沉/击落对方舰船与航空算子的分数之和，
+// 加上已经完成的投送目标（按其 value 计 VP）。未完成的投送目标不计分；
+// 对局结束时由 FinalVictoryPoints 把这条目标的分数判给阻止方。
 func VictoryPoints(state State) map[string]float64 {
 	scores := map[string]float64{"A": 0, "B": 0}
 	for side, ledger := range state.Losses {
@@ -59,6 +61,31 @@ func VictoryPoints(state State) map[string]float64 {
 			}
 		}
 		scores[enemy] += float64(aircraft) * scorePerAircraft
+	}
+	for _, objective := range state.Objectives {
+		if objective.Kind != ObjectiveSupplies || objective.Faction == "" {
+			continue
+		}
+		if objectiveCompleted(state, objective.Faction, objective) {
+			scores[objective.Faction] += float64(supplyObjectiveValue(objective))
+		}
+	}
+	return scores
+}
+
+// FinalVictoryPoints 是对局结束时的最终 VP：在 VictoryPoints 的基础上，
+// 把没有完成的投送目标按目标分值判给阻止方。这样"日军没送到 20 点"
+// 本身就是美军实打实的战役成果，而不是只在文字上判美军赢。
+func FinalVictoryPoints(state State) map[string]float64 {
+	scores := VictoryPoints(state)
+	for _, objective := range state.Objectives {
+		if objective.Kind != ObjectiveSupplies || objective.Faction == "" {
+			continue
+		}
+		if objectiveCompleted(state, objective.Faction, objective) {
+			continue
+		}
+		scores[OppositeFaction(objective.Faction)] += float64(supplyObjectiveValue(objective))
 	}
 	return scores
 }

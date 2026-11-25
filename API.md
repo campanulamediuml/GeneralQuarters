@@ -133,7 +133,8 @@
 - `scenario`、`map`、`turn`、`version`、`status`；
 - `you`和`players`；
 - 当前阵营可见的`units`；己方单位额外包含`legal_moves`。每艘舰船包含`definition_id`、当前/初始生命值、服务端生成的`card`角色卡、`move_cooldown`、`confusion`和当前`damage`，字段涵盖火炮、防空、损管、雷达、航速、鱼雷、航空设施、货物、火灾、进水及设备损伤等；
-- `scores`：战果分，浮点数（航母/轻母/护航航母按机库容量，战列舰与战列巡洋舰 6、重巡 3、轻巡 2、驱逐 1、运输船 1，每摧毁一个航空算子 0.25），剧本声明`kind:"score"`目标时据此在回合上限判胜负；
+- `scores`：战果分，浮点数（航母/轻母/护航航母按机库容量，战列舰与战列巡洋舰 6、重巡 3、轻巡 2、驱逐 1、运输船 1，每摧毁一个航空算子 0.25；完成的投送目标按 `value` 计分）。剧本声明`kind:"score"`目标时，在回合上限（珊瑚海 360 回合）按双方 VP 比值判胜负：小于 1.25 平分秋色，1.25 到 2 战术胜利，大于 2 战略胜利；投送完成/失败不提前结算；`outcome.level`返回`draw/tactical/strategic`，日军未完成 20 单位投送前不能战略胜利；
+- `outcome`：仅对局结束后出现，包含`winner`（平局为空）、`level`（`draw/tactical/strategic`）、`reason`、双方`scores`、`turn`和`turn_cap`；
 - 服务端生成的`fleets`舰队投影，包含`fleet_id`、成员列表、数量、总强度、朝向、`move_interval/move_cooldown`、混乱、合法移动和`distance_reference`；距离参考由`origin/max_distance/cells`组成，每个cell包含服务端计算的`coord/distance`。情报目标额外包含`contact_level/contact_size`，低等级不返回具体舰船属性：1级只返回一个占位算子（无规模、无舰种），2级只给编队大小（`small/medium/large`），3级返回逐舰的舰种但身份和属性仍未知，4级才返回完整舰船卡；`coord`是服务端固化的"最后已知位置"，情报衰减只降等级、不改坐标；
 - `aviation.carriers`：全部航空作业舰，包含机库占用/容量、`deck_length/deck_used`、甲板作业类型、独立的`elevators`对象数组和航空算子；`aviation.tasks`：按服务端优先级排序的任务，包含`phase`、`carrier_ids`、`fleet_id`、`airborne_count`及完整算子列表。空中任务包含以当前位置为中心的`distance_reference`，侦察任务额外包含扇面与航线字段，客户端只渲染这些服务器结果；任务另含`queue_position`；
 - `clock`：剧本时间线快照，包含`day/time/night/service_open/launch_open/service_start/launch_start/recover_by/turn_minutes`。`service_open`为false表示还没到整备开工时间，`launch_open`为false表示甲板上的算子还不能起飞，`night`为true且剧本`night_loss`为真时，{`recover_by`}之后仍在空中的算子会被强制摸黑返航，随后按燃油与夜间着舰风险（航母70%、机场20%）逐架判定。剧本没有`day_hours/turns_per_day`时该字段为null；

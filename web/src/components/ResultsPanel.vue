@@ -26,6 +26,15 @@ const sides = computed(() => {
 })
 
 const verdict = computed(() => props.state.outcome)
+const verdictTitle = computed(() => {
+  const outcome = props.state.outcome
+  if (!outcome) return ''
+  const faction = outcome.winner === 'A' ? '美军' : outcome.winner === 'B' ? '日军' : ''
+  if (outcome.level === 'draw') return '平分秋色'
+  if (outcome.level === 'tactical') return `${faction} · 战术胜利`
+  if (outcome.level === 'strategic') return `${faction} · 战略胜利`
+  return outcome.winner ? `${faction}获胜` : '平局'
+})
 </script>
 
 <template>
@@ -37,7 +46,7 @@ const verdict = computed(() => props.state.outcome)
     </p>
 
     <div v-if="verdict" class="results-verdict">
-      <strong>对局结束</strong>
+      <strong>对局结束 · {{ verdictTitle }}</strong>
       <span>{{ verdict.reason }}</span>
       <span v-if="verdict.winner">胜方：{{ verdict.winner === 'A' ? '美军' : '日军' }}</span>
     </div>

@@ -540,7 +540,7 @@ func (s *Server) writeState(w http.ResponseWriter, r *http.Request, roomID strin
 		"clock":           game.Clock(room.State),
 		"enemy_air":       game.VisibleEnemyAir(room.State, player.Faction),
 		"losses":          game.VisibleLosses(room.State, player.Faction),
-		// scores 是击沉战果分（航母按机库容量，其余按舰种），剧本用 score 目标时按它判定。
+		// scores 是战果分：击沉/击落 + 已完成的投送目标；剧本用 score 目标时按它判定。
 		"scores":     game.VictoryPoints(room.State),
 		"outcome":    room.State.Outcome,
 		"objectives": room.State.Objectives,
