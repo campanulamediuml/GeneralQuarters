@@ -537,7 +537,7 @@ func carrierLightAABoost(state State, target *Unit) float64 {
 // 这个函数只保留给规则对照和测试用。
 func lightAAValue(state State, attacker *AirUnit, target *Unit) float64 {
 	value := target.Card.LightAA
-	if attacker.Kind == "torpedo_bomber" {
+	if isTorpedoAttack(attacker) {
 		value *= 2
 	}
 	return value + carrierLightAABoost(state, target)
@@ -556,7 +556,7 @@ func lightAAPoolValue(state State, target *Unit) float64 {
 // 合并成一副骰子后落到命中率上，因此"鱼雷机 ×2、复合编队 ×0.5"互相抵消。
 func lightAAHitChance(state State, target *Unit, plane *AirUnit, mixed bool) float64 {
 	chance := aaHitChance(state, target.Coord, false, target.Faction)
-	if plane != nil && plane.Kind == "torpedo_bomber" {
+	if isTorpedoAttack(plane) {
 		chance *= 2
 	}
 	if mixed {
@@ -588,8 +588,9 @@ func resolveLightAAPool(state *State, attackers []*AirUnit, target *Unit, mixed 
 		}
 		plane := pool[nextUint64(&state.RNGState)%uint64(len(pool))]
 		// 规则书 719 行：轻型防空值不影响战略轰炸机——要求在很高高度投弹，小口径炮够不着。
+		// B-26 挂炸弹时按高空轰炸结算，同样免疫；挂鱼雷时走普通鱼雷机判定。
 		// 骰子选中它们时这一发作废（也不产生混乱判定），骰数本身不变。
-		if isStrategicBomber(plane) {
+		if isHighAltitudeBomber(plane) {
 			continue
 		}
 		// 规则书 673、712 行：鱼雷机翻倍、复合编队减半，都落在这一颗骰子的命中率上。
@@ -681,15 +682,14 @@ func strikeHitChance(state State, attacker *AirUnit, target *Unit, mixed, capRem
 		chance -= 5
 	}
 	// 水平轰炸对舰惩罚：炸弹从高空砸机动目标，命中率按机种打折。
-	// 规则书 647 行只写了战略轰炸机，中型轰炸机（B-25/B-26）同样走水平轰炸，
-	// 这里统一成一条：水平轰炸 ×0.75，战略轰炸机 ÷2 且至少 5%。
+	// 普通中型轰炸机（B-25）×0.75；高空机（战略轰炸机、B-26 挂炸弹）÷2 且至少 5%。
 	switch {
-	case isStrategicBomber(attacker):
+	case isHighAltitudeBomber(attacker):
 		chance /= 2
 		if chance < 5 {
 			chance = 5
 		}
-	case isLevelBomber(attacker):
+	case isLevelBomber(attacker) && !isTorpedoAttack(attacker):
 		chance *= levelBomberShipPenalty
 	}
 	if chance < 5 {
@@ -701,9 +701,9 @@ func strikeHitChance(state State, attacker *AirUnit, target *Unit, mixed, capRem
 	return chance
 }
 
-// levelBomberShipPenalty 是中型轰炸机做水平轰炸攻击舰船时的命中率系数。
-// 规则书只给了战略轰炸机"除以 2"，中型机没有数值；这里取 0.75，
-// 意思是比俯冲/鱼雷差一档，但不至于像四发重轰那样基本打不中军舰。
+// levelBomberShipPenalty 是普通中型轰炸机（B-25）做水平轰炸攻击舰船时的命中率系数。
+// 规则书只给了战略轰炸机"除以 2"，中型机没有数值；这里取 0.75。
+// 带 high_altitude_bomber 标记的 B-26 挂炸弹时不走这个系数，而是按高空机减半。
 const levelBomberShipPenalty = 0.75
 
 // isStrategicBomber 识别战略轰炸机：按机种常量判断，没有常量时退回机型/型号关键字。
@@ -720,7 +720,33 @@ func isStrategicBomber(aircraft *AirUnit) bool {
 	return strings.Contains(model, "B-17") || strings.Contains(model, "B-24") || strings.Contains(model, "B-29")
 }
 
-// isLevelBomber 识别做水平轰炸的中型/重型轰炸机（B-25、B-26 这一档）。
+// isTorpedoAttack 识别这一次出击是否按鱼雷机结算：
+// 专用鱼雷机，或带鱼雷挂架的机型（B-26）真正挂了鱼雷。
+func isTorpedoAttack(aircraft *AirUnit) bool {
+	if aircraft == nil {
+		return false
+	}
+	if aircraft.Kind == "torpedo_bomber" {
+		return true
+	}
+	return aircraft.TorpedoCapable && aircraft.Loadout.Weapon() == WeaponTorpedo
+}
+
+// isHighAltitudeBomber 识别高空投弹：战略轰炸机始终算；
+// B-26 这类带 high_altitude_bomber 标记的机型只在挂炸弹时算，挂鱼雷时是鱼雷机。
+// 高空机免疫轻防空，同时对舰命中率吃战略轰炸机的减半惩罚。
+func isHighAltitudeBomber(aircraft *AirUnit) bool {
+	if aircraft == nil {
+		return false
+	}
+	if isStrategicBomber(aircraft) {
+		return true
+	}
+	return aircraft.HighAltitudeBomber && aircraft.Loadout.Weapon() == WeaponBomb
+}
+
+// isLevelBomber 识别普通水平轰炸中型/重型轰炸机（B-25 这一档）。
+// B-26 挂炸弹时由 isHighAltitudeBomber 先行拦截，不落到这个 0.75 系数。
 func isLevelBomber(aircraft *AirUnit) bool {
 	if aircraft == nil {
 		return false
@@ -751,15 +777,13 @@ func bombWavePriority(aircraft *AirUnit) int {
 	if aircraft == nil {
 		return 1
 	}
-	switch aircraft.Kind {
-	case "strategic_bomber", "level_bomber", "medium_bomber", "heavy_bomber":
-		return 0
-	case "torpedo_bomber":
+	if isTorpedoAttack(aircraft) {
 		return 2
-	case "fighter":
-		// 挂弹战斗机按炸弹波处理，不是单独的"战斗机波"；不挂弹的不会进 bombers。
-		return 1
 	}
+	if isHighAltitudeBomber(aircraft) || isLevelBomber(aircraft) {
+		return 0
+	}
+	// 挂弹战斗机按炸弹波处理，不是单独的"战斗机波"；不挂弹的不会进 bombers。
 	return 1
 }
 
@@ -875,7 +899,7 @@ func resolveBombingOn(state *State, attacker *AirUnit, target *Unit, mixed, capR
 		if unit := state.Units[target.ID]; unit != nil {
 			strengthBefore = unit.Strength
 		}
-		if attacker.Kind == "torpedo_bomber" {
+		if isTorpedoAttack(attacker) {
 			events = append(events, applyTorpedoHit(state, ShellHit{AttackerID: attacker.ID, TargetID: target.ID, Torpedo: true, Warned: warned})...)
 		} else {
 			events = append(events, applyShellHit(state, ShellHit{AttackerID: attacker.ID, TargetID: target.ID, Warned: warned})...)

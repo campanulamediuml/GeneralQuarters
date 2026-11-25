@@ -192,10 +192,7 @@ func deckStrike32(prefix string) []string {
 // TestAirStrikeBalanceProbe 是参数体检：
 // 单航母 12 机波次 与 四航母全甲板打击（32 俯冲 + 24 鱼雷 + 12 护航）分别打美/日航母编队。
 func TestAirStrikeBalanceProbe(t *testing.T) {
-	scenario, gameMap, catalog, err := LoadScenario("../../content", "_sandbox")
-	if err != nil {
-		t.Fatal(err)
-	}
+	scenario, gameMap, catalog := loadSandboxScenario(t)
 	type direction struct {
 		name          string
 		carrierPrefix string

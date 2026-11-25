@@ -1,6 +1,6 @@
 {
  "id": "_coral_real",
- "version": 2,
+ "version": 3,
  "name": "珊瑚海 · 真实比例（64×52，25海里/hex）",
  "rows": 52,
  "cols": 64,
@@ -569,6 +569,11 @@
    "coord": "1010",
    "terrain": "island",
    "name": ""
+  },
+  {
+   "coord": "1023",
+   "terrain": "shoal",
+   "name": "德伯因"
   },
   {
    "coord": "1034",
@@ -1528,7 +1533,7 @@
   {
    "coord": "4410",
    "terrain": "island",
-   "name": ""
+   "name": "汤斯维尔"
   },
   {
    "coord": "4411",

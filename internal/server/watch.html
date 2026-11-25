@@ -55,6 +55,7 @@
   .hex.reef{fill:#273137;stroke:#7e6f67;stroke-dasharray:2 2}
   .recon-sector .recon-cell{pointer-events:none}
   .recon-sector .recon-cell.current{stroke-linejoin:round}
+  #distance,#distance-labels{pointer-events:none}
   aside{display:flex;flex-direction:column;gap:12px;min-width:0}
   .card{background:var(--panel);border:1px solid #2a4148;padding:10px 12px}
   .card h2{margin:0 0 8px;font-size:11px;letter-spacing:1.6px;color:var(--gold);font-weight:600}
@@ -96,7 +97,7 @@
       <button id="zoom-value" type="button" title="复位到全图" aria-label="地图缩放复位">100%</button>
       <button id="zoom-in" type="button" title="放大" aria-label="放大地图">+</button>
     </div>
-    <div class="map-hint">拖动地图平移 · ＋/－缩放 · 点兵牌看编成</div>
+    <div class="map-hint">拖动地图平移 · ＋/－缩放 · 点兵牌看编成/距离 · Esc 清除</div>
     <div id="detail-panel" class="detail-panel" hidden>
       <header>
         <div><span id="detail-kicker">FORMATION</span><h2 id="detail-title">编队详情</h2></div>
@@ -126,6 +127,9 @@
   var MAP_HEIGHT = 0;
   var FULL_VIEW = null;
   var VIEW = null;
+  var MAP_ROWS = 0;
+  var MAP_COLS = 0;
+  var DISTANCE_ORIGIN = '';
   var ZOOM_STEPS = [0.5, 0.6, 0.75, 1, 1.2, 1.5, 2, 2.5, 3, 4, 5];
   var zoomIndex = 3;
   var HEADING_ANGLE = { E: 0, SE: 60, SW: 120, W: 180, NW: 240, NE: 300 };
@@ -166,12 +170,109 @@
   }
   function pad(value) { return String(value).padStart ? String(value).padStart(2, '0') : ('0' + value).slice(-2); }
 
+  function hexDistance(from, to) {
+    function cube(coord) {
+      var row = Number(coord.slice(0, 2)) - 1;
+      var col = Number(coord.slice(2, 4)) - 1;
+      var x = col - Math.floor((row + (row & 1)) / 2);
+      var z = row;
+      return [x, -x - z, z];
+    }
+    var a = cube(from);
+    var b = cube(to);
+    return Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]), Math.abs(a[2] - b[2]));
+  }
+
+  function clearDistance() {
+    DISTANCE_ORIGIN = '';
+    drawDistanceRings();
+  }
+
+  function selectDistance(coord) {
+    DISTANCE_ORIGIN = coord || '';
+    drawDistanceRings();
+  }
+
+  // 点击舰队/空中算子后，以它所在 hex 为中心画 2/4/6/8… 偶数距离环。
+  // 每个偶数距离只放一个数字牌（取该环最靠上、再靠中间的一格），避免每格都写数字糊成一片。
+  function drawDistanceRings() {
+    var cellsLayer = document.getElementById('distance');
+    var labelsLayer = document.getElementById('distance-labels');
+    if (!cellsLayer || !labelsLayer) return;
+    cellsLayer.innerHTML = '';
+    labelsLayer.innerHTML = '';
+    if (!DISTANCE_ORIGIN || !MAP_ROWS || !MAP_COLS) return;
+    var origin = center(DISTANCE_ORIGIN);
+    var mapCenter = { x: MAP_WIDTH / 2, y: MAP_HEIGHT / 2 };
+    // 数字牌沿“指向地图中心”的方向排，避免全挤在地图边缘；距离 2/4/6… 自然成一条读数线。
+    var labelAxis = Math.atan2(mapCenter.y - origin.y, mapCenter.x - origin.x);
+    var rings = {};
+    for (var row = 1; row <= MAP_ROWS; row++) {
+      for (var col = 1; col <= MAP_COLS; col++) {
+        var coord = pad(row) + pad(col);
+        var distance = hexDistance(DISTANCE_ORIGIN, coord);
+        if (distance > 0 && distance % 2 === 0) {
+          (rings[distance] = rings[distance] || []).push(coord);
+        }
+      }
+    }
+    var originCell = el('polygon', {
+      points: hexPoints(origin.x, origin.y),
+      class: 'distance-origin-cell',
+      fill: '#d7bb7b',
+      'fill-opacity': 0.18,
+      stroke: '#f0d792',
+      'stroke-width': 1.6
+    });
+    cellsLayer.appendChild(originCell);
+    Object.keys(rings).map(Number).sort(function (a, b) { return a - b; }).forEach(function (distance) {
+      var ring = rings[distance];
+      var major = distance % 4 === 0;
+      var color = major ? '#d7bb7b' : '#79d4df';
+      var opacity = major ? 0.16 : 0.10;
+      ring.forEach(function (coord) {
+        var point = center(coord);
+        cellsLayer.appendChild(el('polygon', {
+          points: hexPoints(point.x, point.y),
+          class: 'distance-cell',
+          fill: color,
+          'fill-opacity': opacity,
+          stroke: color,
+          'stroke-opacity': 0.62,
+          'stroke-width': 1
+        }));
+      });
+      var labelCoord = ring.slice().sort(function (a, b) {
+        var pa = center(a), pb = center(b);
+        function gap(point) {
+          var angle = Math.atan2(point.y - origin.y, point.x - origin.x);
+          var delta = Math.abs(angle - labelAxis) % (Math.PI * 2);
+          return delta > Math.PI ? Math.PI * 2 - delta : delta;
+        }
+        return gap(pa) - gap(pb);
+      })[0];
+      var point = center(labelCoord);
+      var labelX = Math.min(Math.max(point.x, 12), MAP_WIDTH - 12);
+      var labelY = Math.min(Math.max(point.y, 12), MAP_HEIGHT - 12);
+      var badge = el('g', { class: 'distance-badge', transform: 'translate(' + labelX + ',' + labelY + ')' });
+      badge.appendChild(el('circle', { r: 9, fill: '#0b1b20', 'fill-opacity': 0.88, stroke: '#79d4df', 'stroke-opacity': 0.8, 'stroke-width': 1.1 }));
+      var label = text(0, 3.5, String(distance), '#d7f7ff', 10, 700, 'middle');
+      label.setAttribute('stroke', '#071417');
+      label.setAttribute('stroke-width', '2');
+      label.setAttribute('paint-order', 'stroke');
+      badge.appendChild(label);
+      labelsLayer.appendChild(badge);
+    });
+  }
+
   function buildMap(map) {
     var svg = document.getElementById('map');
     var width = Math.sqrt(3) * SIZE * (map.cols + 0.5) + 20;
     var height = SIZE * (1.5 * (map.rows - 1) + 2) + 20;
     MAP_WIDTH = width;
     MAP_HEIGHT = height;
+    MAP_ROWS = map.rows;
+    MAP_COLS = map.cols;
     FULL_VIEW = { x: 0, y: 0, w: width, h: height };
     VIEW = { x: 0, y: 0, w: width, h: height };
     zoomIndex = ZOOM_STEPS.indexOf(1);
@@ -189,7 +290,9 @@
       }
     }
     svg.appendChild(layer);
+    svg.appendChild(el('g', { id: 'distance' }));
     svg.appendChild(el('g', { id: 'marks' }));
+    svg.appendChild(el('g', { id: 'distance-labels', 'pointer-events': 'none' }));
     built = true;
   }
 
@@ -294,7 +397,7 @@
     if (reset) reset.addEventListener('click', resetView);
     var detailClose = document.getElementById('detail-close');
     if (detailClose) detailClose.addEventListener('click', closeDetail);
-    window.addEventListener('keydown', function (event) { if (event.key === 'Escape') closeDetail(); });
+    window.addEventListener('keydown', function (event) { if (event.key === 'Escape') { closeDetail(); clearDistance(); } });
   }
 
   function shipIcon(fleet, color) {
@@ -465,6 +568,7 @@
     if (!marks) return;
     marks.innerHTML = '';
     LAST_DATA = data;
+    drawDistanceRings();
     drawReconSectors(data, marks);
     var byCoord = {};
     (data.fleets || []).forEach(function (fleet) {
@@ -495,7 +599,7 @@
         var shipTitle = el('title');
         shipTitle.textContent = (fleet.fleet_name || fleet.name || fleet.fleet_id) + ' · ' + fleet.count + ' 艘 · ' + coord;
         ship.appendChild(shipTitle);
-        ship.addEventListener('click', function (event) { event.stopPropagation(); showFleetDetail(fleet); });
+        ship.addEventListener('click', function (event) { event.stopPropagation(); selectDistance(fleet.coord); showFleetDetail(fleet); });
         marks.appendChild(ship);
 
         var label = fleet.fleet_id || '';
@@ -521,7 +625,7 @@
         placedLabels.push({ x: chosen.x, y: chosen.y, w: wide, h: 24 });
 
         var labelGroup = el('g', { class: 'fleet-label', 'data-detail': 'fleet', transform: 'translate(' + chosen.x + ',' + chosen.y + ')' });
-        labelGroup.addEventListener('click', function (event) { event.stopPropagation(); showFleetDetail(fleet); });
+        labelGroup.addEventListener('click', function (event) { event.stopPropagation(); selectDistance(fleet.coord); showFleetDetail(fleet); });
         labelGroup.appendChild(el('rect', { x: 0, y: 0, width: wide, height: 24, rx: 3, fill: color, 'fill-opacity': 0.18, stroke: color, 'stroke-width': 1 }));
         labelGroup.appendChild(text(5, 10, label, color, 10, 700));
         labelGroup.appendChild(text(wide - 6, 10, '×' + fleet.count, '#e8cd8b', 10, 700, 'end'));
@@ -596,7 +700,7 @@
         var color = COLOR[group.faction] || '#d7bb7b';
         var offsetY = (index - (groups.length - 1) / 2) * 16;
         var marker = el('g', { class: 'watch-air', 'data-detail': 'air', transform: 'translate(' + point.x + ',' + (point.y - 20 + offsetY) + ')' });
-        marker.addEventListener('click', function (event) { event.stopPropagation(); showAirDetail(group); });
+        marker.addEventListener('click', function (event) { event.stopPropagation(); selectDistance(group.coord); showAirDetail(group); });
         marker.appendChild(el('circle', { r: 8, fill: color, 'fill-opacity': 0.92, stroke: '#071417', 'stroke-width': 1 }));
         marker.appendChild(text(0, 3, group.count, '#071417', 9, 700, 'middle'));
         var labelRight = point.x < MAP_WIDTH - 78;
@@ -620,7 +724,7 @@
       var point = center(task.current_coord);
       var color = COLOR[task.faction] || '#d7bb7b';
       var group = el('g', { class: 'watch-air', 'data-detail': 'air', transform: 'translate(' + point.x + ',' + (point.y - 26) + ')' });
-      group.addEventListener('click', function (event) { event.stopPropagation(); showAirDetail({ faction: task.faction, coord: task.current_coord, mission: missionLabel(task.kind), count: task.airborne_count, aircraft: task.aircraft || [] }); });
+      group.addEventListener('click', function (event) { event.stopPropagation(); selectDistance(task.current_coord); showAirDetail({ faction: task.faction, coord: task.current_coord, mission: missionLabel(task.kind), count: task.airborne_count, aircraft: task.aircraft || [] }); });
       group.appendChild(el('circle', { r: 7, fill: color, 'fill-opacity': 0.92, stroke: '#071417', 'stroke-width': 1 }));
       group.appendChild(text(0, 3, task.airborne_count > 1 ? '×' + task.airborne_count : '1', '#071417', 8, 700, 'middle'));
       var label = text(11, 3, missionLabel(task.kind), color, 9, 700);

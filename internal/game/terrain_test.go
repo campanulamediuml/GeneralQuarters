@@ -40,10 +40,7 @@ func TestSurfaceFleetCanEnterAirfieldHex(t *testing.T) {
 
 // TestCarrierFleetCannotDeployOnIsland CV 不能部署在陆地 hex 上。
 func TestCarrierFleetCannotDeployOnIsland(t *testing.T) {
-	scenario, gameMap, catalog, err := LoadScenario("../../content", "_sandbox")
-	if err != nil {
-		t.Fatal(err)
-	}
+	scenario, gameMap, catalog := loadSandboxScenario(t)
 	for index := range scenario.Deployments {
 		if scenario.Deployments[index].ID == "a2-cv-01" {
 			scenario.Deployments[index].Coord = "0207"

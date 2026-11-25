@@ -178,7 +178,7 @@ func (s *Server) createRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if request.ScenarioID == "" {
-		request.ScenarioID = "_sandbox"
+		request.ScenarioID = "_coral_real"
 	}
 	scenario, gameMap, catalog, err := game.LoadScenario(s.contentDir, request.ScenarioID)
 	if err != nil {
@@ -203,12 +203,8 @@ func (s *Server) createRoom(w http.ResponseWriter, r *http.Request) {
 	if name == "" {
 		name = "玩家A"
 	}
-	// 单人房要显式声明：沙盒剧本默认单人（自测用得最多），其余剧本默认双人对局。
-	solo := request.Solo
-	if request.ScenarioID == "_sandbox" {
-		solo = true
-	}
-	room := store.Room{ID: roomID, JoinToken: joinToken, Status: "running", Turn: 1, Version: 1, State: state, Solo: solo}
+	// 单人房必须显式声明；正式剧本默认双人对局。
+	room := store.Room{ID: roomID, JoinToken: joinToken, Status: "running", Turn: 1, Version: 1, State: state, Solo: request.Solo}
 	faction := strings.ToUpper(strings.TrimSpace(request.Faction))
 	if faction != "A" && faction != "B" {
 		faction = "A"

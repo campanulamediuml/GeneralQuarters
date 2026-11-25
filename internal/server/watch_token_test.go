@@ -12,7 +12,7 @@ func TestWatchPageResolvesRoomFromTokenOnlyURL(t *testing.T) {
 	host, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
 	var created roomResponse
-	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A"}, &created); status != http.StatusCreated {
+	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A", "scenario_id": "_fixture"}, &created); status != http.StatusCreated {
 		t.Fatalf("create room status %d", status)
 	}
 	watcher := newTestClient(t, host.base)
@@ -36,7 +36,7 @@ func TestWatchPageTokenOnlyWithPlayerCookie(t *testing.T) {
 	host, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
 	var created roomResponse
-	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A"}, &created); status != http.StatusCreated {
+	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A", "scenario_id": "_fixture"}, &created); status != http.StatusCreated {
 		t.Fatalf("create room status %d", status)
 	}
 	body, status := fetchWatchPage(t, host, "/watch/"+created.JoinToken)

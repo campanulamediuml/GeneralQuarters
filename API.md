@@ -18,7 +18,7 @@
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET | `/healthz` | 健康检查 |
-| POST | `/api/v1/rooms` | 创建房间并自动载入剧本，默认`_sandbox` |
+| POST | `/api/v1/rooms` | 创建房间并自动载入剧本，默认`_coral_real` |
 | POST | `/api/v1/rooms/join` | 使用12位token加入 |
 | GET | `/api/v1/rooms/{roomID}/state` | 房间私有快照；网页不再调用，保留给脚本/旧客户端 |
 | GET | `/api/v1/rooms/{roomID}/events` | 最近100条当前阵营可见事件；同上 |
@@ -32,7 +32,7 @@
 ### 创建房间
 
 ```json
-{"name":"玩家A","scenario_id":"_sandbox"}
+{"name":"玩家A","scenario_id":"_coral_real"}
 ```
 
 响应201：

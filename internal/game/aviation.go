@@ -1929,7 +1929,7 @@ func landAtAirfield(state *State, aircraft *AirUnit, airfield *Airfield) {
 		Model: aircraft.Model, Kind: aircraft.Kind, Picture: aircraft.Picture, PictureMode: aircraft.PictureMode, Status: "recovery", Strength: aircraft.Strength,
 		MaxRange: aircraft.MaxRange, RemainingRange: aircraft.MaxRange,
 		AirCombat: aircraft.AirCombat, AntiShip: aircraft.AntiShip, AntiGround: aircraft.AntiGround,
-		Seaplane: aircraft.Seaplane, AirfieldOnly: aircraft.AirfieldOnly,
+		Seaplane: aircraft.Seaplane, AirfieldOnly: aircraft.AirfieldOnly, TorpedoCapable: aircraft.TorpedoCapable, HighAltitudeBomber: aircraft.HighAltitudeBomber,
 		Coord: airfield.Coord, Damaged: damaged, ReconRadiusLimit: max(1, aircraft.MaxRange/2),
 	}
 	delete(state.Aircraft, aircraft.ID)

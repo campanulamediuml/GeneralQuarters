@@ -48,12 +48,12 @@ func TestTwoPlayerRoomRejectsLoneReady(t *testing.T) {
 	}
 }
 
-// 显式创建的单人房（沙盒自测）仍然一名玩家 ready 就结算。
+// 显式创建的单人房仍然一名玩家 ready 就结算。
 func TestSoloRoomResolvesAlone(t *testing.T) {
 	a, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
 	var created roomResponse
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_sandbox", "solo": true}, &created); status != http.StatusCreated {
+	if status := a.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_coral_real", "solo": true}, &created); status != http.StatusCreated {
 		t.Fatalf("创建单人房状态码%d", status)
 	}
 	var initial testView

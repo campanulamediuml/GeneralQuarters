@@ -42,7 +42,7 @@ paths:
               type: object
               properties:
                 name: {type: string, example: 玩家A}
-                scenario_id: {type: string, example: _sandbox, default: _sandbox}
+                scenario_id: {type: string, example: _coral_real, default: _coral_real}
       responses:
         '201':
           description: 创建成功
@@ -346,7 +346,7 @@ components:
         faction: {type: string, enum: [A, B]}
         name: {type: string}
         model: {type: string}
-        kind: {type: string, enum: [fighter, dive_bomber, torpedo_bomber, recon]}
+        kind: {type: string, enum: [fighter, dive_bomber, torpedo_bomber, recon, level_bomber, medium_bomber, heavy_bomber, strategic_bomber]}
         status: {type: string, enum: [hangar, service, elevator, deck, ready, recovery, cap, recon, attack_holding, attack], description: 依次表示机库、任务整备、升降机上、甲板、待回收、空中任务和攻击编队等待/离场}
         strength: {type: integer}
         max_range: {type: integer, description: 服务端包含副油箱后的最大航程}
@@ -355,6 +355,9 @@ components:
         anti_ship: {type: integer}
         anti_ground: {type: integer}
         seaplane: {type: boolean, description: true时界面使用橙色水机算子}
+        airfield_only: {type: boolean, description: 陆基机型，只能从机场起降}
+        torpedo_capable: {type: boolean, description: 有鱼雷挂架；B-26 挂鱼雷时按鱼雷机结算}
+        high_altitude_bomber: {type: boolean, description: 挂炸弹对舰时按高空轰炸结算，免疫轻防空但命中率减半}
         launched: {type: boolean, description: 是否占用本回合起飞容量}
         elevator_id: {type: string, description: status为elevator时指向本舰具体升降机}
         priority: {type: integer}

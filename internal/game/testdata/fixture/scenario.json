@@ -1,8 +1,8 @@
 {
- "id": "_sandbox",
+ "id": "_fixture",
  "version": 15,
- "name": "灰海接触",
- "map": "_sandbox",
+ "name": "规则测试夹具",
+ "map": "_fixture",
  "year": 1942,
  "night": false,
  "day_hours": 12,

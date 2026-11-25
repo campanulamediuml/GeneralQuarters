@@ -1990,8 +1990,8 @@ func groundAirUnit(state State, aircraft *AirfieldAirUnit) AirUnit {
 		AirCombat: aircraft.AirCombat, AntiShip: aircraft.AntiShip, AntiGround: aircraft.AntiGround,
 		// 陆基机型标记必须带出去：前端靠它区分"航母舰载机"和"机场起降的陆基机"，
 		// 漏掉这面旗子，陆攻的航程块会被画成舰载机的蓝底样式，看着像从航母上起飞的。
-		AirfieldOnly: aircraft.AirfieldOnly,
-		TaskID:       aircraft.TaskID, TaskKind: aircraft.TaskKind, Priority: aircraft.Priority,
+		AirfieldOnly: aircraft.AirfieldOnly, TorpedoCapable: aircraft.TorpedoCapable, HighAltitudeBomber: aircraft.HighAltitudeBomber,
+		TaskID: aircraft.TaskID, TaskKind: aircraft.TaskKind, Priority: aircraft.Priority,
 		Coord: aircraft.Coord, OriginCoord: aircraft.OriginCoord, TargetCoord: aircraft.TargetCoord, Heading: aircraft.Heading,
 		SectorWidth: aircraft.SectorWidth, ReconRadius: aircraft.ReconRadius, ReconDistance: aircraft.ReconDistance,
 		ReconRadiusLimit: aircraft.ReconRadiusLimit, Returning: aircraft.Returning, TrackingFleetID: aircraft.TrackingFleetID,

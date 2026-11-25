@@ -97,10 +97,7 @@ func aliveAircraft(state *State, ids []string) int {
 // TestCarrierDuelProbe 是"对轰"体检：双方同回合各出 32 架全甲板打击
 // （6 护航战斗机 + 14 俯冲 + 12 鱼雷），各自舰队上空还有 CAP，看互相打成什么样。
 func TestCarrierDuelProbe(t *testing.T) {
-	scenario, gameMap, catalog, err := LoadScenario("../../content", "_sandbox")
-	if err != nil {
-		t.Fatal(err)
-	}
+	scenario, gameMap, catalog := loadSandboxScenario(t)
 	const trials = 50
 	var usDmg, jpDmg, usOut, jpOut, usLost, jpLost float64
 	var usSunk, usHurt, jpSunk, jpHurt float64

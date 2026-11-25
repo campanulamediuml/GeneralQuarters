@@ -13,7 +13,7 @@ func TestAviationQueueThroughREST(t *testing.T) {
 	client, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
 	var created roomResponse
-	if status := client.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A"}, &created); status != http.StatusCreated {
+	if status := client.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A", "scenario_id": "_fixture"}, &created); status != http.StatusCreated {
 		t.Fatalf("创建房间状态码%d", status)
 	}
 	commands := []map[string]any{
@@ -40,7 +40,7 @@ func TestAirCombatResolutionThroughREST(t *testing.T) {
 	client, _, database, cleanup := setupTestServer(t)
 	defer cleanup()
 	var created roomResponse
-	if status := client.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A"}, &created); status != http.StatusCreated {
+	if status := client.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_fixture", "solo": true}, &created); status != http.StatusCreated {
 		t.Fatalf("创建房间状态码%d", status)
 	}
 	room, err := database.Room(context.Background(), created.RoomID)
@@ -85,7 +85,7 @@ func TestCrossCarrierStrikeUsesSingleTaskThroughREST(t *testing.T) {
 	client, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
 	var created roomResponse
-	if status := client.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A"}, &created); status != http.StatusCreated {
+	if status := client.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A", "scenario_id": "_fixture"}, &created); status != http.StatusCreated {
 		t.Fatalf("创建房间状态码%d", status)
 	}
 	commands := []map[string]any{

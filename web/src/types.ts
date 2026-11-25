@@ -128,6 +128,10 @@ export interface AirUnit {
   seaplane: boolean
   /** 陆基机型：只能在机场起降，航程不按舰载机显示。 */
   airfield_only?: boolean
+  /** 有鱼雷挂架；挂鱼雷出击时按鱼雷机结算（B-26）。 */
+  torpedo_capable?: boolean
+  /** 挂炸弹对舰时按高空轰炸结算：免疫轻防空，但命中率减半。 */
+  high_altitude_bomber?: boolean
   launched: boolean
   elevator_id?: string
   priority: number
@@ -384,6 +388,12 @@ export interface GroundAirUnit {
   air_combat: number
   anti_ship: number
   anti_ground: number
+  /** 陆基机型标记 */
+  airfield_only?: boolean
+  /** 有鱼雷挂架；挂鱼雷出击时按鱼雷机结算（B-26）。 */
+  torpedo_capable?: boolean
+  /** 挂炸弹对舰时按高空轰炸结算。 */
+  high_altitude_bomber?: boolean
   task_id?: string
   task_kind?: string
   priority?: number

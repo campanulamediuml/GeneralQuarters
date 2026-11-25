@@ -1,7 +1,7 @@
 {
-  "id": "_sandbox",
+  "id": "_fixture",
   "version": 2,
-  "name": "灰蓝海图 · 通信试验场",
+  "name": "规则测试海图",
   "rows": 7,
   "cols": 9,
   "cells": [

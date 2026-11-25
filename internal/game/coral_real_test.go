@@ -121,7 +121,7 @@ func TestCoralRealJapaneseCarriersHaveNoAirRadar(t *testing.T) {
 	}
 }
 
-// 1942年5月：日军舰队没有雷达，机场里只有凯恩斯有对空雷达。
+// 1942年5月：日军舰队没有雷达；机场里只有汤斯维尔有对空雷达，凯恩斯已撤掉。
 func TestCoralRealRadarFits(t *testing.T) {
 	scenario, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")
 	if err != nil {
@@ -140,7 +140,7 @@ func TestCoralRealRadarFits(t *testing.T) {
 		}
 	}
 	for _, airfield := range state.Airfields {
-		want := airfield.ID == "af-a-cairns"
+		want := airfield.ID == "af-a-townsville"
 		if airfield.Radar != want {
 			t.Fatalf("%s雷达配置错误：%v（期望%v）", airfield.Name, airfield.Radar, want)
 		}

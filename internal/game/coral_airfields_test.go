@@ -33,8 +33,9 @@ func TestCoralRealLandBasedAirGroups(t *testing.T) {
 		groups[aircraft.AirfieldID][aircraft.DefinitionID]++
 	}
 	want := map[string]map[string]int{
-		"af-b-rabaul":  {"fighter": 6, "g4m": 6, "g3m": 3},
-		"af-a-moresby": {"dive_bomber": 2, "p40": 4, "b25": 3},
+		"af-b-rabaul":     {"fighter": 6, "g4m": 6, "g3m": 3},
+		"af-a-moresby":    {"dive_bomber": 2, "p40": 4, "b25": 3, "b17": 3},
+		"af-a-townsville": {"b17": 4, "b26": 4, "p40": 4},
 	}
 	for airfieldID, expected := range want {
 		for kind, count := range expected {
@@ -76,7 +77,7 @@ func TestCoralRealLandBasedAirGroups(t *testing.T) {
 	}
 }
 
-// 图拉吉已撤掉，日军水机基地改为肖特兰（0831）和莱卡塔（1238）。
+// 图拉吉、德伯因重新开放水机基地；日军还有肖特兰、莱卡塔，美军有鲍恩。
 func TestCoralRealSeaplaneBases(t *testing.T) {
 	scenario, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")
 	if err != nil {
@@ -86,20 +87,18 @@ func TestCoralRealSeaplaneBases(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if state.Airfields["af-b-tulagi"] != nil {
-		t.Fatal("图拉吉机场应该已删除")
+	wantBases := map[string]string{
+		"af-b-tulagi":    "1541",
+		"af-b-deboyne":   "1023",
+		"af-b-shortland": "0831",
+		"af-b-rekata":    "1238",
+		"af-a-bowen":     "4613",
 	}
-	shortland := state.Airfields["af-b-shortland"]
-	if shortland == nil || shortland.Coord != "0831" || shortland.Type != AirfieldSeaplane || shortland.Faction != "B" {
-		t.Fatalf("肖特兰水机基地部署错误：%+v", shortland)
-	}
-	rekata := state.Airfields["af-b-rekata"]
-	if rekata == nil || rekata.Coord != "1238" || rekata.Type != AirfieldSeaplane || rekata.Faction != "B" {
-		t.Fatalf("莱卡塔水机基地部署错误：%+v", rekata)
-	}
-	bowen := state.Airfields["af-a-bowen"]
-	if bowen == nil || bowen.Coord != "4613" || bowen.Type != AirfieldSeaplane || bowen.Faction != "A" {
-		t.Fatalf("鲍恩水机基地部署错误：%+v", bowen)
+	for id, coord := range wantBases {
+		base := state.Airfields[id]
+		if base == nil || base.Coord != coord || base.Type != AirfieldSeaplane {
+			t.Fatalf("%s 水机基地部署错误：%+v", id, base)
+		}
 	}
 	counts := map[string]map[string]int{}
 	for _, aircraft := range state.GroundAir {
@@ -107,6 +106,12 @@ func TestCoralRealSeaplaneBases(t *testing.T) {
 			counts[aircraft.AirfieldID] = map[string]int{}
 		}
 		counts[aircraft.AirfieldID][aircraft.DefinitionID]++
+	}
+	if counts["af-b-tulagi"]["h6k"] != 4 || counts["af-b-tulagi"]["seaplane"] != 3 {
+		t.Fatalf("图拉吉机型数量错误：%v", counts["af-b-tulagi"])
+	}
+	if counts["af-b-deboyne"]["seaplane"] != 2 {
+		t.Fatalf("德伯因机型数量错误：%v", counts["af-b-deboyne"])
 	}
 	if counts["af-b-shortland"]["h6k"] != 6 {
 		t.Fatalf("肖特兰 H6K 数量错误：%v", counts["af-b-shortland"])
@@ -116,9 +121,6 @@ func TestCoralRealSeaplaneBases(t *testing.T) {
 	}
 	if counts["af-a-bowen"]["pby"] != 2 {
 		t.Fatalf("鲍恩 PBY 数量错误：%v", counts["af-a-bowen"])
-	}
-	if len(counts["af-b-tulagi"]) != 0 {
-		t.Fatalf("图拉吉还有地面飞机：%v", counts["af-b-tulagi"])
 	}
 }
 

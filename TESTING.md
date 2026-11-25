@@ -31,7 +31,7 @@
 - 后端：直接运行 Go server，独立调试数据目录，不使用正式数据库。
 - 前端：Vite 桌面调试地址，代理真实 Go API 与 WebSocket。
 - 浏览器：桌面 1920×1080，不测试窄屏。
-- 规则测试：使用 `_sandbox`，在单元测试中显式设置 `RNGState`、单位位置、CAP、目标和损伤。
+- 规则测试：基础规则用例使用 `internal/game/testdata/sandbox` 的测试夹具；正式剧本用例使用 `_coral_real`。单元测试显式设置 `RNGState`、单位位置、CAP、目标和损伤。
 - 浏览器测试：使用独立房间和可重复布置的调试目标，不在正式战局中注入测试状态。
 - 构建验证：`go test ./...`、`npm run build`。
 

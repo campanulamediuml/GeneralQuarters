@@ -22,6 +22,7 @@ B5N/TBD/G3M/H6K 是侧视图、D3A/SBD/G4M/B25 是斜视（3/4 视角），只�
 | soc.png | SOCTop@2x.png（旋转 180°） | SOC 海鸥（美军水上侦察机卡） |
 | p40.png | P40Top@2x.png（旋转 180°） | P-40 战鹰（陆基战斗机） |
 | b25.png | B25Top@2x.png（旋转 180°） | B-25 米切尔（陆基中型轰炸机） |
+| b26.png | B26Top@2x.png（旋转 180°） | B-26 劫掠者（陆基中型轰炸机，可挂鱼雷） |
 | a6m2.png | A6MTop@2x.png（旋转 180°） | A6M2 零战（日军战斗机卡） |
 | a5m.png | A5MTop@2x.png（旋转 180°） | A5M 九六舰战（日军旧式战斗机） |
 | d3a1.png | D3ATop@2x.png（旋转 180°） | D3A1 九九舰爆 |

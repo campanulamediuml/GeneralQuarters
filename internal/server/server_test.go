@@ -75,7 +75,7 @@ func setupTestServer(t *testing.T) (*testClient, string, *store.Store, func()) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	app := New(database, "../../content", false)
+	app := New(database, testContentRoot(t), false)
 	mux := http.NewServeMux()
 	app.RegisterRoutes(mux)
 	httpServer := httptest.NewServer(mux)
@@ -87,7 +87,7 @@ func TestTwoPlayerCommandAndTurnFlow(t *testing.T) {
 	a, dbPath, _, cleanup := setupTestServer(t)
 	defer cleanup()
 	var created roomResponse
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A"}, &created); status != http.StatusCreated {
+	if status := a.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A", "scenario_id": "_fixture"}, &created); status != http.StatusCreated {
 		t.Fatalf("创建房间状态码%d", status)
 	}
 	if len(created.JoinToken) != 14 {
@@ -190,7 +190,7 @@ func TestSoloReadyAndInvalidToken(t *testing.T) {
 	a, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
 	var created roomResponse
-	_ = a.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{}, &created)
+	_ = a.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"scenario_id": "_fixture", "solo": true}, &created)
 	var view testView
 	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": 1, "ready": true}, &view); status != http.StatusOK || view.Turn != 2 {
 		t.Fatalf("单人沙盒未结算：%+v", view)
@@ -252,7 +252,7 @@ func TestConcurrentCommandsHaveSingleWinner(t *testing.T) {
 	a, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
 	var created roomResponse
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{}, &created); status != http.StatusCreated {
+	if status := a.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"scenario_id": "_fixture"}, &created); status != http.StatusCreated {
 		t.Fatal("创建房间失败")
 	}
 	// 同一版本并发命令只能有一个成功：用两条会立即改变权威状态的命令（给同一个机库算子分配任务）来验证。
@@ -315,7 +315,7 @@ func TestSectorReconCommandPersistsAndAdvances(t *testing.T) {
 	a, dbPath, database, cleanup := setupTestServer(t)
 	defer cleanup()
 	var created roomResponse
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{}, &created); status != http.StatusCreated {
+	if status := a.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"scenario_id": "_fixture"}, &created); status != http.StatusCreated {
 		t.Fatal("创建房间失败")
 	}
 	b := newTestClient(t, a.base)

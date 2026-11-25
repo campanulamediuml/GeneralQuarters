@@ -35,7 +35,7 @@ func ReconRadiusLimit(aircraft AirUnit) int {
 	// 按侦察任务实际会挂的那套算（recon + 副油箱），不是转场挂载：
 	// 用转场航程 ÷2 算出来的半径，飞机根本飞不到——燃油会在半路把它叫回来，
 	// 于是面板写着 12 hex、实际只能扫 10 hex。
-	loadout := LoadoutForTask(aircraft.Kind, aircraft.Seaplane, aircraft.AntiGround, aircraft.AntiShip, "recon", StrikeTargetShip)
+	loadout := LoadoutForTaskFor(aircraft.Kind, aircraft.Seaplane, aircraft.AntiGround, aircraft.AntiShip, "recon", StrikeTargetShip, aircraft.TorpedoCapable)
 	limit := SortieBaseRange(base, loadout) / 2
 	if limit < 1 {
 		return 1

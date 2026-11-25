@@ -43,10 +43,7 @@ func TestCoordNeighborsAndDistance(t *testing.T) {
 }
 
 func TestScenarioValidationAndMovement(t *testing.T) {
-	scenario, gameMap, catalog, err := LoadScenario("../../content", "_sandbox")
-	if err != nil {
-		t.Fatal(err)
-	}
+	scenario, gameMap, catalog := loadSandboxScenario(t)
 	state, err := NewState(scenario, gameMap, catalog, 42)
 	if err != nil {
 		t.Fatal(err)
@@ -133,7 +130,7 @@ func TestScenarioValidationAndMovement(t *testing.T) {
 			t.Fatal("航母初始位置附近的浅滩被标记为可移动")
 		}
 	}
-	carrierDeployment := ScenarioDefinition{ID: "carrier-shoal", Map: "_sandbox", Deployments: []Deployment{{ID: "cv", Unit: "cv", Faction: "B", Coord: "0404"}}}
+	carrierDeployment := ScenarioDefinition{ID: "carrier-shoal", Map: "fixture", Deployments: []Deployment{{ID: "cv", Unit: "cv", Faction: "B", Coord: "0404"}}}
 	if _, err := NewState(carrierDeployment, gameMap, catalog, 42); err == nil {
 		t.Fatal("允许把航母初始部署在浅滩")
 	}
@@ -160,7 +157,7 @@ func TestResolveAndFogProjection(t *testing.T) {
 		t.Fatal("移动未结算")
 	}
 
-	scenario, gameMap, catalog, _ := LoadScenario("../../content", "_sandbox")
+	scenario, gameMap, catalog := loadSandboxScenario(t)
 	state, _ := NewState(scenario, gameMap, catalog, 42)
 	for _, unit := range VisibleUnits(state, "A") {
 		if unit.Faction == "B" {

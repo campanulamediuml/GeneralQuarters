@@ -5,7 +5,7 @@ import "testing"
 // 剧本可以对单舰属性做覆盖（例如珊瑚海四艘航母统一甲板长度 8），
 // 没写的字段必须继续沿用单位库，不能被覆盖逻辑清空。
 func TestDeploymentOverridesApply(t *testing.T) {
-	_, gameMap, catalog, err := LoadScenario("../../content", "_coral")
+	_, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -14,7 +14,7 @@ func TestDeploymentOverridesApply(t *testing.T) {
 		ID: "override-test", Name: "覆盖测试", Year: 1942,
 		Doctrines: map[string]string{"A": "us", "B": "japan"},
 		Deployments: []Deployment{{
-			ID: "cv1", Unit: "cv", Faction: "A", Name: "测试航母", Coord: "0602",
+			ID: "cv1", Unit: "cv", Faction: "A", Name: "测试航母", Coord: "2015",
 			Overrides: &DeploymentOverrides{Strength: &strength, DeckLength: &deck, LightAA: &lightAA},
 		}},
 	}

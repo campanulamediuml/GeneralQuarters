@@ -165,6 +165,10 @@ type AircraftDefinition struct {
 	Seaplane    bool   `json:"seaplane"`
 	// 空军型：只能从机场起降，不能部署到航母上
 	AirfieldOnly bool `json:"airfield_only,omitempty"`
+	// TorpedoCapable：该机型有鱼雷挂架（B-26 这类中型轰炸机也能挂鱼雷）。
+	TorpedoCapable bool `json:"torpedo_capable,omitempty"`
+	// HighAltitudeBomber：挂炸弹攻击舰船时按高空轰炸结算，免疫轻防空但吃高空命中惩罚。
+	HighAltitudeBomber bool `json:"high_altitude_bomber,omitempty"`
 }
 
 // AirfieldType 是机场规模：小型 / 中型 / 大型，决定能起降哪些机型；
@@ -280,6 +284,10 @@ type AirfieldAirUnit struct {
 	AntiGround     int  `json:"anti_ground"`
 	// AirfieldOnly：陆基机型，只能在机场起降（陆攻等）。
 	AirfieldOnly bool `json:"airfield_only,omitempty"`
+	// TorpedoCapable：该机型有鱼雷挂架，挂鱼雷出击时按鱼雷机结算。
+	TorpedoCapable bool `json:"torpedo_capable,omitempty"`
+	// HighAltitudeBomber：挂炸弹攻击舰船时按高空轰炸结算。
+	HighAltitudeBomber bool `json:"high_altitude_bomber,omitempty"`
 	// Seaplane：带浮筒或飞行艇，只能从水上飞机基地起降。
 	Seaplane    bool   `json:"seaplane,omitempty"`
 	TaskID      string `json:"task_id,omitempty"`
@@ -533,15 +541,18 @@ type AirUnit struct {
 	Seaplane       bool `json:"seaplane"`
 	// AirfieldOnly：陆基机型（陆攻、P-40、B-25 这类），只能在机场起降，
 	// 前端据此不再显示"舰载机"的蓝色航程框。
-	AirfieldOnly bool   `json:"airfield_only,omitempty"`
-	Launched     bool   `json:"launched"`
-	ElevatorID   string `json:"elevator_id,omitempty"`
-	Priority     int    `json:"priority"`
-	TaskID       string `json:"task_id,omitempty"`
-	TaskKind     string `json:"task_kind,omitempty"`
-	OriginCoord  string `json:"origin_coord,omitempty"`
-	Coord        string `json:"coord,omitempty"`
-	TargetCoord  string `json:"target_coord,omitempty"`
+	AirfieldOnly bool `json:"airfield_only,omitempty"`
+	// TorpedoCapable / HighAltitudeBomber 从机种定义带过来，决定挂载表与攻击结算。
+	TorpedoCapable     bool   `json:"torpedo_capable,omitempty"`
+	HighAltitudeBomber bool   `json:"high_altitude_bomber,omitempty"`
+	Launched           bool   `json:"launched"`
+	ElevatorID         string `json:"elevator_id,omitempty"`
+	Priority           int    `json:"priority"`
+	TaskID             string `json:"task_id,omitempty"`
+	TaskKind           string `json:"task_kind,omitempty"`
+	OriginCoord        string `json:"origin_coord,omitempty"`
+	Coord              string `json:"coord,omitempty"`
+	TargetCoord        string `json:"target_coord,omitempty"`
 	// TargetFleetID 是打击编队认领的敌方舰队：目标 hex 打空之后靠它去追最新情报位置。
 	TargetFleetID string `json:"target_fleet_id,omitempty"`
 	// CoverUnitID 是空中掩护跟随的友军单位：目标 hex 里有己方舰队时自动认领，

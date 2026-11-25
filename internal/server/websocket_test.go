@@ -60,7 +60,7 @@ func TestWebSocketRPCUsesRoomAPIAndEnforcesRoomScope(t *testing.T) {
 	host, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
 	var created roomResponse
-	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A"}, &created); status != http.StatusCreated {
+	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_fixture", "solo": true}, &created); status != http.StatusCreated {
 		t.Fatalf("create room status %d", status)
 	}
 	conn := dialTestWS(t, host, "/ws?room_id="+created.RoomID)
@@ -99,7 +99,7 @@ func TestWebSocketSpectatorSubscribesByRoomAndToken(t *testing.T) {
 	host, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
 	var created roomResponse
-	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A"}, &created); status != http.StatusCreated {
+	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_fixture", "solo": true}, &created); status != http.StatusCreated {
 		t.Fatalf("create room status %d", status)
 	}
 	watcher := newTestClient(t, host.base) // no session cookie
@@ -165,7 +165,7 @@ func TestWebSocketPlayerReceivesTurnResolved(t *testing.T) {
 	host, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
 	var created roomResponse
-	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A"}, &created); status != http.StatusCreated {
+	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A", "scenario_id": "_fixture"}, &created); status != http.StatusCreated {
 		t.Fatalf("create room status %d", status)
 	}
 	guest := newTestClient(t, host.base)
@@ -202,7 +202,7 @@ func TestWebSocketRejectsUnauthenticatedPlayerRPC(t *testing.T) {
 	host, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
 	var created roomResponse
-	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A"}, &created); status != http.StatusCreated {
+	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A", "scenario_id": "_fixture"}, &created); status != http.StatusCreated {
 		t.Fatalf("create room status %d", status)
 	}
 	anonymous := newTestClient(t, host.base)

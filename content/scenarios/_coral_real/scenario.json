@@ -1,6 +1,6 @@
 {
  "id": "_coral_real",
- "version": 33,
+ "version": 34,
  "name": "珊瑚海 · 1942年5月（25海里/hex）",
  "map": "_coral_real",
  "units": "sandbox",
@@ -1229,6 +1229,43 @@
    ]
   },
   {
+   "id": "af-b-tulagi",
+   "faction": "B",
+   "name": "图拉吉水上飞机基地",
+   "coord": "1541",
+   "type": "seaplane",
+   "runways": 4,
+   "radar": false,
+   "heavy_aa": 0,
+   "light_aa": 2,
+   "coastal": 0,
+   "aircraft": [
+    "af-b-tulagi-h6k-1",
+    "af-b-tulagi-h6k-2",
+    "af-b-tulagi-h6k-3",
+    "af-b-tulagi-h6k-4",
+    "af-b-tulagi-seaplane-1",
+    "af-b-tulagi-seaplane-2",
+    "af-b-tulagi-seaplane-3"
+   ]
+  },
+  {
+   "id": "af-b-deboyne",
+   "faction": "B",
+   "name": "德伯因水上飞机基地",
+   "coord": "1023",
+   "type": "seaplane",
+   "runways": 4,
+   "radar": false,
+   "heavy_aa": 0,
+   "light_aa": 2,
+   "coastal": 0,
+   "aircraft": [
+    "af-b-deboyne-seaplane-1",
+    "af-b-deboyne-seaplane-2"
+   ]
+  },
+  {
    "id": "af-b-rabaul",
    "faction": "B",
    "name": "拉包尔机场",
@@ -1262,11 +1299,11 @@
    "faction": "A",
    "name": "莫尔兹比港机场",
    "coord": "1611",
-   "type": "medium",
-   "runways": 2,
+   "type": "large",
+   "runways": 3,
    "radar": false,
-   "heavy_aa": 0,
-   "light_aa": 2,
+   "heavy_aa": 3,
+   "light_aa": 20,
    "coastal": 0,
    "aircraft": [
     "af-a-moresby-dive_bomber-1",
@@ -1277,7 +1314,10 @@
     "af-a-moresby-p40-4",
     "af-a-moresby-b25-1",
     "af-a-moresby-b25-2",
-    "af-a-moresby-b25-3"
+    "af-a-moresby-b25-3",
+    "af-a-moresby-b17-1",
+    "af-a-moresby-b17-2",
+    "af-a-moresby-b17-3"
    ]
   },
   {
@@ -1305,9 +1345,9 @@
    "coord": "3707",
    "type": "large",
    "runways": 3,
-   "radar": true,
-   "heavy_aa": 0,
-   "light_aa": 2,
+   "radar": false,
+   "heavy_aa": 3,
+   "light_aa": 20,
    "coastal": 6,
    "aircraft": [
     "af-a-cairns-p40-1",
@@ -1322,6 +1362,32 @@
     "af-a-cairns-b17-2",
     "af-a-cairns-b17-3",
     "af-a-cairns-b17-4"
+   ]
+  },
+  {
+   "id": "af-a-townsville",
+   "faction": "A",
+   "name": "汤斯维尔机场",
+   "coord": "4410",
+   "type": "large",
+   "runways": 3,
+   "radar": true,
+   "heavy_aa": 10,
+   "light_aa": 20,
+   "coastal": 6,
+   "aircraft": [
+    "af-a-townsville-b17-1",
+    "af-a-townsville-b17-2",
+    "af-a-townsville-b17-3",
+    "af-a-townsville-b17-4",
+    "af-a-townsville-b26-1",
+    "af-a-townsville-b26-2",
+    "af-a-townsville-b26-3",
+    "af-a-townsville-b26-4",
+    "af-a-townsville-p40-1",
+    "af-a-townsville-p40-2",
+    "af-a-townsville-p40-3",
+    "af-a-townsville-p40-4"
    ]
   },
   {

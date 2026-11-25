@@ -699,6 +699,23 @@
    "airfield_only": true
   },
   {
+   "id": "b26",
+   "faction": "A",
+   "name": "中型轰炸机",
+   "model": "B-26 劫掠者",
+   "picture": "misc/image/aircraft/b26.png",
+   "picture_mode": "image",
+   "kind": "medium_bomber",
+   "strength": 2,
+   "range": 24,
+   "air_combat": 2,
+   "anti_ship": 2,
+   "anti_ground": 2,
+   "airfield_only": true,
+   "torpedo_capable": true,
+   "high_altitude_bomber": true
+  },
+  {
    "id": "b17",
    "faction": "A",
    "name": "战略轰炸机",

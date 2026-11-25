@@ -5,10 +5,8 @@ import { api } from '../api'
 
 const router = useRouter()
 const name = ref(localStorage.getItem('gq_name') || '')
-const scenarioID = ref('_sandbox')
+const scenarioID = ref('_coral_real')
 const scenarios = [
-  { id: '_sandbox', name: '灰海接触（沙盒）' },
-  { id: '_coral', name: '珊瑚海遭遇战' },
   { id: '_coral_real', name: '珊瑚海 · 1942年5月（25海里/hex）' },
 ]
 // 阵营：房主坐哪一边。以前只能坐 A，想当日军只能等别人建房，太别扭。

@@ -24,7 +24,7 @@ func TestAirfieldPictureBySize(t *testing.T) {
 	}
 }
 
-// 珊瑚海：莫尔兹比港与拉包尔都是中型（2 条跑道），凯恩斯是大型。
+// 珊瑚海：拉包尔仍是中型；莫尔兹比港、凯恩斯、汤斯维尔都是 3 跑道大型基地。
 func TestCoralAirfieldSizes(t *testing.T) {
 	scenario, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")
 	if err != nil {
@@ -35,9 +35,10 @@ func TestCoralAirfieldSizes(t *testing.T) {
 		t.Fatalf("建立状态失败：%v", err)
 	}
 	want := map[string]AirfieldType{
-		"af-a-moresby": AirfieldMedium,
-		"af-a-cairns":  AirfieldLarge,
-		"af-b-rabaul":  AirfieldMedium,
+		"af-a-moresby":    AirfieldLarge,
+		"af-a-cairns":     AirfieldLarge,
+		"af-a-townsville": AirfieldLarge,
+		"af-b-rabaul":     AirfieldMedium,
 	}
 	for id, kind := range want {
 		airfield := state.Airfields[id]
@@ -48,16 +49,28 @@ func TestCoralAirfieldSizes(t *testing.T) {
 			t.Fatalf("%s 的规模应为 %s，实际 %s", id, kind, airfield.Type)
 		}
 	}
-	if picture := state.Airfields["af-a-moresby"].PictureOrDefault(); picture != "misc/image/airfield/medium.png" {
-		t.Fatalf("莫尔兹比港应挂中型机场图标，实际 %q", picture)
+	if picture := state.Airfields["af-a-moresby"].PictureOrDefault(); picture != "misc/image/airfield/large.png" {
+		t.Fatalf("莫尔兹比港应挂大型机场图标，实际 %q", picture)
 	}
 	if picture := state.Airfields["af-b-rabaul"].PictureOrDefault(); picture != "misc/image/airfield/medium.png" {
 		t.Fatalf("拉包尔应挂中型机场图标，实际 %q", picture)
 	}
-	if cairns := state.Airfields["af-a-cairns"]; cairns.Runways != 3 || cairns.MaxStrength != 15 {
-		t.Fatalf("凯恩斯应为 3 条跑道 / 15 点生命值，实际 %d / %d", cairns.Runways, cairns.MaxStrength)
+	for _, id := range []string{"af-a-moresby", "af-a-cairns", "af-a-townsville"} {
+		airfield := state.Airfields[id]
+		if airfield.Runways != 3 || airfield.MaxStrength != 15 {
+			t.Fatalf("%s 应为 3 条跑道 / 15 点生命值，实际 %d / %d", id, airfield.Runways, airfield.MaxStrength)
+		}
 	}
-	for _, id := range []string{"af-b-rabaul", "af-a-cairns"} {
+	if moresby := state.Airfields["af-a-moresby"]; moresby.Radar || moresby.HeavyAA != 3 || moresby.LightAA != 20 {
+		t.Fatalf("莫尔兹比港应为无雷达 / 3 重防空 / 20 轻防空，实际 %+v", moresby)
+	}
+	if cairns := state.Airfields["af-a-cairns"]; cairns.Radar || cairns.HeavyAA != 3 || cairns.LightAA != 20 {
+		t.Fatalf("凯恩斯应为无雷达 / 3 重防空 / 20 轻防空，实际 %+v", cairns)
+	}
+	if townsville := state.Airfields["af-a-townsville"]; !townsville.Radar || townsville.HeavyAA != 10 || townsville.LightAA != 20 {
+		t.Fatalf("汤斯维尔应为有雷达 / 10 重防空 / 20 轻防空，实际 %+v", townsville)
+	}
+	for _, id := range []string{"af-b-rabaul", "af-a-cairns", "af-a-townsville"} {
 		if airfield := state.Airfields[id]; airfield == nil || airfield.Coastal != 6 {
 			t.Fatalf("%s 的岸炮应为 6，实际 %+v", id, airfield)
 		}

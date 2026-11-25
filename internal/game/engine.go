@@ -15,7 +15,7 @@ func LoadScenario(contentDir, scenarioID string) (ScenarioDefinition, MapDefinit
 	var gameMap MapDefinition
 	var catalog UnitCatalog
 	if scenarioID == "" {
-		scenarioID = "_sandbox"
+		scenarioID = "_coral_real"
 	}
 	// 剧本目录是开放的：目录名就是剧本 ID，地图和单位库由剧本自己指定，
 	// 这样加一个测试剧本不需要改任何 Go 代码。
@@ -310,14 +310,14 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		// 这样空战后抛弃副油箱就能准确扣掉它还没烧掉的那部分里程（规则书 48 行）。
 		// 机库待命时按机种给一个合法的默认挂载（不是 air+tank），
 		// 否则侦察机/轰炸机一开始就处于"挂不了的组合"；真正出击时再按任务换成对应挂载。
-		initialLoadout := DefaultLoadout(definition.Kind, definition.Seaplane, definition.AntiGround, definition.AntiShip, "cap", StrikeTargetShip)
+		initialLoadout := DefaultLoadoutFor(definition.Kind, definition.Seaplane, definition.AntiGround, definition.AntiShip, "cap", StrikeTargetShip, definition.TorpedoCapable)
 		fuel := MountedFuel(definition.Range, initialLoadout)
 		airCombat, antiShip := elitePilotBonus(state, carrier.Faction, definition.Kind, definition.AirCombat, definition.AntiShip)
 		state.Aircraft[deployment.ID] = &AirUnit{
 			ID: deployment.ID, DefinitionID: definition.ID, CarrierID: carrier.ID, Faction: carrier.Faction,
 			Name: definition.Name, Model: definition.Model, Kind: definition.Kind, Picture: definition.Picture, PictureMode: definition.PictureMode, Status: "hangar", Strength: definition.Strength,
 			BaseRange: definition.Range, Loadout: initialLoadout,
-			MaxRange: fuel.Available(), Fuel: fuel, RemainingRange: fuel.Available(), AirCombat: airCombat, AntiShip: antiShip, AntiGround: definition.AntiGround, Seaplane: definition.Seaplane, AirfieldOnly: definition.AirfieldOnly,
+			MaxRange: fuel.Available(), Fuel: fuel, RemainingRange: fuel.Available(), AirCombat: airCombat, AntiShip: antiShip, AntiGround: definition.AntiGround, Seaplane: definition.Seaplane, AirfieldOnly: definition.AirfieldOnly, TorpedoCapable: definition.TorpedoCapable, HighAltitudeBomber: definition.HighAltitudeBomber,
 		}
 		carrier.Card.Aircraft++
 	}
@@ -408,7 +408,7 @@ func deployAirfields(state *State, scenario ScenarioDefinition, airDefinitions a
 			if !airfield.HardensFor(aircraftDef.Kind, aircraftDef.Seaplane) {
 				return fmt.Errorf("机场%s（%s）无法起降%s", definition.ID, definition.Type, aircraftDef.Model)
 			}
-			initialGroundLoadout := DefaultLoadout(aircraftDef.Kind, false, aircraftDef.AntiGround, aircraftDef.AntiShip, "cap", StrikeTargetShip)
+			initialGroundLoadout := DefaultLoadoutFor(aircraftDef.Kind, false, aircraftDef.AntiGround, aircraftDef.AntiShip, "cap", StrikeTargetShip, aircraftDef.TorpedoCapable)
 			fuel := MountedFuel(aircraftDef.Range, initialGroundLoadout)
 			groundAirCombat, groundAntiShip := elitePilotBonus(*state, airfield.Faction, aircraftDef.Kind, aircraftDef.AirCombat, aircraftDef.AntiShip)
 			state.GroundAir[aircraftID] = &AirfieldAirUnit{
@@ -417,7 +417,7 @@ func deployAirfields(state *State, scenario ScenarioDefinition, airDefinitions a
 				BaseRange: aircraftDef.Range, Loadout: initialGroundLoadout,
 				MaxRange: fuel.Available(), RemainingRange: fuel.Available(),
 				AirCombat: groundAirCombat, AntiShip: groundAntiShip, AntiGround: aircraftDef.AntiGround,
-				AirfieldOnly: aircraftDef.AirfieldOnly, Seaplane: aircraftDef.Seaplane,
+				AirfieldOnly: aircraftDef.AirfieldOnly, Seaplane: aircraftDef.Seaplane, TorpedoCapable: aircraftDef.TorpedoCapable, HighAltitudeBomber: aircraftDef.HighAltitudeBomber,
 				// 侦察半径按"不含备用油"的航程折半：备用油只够回家，不能用来搜索（规则书 69 行）。
 				ReconRadiusLimit: max(1, fuel.Available()/2),
 			}
@@ -675,7 +675,7 @@ func boxCoords(gameMap MapDefinition, box DeployBox, carrier bool, airfieldCoord
 
 // groundAirView 把舰载侦察算子投影成机场算子形态，用于复用机场发现逻辑。
 func groundAirView(aircraft *AirUnit) *AirfieldAirUnit {
-	return &AirfieldAirUnit{ID: aircraft.ID, Faction: aircraft.Faction, Model: aircraft.Model, Kind: aircraft.Kind, Heading: aircraft.Heading, SectorWidth: aircraft.SectorWidth, OriginCoord: aircraft.OriginCoord}
+	return &AirfieldAirUnit{ID: aircraft.ID, Faction: aircraft.Faction, Model: aircraft.Model, Kind: aircraft.Kind, Heading: aircraft.Heading, SectorWidth: aircraft.SectorWidth, OriginCoord: aircraft.OriginCoord, TorpedoCapable: aircraft.TorpedoCapable, HighAltitudeBomber: aircraft.HighAltitudeBomber}
 }
 
 func ValidateOrder(state State, faction string, order Order) error {

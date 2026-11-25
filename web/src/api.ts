@@ -59,7 +59,7 @@ function commandID() {
 }
 
 export const api = {
-  createRoom(name: string, scenarioID = '_sandbox', solo = false, faction: 'A' | 'B' = 'A') {
+  createRoom(name: string, scenarioID = '_coral_real', solo = false, faction: 'A' | 'B' = 'A') {
     return request<RoomResponse>('/api/v1/rooms', { method: 'POST', body: JSON.stringify({ name, scenario_id: scenarioID, solo, faction }) })
   },
   joinRoom(token: string, name: string) {

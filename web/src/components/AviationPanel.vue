@@ -58,7 +58,8 @@ const loadoutLabels: Record<string, string> = {
 function loadoutOptionsFor(aircraft: AirUnit) {
   if (aircraft.seaplane) return ['recon+tank', 'transfer+tank']
   const canBomb = (aircraft.anti_ground || 0) > 0 || (aircraft.anti_ship || 0) > 0
-  const canTorpedo = (aircraft.anti_ship || 0) > 0
+  // 鱼雷挂架是机型能力，不是"有对舰值就能挂"：B-26 能挂，B-25/B-17 不能。
+  const canTorpedo = (aircraft.anti_ship || 0) > 0 && (aircraft.kind === 'torpedo_bomber' || aircraft.torpedo_capable === true)
   let options: string[]
   switch (aircraft.kind) {
     case 'fighter':
@@ -77,8 +78,11 @@ function loadoutOptionsFor(aircraft: AirUnit) {
     case 'medium_bomber':
     case 'heavy_bomber':
     case 'strategic_bomber':
-      // 水平轰炸机只有炸弹，没有鱼雷挂架（B-25 / B-17）。
-      options = ['recon+tank', 'bomb+tank', 'bomb', 'transfer+tank']
+      // 水平轰炸机默认只有炸弹；只有带鱼雷挂架的 B-26 多出鱼雷选项。
+      // B-25 / B-17 没有鱼雷挂架，不能因为 anti_ship > 0 就显示鱼雷。
+      options = aircraft.torpedo_capable
+        ? ['recon+tank', 'torpedo+tank', 'bomb+tank', 'bomb', 'torpedo', 'transfer+tank']
+        : ['recon+tank', 'bomb+tank', 'bomb', 'transfer+tank']
       break
     case 'recon':
       options = ['recon+tank', 'transfer+tank']

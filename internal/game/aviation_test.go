@@ -2,19 +2,6 @@ package game
 
 import "testing"
 
-func sandboxState(t *testing.T) State {
-	t.Helper()
-	scenario, gameMap, catalog, err := LoadScenario("../../content", "_sandbox")
-	if err != nil {
-		t.Fatal(err)
-	}
-	state, err := NewState(scenario, gameMap, catalog, 42)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return state
-}
-
 func setAircraftReady(state *State, ids ...string) {
 	for _, id := range ids {
 		aircraft := state.Aircraft[id]

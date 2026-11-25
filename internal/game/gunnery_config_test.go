@@ -4,7 +4,7 @@ import "testing"
 
 // 炮击值以单位库 JSON 为准：写了 gunnery 就照用，没写才按口径×炮塔数折算。
 func TestGunneryComesFromUnitJSON(t *testing.T) {
-	_, gameMap, catalog, err := LoadScenario("../../content", "_coral")
+	_, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,7 +26,7 @@ func TestGunneryComesFromUnitJSON(t *testing.T) {
 		ID: "gunnery-test", Name: "炮击值测试", Year: 1942,
 		Doctrines: map[string]string{"A": "us", "B": "japan"},
 		Deployments: []Deployment{{
-			ID: "ship1", Unit: definition.ID, Faction: definition.Faction, Name: "测试舰", Coord: "0602",
+			ID: "ship1", Unit: definition.ID, Faction: definition.Faction, Name: "测试舰", Coord: "2015",
 		}},
 	}
 	state, err := NewState(scenario, gameMap, catalog, 1)
