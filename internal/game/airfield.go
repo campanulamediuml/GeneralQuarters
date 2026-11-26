@@ -448,7 +448,12 @@ func groundHitChance(state State, target *Airfield, attacker *AirfieldAirUnit, c
 	chance -= float64(int(target.LightAA/7) * 5)
 	// 规则书 657 行：每个正在起降的算子 +1%。
 	chance += float64(airfieldOpsCount(state, target.ID))
+	// 规则书 679–681 行：多云只压战略轰炸机，降雨 -10%，风暴 -15%。
 	switch weatherAt(state.Map, target.Coord) {
+	case "cloud":
+		if isStrategicGroundBomber(attacker) {
+			chance -= 5
+		}
 	case "rain":
 		chance -= 10
 	case "storm":

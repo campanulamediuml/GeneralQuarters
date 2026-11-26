@@ -652,7 +652,13 @@ func strikeHitChance(state State, attacker *AirUnit, target *Unit, mixed, capRem
 		chance -= 5
 	}
 	chance -= float64(int(target.Card.LightAA/7) * 5)
-	if weatherAt(state.Map, target.Coord) == "rain" {
+	// 规则书 697–699 行：多云只压战略轰炸机，降雨对所有机种 -10%；对舰攻击表里没有风暴那一档。
+	switch weatherAt(state.Map, target.Coord) {
+	case "cloud":
+		if isStrategicBomber(attacker) {
+			chance -= 5
+		}
+	case "rain":
 		chance -= 10
 	}
 	if attacker.Confusion {
@@ -690,11 +696,25 @@ func isStrategicBomber(aircraft *AirUnit) bool {
 	if aircraft == nil {
 		return false
 	}
-	if aircraft.Kind == "strategic_bomber" {
+	return strategicBomberModel(aircraft.Kind, aircraft.Model)
+}
+
+// strategicBomberModel 是舰载/陆基两种算子共用的战略轰炸机判定：
+// 海上算子和机场算子用同一套机种常量与机型名，所以天气修正不该各判一套。
+func strategicBomberModel(kind, model string) bool {
+	if kind == "strategic_bomber" {
 		return true
 	}
-	model := strings.ToUpper(aircraft.Model)
-	return strings.Contains(model, "B-17") || strings.Contains(model, "B-24") || strings.Contains(model, "B-29")
+	upper := strings.ToUpper(model)
+	return strings.Contains(upper, "B-17") || strings.Contains(upper, "B-24") || strings.Contains(upper, "B-29")
+}
+
+// isStrategicGroundBomber 是机场算子（对地攻击）版本的战略轰炸机判定。
+func isStrategicGroundBomber(aircraft *AirfieldAirUnit) bool {
+	if aircraft == nil {
+		return false
+	}
+	return strategicBomberModel(aircraft.Kind, aircraft.Model)
 }
 
 // isTorpedoAttack 识别这一次出击是否按鱼雷机结算：
