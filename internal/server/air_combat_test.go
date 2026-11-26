@@ -61,9 +61,13 @@ func TestAirCombatResolutionThroughREST(t *testing.T) {
 	if _, err := database.DB.ExecContext(context.Background(), "update rooms set state_json=? where id=?", stateJSON, created.RoomID); err != nil {
 		t.Fatal(err)
 	}
-	var resolved testView
-	if status := client.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &resolved); status != http.StatusOK {
+	// ready 只回一条回执，结算后的状态要另外拉。
+	if status := client.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, nil); status != http.StatusOK {
 		t.Fatalf("Ready结算状态码%d", status)
+	}
+	var resolved testView
+	if status := client.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &resolved); status != http.StatusOK {
+		t.Fatalf("结算后读状态码%d", status)
 	}
 	if resolved.Turn != 2 || len(resolved.AirCombats) != 1 {
 		t.Fatalf("REST没有返回空战报告：回合%d 报告%+v", resolved.Turn, resolved.AirCombats)

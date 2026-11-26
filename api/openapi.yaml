@@ -470,7 +470,6 @@ components:
         room_id: {type: string}
         status: {type: string}
         turn: {type: integer}
-        version: {type: integer, format: int64}
         scenario:
           type: object
           properties:
@@ -503,4 +502,3 @@ components:
           type: array
           items: {$ref: '#/components/schemas/Event'}
         join_token: {type: string, description: 仅房主可见}
-        server_time: {type: string, format: date-time}

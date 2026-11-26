@@ -467,7 +467,6 @@ export interface GameView {
   room_id: string
   status: string
   turn: number
-  version: number
   /** 单人房：一名玩家 ready 就结算 */
   solo?: boolean
   scenario: { id: string; name: string; description: string }
@@ -506,7 +505,6 @@ export interface GameView {
   outcome?: { winner?: string; level?: 'draw' | 'tactical' | 'strategic'; reason: string; scores: Record<string, number>; turn: number; turn_cap?: boolean }
   objectives?: { id: string; text?: string; kind: string; coord?: string; faction?: string; value?: number; points?: number; decisive?: boolean }[]
   join_token?: string
-  server_time: string
 }
 
 export interface ShipLoss {

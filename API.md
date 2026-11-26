@@ -61,7 +61,7 @@
 }
 ```
 
-`coord`必须位于该单位服务器返回的`legal_moves`中。`SET_MOVE`提交后**只登记本回合的移动规划**（写入房间的待结算`orders`，`version`不变、舰队原地不动），双方就绪、回合结算时统一执行位移；即时生效的只有`SET_HEADING`/`SET_LOADOUT`/`SET_AUTO_NAV`/`SET_ENGAGEMENT`这类命令。到达可移动时机后，普通/快速舰队每3回合移动一次（移动后冷却2回合），纯高速驱逐舰每2回合（冷却1回合），慢速每5回合（冷却4回合），极慢每10回合（冷却9回合），失去动力每24回合（冷却23回合）。全队按最慢航速计算，进水降低航速档位；冷却在回合结算开始递减，未归零时返回空的`legal_moves`并拒绝移动。`CLEAR_MOVE`用于撤销本回合登记过的移动规划，包含`command_id`、`type`和`unit_id`；撤销后舰队本回合留在原地，也不会因此进入移动冷却。整编后同样锁定3回合，交战后混乱的舰队不能整编。
+`coord`必须位于该单位服务器返回的`legal_moves`中。`SET_MOVE`提交后**只登记本回合的移动规划**（写入房间的待结算`orders`，舰队原地不动），双方就绪、回合结算时统一执行位移；即时生效的只有`SET_HEADING`/`SET_LOADOUT`/`SET_AUTO_NAV`/`SET_ENGAGEMENT`这类命令。到达可移动时机后，普通/快速舰队每3回合移动一次（移动后冷却2回合），纯高速驱逐舰每2回合（冷却1回合），慢速每5回合（冷却4回合），极慢每10回合（冷却9回合），失去动力每24回合（冷却23回合）。全队按最慢航速计算，进水降低航速档位；冷却在回合结算开始递减，未归零时返回空的`legal_moves`并拒绝移动。`CLEAR_MOVE`用于撤销本回合登记过的移动规划，包含`command_id`、`type`和`unit_id`；撤销后舰队本回合留在原地，也不会因此进入移动冷却。整编后同样锁定3回合，交战后混乱的舰队不能整编。
 
 ### 整编舰队
 
@@ -75,7 +75,7 @@
 }
 ```
 
-`unit_id`为整编源，`target_unit_id`为目标舰队中的单位。双方必须属于当前玩家、位于同一hex且`fleet_id`不同。整编由服务器立即生效并递增`version`。
+`unit_id`为整编源，`target_unit_id`为目标舰队中的单位。双方必须属于当前玩家、位于同一hex且`fleet_id`不同。整编由服务器立即生效。
 
 ### 整个hex整编
 
@@ -90,7 +90,7 @@
 }
 ```
 
-`assignments`必须包含该hex全部己方单位，值为目标`fleet_id`。同一操作可以合并、拆分或转移成员；不允许遗漏单位、包含其他阵营单位或跨hex整编。整编由服务器立即生效并递增`version`。快照中每个单位还包含`heading`和`moved`。
+`assignments`必须包含该hex全部己方单位，值为目标`fleet_id`。同一操作可以合并、拆分或转移成员；不允许遗漏单位、包含其他阵营单位或跨hex整编。整编由服务器立即生效。快照中每个单位还包含`heading`和`moved`。
 
 ### 航空命令
 
@@ -112,7 +112,7 @@
 - `RECOVER_AIR`：将CAP算子回收到各自母舰甲板，状态改为`recovery`；后续回合一一占用升降机执行`lowering`，完成后才回到机库。允许一次回收同舰队多艘母舰的CAP，服务端逐舰检查甲板容量、损伤和不相容作业。侦察机沿航线自动返航，使用同样的甲板与下降流程。
 - `PRIORITIZE_AIR_TASK`：将指定预备、等待或空中任务置为最高优先级，其他任务顺序由服务端调整；优先级参与各舰升降机调度，`queue_position`返回连续队列位置。
 - `SET_AIR_CYCLE`：开启或取消自动任务循环（规则书188–191行），提交`aircraft_ids`和`cycle`（true=开启，false=取消）。语义是"设为"而不是"取反"，重复提交同一条命令不会来回翻转。CAP、侦察和空中掩护支持循环：降舰后自动重新整备并按原参数（巡逻空域／航向+扇面+半径／掩护hex）再次升空，侦察循环的掩护hex会跟随被掩护舰队的当前位置。航程不足、母舰失效或玩家取消即结束循环，并产生`air_cycle_end`战报。算子快照返回`on_cycle/cycle_kind/cycle_opt_out`；循环中的算子在前端显示蓝色🔁角标，点击即提交本命令。主动`RECOVER_AIR`或无线电`RECALL_AIR`同样会取消循环。机场算子（`GroundAir`）从同一版本起也支持循环：发起时仍是`aircraft_ids`+`cycle`，服务端按算子 ID 自动分流到机场那套校验，落地后按原巡逻点／航向+扇面重新滑行、整备、起飞；机场失守、跑道被打光或玩家取消即结束循环。
-- 这些命令都立即生效并递增`version`。每艘航空舰在`Unit.deck`中持有独立`length/operation/elevators`，每部升降机持有`id/kind/capacity/status/task_id/aircraft_ids`。所有整备、设施调度、编队集合、机库与甲板数量、扇面hex、发现判定、情报、燃油与任务排序仅由Go服务端计算。新自动起飞的算子从下一回合开始耗油和移动，空中CAP、等待及离场攻击算子每回合剩余航程-1，非空中算子补满航程。
+- 这些命令都立即生效。每艘航空舰在`Unit.deck`中持有独立`length/operation/elevators`，每部升降机持有`id/kind/capacity/status/task_id/aircraft_ids`。所有整备、设施调度、编队集合、机库与甲板数量、扇面hex、发现判定、情报、燃油与任务排序仅由Go服务端计算。新自动起飞的算子从下一回合开始耗油和移动，空中CAP、等待及离场攻击算子每回合剩余航程-1，非空中算子补满航程。
 
 ### Ready
 
@@ -120,7 +120,7 @@
 {"base_turn":1,"ready":true}
 ```
 
-响应为最新私有快照。所有当前玩家ready后，服务器同步完成结算并提升`turn`与`version`。单人沙盒中唯一玩家ready即可结算。
+响应只是一条回执`{"accepted":true,"turn":N}`，最新状态走WebSocket推送。所有当前玩家ready后，服务器同步完成结算并提升`turn`。单人沙盒中唯一玩家ready即可结算。
 
 **ready 即冻结**：一名玩家ready之后，本回合该玩家提交的任何 `/commands` 都会被拒绝（409，错误信息说明"本回合已就绪，操作已锁定"），不会再像以前那样自动撤回ready再接受命令。要改就得等下一回合。前端同时把这块棋盘锁成只读：不能拖舰队、不能改航行/交战/整编、不能放飞或改目标，只能查看。`{"ready":false}` 也已禁止：ready 一旦提交就不可撤销，脚本必须等本回合结算。
 
@@ -130,7 +130,7 @@
 
 `state`响应包含：
 
-- `scenario`、`map`、`turn`、`version`、`status`；
+- `scenario`、`map`、`turn`、`status`；
 - `you`和`players`；
 - 当前阵营可见的`units`；己方单位额外包含`legal_moves`。每艘舰船包含`definition_id`、当前/初始生命值、服务端生成的`card`角色卡、`move_cooldown`、`confusion`和当前`damage`，字段涵盖火炮、防空、损管、雷达、航速、鱼雷、航空设施、货物、火灾、进水及设备损伤等；
 - `scores`：战果分，浮点数（航母/轻母/护航航母按机库容量，战列舰与战列巡洋舰 6、重巡 3、轻巡 2、驱逐 1、运输船 1，每摧毁一个航空算子 0.25；完成的投送目标按 `value` 计分）。剧本声明`kind:"score"`目标时，在回合上限（珊瑚海 360 回合）按双方 VP 比值判胜负：小于 1.25 平分秋色，1.25 到 2 战术胜利，大于 2 战略胜利；投送完成/失败不提前结算；`outcome.level`返回`draw/tactical/strategic`，日军未完成 20 单位投送前不能战略胜利；
@@ -155,12 +155,19 @@
 
 命令和 ready 使用相同 envelope：path 限于当前房间的 `/commands`、`/ready`；body 是原 HTTP API JSON 请求体。服务端复用原有版本检查、幂等 ID、权限校验和错误语义。响应通过同一个 WebSocket 返回：
 ```json
-{"type":"rpc_response","id":"req-17","status":200,"body":{"version":2}}
+{"type":"rpc_response","id":"req-17","status":200,"body":{"accepted":true,"turn":2}}
 ```
 
-服务端仍推送轻量事件：`player_joined`、`orders_updated`、`state_changed`、`ready_changed`、`turn_resolved`、`presence_changed`。通知仅表示快照可能变化，客户端随后通过 WS `GET state` RPC 拉取完整的阵营私有快照。房间内不做 HTTP 轮询：连接断开时前端指数退避重连，重连成功后立即重新拉取快照；只有大厅的建房/加入仍使用 HTTP。
+房间状态变化时服务端直接推送视图，分两种帧：
 
-观战页使用 `/watch/{token}`，例如 `/watch/CAUX-5XDW-NA2X`。服务端用 token 查出房间，把房间 ID 注入页面；也兼容旧的 `/watch/{roomID}/{token}` 和 `?token=` 形式。无需玩家 Cookie，连接 `/ws?mode=spectator` 后发送 `subscribe`，包含 `room_id` 与 `token`（房间 join_token）；服务端先推 `snapshot`（`view` 为合并后的观战 JSON），之后房间状态变化时推送新快照。观战不占玩家席位，也不修改在线状态。旧的 HTTP `/spectate?token=...` 快照接口保留兼容。
+- 全量：只在连接建立（含重连）时存在一份，由客户端发 `GET state` RPC 拿（响应即全量，服务端同时把它记成这条连接的底座）。观战连接不做 RPC 拉取，首帧由服务端直接推 `{"type":"snapshot","view":{...}}`。
+- 补丁：`{"type":"state","patch":{...}}`，只包含和上一帧相比真正变化的节点（没有版本号：补丁本身即"变了"的信号）。
+
+补丁形态：对象逐键收敛；实体数组（每个元素带 `id`/`unit_id` 等主键）给 `{"upsert":[只含变化属性的记录],"remove":[主键]}`；其余值整块替换。客户端按主键找到节点、把 upsert 里的属性**就地合并**进去即可（不重建对象，Vue 的响应式才能只重算用到那几个字段的地方），不需要知道业务语义。实测：下一条移动命令 100 B、点 ready 71 B、一次安静的夜间结算 314 B、12 艘舰队改航向 1.4 KB——全量是 150 KB。
+
+补丁是从"上次推给这条连接的那份投影"和"新投影"之间 diff 出来的，不是按命令手写的，所以不需要维护"这条命令改了哪些字段"。没有变化时一条帧都不发（对手下命令、命令被拒绝都属于这种情况：前者在他视野里不可见，后者什么都没改）。推送前有 8 ms 合并窗口，一次结算连着触发的好几条变更只投影、下发一次。`GET state` 仍然保留：首帧和重连用它；`/ready` 只回 `{"accepted":true,"turn":N}` 这一条回执，就绪标记和结算结果都走推送。房间内不做 HTTP 轮询：连接断开时前端指数退避重连，重连成功后立即重新拉取快照；只有大厅的建房/加入仍使用 HTTP。
+
+观战页使用 `/watch/{token}`，例如 `/watch/CAUX-5XDW-NA2X`。服务端用 token 查出房间，把房间 ID 注入页面；也兼容旧的 `/watch/{roomID}/{token}` 和 `?token=` 形式。无需玩家 Cookie，连接 `/ws?mode=spectator` 后发送 `subscribe`，包含 `room_id` 与 `token`（房间 join_token）；服务端先推 `snapshot`（`view` 为合并后的观战 JSON），之后房间状态变化时推送新快照，同样按 25ms 合并窗口只算最后那一版。观战不占玩家席位，也不修改在线状态。旧的 HTTP `/spectate?token=...` 快照接口保留兼容。
 
 ## DeepSeek与文字对手扩展
 

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { api, attachRoomSocket, handleRoomSocketMessage } from '../api'
-import type { AirCombatReport, AirTask, GameView, ReconHeading, StrikeTarget, Unit } from '../types'
+import { adoptPushedView, api, attachRoomSocket, handleRoomSocketMessage, onPushedState } from '../api'
+import type { AirCombatReport, AirTask, GameView, Order, ReconHeading, StrikeTarget, Unit } from '../types'
 import { contactCapitalsLabel, contactIntelLabel, contactSizeLabel, groupFleets, type FleetGroup } from '../fleet'
 import { airfieldContactStatus } from '../airfields'
 import HexMap from '../components/HexMap.vue'
@@ -45,7 +45,6 @@ const copied = ref(false)
 const watchCopied = ref(false)
 const watchPath = computed(() => state.value?.join_token ? '/watch/' + state.value.join_token : '')
 let socket: WebSocket | undefined
-let refreshTimer: ReturnType<typeof setTimeout> | undefined
 let stateRequest = 0
 let reconnectTimer: ReturnType<typeof setTimeout> | undefined
 let reconnectDelay = 1000
@@ -335,26 +334,7 @@ async function loadState(initial = false) {
   try {
     const next = await api.state(props.roomID)
     if (requestID !== stateRequest) return
-    if (state.value && next.version !== state.value.version) {
-      // 版本变了不等于"选择该丢"：拖拽落点会立刻发一条 SET_MOVE，版本随之 +1，
-      // 以前这里无条件清空选中，表现就是"拖完舰队面板和选中框瞬间消失"，
-      // 玩家只会以为拖动没生效。只有在目标真的不在了（沉没/离开视野）才清。
-      const stillSelected = Boolean(selectedID.value) && ((next.fleets || []).some((fleet) => fleet.id === selectedID.value || fleet.fleet_id === selectedID.value || fleet.members?.some((unit) => unit.id === selectedID.value)) || (next.units || []).some((unit) => unit.id === selectedID.value))
-      if (!stillSelected) selectedID.value = ''
-      const taskStillThere = Boolean(selectedAirTaskID.value) && (next.aviation?.tasks || []).some((task) => task.id === selectedAirTaskID.value || task.aircraft_ids?.includes(selectedAirTaskID.value))
-      if (!taskStillThere) selectedAirTaskID.value = ''
-      menuCoord.value = ''
-      mergeSourceID.value = ''
-    }
-    if (initial) baselineAirCombat(next)
-    else checkAirCombat(next)
-    // 编队全部落地后任务就没了：编队牌跟着关掉，别留一张操作不了的残影。
-    if (mapAirTaskID.value
-      && !(next.aviation?.tasks || []).some((task) => task.id === mapAirTaskID.value)
-      && !(next.ground_tasks || []).some((task) => task.id === mapAirTaskID.value)) {
-      mapAirTaskID.value = ''
-    }
-    state.value = next
+    applyState(next, initial)
   } catch (cause) {
     if (requestID !== stateRequest) return
     error.value = cause instanceof Error ? cause.message : '同步失败'
@@ -364,9 +344,42 @@ async function loadState(initial = false) {
   }
 }
 
-function scheduleRefresh() {
-  if (refreshTimer) clearTimeout(refreshTimer)
-  refreshTimer = setTimeout(() => loadState(), 120)
+// applyState 把一份视图落到界面上：选中清理、战报动画、面板开关都在这里。
+// 服务端推来的和客户端拉来的都走这一条路径——两边各写一套的话，行为会慢慢分叉。
+//
+// 推送是"就地打补丁"，多数时候 state.value 和传进来的就是同一个对象；
+// 全量替换（首帧、重连）才是新对象。所以这里不比对版本号——判断"变了没有"
+// 靠的是"这是不是一次补丁"，而不是某个数字。
+function applyState(next: GameView, initial = false) {
+  // 选中了谁、开着哪个菜单属于界面状态，不是局面状态：每次有新视图都检查
+  // 目标还在不在（沉没/离开视野/落地），不在才清，在就不动。
+  const stillSelected = Boolean(selectedID.value) && ((next.fleets || []).some((fleet) => fleet.id === selectedID.value || fleet.fleet_id === selectedID.value || fleet.members?.some((unit) => unit.id === selectedID.value)) || (next.units || []).some((unit) => unit.id === selectedID.value))
+  if (!stillSelected) selectedID.value = ''
+  const taskStillThere = Boolean(selectedAirTaskID.value) && (next.aviation?.tasks || []).some((task) => task.id === selectedAirTaskID.value || task.aircraft_ids?.includes(selectedAirTaskID.value))
+  if (!taskStillThere) selectedAirTaskID.value = ''
+  if (initial) {
+    baselineAirCombat(next)
+  } else if (checkAirCombat(next) && !activeAirCombat.value) {
+    // 新战报开始在推过来的这一帧里播：结算完成后自动切到战报面板。
+    activePanel.value = 'airCombat'
+  }
+  // 编队全部落地后任务就没了：编队牌跟着关掉，别留一张操作不了的残影。
+  if (mapAirTaskID.value
+    && !(next.aviation?.tasks || []).some((task) => task.id === mapAirTaskID.value)
+    && !(next.ground_tasks || []).some((task) => task.id === mapAirTaskID.value)) {
+    mapAirTaskID.value = ''
+  }
+  state.value = next
+  // 交给补丁层的是 state.value 拿到的那个响应式代理，不是传进来的原始对象：
+  // 补丁就地改属性，改在原始对象上 Vue 收不到通知，界面就不会更新。
+  adoptPushedView(state.value)
+}
+
+// 命令提交后不再回拉状态：服务端接受之后会直接推一份新视图过来，界面由推送驱动。
+// 少一次整份投影和一次来回，也少一条"拉和推看到的不一样"的分叉路径。
+async function sendCommand(order: Order) {
+  if (!state.value) return
+  await api.command(props.roomID, state.value.turn, order)
 }
 
 function connectSocket() {
@@ -383,8 +396,7 @@ function connectSocket() {
   }
   current.onmessage = (event) => {
     if (socket !== current) return
-    if (handleRoomSocketMessage(String(event.data))) return
-    scheduleRefresh()
+    handleRoomSocketMessage(String(event.data))
   }
   current.onclose = () => {
     if (socket !== current) return
@@ -597,8 +609,7 @@ async function move(coord: string) {
   if (!state.value || !selectedUnit.value || actionBusy.value || locked.value) return
   actionBusy.value = true
   try {
-    await api.command(props.roomID, state.value.turn, { type: 'SET_MOVE', unit_id: selectedUnit.value.id, coord })
-    await loadState()
+    await sendCommand({ type: 'SET_MOVE', unit_id: selectedUnit.value.id, coord })
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : '命令失败'
   } finally {
@@ -626,8 +637,7 @@ async function setFleetHeading(heading: ReconHeading) {
   if (!state.value || !selectedUnit.value || actionBusy.value || locked.value) return
   actionBusy.value = true
   try {
-    await api.command(props.roomID, state.value.turn, { type: 'SET_HEADING', unit_id: selectedUnit.value.id, heading })
-    await loadState()
+    await sendCommand({ type: 'SET_HEADING', unit_id: selectedUnit.value.id, heading })
     error.value = ''
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : '调整朝向失败'
@@ -650,9 +660,8 @@ async function setAutoNav(coord: string) {
   if (!state.value || !selectedUnit.value || actionBusy.value || locked.value) return
   actionBusy.value = true
   try {
-    await api.command(props.roomID, state.value.turn, { type: 'SET_AUTO_NAV', unit_id: selectedUnit.value.id, coord, engagement: selectedEngagement.value })
+    await sendCommand({ type: 'SET_AUTO_NAV', unit_id: selectedUnit.value.id, coord, engagement: selectedEngagement.value })
     navTargeting.value = false
-    await loadState()
     error.value = ''
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : '设置自动航行失败'
@@ -665,8 +674,7 @@ async function clearAutoNav() {
   if (!state.value || !selectedUnit.value || actionBusy.value || locked.value) return
   actionBusy.value = true
   try {
-    await api.command(props.roomID, state.value.turn, { type: 'SET_AUTO_NAV', unit_id: selectedUnit.value.id, coord: '' })
-    await loadState()
+    await sendCommand({ type: 'SET_AUTO_NAV', unit_id: selectedUnit.value.id, coord: '' })
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : '取消自动航行失败'
   } finally {
@@ -678,8 +686,7 @@ async function setEngagement(setting: 'aggressive' | 'advantage' | 'avoid') {
   if (!state.value || !selectedUnit.value || actionBusy.value || locked.value) return
   actionBusy.value = true
   try {
-    await api.command(props.roomID, state.value.turn, { type: 'SET_ENGAGEMENT', unit_id: selectedUnit.value.id, engagement: setting })
-    await loadState()
+    await sendCommand({ type: 'SET_ENGAGEMENT', unit_id: selectedUnit.value.id, engagement: setting })
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : '设置交战方式失败'
   } finally {
@@ -695,8 +702,7 @@ async function setDisperse(disperse: boolean) {
   if (!state.value || !task || actionBusy.value || locked.value) return
   actionBusy.value = true
   try {
-    await api.command(props.roomID, state.value.turn, { type: 'SET_STRIKE_DISPERSION', aircraft_id: task.id, disperse })
-    await loadState()
+    await sendCommand({ type: 'SET_STRIKE_DISPERSION', aircraft_id: task.id, disperse })
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : '设置攻击方式失败'
   } finally {
@@ -716,8 +722,7 @@ const outcomeText = computed(() => {
 async function clearOrder(key: string) {
   if (!state.value || locked.value) return
   try {
-    await api.command(props.roomID, state.value.turn, key.startsWith('task-') ? { type: 'CLEAR_MOVE', task_id: key } : { type: 'CLEAR_MOVE', unit_id: key })
-    await loadState()
+    await sendCommand(key.startsWith('task-') ? { type: 'CLEAR_MOVE', task_id: key } : { type: 'CLEAR_MOVE', unit_id: key })
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : '取消失败'
   }
@@ -746,9 +751,8 @@ async function applyReorganization() {
   if (!state.value || !menuCoord.value || actionBusy.value || locked.value) return
   actionBusy.value = true
   try {
-    await api.command(props.roomID, state.value.turn, { type: 'REORGANIZE_HEX', unit_id: `hex-${menuCoord.value}`, coord: menuCoord.value, assignments: draftAssignments.value })
+    await sendCommand({ type: 'REORGANIZE_HEX', unit_id: `hex-${menuCoord.value}`, coord: menuCoord.value, assignments: draftAssignments.value })
     closeManager()
-    await loadState()
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : '整编失败'
   } finally {
@@ -764,8 +768,7 @@ async function airCommand(type: 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' 
     const payload = type === 'RECALL_AIR' || type === 'RETASK_AIR' || type === 'RETARGET_AIR'
       ? { type, task_id: options?.task_id, coord: options?.coord, task_kind: options?.task_kind }
       : { type, aircraft_id: aircraftIDs[0], aircraft_ids: aircraftIDs, ...options }
-    await api.command(props.roomID, state.value.turn, payload)
-    await loadState()
+    await sendCommand(payload)
     error.value = ''
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : '航空命令失败'
@@ -779,21 +782,17 @@ async function airCommand(type: 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' 
 async function toggleReady() {
   if (!state.value || actionBusy.value || state.value.you.ready) return
   actionBusy.value = true
-  const requestID = ++stateRequest
   try {
-    const next = await api.ready(props.roomID, state.value.turn, true)
-    if (requestID !== stateRequest) return
-    const combatStarted = checkAirCombat(next)
-    state.value = next
+    // 只发"我要 ready"。响应只是一条回执：ready 标记、回合结算、战报都走推送。
+    await api.ready(props.roomID, state.value.turn, true)
     selectedID.value = ''
     selectedAirTaskID.value = ''
     menuCoord.value = ''
     // 战斗动画正在播时不能把面板按回地图：那样组件被卸载，定时器全部清掉，
-    // 动画就停在半路。没有新战报也没有在播的动画时才回到地图。
-    if (combatStarted && !activeAirCombat.value) activePanel.value = 'airCombat'
-    else if (!combatStarted && !activeAirCombat.value) activePanel.value = 'map'
+    // 动画就停在半路。没有在播的动画时回地图等结算。
+    if (!activeAirCombat.value) activePanel.value = 'map'
   } catch (cause) {
-    if (requestID === stateRequest) error.value = cause instanceof Error ? cause.message : '准备状态失败'
+    error.value = cause instanceof Error ? cause.message : '准备状态失败'
   } finally {
     actionBusy.value = false
   }
@@ -820,21 +819,23 @@ async function copyWatchLink() {
 }
 
 onMounted(() => {
+  // 服务端推来一份新视图就直接落地；首帧按"初始"处理，不重播历史战报。
+  onPushedState((view) => applyState(view, !state.value))
   connectSocket()
 })
 
 onUnmounted(() => {
+  onPushedState(undefined)
   if (reconnectTimer) clearTimeout(reconnectTimer)
   attachRoomSocket(undefined)
   const closing = socket
   socket = undefined
   closing?.close()
-  if (refreshTimer) clearTimeout(refreshTimer)
 })
 </script>
 
 <template>
-  <main class="game-shell command-layout" :class="{ 'aviation-mode': activePanel === 'aviation' || activePanel === 'airCombat' }" :data-version="state?.version || 0">
+  <main class="game-shell command-layout" :class="{ 'aviation-mode': activePanel === 'aviation' || activePanel === 'airCombat' }" :data-turn="state?.turn || 0">
     <aside class="left-rail">
       <button class="rail-brand" aria-label="返回首页" @click="router.push('/')"><span>GQ</span><small>COMMAND</small></button>
       <nav class="rail-menu">

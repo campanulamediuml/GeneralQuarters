@@ -59,13 +59,12 @@ func (s *Server) spectateView(ctx context.Context, room store.Room) (map[string]
 	return buildSpectateView(room, players, events), nil
 }
 
-// spectatePayload 生成一条可直接下发的观战帧，并带上投影时的房间版本。
+// spectateViewOf 投影观战视图。
 //
 // 必须在房间 actor 里跑：读房间、读玩家、读战报三件事要在同一个时间点上完成，
-// 否则版本号和视图内容会对不上（写泵靠版本号判断"这一批有没有实际变化"）。
-func (s *Server) spectatePayload(roomID string) ([]byte, int64, error) {
-	var payload []byte
-	var version int64
+// 否则推出去的视图可能一半新一半旧。
+func (s *Server) spectateViewOf(roomID string) (map[string]any, error) {
+	var view map[string]any
 	var failure error
 	s.submitRoom(roomID, func() {
 		ctx := context.Background()
@@ -74,18 +73,17 @@ func (s *Server) spectatePayload(roomID string) ([]byte, int64, error) {
 			failure = err
 			return
 		}
-		view, err := s.spectateView(ctx, room)
+		projected, err := s.spectateView(ctx, room)
 		if err != nil {
 			failure = err
 			return
 		}
-		version = room.Version
-		payload, failure = json.Marshal(map[string]any{"type": "snapshot", "view": view})
+		view = projected
 	})
 	if failure != nil {
-		return nil, 0, failure
+		return nil, failure
 	}
-	return payload, version, nil
+	return view, nil
 }
 
 // buildSpectateView 把房间状态整理成观战页要的那一份 JSON 视图。
@@ -135,7 +133,7 @@ func buildSpectateView(room store.Room, players []store.Player, events []store.E
 	}
 	losses := spectatorLosses(state)
 	response := map[string]any{
-		"room_id": room.ID, "status": room.Status, "turn": room.Turn, "version": room.Version,
+		"room_id": room.ID, "status": room.Status, "turn": room.Turn,
 		"scenario":       map[string]any{"id": state.ScenarioID, "name": state.ScenarioName, "description": state.Description},
 		"map":            state.Map,
 		"units":          units,

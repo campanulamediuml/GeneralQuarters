@@ -94,7 +94,6 @@
   <div class="stats">
     <div><b id="turn">–</b><span>回合</span></div>
     <div><b id="clock">–</b><span>剧本时间</span></div>
-    <div><b id="version">–</b><span>版本</span></div>
     <div id="status" class="status">连接中</div>
   </div>
 </header>
@@ -923,7 +922,6 @@
     drawMarks(data);
     document.getElementById('scenario').textContent = (data.scenario && data.scenario.name) || '珊瑚海';
     document.getElementById('turn').textContent = data.turn;
-    document.getElementById('version').textContent = data.version;
     document.getElementById('clock').textContent = data.clock ? data.clock.time : '–';
     var status = document.getElementById('status');
     status.textContent = data.status === 'running' ? '进行中' : String(data.status || '');
@@ -942,6 +940,45 @@
     document.getElementById('summary').innerHTML = '<div class="err">' + escapeHTML(message) + '</div>';
   }
 
+  // 服务端连上给全量、之后只给和上一帧的差异，这里合并回完整视图再渲染。
+  // 合并语义和 web/src/patch.ts、internal/server/patch.go 一致（按实体 id 对齐）。
+  var pushedView = null;
+  var ENTITY_KEYS = ['id', 'unit_id', 'task_id', 'carrier_id', 'fleet_id', 'coord'];
+  function entityKey(item) {
+    if (!item || typeof item !== 'object') return '';
+    for (var i = 0; i < ENTITY_KEYS.length; i++) {
+      var value = item[ENTITY_KEYS[i]];
+      // 事件的 id 是数字，和 Go 侧 keyText 一样统一转成字符串再比。
+      if (typeof value === 'string' && value) return value;
+      if (typeof value === 'number' && isFinite(value)) return String(value);
+    }
+    return '';
+  }
+  function mergeValue(base, patch) {
+    if (Array.isArray(base) && patch && typeof patch === 'object' && !Array.isArray(patch) && ('upsert' in patch || 'remove' in patch)) {
+      var merged = base.slice();
+      var position = {};
+      merged.forEach(function (item, index) { position[entityKey(item)] = index; });
+      (patch.upsert || []).forEach(function (item) {
+        var key = entityKey(item);
+        if (Object.prototype.hasOwnProperty.call(position, key)) merged[position[key]] = mergeValue(merged[position[key]], item);
+        else { position[key] = merged.length; merged.push(item); }
+      });
+      if (patch.remove && patch.remove.length) {
+        var dropped = {};
+        patch.remove.forEach(function (key) { dropped[key] = true; });
+        merged = merged.filter(function (item) { return !dropped[entityKey(item)]; });
+      }
+      return merged;
+    }
+    if (patch && typeof patch === 'object' && !Array.isArray(patch) && base && typeof base === 'object' && !Array.isArray(base)) {
+      var out = {};
+      for (var key in base) if (Object.prototype.hasOwnProperty.call(base, key)) out[key] = base[key];
+      for (var name in patch) if (Object.prototype.hasOwnProperty.call(patch, name)) out[name] = mergeValue(base[name], patch[name]);
+      return out;
+    }
+    return patch;
+  }
   var reconnectDelay = 1000;
   var reconnectTimer = null;
   var terminalError = false;
@@ -957,7 +994,13 @@
     socket.onmessage = function (event) {
       try {
         var message = JSON.parse(event.data);
-        if (message.type === 'snapshot' && message.view) { render(message.view); return; }
+        if (message.type === 'snapshot' && message.view) { pushedView = message.view; render(pushedView); return; }
+        if (message.type === 'snapshot' && message.patch) {
+          if (!pushedView) return; // 底座还没到，等重连时的全量
+          pushedView = mergeValue(pushedView, message.patch);
+          render(pushedView);
+          return;
+        }
         if (message.type === 'error') { terminalError = true; fail(message.error || '读取失败'); }
       } catch (error) { fail('读取失败：' + error.message); }
     };

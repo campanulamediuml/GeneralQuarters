@@ -1,9 +1,26 @@
 import type { GameView, Order, RoomResponse } from './types'
+import { applyViewPatch, type ViewPatch } from './patch'
 
 type PendingRpc = { resolve: (value: unknown) => void; reject: (reason: Error) => void }
 let roomSocket: WebSocket | undefined
 let rpcSequence = 0
 const pendingRpc = new Map<string, PendingRpc>()
+
+// 服务端在状态变化时直接推视图过来：连上给全量，之后只给和上一帧的差异。
+// 这里负责把补丁合并成完整视图再交给视图层——视图层只关心"现在是什么样"。
+type StateListener = (view: GameView) => void
+let stateListener: StateListener | undefined
+let pushedView: GameView | undefined
+
+export function onPushedState(listener?: StateListener) {
+  stateListener = listener
+}
+
+// adoptPushedView：客户端自己用 RPC 拉了一份全量之后，把这份对象交给补丁层当底座。
+// 不接管的话，后续补丁会打在一个组件已经不渲染的旧对象上——界面看起来就"卡住不更新"。
+export function adoptPushedView(view: GameView) {
+  pushedView = view
+}
 
 export function attachRoomSocket(socket?: WebSocket) {
   if (roomSocket && roomSocket !== socket) {
@@ -14,8 +31,35 @@ export function attachRoomSocket(socket?: WebSocket) {
 }
 
 export function handleRoomSocketMessage(raw: string): boolean {
-  let message: { type?: string; id?: string; status?: number; body?: unknown }
+  let message: { type?: string; id?: string; status?: number; body?: unknown; view?: unknown; patch?: unknown }
   try { message = JSON.parse(raw) as typeof message } catch { return false }
+  if (message.type === 'state' || message.type === 'snapshot') {
+    if (message.view) {
+      pushedView = message.view as GameView
+      stateListener?.(pushedView)
+      return true
+    }
+    if (!message.patch) return true
+    if (!pushedView) {
+      // 收到补丁却没有底座：这一帧丢掉的话，后面每一帧都会打在错的底座上，而且不报错。
+      // 断开重连，新连接会重新拿一份全量。
+      console.error('收到视图补丁但没有底座，重连以重新同步')
+      roomSocket?.close()
+      return true
+    }
+    // 就地打补丁：改了哪个字段，只有读那个字段的组件会重算。
+    try {
+      applyViewPatch(pushedView, message.patch as ViewPatch)
+    } catch (error) {
+      // 合并不上说明本地这份底座已经不可信了。断开重连：新连接会重新拉一份全量，
+      // 比硬撑着一份错的视图强得多。
+      console.error('视图补丁合并失败，重连以重新同步', error)
+      roomSocket?.close()
+      return true
+    }
+    stateListener?.(pushedView)
+    return true
+  }
   if (message.type !== 'rpc_response' || !message.id) return false
   const pending = pendingRpc.get(message.id)
   if (!pending) return true
@@ -76,8 +120,9 @@ export const api = {
       body: JSON.stringify({ ...order, command_id: commandID(), base_turn: turn }),
     })
   },
+  // ready 只回一条回执：状态走推送，不为改一个标记拉一份全量。
   ready(roomID: string, turn: number, ready: boolean) {
-    return request<GameView>('/api/v1/rooms/' + roomID + '/ready', {
+    return request<{ accepted: boolean; turn: number }>('/api/v1/rooms/' + roomID + '/ready', {
       method: 'POST',
       body: JSON.stringify({ base_turn: turn, ready }),
     })

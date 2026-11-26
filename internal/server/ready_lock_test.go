@@ -23,10 +23,12 @@ func TestReadyFreezesCommands(t *testing.T) {
 	var initial testView
 	_ = a.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &initial)
 
-	var readyView testView
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &readyView); status != http.StatusOK {
+	// ready 只回一条回执，就绪标记要从状态里读。
+	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, nil); status != http.StatusOK {
 		t.Fatalf("ready 失败：%d", status)
 	}
+	var readyView testView
+	_ = a.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &readyView)
 	if !readyView.You.Ready {
 		t.Fatal("就绪标记没有生效")
 	}

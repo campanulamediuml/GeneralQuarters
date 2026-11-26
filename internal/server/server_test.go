@@ -19,7 +19,6 @@ import (
 
 type testView struct {
 	Turn       int                      `json:"turn"`
-	Version    int64                    `json:"version"`
 	Units      []game.Unit              `json:"units"`
 	Fleets     []game.FleetGroup        `json:"fleets"`
 	Aviation   game.AviationView        `json:"aviation"`
@@ -154,24 +153,29 @@ func TestTwoPlayerCommandAndTurnFlow(t *testing.T) {
 	}
 	var moved testView
 	_ = a.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &moved)
-	// 三条命令各推进一次版本：move-1(2)、move-2(3)、move-3(4)。
-	if moved.Version != 4 {
-		t.Fatalf("移动命令未更新版本：%+v", moved)
-	}
 	// 移动是"本回合规划"：提交后不立刻位移，只登记在待结算命令里。
 	if len(moved.Orders) != 1 || moved.Orders[0].Type != "SET_MOVE" || moved.Orders[0].Coord != "0203" {
 		t.Fatalf("移动规划未写入待结算命令：%+v", moved.Orders)
 	}
 
-	var readyView testView
-	if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &readyView); status != http.StatusOK || readyView.Version != 4 {
+	// ready 的响应只是回执：状态要另外拉。
+	if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, nil); status != http.StatusOK {
 		t.Fatal("单方ready不应结算")
 	}
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &readyView); status != http.StatusOK {
+	var afterSingle testView
+	_ = a.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &afterSingle)
+	if afterSingle.Turn != 1 {
+		t.Fatalf("单方ready就结算了：第%d回合", afterSingle.Turn)
+	}
+	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, nil); status != http.StatusOK {
 		t.Fatal("双方ready结算失败")
 	}
-	if readyView.Turn != 2 || readyView.Version != 5 {
-		t.Fatalf("回合版本错误：%+v", readyView)
+	var readyView testView
+	if status := a.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &readyView); status != http.StatusOK {
+		t.Fatal("结算后读状态失败")
+	}
+	if readyView.Turn != 2 {
+		t.Fatalf("回合没推进：%+v", readyView)
 	}
 	// 结算完毕后进入新回合：位置应为规划目标，移动标记在新回合开始时清空。
 	found := false
@@ -329,9 +333,14 @@ func TestConcurrentCommandsHaveSingleWinner(t *testing.T) {
 	if accepted != 1 || rejected != 1 {
 		t.Fatalf("并发命令应只有一个成功：accepted=%d rejected=%d", accepted, rejected)
 	}
+	// 赢家只能有一个任务：两条命令都是"给同一个算子分配任务"，
+	// 所以权威状态里应该只有一条任务，不是两条叠加。
 	var view testView
-	if status := a.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &view); status != http.StatusOK || view.Version != 2 {
-		t.Fatalf("并发命令后权威版本错误：%+v", view)
+	if status := a.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &view); status != http.StatusOK {
+		t.Fatalf("读取权威状态失败：%d", status)
+	}
+	if len(view.Aviation.Tasks) != 1 {
+		t.Fatalf("并发命令后权威任务数错误：%d", len(view.Aviation.Tasks))
 	}
 }
 
@@ -346,7 +355,6 @@ func TestSectorReconCommandPersistsAndAdvances(t *testing.T) {
 	if status := b.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]string{"token": created.JoinToken}, nil); status != http.StatusOK {
 		t.Fatal("加入房间失败")
 	}
-	version := int64(1)
 	command := map[string]any{
 		"command_id": "recon-sector-1", "type": "LAUNCH_RECON", "aircraft_id": "b-cv-04-dive_bomber-x1",
 		"heading": "W", "sector_width": 60,
@@ -354,14 +362,13 @@ func TestSectorReconCommandPersistsAndAdvances(t *testing.T) {
 	if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/commands", command, nil); status != http.StatusOK {
 		t.Fatalf("机库算子分配侦察任务被拒绝")
 	}
-	version++
 	var assigned testView
 	if status := b.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &assigned); status != http.StatusOK {
 		t.Fatal("读取预备侦察任务失败")
 	}
 	// 侦察半径不可设置：无论命令里写什么，都按机型的最大搜索半径执行。
 	wantRadius := game.ReconRadiusLimit(assigned.Aviation.Tasks[0].Aircraft[0])
-	if assigned.Version != version || len(assigned.Aviation.Tasks) != 1 || assigned.Aviation.Tasks[0].Phase != "servicing" || assigned.Aviation.Tasks[0].ReconRadius != wantRadius {
+	if len(assigned.Aviation.Tasks) != 1 || assigned.Aviation.Tasks[0].Phase != "servicing" || assigned.Aviation.Tasks[0].ReconRadius != wantRadius {
 		t.Fatalf("侦察任务未立即进入整备：%+v（期望半径 %d）", assigned.Aviation.Tasks, wantRadius)
 	}
 	room, err := database.Room(t.Context(), created.RoomID)
@@ -374,14 +381,16 @@ func TestSectorReconCommandPersistsAndAdvances(t *testing.T) {
 		phase  string
 		status string
 	}{{2, "servicing", "service"}, {3, "lifting", "elevator"}, {4, "launching", "recon"}} {
-		var ready testView
-		if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &ready); status != http.StatusOK {
+		if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, nil); status != http.StatusOK {
 			t.Fatal("A ready失败")
 		}
-		if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &ready); status != http.StatusOK {
+		if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, nil); status != http.StatusOK {
 			t.Fatal("B ready失败")
 		}
-		version++
+		var ready testView
+		if status := b.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &ready); status != http.StatusOK {
+			t.Fatal("读取结算后的状态失败")
+		}
 		if ready.Turn != expected.turn || len(ready.Aviation.Tasks) != 1 || ready.Aviation.Tasks[0].Phase != expected.phase || ready.Aviation.Tasks[0].Aircraft[0].Status != expected.status {
 			t.Fatalf("第%d回合航空阶段错误：%+v", expected.turn, ready.Aviation.Tasks)
 		}
@@ -395,12 +404,15 @@ func TestSectorReconCommandPersistsAndAdvances(t *testing.T) {
 		t.Fatalf("自动起飞扇面投影错误：%+v", task)
 	}
 
-	var ready testView
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &ready); status != http.StatusOK {
+	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, nil); status != http.StatusOK {
 		t.Fatal("A ready失败")
 	}
-	if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &ready); status != http.StatusOK {
+	if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, nil); status != http.StatusOK {
 		t.Fatal("B ready失败")
+	}
+	var ready testView
+	if status := b.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &ready); status != http.StatusOK {
+		t.Fatal("读取结算后的状态失败")
 	}
 	if ready.Turn != 5 || len(ready.Aviation.Tasks) != 1 || ready.Aviation.Tasks[0].Phase != "active" || ready.Aviation.Tasks[0].ReconDistance != 2 || ready.Aviation.Tasks[0].CurrentCoord != "0206" {
 		t.Fatalf("自动起飞后没有推进侦察航线：%+v", ready.Aviation.Tasks)
