@@ -225,50 +225,67 @@ func TestSoloReadyAndInvalidToken(t *testing.T) {
 	}
 }
 
-func TestRoomActorSerializesAllJobs(t *testing.T) {
-	app := &Server{}
-	const jobCount = 64
+func TestRoomActorSerializesAllMessages(t *testing.T) {
+	actor := newRoomActor(nil)
+	const messageCount = 64
 	var active atomic.Int32
 	var maximum atomic.Int32
 	var completed int
+	actor.apply = func(msg roomMsg) roomReply {
+		if msg.reply != nil { // 收尾用的探针消息，不参与计数
+			return roomReply{}
+		}
+		current := active.Add(1)
+		for {
+			previous := maximum.Load()
+			if current <= previous || maximum.CompareAndSwap(previous, current) {
+				break
+			}
+		}
+		runtime.Gosched()
+		completed++
+		active.Add(-1)
+		return roomReply{}
+	}
+	actor.start.Do(func() { go actor.run() })
 	start := make(chan struct{})
 	var workers sync.WaitGroup
-	for index := 0; index < jobCount; index++ {
+	for index := 0; index < messageCount; index++ {
 		workers.Add(1)
 		go func() {
 			defer workers.Done()
 			<-start
-			app.submitRoom("same-room", func() {
-				current := active.Add(1)
-				for {
-					previous := maximum.Load()
-					if current <= previous || maximum.CompareAndSwap(previous, current) {
-						break
-					}
-				}
-				runtime.Gosched()
-				completed++
-				active.Add(-1)
-			})
+			actor.msgs <- roomMsg{kind: msgConnect, roomID: "same-room"}
 		}()
 	}
 	close(start)
 	workers.Wait()
-	if completed != jobCount {
-		t.Fatalf("房间任务丢失：%d/%d", completed, jobCount)
+	// 队列是 FIFO：这条带应答的消息回来时，前面 64 条都已经处理完了。
+	reply := make(chan roomReply, 1)
+	actor.msgs <- roomMsg{kind: msgConnect, roomID: "same-room", reply: reply}
+	<-reply
+	if completed != messageCount {
+		t.Fatalf("房间消息丢失：%d/%d", completed, messageCount)
 	}
 	if maximum.Load() != 1 {
-		t.Fatalf("房间任务并发执行，最大并发数：%d", maximum.Load())
+		t.Fatalf("房间消息并发处理，最大并发数：%d", maximum.Load())
 	}
 }
 
 func TestRoomActorContinuesAfterPanic(t *testing.T) {
-	app := &Server{}
-	app.submitRoom("same-room", func() { panic("test panic") })
-	completed := false
-	app.submitRoom("same-room", func() { completed = true })
-	if !completed {
-		t.Fatal("房间actor在任务panic后停止处理后续任务")
+	actor := newRoomActor(nil)
+	actor.apply = func(roomMsg) roomReply { panic("test panic") }
+	actor.start.Do(func() { go actor.run() })
+	first := make(chan roomReply, 1)
+	actor.msgs <- roomMsg{kind: msgConnect, roomID: "same-room", reply: first}
+	if reply := <-first; reply.status != http.StatusInternalServerError {
+		t.Fatalf("panic 之后没有回错误应答：%+v", reply)
+	}
+	actor.apply = func(roomMsg) roomReply { return roomReply{status: http.StatusOK} }
+	completed := make(chan roomReply, 1)
+	actor.msgs <- roomMsg{kind: msgConnect, roomID: "same-room", reply: completed}
+	if reply := <-completed; reply.status != http.StatusOK {
+		t.Fatal("房间actor在panic后停止处理后续消息")
 	}
 }
 

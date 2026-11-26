@@ -23,26 +23,24 @@ var watchHTML []byte
 // 计数放在这里是为了让测试能直接断言合并生效。
 var spectateViews atomic.Int64
 
-// spectate 是"观战"视角：用房间 join_token 换一份不按阵营裁剪的完整快照。
+// doSpectate 是"观战"视角：用房间 join_token 换一份不按阵营裁剪的完整快照。
 // 对局本身仍然是两边私有情报各看各的；这个接口只给拿得到邀请 token 的人（房主/旁观者）用，
 // 页面是 /watch/{roomID}?token=XXXX。它会合并 A/B 两边的合法视图——
 // 每艘船取自己阵营那份（含完整卡面），敌方视图里的情报投影直接丢掉。
-func (s *Server) spectate(w http.ResponseWriter, r *http.Request, roomID string) {
-	room, err := s.store.Room(r.Context(), roomID)
+func (s *Server) doSpectate(msg roomMsg) roomReply {
+	ctx := context.Background()
+	room, err := s.store.Room(ctx, msg.roomID)
 	if err != nil {
-		writeError(w, http.StatusNotFound, "房间不存在")
-		return
+		return roomError(http.StatusNotFound, "房间不存在")
 	}
-	if game.NormalizeToken(r.URL.Query().Get("token")) != room.JoinToken {
-		writeError(w, http.StatusForbidden, "观战 token 不正确")
-		return
+	if game.NormalizeToken(msg.token) != room.JoinToken {
+		return roomError(http.StatusForbidden, "观战 token 不正确")
 	}
-	view, err := s.spectateView(r.Context(), room)
+	view, err := s.spectateView(ctx, room)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "读取观战视图失败")
-		return
+		return roomError(http.StatusInternalServerError, "读取观战视图失败")
 	}
-	writeJSON(w, http.StatusOK, view)
+	return roomJSON(http.StatusOK, view)
 }
 
 // spectateView 读取玩家和战报再投影。HTTP 接口和 WebSocket 推送共用这条路径，
@@ -57,33 +55,6 @@ func (s *Server) spectateView(ctx context.Context, room store.Room) (map[string]
 		return nil, err
 	}
 	return buildSpectateView(room, players, events), nil
-}
-
-// spectateViewOf 投影观战视图。
-//
-// 必须在房间 actor 里跑：读房间、读玩家、读战报三件事要在同一个时间点上完成，
-// 否则推出去的视图可能一半新一半旧。
-func (s *Server) spectateViewOf(roomID string) (map[string]any, error) {
-	var view map[string]any
-	var failure error
-	s.submitRoom(roomID, func() {
-		ctx := context.Background()
-		room, err := s.store.Room(ctx, roomID)
-		if err != nil {
-			failure = err
-			return
-		}
-		projected, err := s.spectateView(ctx, room)
-		if err != nil {
-			failure = err
-			return
-		}
-		view = projected
-	})
-	if failure != nil {
-		return nil, failure
-	}
-	return view, nil
 }
 
 // buildSpectateView 把房间状态整理成观战页要的那一份 JSON 视图。
