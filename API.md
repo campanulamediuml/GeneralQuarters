@@ -19,7 +19,7 @@
 | 方法 | 路径 | 说明 |
 |---|---|---|
 | GET | `/healthz` | 健康检查 |
-| POST | `/api/v1/rooms` | 创建房间并自动载入剧本，默认`_coral_real` |
+| POST | `/api/v1/rooms` | 创建房间并自动载入剧本，默认`_coral_real`，可传`scenario_id`选`_marianas` |
 | POST | `/api/v1/rooms/join` | 使用12位token加入 |
 | GET | `/api/v1/rooms/{roomID}/state` | 房间私有快照；网页不再调用，保留给脚本/旧客户端 |
 | GET | `/api/v1/rooms/{roomID}/events` | 最近100条当前阵营可见事件，按时间正序（旧→新）；同上 |
@@ -41,6 +41,17 @@
 ```json
 {"room_id":"...","player_id":"...","join_token":"7K4M-9Q2X-6T8P"}
 ```
+
+### 可选剧本
+
+创建房间时用`scenario_id`选剧本，不传就是默认的`_coral_real`：
+
+| scenario_id | 剧本 | 特点 |
+|---|---|---|
+| `_coral_real` | 珊瑚海 1942年5月 | 25 海里/hex，单部署区，航母对航母的小编队局 |
+| `_marianas` | 马里亚纳 1944年6月（架空） | 60×60 图、360 回合上限、`fleet_max_ships` 45、日军双部署区、三个登陆投送目标、栗田水面部队 |
+
+`_marianas` 的开局是`phase:"deploy"`：美军全部舰队在`2353`周围 8 hex 内展开，日军机动部队（TG1/TG2/TG3）在`3717`周围 6 hex、栗田的第一游击部队在`1226`周围 6 hex。双方各自`ready`后进入第 1 回合，04:00 开局，05:30 才开放起飞。
 
 ### 加入房间
 
