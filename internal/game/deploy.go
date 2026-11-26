@@ -28,6 +28,45 @@ func deployZoneOf(zones []DeployZone, faction string) *DeployZone {
 	return nil
 }
 
+// deployZonesFor 取某阵营的全部部署区（多区剧本会把舰队分开放）。
+func deployZonesFor(zones []DeployZone, faction string) []DeployZone {
+	result := make([]DeployZone, 0, len(zones))
+	for _, zone := range zones {
+		if zone.Faction == faction {
+			result = append(result, zone)
+		}
+	}
+	return result
+}
+
+// deployZoneForFleet 按舰队挑部署区：先找 Fleets 里点名认领它的区，
+// 再退回没有 Fleets 的通用区，最后退回该阵营的第一个区。
+func deployZoneForFleet(zones []DeployZone, faction, fleetID string) *DeployZone {
+	var generic *DeployZone
+	var first *DeployZone
+	for index := range zones {
+		zone := &zones[index]
+		if zone.Faction != faction {
+			continue
+		}
+		if first == nil {
+			first = zone
+		}
+		for _, id := range zone.Fleets {
+			if id == fleetID {
+				return zone
+			}
+		}
+		if len(zone.Fleets) == 0 && generic == nil {
+			generic = zone
+		}
+	}
+	if generic != nil {
+		return generic
+	}
+	return first
+}
+
 // DeployZoneFor 取某阵营的部署区（状态里存的那份）。
 func DeployZoneFor(state State, faction string) *DeployZone {
 	return deployZoneOf(state.DeployZones, faction)
@@ -74,7 +113,7 @@ func DeployMoves(state State, unit *Unit) []string {
 	if unit == nil {
 		return nil
 	}
-	zone := DeployZoneFor(state, unit.Faction)
+	zone := deployZoneForFleet(state.DeployZones, unit.Faction, FleetKey(unit))
 	if zone == nil {
 		return nil
 	}
@@ -149,8 +188,8 @@ func DeployZoneView(state State, faction string) map[string]any {
 	if !InDeployPhase(state) {
 		return view
 	}
-	zone := DeployZoneFor(state, faction)
-	if zone == nil {
+	zones := deployZonesFor(state.DeployZones, faction)
+	if len(zones) == 0 {
 		return view
 	}
 	rows, cols := state.Map.Rows, state.Map.Cols
@@ -158,15 +197,20 @@ func DeployZoneView(state State, faction string) map[string]any {
 	for index := range cells {
 		cells[index] = '0'
 	}
-	for _, coord := range DeployZoneCoords(state, *zone, false) {
+	// 多区剧本：把该阵营所有部署区的可落点并成一张高亮图。
+	allCoords := []string{}
+	for _, zone := range zones {
+		allCoords = append(allCoords, DeployZoneCoords(state, zone, false)...)
+	}
+	for _, coord := range allCoords {
 		row, col, err := ParseCoord(coord)
 		if err != nil || row < 1 || row > rows || col < 1 || col > cols {
 			continue
 		}
 		cells[(row-1)*cols+(col-1)] = '1'
 	}
-	view["anchor"] = zone.Anchor
-	view["radius"] = zone.Radius
+	view["anchor"] = zones[0].Anchor
+	view["radius"] = zones[0].Radius
 	view["cells"] = string(cells)
 	return view
 }

@@ -198,7 +198,7 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		// 部署区优先：剧本划了区，整片区就是候选格，box / near 那套旧写法直接让位。
 		// 这样同一个剧本的舰队会散在区内，而不是各自按矩形或相对位置出生。
 		var zoneCandidates []string
-		if zone := deployZoneOf(scenario.DeployZones, deployment.Faction); zone != nil {
+		if zone := deployZoneForFleet(scenario.DeployZones, deployment.Faction, fleetID); zone != nil {
 			zoneCandidates = zoneCoords(gameMap, *zone, carrierFleet, airfieldCoords)
 			if len(zoneCandidates) == 0 {
 				return state, fmt.Errorf("部署区%s周围%d hex 内没有可用海格", zone.Anchor, zone.Radius)

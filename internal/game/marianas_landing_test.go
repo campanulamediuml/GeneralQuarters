@@ -94,13 +94,31 @@ func TestMarianasLandingGroups(t *testing.T) {
 		}
 	}
 
+	// 60×60 的地图，加上特鲁克/硫磺岛两座日军基地。
+	if state.Map.Rows != 60 || state.Map.Cols != 60 {
+		t.Fatalf("地图尺寸 %dx%d，期望 60x60", state.Map.Rows, state.Map.Cols)
+	}
+	if state.Airfields["af-b-truk"] == nil || state.Airfields["af-b-iwo"] == nil {
+		t.Fatal("缺少特鲁克/硫磺岛机场")
+	}
+	// 日军两个部署区：机动部队在帕劳以北，栗田的第一游击部队在硫磺岛西南。
+	if zone := deployZoneForFleet(state.DeployZones, "B", "TG1"); zone == nil || zone.Anchor != "3717" {
+		t.Fatalf("TG1 应该出生在帕劳以北：%+v", zone)
+	}
+	if zone := deployZoneForFleet(state.DeployZones, "B", "KURITA"); zone == nil || zone.Anchor != "1226" {
+		t.Fatalf("KURITA 应该出生在硫磺岛西南：%+v", zone)
+	}
+	if zone := deployZoneForFleet(state.DeployZones, "A", "TF58.1"); zone == nil || zone.Anchor != "2353" {
+		t.Fatalf("美军部署区锚点不对：%+v", zone)
+	}
+
 	supplyTargets := map[string]bool{}
 	for _, objective := range state.Objectives {
 		if objective.Kind == ObjectiveSupplies && objective.Faction == "A" && objective.Value == 40 {
 			supplyTargets[objective.Coord] = true
 		}
 	}
-	for _, coord := range []string{"1874", "2073", "2574"} {
+	for _, coord := range []string{"2843", "2943", "3241"} {
 		if !supplyTargets[coord] {
 			t.Fatalf("缺少 %s 的 40 点投送目标", coord)
 		}
@@ -110,7 +128,7 @@ func TestMarianasLandingGroups(t *testing.T) {
 	const fleet = "TRN1"
 	for _, unit := range state.Units {
 		if unit.FleetID == fleet {
-			unit.Coord = "2574"
+			unit.Coord = "3241"
 		}
 	}
 	if state.FleetSessions == nil {
@@ -120,13 +138,13 @@ func TestMarianasLandingGroups(t *testing.T) {
 	for turn := 0; turn < 12; turn++ {
 		resolveUnloading(&state)
 	}
-	if got := state.ShoreSupplies["A|2574"]; got < 40 {
+	if got := state.ShoreSupplies["A|3241"]; got < 40 {
 		t.Fatalf("关岛累计只卸下 %d 点，没到 40", got)
 	}
 	for _, objective := range state.Objectives {
-		if objective.Kind == ObjectiveSupplies && objective.Coord == "2574" {
+		if objective.Kind == ObjectiveSupplies && objective.Coord == "3241" {
 			if !objectiveCompleted(state, "A", objective) {
-				t.Fatalf("关岛卸到 %d 点了，目标仍未完成", state.ShoreSupplies["A|2574"])
+				t.Fatalf("关岛卸到 %d 点了，目标仍未完成", state.ShoreSupplies["A|3241"])
 			}
 		}
 	}

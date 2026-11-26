@@ -22,17 +22,30 @@
   "launch_start": "05:30",
   "recover_by": "19:40"
  },
- "description": "架空历史：1944 年 6 月，美军第 58 特混舰队以 8 艘舰队航母（7 艘埃塞克斯级 + 企业号，分属两个特混大队）、4 艘独立级轻航母（第 58.3 特混大队）、4 个护航航母群（每群 4 艘 CVE + 4 艘驱逐舰）杀入马里亚纳，另有第 52 特混舰队的 8 艘老式战列舰（田纳西、加利福尼亚、马里兰、科罗拉多、新墨西哥、爱达荷、密西西比、宾夕法尼亚）担任火力支援；日军以小泽的三个机动部队（甲/乙/丙，各 3 艘航母）迎战，另在马里亚纳与帕劳诸岛布署岸基航空兵和水上飞机基地。地图 99×99（25 海里/hex），岛礁散布，适合跑大编队的甲板/升降机/CAP 循环压力测试。另有三个登陆运输队（每队 12 艘大型慢速运输船 + 12 艘弗莱彻级护航），任务是分别在塞班、天宁、关岛投送至少 40 点物资——运输队要在敌方机场格停留满 3 回合才能开始卸货，每艘船每回合卸 1 点，卸下的物资会直接瘫痪机场跑道。日军方面另编成栗田健男的第一游击部队（大和、武藏、长门、金刚、榛名，以及架空复活的两艘金刚级比叡、雾岛），作为水面决战兵力。马里亚纳群岛位于地图右侧三分之一；开局美军在塞班以东海域展开，日军从帕劳以北进入战场。",
+ "description": "架空历史：1944 年 6 月，美军第 58 特混舰队以 8 艘舰队航母（7 艘埃塞克斯级 + 企业号，分属两个特混大队）、4 艘独立级轻航母（第 58.3 特混大队）、4 个护航航母群（每群 4 艘 CVE + 4 艘驱逐舰）杀入马里亚纳，另有第 52 特混舰队的 8 艘老式战列舰（田纳西、加利福尼亚、马里兰、科罗拉多、新墨西哥、爱达荷、密西西比、宾夕法尼亚）担任火力支援；日军以小泽的三个机动部队（甲/乙/丙，各 3 艘航母）迎战，另在马里亚纳与帕劳诸岛布署岸基航空兵和水上飞机基地。地图 60×60（25 海里/hex），岛礁散布，适合跑大编队的甲板/升降机/CAP 循环压力测试。另有三个登陆运输队（每队 12 艘大型慢速运输船 + 12 艘弗莱彻级护航），任务是分别在塞班、天宁、关岛投送至少 40 点物资——运输队要在敌方机场格停留满 3 回合才能开始卸货，每艘船每回合卸 1 点，卸下的物资会直接瘫痪机场跑道。日军方面另编成栗田健男的第一游击部队（大和、武藏、长门、金刚、榛名，以及架空复活的两艘金刚级比叡、雾岛），作为水面决战兵力。马里亚纳群岛位于地图中间偏右；开局美军在塞班东北偏东约 300 海里的海域展开，日军分两路：机动部队在帕劳以北、栗田的第一游击部队在硫磺岛西南。特鲁克、硫磺岛作为日军基地出现在图上。",
  "deploy_zones": [
   {
    "faction": "A",
-   "anchor": "2085",
+   "anchor": "2353",
    "radius": 8
   },
   {
    "faction": "B",
-   "anchor": "5414",
-   "radius": 8
+   "anchor": "3717",
+   "radius": 6,
+   "fleets": [
+    "TG1",
+    "TG2",
+    "TG3"
+   ]
+  },
+  {
+   "faction": "B",
+   "anchor": "1226",
+   "radius": 6,
+   "fleets": [
+    "KURITA"
+   ]
   }
  ],
  "deployments": [
@@ -5036,7 +5049,7 @@
    "id": "af-b-saipan",
    "faction": "B",
    "name": "塞班机场",
-   "coord": "1874",
+   "coord": "2843",
    "type": "large",
    "runways": 4,
    "radar": true,
@@ -5066,7 +5079,7 @@
    "id": "af-b-tinian",
    "faction": "B",
    "name": "天宁机场",
-   "coord": "2073",
+   "coord": "2943",
    "type": "large",
    "runways": 4,
    "radar": false,
@@ -5094,7 +5107,7 @@
    "id": "af-b-guam",
    "faction": "B",
    "name": "关岛机场",
-   "coord": "2574",
+   "coord": "3241",
    "type": "large",
    "runways": 4,
    "radar": true,
@@ -5120,7 +5133,7 @@
    "id": "af-b-rota",
    "faction": "B",
    "name": "罗塔机场",
-   "coord": "2372",
+   "coord": "3042",
    "type": "small",
    "runways": 2,
    "radar": false,
@@ -5140,7 +5153,7 @@
    "id": "af-b-yap",
    "faction": "B",
    "name": "雅浦机场",
-   "coord": "4526",
+   "coord": "4226",
    "type": "medium",
    "runways": 3,
    "radar": false,
@@ -5164,7 +5177,7 @@
    "id": "af-b-palau",
    "faction": "B",
    "name": "帕劳机场",
-   "coord": "6214",
+   "coord": "4717",
    "type": "medium",
    "runways": 3,
    "radar": false,
@@ -5186,7 +5199,7 @@
    "id": "af-b-saipan-sea",
    "faction": "B",
    "name": "塞班水上飞机基地",
-   "coord": "2077",
+   "coord": "2846",
    "type": "seaplane",
    "runways": 3,
    "radar": false,
@@ -5207,7 +5220,7 @@
    "id": "af-b-guam-sea",
    "faction": "B",
    "name": "阿普拉水上飞机基地",
-   "coord": "2776",
+   "coord": "3344",
    "type": "seaplane",
    "runways": 3,
    "radar": false,
@@ -5227,7 +5240,7 @@
    "id": "af-b-palau-sea",
    "faction": "B",
    "name": "帕劳水上飞机基地",
-   "coord": "6416",
+   "coord": "4714",
    "type": "seaplane",
    "runways": 3,
    "radar": false,
@@ -5240,6 +5253,32 @@
     "af-b-palau-sea-e13a-1",
     "af-b-palau-sea-e13a-2"
    ]
+  },
+  {
+   "id": "af-b-truk",
+   "faction": "B",
+   "name": "特鲁克机场",
+   "coord": "4757",
+   "type": "large",
+   "runways": 4,
+   "radar": true,
+   "heavy_aa": 8.0,
+   "light_aa": 12.0,
+   "coastal": 6,
+   "aircraft": []
+  },
+  {
+   "id": "af-b-iwo",
+   "faction": "B",
+   "name": "硫磺岛机场",
+   "coord": "0533",
+   "type": "medium",
+   "runways": 3,
+   "radar": true,
+   "heavy_aa": 6.0,
+   "light_aa": 10.0,
+   "coastal": 6,
+   "aircraft": []
   }
  ],
  "objectives": [
@@ -5257,7 +5296,7 @@
    "id": "landing-saipan",
    "text": "在塞班投送至少 40 点物资",
    "kind": "supplies",
-   "coord": "1874",
+   "coord": "2843",
    "faction": "A",
    "value": 40,
    "points": 0,
@@ -5267,7 +5306,7 @@
    "id": "landing-tinian",
    "text": "在天宁投送至少 40 点物资",
    "kind": "supplies",
-   "coord": "2073",
+   "coord": "2943",
    "faction": "A",
    "value": 40,
    "points": 0,
@@ -5277,7 +5316,7 @@
    "id": "landing-guam",
    "text": "在关岛投送至少 40 点物资",
    "kind": "supplies",
-   "coord": "2574",
+   "coord": "3241",
    "faction": "A",
    "value": 40,
    "points": 0,

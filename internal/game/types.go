@@ -44,6 +44,9 @@ type DeployZone struct {
 	Faction string `json:"faction"`
 	Anchor  string `json:"anchor"`
 	Radius  int    `json:"radius"`
+	// Fleets 可选：这些舰队用这个部署区。为空表示该阵营没被别的区认领的舰队都落在这里。
+	// 马里亚纳日军有两个区：机动部队在帕劳以北、栗田的第一游击部队在硫磺岛西南。
+	Fleets []string `json:"fleets,omitempty"`
 }
 
 type Deployment struct {
