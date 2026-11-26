@@ -684,26 +684,17 @@
       if (a.model !== b.model) return a.model < b.model ? -1 : 1;
       return (b.range == null ? -1 : b.range) - (a.range == null ? -1 : a.range);
     });
-    var byModel = {};
-    var modelOrder = [];
-    rows.forEach(function (row) {
-      if (!byModel[row.model]) {
-        byModel[row.model] = 0;
-        modelOrder.push(row.model);
-      }
-      byModel[row.model] += row.count;
-    });
     var cards = rows.map(function (row) {
-      var details = ['状态 ' + flightStateLabel(row), '数量 ' + row.count + ' 架'];
+      var details = ['状态 ' + flightStateLabel(row)];
       if (row.range != null) details.push('航程 ' + row.range + (row.max ? '/' + row.max : ''));
+      // 架数直接写成标题后面的 ×N，和地图上的编队牌一个写法：不用在"数量"那行再数一次。
       return '<div class="detail-card">' + pictureBlock(row.picture, '机') +
-        '<div class="detail-copy"><b>' + escapeHTML(row.model) + '</b>' +
+        '<div class="detail-copy"><b>' + escapeHTML(row.model) + ' ×' + row.count + '</b>' +
         '<small>' + escapeHTML(details.join(' · ')) + '</small>' +
         '<em>' + escapeHTML(row.loadout || '') + '</em></div></div>';
     }).join('');
     var total = (group.aircraft || []).length || group.count || 0;
     var meta = '<span>兵力 <b>' + total + '</b> 架</span>' +
-      '<span>机型 <b>' + escapeHTML(modelOrder.map(function (model) { return model + '×' + byModel[model]; }).join(' / ')) + '</b></span>' +
       '<span>当前 <b>' + escapeHTML(group.coord || '—') + '</b></span>' +
       '<span>任务 <b>' + escapeHTML(group.mission || '空中') + '</b></span>' +
       '<span>目标 <b>' + escapeHTML(group.target || '未设置') + '</b></span>' +
