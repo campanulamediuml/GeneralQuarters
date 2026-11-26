@@ -43,7 +43,7 @@ func TestGroundAircraftTransfersToAnotherAirfield(t *testing.T) {
 	t.Fatalf("60 回合内没有转场到凯恩斯（airborne=%v）", sawAirborne)
 }
 
-// 航程不够就拒绝：F4F 转场航程 9×1.7≈15 hex，凯恩斯到莫尔兹比 21 hex。
+// 航程不够就拒绝：F4F 转场航程 9×2.21≈20 hex，凯恩斯到莫尔兹比 21 hex。
 func TestGroundTransferRangeIsEnforced(t *testing.T) {
 	state := coralCombatState(t)
 	state.Turn = 17
@@ -52,7 +52,7 @@ func TestGroundTransferRangeIsEnforced(t *testing.T) {
 	if err := ValidateGroundAirOrder(state, order); err == nil {
 		t.Fatal("F4F 航程不足以从凯恩斯飞到莫尔兹比，应该报错")
 	}
-	// P-40 转场航程 29 hex，同一段航程应当允许。
+	// P-40 转场航程 17×2.21≈38 hex，同一段航程应当允许。
 	ok := Order{Type: "LAUNCH_TRANSFER", AircraftIDs: []string{"af-a-cairns-p40-1"}, Coord: "1611"}
 	if err := ValidateGroundAirOrder(state, ok); err != nil {
 		t.Fatalf("P-40 应该能飞凯恩斯 -> 莫尔兹比：%v", err)

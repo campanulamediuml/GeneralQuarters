@@ -37,7 +37,7 @@ func TestCarrierTransferRangeCheckedAtTakeoff(t *testing.T) {
 	}
 	ApplyAirOrder(&state, create)
 
-	// 手动挂载的飞机进转场必须换成副油箱：否则校验按 1.7× 放行、实际只有 1.3×。
+	// 手动挂载的飞机进转场必须换成副油箱：否则校验按 2.21× 放行、实际只有 1.3×。
 	if plane.Loadout != LoadoutTransfer {
 		t.Fatalf("转场任务没有换成副油箱：loadout=%s", plane.Loadout)
 	}
