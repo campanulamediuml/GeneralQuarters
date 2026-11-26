@@ -204,6 +204,46 @@ func TestTaskIDsAreUniqueAcrossSorties(t *testing.T) {
 	}
 }
 
+// 每个拆出来的小编队都是独立编队：各自吃自己的无线电预算、各自改目标/召回，
+// 不会被"同一个任务"合并掉。一次大空袭一路拆出几十支编队，就应该是几十次独立通信。
+func TestEachSplitFormationHasOwnRadioBudget(t *testing.T) {
+	state := sandboxState(t)
+	ids := []string{"b-cv-01-dive_bomber-x1", "b-cv-01-dive_bomber-x2", "b-cv-01-dive_bomber-x3"}
+	const mainTask = "air-radio"
+	for _, id := range ids {
+		aircraft := state.Aircraft[id]
+		aircraft.TaskID = mainTask
+		aircraft.TaskKind = "attack"
+		aircraft.Status = "attack"
+		aircraft.Launched = true
+		aircraft.Coord = "0303"
+		aircraft.TargetCoord = "0505"
+	}
+	state.Aircraft[ids[0]].Returning = true
+	splitCarrierReturningMembers(&state)
+	state.Aircraft[ids[1]].Returning = true
+	splitCarrierReturningMembers(&state)
+
+	tags := []string{state.Aircraft[ids[0]].TaskID, state.Aircraft[ids[1]].TaskID, state.Aircraft[ids[2]].TaskID}
+	if state.RadioUsed == nil {
+		state.RadioUsed = map[string]string{}
+	}
+	seen := map[string]bool{}
+	for _, tag := range tags {
+		if tag == "" || seen[tag] {
+			t.Fatalf("拆出来的编队 tag 必须唯一：%v", tags)
+		}
+		seen[tag] = true
+		if err := validateRadioOrder(state, "B", Order{Type: "RECALL_AIR", TaskID: tag}); err != nil {
+			t.Fatalf("编队 %s 应该能单独接收无线电：%v", tag, err)
+		}
+		state.RadioUsed[tag] = "B"
+	}
+	if len(state.RadioUsed) != len(tags) {
+		t.Fatalf("每支编队应各自占一次无线电机会，实际 %d 次", len(state.RadioUsed))
+	}
+}
+
 // 编队牌 tag 是随机的：一次 100 架的超远程打击能拆出上百张牌，
 // 牌子只需要唯一标识，不需要（也不该）用序号表达"第几个任务"。
 func TestFlightTagsAreRandomAndUnique(t *testing.T) {
