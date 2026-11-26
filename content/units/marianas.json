@@ -8709,7 +8709,7 @@
    "faction": "A",
    "name": "鱼雷机",
    "model": "TBF/TBM 复仇者",
-   "picture": "misc/image/aircraft/tbd.png",
+   "picture": "misc/image/aircraft/tbf.png",
    "picture_mode": "image",
    "kind": "torpedo_bomber",
    "strength": 3,
