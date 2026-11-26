@@ -20,13 +20,22 @@ type MapDefinition struct {
 	Rows    int       `json:"rows"`
 	Cols    int       `json:"cols"`
 	Cells   []MapCell `json:"cells"`
-	// Clouds 是天气层：行优先、每格一个字符 '0'..'3'，表示这个 hex 压了几层云
-	// （0 晴 / 1 多云 / 2 降雨 / 3 风暴）。它随房间状态每 3 回合整体移动一次，
-	// 和地图的静态地形分开放，读天气统一走 weatherAt。
+	// Clouds 是天气层：行优先、每格一个字节，记这个 hex 压了几层云。
+	// 0 晴 / 1 多云 / 2 降雨 / 3 层及以上风暴——层数没有上限，云飘过来叠多少算多少，
+	// 每层各自独立移动，不会因为"目标格已经有云"就消散。
+	// 开局只铺 1–3 层是为了顺手造出四种天气；之后全靠云自己飘。
+	// 字节存层数，前端拿到的是档位串（见 CloudCells），二者别混。
 	Clouds string `json:"clouds"`
 	// board 是载入时编译出来的地形表（见 board.go）：运行期查地形不再扫 Cells。
 	// 不进 JSON——UnmarshalJSON 解完会重新编译，所以从库里读出来也是就绪的。
 	board *board
+}
+
+// MapForView 返回给前端的海图定义：天气层是服务端内部记账（每格一个字节的层数），
+// 不进视图——前端看图只认 weather_cells 的档位串，别把控制字符塞进 JSON 里。
+func MapForView(gameMap MapDefinition) MapDefinition {
+	gameMap.Clouds = ""
+	return gameMap
 }
 
 // DeployZone 是一个阵营的开局部署区：锚点 hex + 半径（六边形距离）。

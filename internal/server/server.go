@@ -936,7 +936,7 @@ func (s *Server) privateView(ctx context.Context, room store.Room, players []sto
 	response := map[string]any{
 		"room_id": room.ID, "status": room.Status, "turn": room.Turn,
 		"scenario": map[string]any{"id": room.State.ScenarioID, "name": room.State.ScenarioName, "description": room.State.Description},
-		"map":      room.State.Map, "units": game.VisibleUnits(room.State, player.Faction), "fleets": game.VisibleFleets(room.State, player.Faction),
+		"map":      game.MapForView(room.State.Map), "units": game.VisibleUnits(room.State, player.Faction), "fleets": game.VisibleFleets(room.State, player.Faction),
 		"aviation":             game.VisibleAviation(room.State, player.Faction),
 		"airfields":            game.VisibleAirfields(room.State, player.Faction),
 		"ground_air":           game.VisibleGroundAir(room.State, player.Faction),
@@ -951,7 +951,8 @@ func (s *Server) privateView(ctx context.Context, room store.Room, players []sto
 		"radio_tasks":          game.AirborneRadioTasks(room.State, player.Faction),
 		"wind":                 game.VisibleWind(room.State, player.Faction),
 		// weather_cells：行优先、每格一个字符 '0'..'3'（晴/多云/降雨/风暴）。
-		"weather_cells": room.State.Map.Clouds,
+		// 内部记的是层数，4 层以上一律按风暴显示，所以这里要过一遍 CloudCells。
+		"weather_cells": game.CloudCells(room.State.Map),
 		// phase = "deploy" 时双方还在部署区摆船；deploy_zone 是己方的部署区（锚点/半径/格位串）。
 		"phase":       room.State.Phase,
 		"deploy_zone": game.DeployZoneView(room.State, player.Faction),

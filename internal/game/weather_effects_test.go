@@ -8,9 +8,6 @@ import (
 // 坐标沿用 "rrcc" 格式（02 行 02 列），和 state.Map.Clouds 的行优先布局一致。
 func cloudField(rows, cols int, cells map[string]byte) string {
 	buf := make([]byte, rows*cols)
-	for index := range buf {
-		buf[index] = '0'
-	}
 	for coord, layers := range cells {
 		row := int(coord[0]-'0')*10 + int(coord[1]-'0')
 		col := int(coord[2]-'0')*10 + int(coord[3]-'0')
@@ -39,7 +36,7 @@ func TestStrikeWeatherOnlyPunishesStrategicBombersUnderCloud(t *testing.T) {
 	}
 
 	// 多云：普通机不受影响，战略轰炸机 -5% 后再减半。
-	state.Map.Clouds = cloudField(7, 9, map[string]byte{"0202": '1'})
+	state.Map.Clouds = cloudField(7, 9, map[string]byte{"0202": 1})
 	if got := strikeHitChance(*state, dive, bb, false, true); got != 25 {
 		t.Fatalf("多云不该影响俯冲轰炸机：期望 25，实际 %.1f", got)
 	}
@@ -48,7 +45,7 @@ func TestStrikeWeatherOnlyPunishesStrategicBombersUnderCloud(t *testing.T) {
 	}
 
 	// 降雨：所有机种 -10%。
-	state.Map.Clouds = cloudField(7, 9, map[string]byte{"0202": '2'})
+	state.Map.Clouds = cloudField(7, 9, map[string]byte{"0202": 2})
 	if got := strikeHitChance(*state, dive, bb, false, true); got != 15 {
 		t.Fatalf("降雨俯冲轰炸机应为 15%%，实际 %.1f", got)
 	}
@@ -68,7 +65,7 @@ func TestGroundAttackWeatherModifiers(t *testing.T) {
 		t.Fatalf("晴天对地基础应 20%%，实际 %.1f", got)
 	}
 
-	state.Map.Clouds = cloudField(7, 9, map[string]byte{"0202": '1'})
+	state.Map.Clouds = cloudField(7, 9, map[string]byte{"0202": 1})
 	if got := groundHitChance(*state, airfield, medium, true); got != 20 {
 		t.Fatalf("多云不该影响普通轰炸机：期望 20，实际 %.1f", got)
 	}
@@ -81,12 +78,12 @@ func TestGroundAttackWeatherModifiers(t *testing.T) {
 		t.Fatalf("按机型号识别的战略轰炸机应 15%%，实际 %.1f", got)
 	}
 
-	state.Map.Clouds = cloudField(7, 9, map[string]byte{"0202": '2'})
+	state.Map.Clouds = cloudField(7, 9, map[string]byte{"0202": 2})
 	if got := groundHitChance(*state, airfield, medium, true); got != 10 {
 		t.Fatalf("降雨对地应 10%%，实际 %.1f", got)
 	}
 
-	state.Map.Clouds = cloudField(7, 9, map[string]byte{"0202": '3'})
+	state.Map.Clouds = cloudField(7, 9, map[string]byte{"0202": 3})
 	if got := groundHitChance(*state, airfield, medium, true); got != 5 {
 		t.Fatalf("风暴对地应 5%%（15-20 落到下限 5），实际 %.1f", got)
 	}
@@ -99,7 +96,7 @@ func TestStrikeEngagementWeatherFactor(t *testing.T) {
 			weatherFactor(""), weatherFactor("cloud"), weatherFactor("rain"), weatherFactor("storm"))
 	}
 	// 云层字符串里的三档都要能被 weatherAt 正确读出，否则判定拿不到天气。
-	state := State{Map: MapDefinition{Rows: 1, Cols: 3, Clouds: "013"}}
+	state := State{Map: MapDefinition{Rows: 1, Cols: 3, Clouds: string([]byte{0, 1, 3})}}
 	if got := weatherAt(state.Map, "0101"); got != "" {
 		t.Fatalf("晴格应返回空，实际 %q", got)
 	}

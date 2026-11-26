@@ -93,7 +93,7 @@ func buildSpectateView(room store.Room, players []store.Player, events []store.E
 	response := map[string]any{
 		"room_id": room.ID, "status": room.Status, "turn": room.Turn,
 		"scenario":       map[string]any{"id": state.ScenarioID, "name": state.ScenarioName, "description": state.Description},
-		"map":            state.Map,
+		"map":            game.MapForView(state.Map),
 		"units":          units,
 		"fleets":         fleets,
 		"aviation":       map[string]any{"carriers": carriers, "tasks": tasks},
@@ -112,7 +112,7 @@ func buildSpectateView(room store.Room, players []store.Player, events []store.E
 		"wind":           game.PrevailingWind(state),
 		// 逐格风向/天气：行优先字符串，观战页按格画箭头和云层。
 		"wind_cells":    game.WindCells(state),
-		"weather_cells": state.Map.Clouds,
+		"weather_cells": game.CloudCells(state.Map),
 		"players":       playersSnapshot(players),
 		"events":        events,
 		"spectator":     true,

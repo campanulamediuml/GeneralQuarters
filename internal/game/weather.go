@@ -8,13 +8,13 @@ import (
 
 // —— 动态天气（规则书 313–314、512、610、638–645、701–702、717–722 行）——
 //
-// 天气不再是"每格自己随机游走"，而是真实的云层：地图上每个 hex 记 0–3 层云，
-//   0 层 = 晴，1 层 = 多云，2 层 = 降雨，3 层 = 风暴。
+// 天气不再是"每格自己随机游走"，而是真实的云层：地图上每个 hex 记压了几层云，
+//   0 层 = 晴，1 层 = 多云，2 层 = 降雨，3 层及以上 = 风暴。
 // 初始撒点：10% 的 hex 是多云（1 层）、5% 是降雨（2 层）、1% 是风暴（3 层），
-// 其余 84% 晴朗。云本来就该稀，雨带和风暴区主要靠云层随风叠出来，而不是开局就铺满。
-// 之后每 3 回合所有云一起移动一格：75% 顺着当地风（吹向），25% 随机方向；
-// 云叠在一起就变成雨、再叠出第三层就是风暴。移动用的是哈希出来的伪随机数，
-// 不消耗 RNGState——天气不应该影响炮击/命中的随机序列。
+// 其余 84% 晴朗。开局只铺 1–3 层，是为了顺手造出四种天气；之后云完全自己飘、自己叠，
+// 一层一层独立运动，叠到 4 层、5 层也还是风暴，不会因为"目标格已经有云"就消散。
+// 每 3 回合所有云一起移动一格：75% 顺着当地风（吹向），25% 随机方向。
+// 移动用的是哈希出来的伪随机数，不消耗 RNGState——天气不应该影响炮击/命中的随机序列。
 //
 // 地图按环绕处理：云从一边飘出去，就从对面那一列/一行进来。以前只在图内挑邻格，
 // 边上的云无处可去只能留在原地，看着就像"云卡在边上慢慢聚成一坨"。
@@ -29,7 +29,11 @@ const (
 
 const (
 	weatherMoveTurns = 3 // 云层每 3 回合移动一次
-	weatherMaxLayers = 3 // 三层 = 风暴
+	// weatherStormLayers 是"到这一层就是风暴"的门槛：3 层、4 层、10 层都是风暴。
+	weatherStormLayers = 3
+	// cloudLayersMax 只是记账上限，不是天气上限：127 层以上不会再有新档位，
+	// 而一个字节再往上写就成了非 ASCII，JSON 编码会把它替换成 U+FFFD。
+	cloudLayersMax = 127
 )
 
 // windDirections 是六个方位（NE/E/SE/SW/W/NW），风向与舰艏关系的唯一定义来源。
@@ -45,7 +49,11 @@ func cloudRoll(seed, turn uint64, index, layer int) uint64 {
 // 只在天气系统开启（WeatherTurns > 0）且还没有天气层时生效；老存档里
 // MapCell.Weather 的静态天气保留为回退，不会被覆盖。
 func EnsureWeather(state *State) {
-	if state.WeatherTurns <= 0 || state.Map.Clouds != "" {
+	if state.WeatherTurns <= 0 {
+		return
+	}
+	normalizeCloudLayers(state)
+	if state.Map.Clouds != "" {
 		return
 	}
 	rows, cols := state.Map.Rows, state.Map.Cols
@@ -66,22 +74,61 @@ func EnsureWeather(state *State) {
 		case roll < 16:
 			layers = 1
 		}
-		cells[index] = byte('0' + layers)
+		cells[index] = byte(layers)
 	}
 	state.Map.Clouds = string(cells)
 }
 
-// weatherFromLayers 把云层数变成规则用的天气名。
-func weatherFromLayers(layers byte) string {
-	switch layers {
-	case '1':
-		return WeatherCloud
-	case '2':
-		return WeatherRain
-	case '3':
-		return WeatherStorm
+// normalizeCloudLayers 把旧存档的天气层迁成"每格一个字节的层数"。
+// 旧编码每格是一个字符 '0'..'3'；不迁的话读出来每格都是 48–51 层，整张图直接变风暴。
+func normalizeCloudLayers(state *State) {
+	cells := state.Map.Clouds
+	if len(cells) == 0 || len(cells) != state.Map.Rows*state.Map.Cols {
+		return
 	}
-	return WeatherClear
+	for index := 0; index < len(cells); index++ {
+		// 只有整串都落在 '0'..'3' 才当成旧编码。新编码里层数要凑到 48 才会撞上这个区间，
+		// 那时这格早就是风暴，误判也不影响天气。
+		if cells[index] < '0' || cells[index] > '3' {
+			return
+		}
+	}
+	layers := make([]byte, len(cells))
+	for index := 0; index < len(cells); index++ {
+		layers[index] = cells[index] - '0'
+	}
+	state.Map.Clouds = string(layers)
+}
+
+// CloudCells 是给前端/观战页的天气档位串：每格一个字符 '0'..'3'。
+// 服务端内部记的是层数（4 层、5 层…），到了界面上一律按"3 = 风暴"显示，
+// 因为规则里只看这三档，叠到第几层已经没有区别。
+func CloudCells(gameMap MapDefinition) string {
+	if len(gameMap.Clouds) == 0 {
+		return ""
+	}
+	cells := make([]byte, len(gameMap.Clouds))
+	for index := 0; index < len(gameMap.Clouds); index++ {
+		layers := gameMap.Clouds[index]
+		if layers > weatherStormLayers {
+			layers = weatherStormLayers
+		}
+		cells[index] = '0' + layers
+	}
+	return string(cells)
+}
+
+// weatherFromLayers 把云层数变成规则用的天气名：3 层及以上都是风暴。
+func weatherFromLayers(layers byte) string {
+	switch {
+	case layers <= 0:
+		return WeatherClear
+	case layers == 1:
+		return WeatherCloud
+	case layers == 2:
+		return WeatherRain
+	}
+	return WeatherStorm
 }
 
 // weatherRank 用于和旧代码/测试兼容：晴 0 / 多云 1 / 降雨 2 / 风暴 3。
@@ -98,38 +145,34 @@ func weatherRank(weather string) int {
 }
 
 // moveClouds 把云层整体挪一格，返回移动了几个云层。
-// 目标格已经叠满 3 层时这层云消散（很少发生，但避免无限堆叠）。
+// 每一层单独找目标：叠到同一格就叠着，4 层、5 层都只是风暴更厚，不会消散。
 func moveClouds(state *State) int {
 	rows, cols := state.Map.Rows, state.Map.Cols
 	if rows <= 0 || cols <= 0 || len(state.Map.Clouds) != rows*cols {
 		return 0
 	}
 	next := make([]byte, rows*cols)
-	for index := range next {
-		next[index] = '0'
-	}
 	moved := 0
-	turn := uint64(state.Turn)
 	for row := 1; row <= rows; row++ {
 		for col := 1; col <= cols; col++ {
 			index := (row-1)*cols + (col - 1)
-			layers := int(state.Map.Clouds[index] - '0')
+			layers := int(state.Map.Clouds[index])
 			for layer := 0; layer < layers; layer++ {
 				target := cloudTarget(state, row, col, index, layer)
-				if target >= 0 && next[target] < '0'+weatherMaxLayers {
+				// 只有记账上限会让一层云停下（127 层，早就风暴了）：这时它就留在原地，
+				// 不丢。目标格能不能再来一层，跟它是不是风暴无关。
+				if target >= 0 && next[target] < cloudLayersMax {
 					next[target]++
 					moved++
 					continue
 				}
-				// 没有可去的地方（出界 / 目标满）：留在原地。
-				if next[index] < '0'+weatherMaxLayers {
+				if next[index] < cloudLayersMax {
 					next[index]++
 				}
 			}
 		}
 	}
 	state.Map.Clouds = string(next)
-	_ = turn
 	return moved
 }
 

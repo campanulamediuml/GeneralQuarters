@@ -34,7 +34,7 @@ func TestCloudTargetOnEdgeStaysInsideMap(t *testing.T) {
 			index := (cell[0]-1)*cols + cell[1] - 1
 			for turn := 0; turn < 20; turn++ {
 				state.Turn = turn * weatherMoveTurns
-				target := cloudTarget(&state, cell[0], cell[1], index, turn%weatherMaxLayers)
+				target := cloudTarget(&state, cell[0], cell[1], index, turn%weatherStormLayers)
 				if target < 0 || target >= rows*cols {
 					t.Fatalf("seed=%d 回合%d 的云落到了图外：%d", seed, state.Turn, target)
 				}

@@ -1,9 +1,6 @@
 package game
 
-import (
-	"strings"
-	"testing"
-)
+import "testing"
 
 // 未开启天气系统时保持静态：不铺云，也不动老存档里的静态天气格。
 func TestWeatherStaticWithoutCycle(t *testing.T) {
@@ -17,7 +14,8 @@ func TestWeatherStaticWithoutCycle(t *testing.T) {
 	}
 }
 
-// 初始撒云：10% 多云、5% 降雨、1% 风暴，其余晴朗；云层数就是档位。
+// 初始撒云：10% 多云（1 层）、5% 降雨（2 层）、1% 风暴（3 层），其余晴朗。
+// 开局只铺 0–3 层，是为了顺手造出四种天气；之后层数会自己叠上去。
 func TestCloudSeedingDistribution(t *testing.T) {
 	state := State{WeatherTurns: 6, RNGState: 42, Map: MapDefinition{Rows: 52, Cols: 64}}
 	EnsureWeather(&state)
@@ -26,9 +24,9 @@ func TestCloudSeedingDistribution(t *testing.T) {
 	}
 	counts := [4]int{}
 	for index := 0; index < len(state.Map.Clouds); index++ {
-		layers := int(state.Map.Clouds[index] - '0')
-		if layers < 0 || layers > 3 {
-			t.Fatalf("非法云层数 %d", layers)
+		layers := int(state.Map.Clouds[index])
+		if layers > 3 {
+			t.Fatalf("开局不该直接叠到 3 层以上：%d", layers)
 		}
 		counts[layers]++
 	}
@@ -70,15 +68,13 @@ func TestCloudsMoveEveryThreeTurns(t *testing.T) {
 	}
 }
 
-// 云层总数在移动时守恒（目标叠满时的消散除外，小图里基本不会发生）。
+// 层数守恒：云飘到同一格只是叠厚，不会因为"目标格已经有云"就消散。
 func TestCloudsConservedWhenMoving(t *testing.T) {
 	state := State{Turn: 3, WeatherTurns: 6, RNGState: 5, Wind: "E", Map: MapDefinition{Rows: 10, Cols: 10}}
 	EnsureWeather(&state)
 	before := totalClouds(state.Map.Clouds)
-	state.Turn = 3
 	StepWeather(&state)
-	after := totalClouds(state.Map.Clouds)
-	if before != after {
+	if after := totalClouds(state.Map.Clouds); after != before {
 		t.Fatalf("云层总数不守恒：%d -> %d", before, after)
 	}
 }
@@ -86,9 +82,78 @@ func TestCloudsConservedWhenMoving(t *testing.T) {
 func totalClouds(cells string) int {
 	total := 0
 	for index := 0; index < len(cells); index++ {
-		total += int(cells[index] - '0')
+		total += int(cells[index])
 	}
 	return total
+}
+
+// 一直飘下去会叠出 4 层、5 层：这些格还是风暴，而且一层都不少。
+func TestCloudsStackAboveStormWithoutVanishing(t *testing.T) {
+	state := State{WeatherTurns: 6, RNGState: 3, Wind: "SE", Map: MapDefinition{Rows: 12, Cols: 12}}
+	EnsureWeather(&state)
+	seeded := totalClouds(state.Map.Clouds)
+	thickest := 0
+	for turn := weatherMoveTurns; turn <= 600; turn += weatherMoveTurns {
+		state.Turn = turn
+		StepWeather(&state)
+		for index := 0; index < len(state.Map.Clouds); index++ {
+			if layers := int(state.Map.Clouds[index]); layers > thickest {
+				thickest = layers
+			}
+		}
+		if got := totalClouds(state.Map.Clouds); got != seeded {
+			t.Fatalf("第 %d 回合丢了云层：%d -> %d", turn, seeded, got)
+		}
+	}
+	if thickest <= weatherStormLayers {
+		t.Fatalf("600 回合都没叠出 3 层以上，层数上限还在：最厚 %d 层", thickest)
+	}
+}
+
+// 层数超过风暴门槛后天气不变。
+func TestLayersAboveStormStillStorm(t *testing.T) {
+	for _, layers := range []byte{weatherStormLayers, 4, 5, 17} {
+		if got := weatherFromLayers(layers); got != WeatherStorm {
+			t.Fatalf("%d 层应判为风暴，实际 %q", layers, got)
+		}
+	}
+}
+
+// 前端拿到的是档位串：4 层以上一律按 3（风暴）显示。
+func TestCloudCellsCollapsesAboveStorm(t *testing.T) {
+	gameMap := MapDefinition{Rows: 2, Cols: 3, Clouds: string([]byte{0, 1, 2, 3, 4, 9})}
+	if got := CloudCells(gameMap); got != "012333" {
+		t.Fatalf("档位串应为 012333，实际 %q", got)
+	}
+	if got := CloudCells(MapDefinition{}); got != "" {
+		t.Fatalf("没有天气层时应返回空串，实际 %q", got)
+	}
+}
+
+// 旧存档每格是字符 '0'..'3'：载入时要换算成层数，否则读出来是 48 层起步、整张图变风暴。
+func TestLegacyCloudEncodingMigrates(t *testing.T) {
+	state := State{WeatherTurns: 6, Map: MapDefinition{Rows: 2, Cols: 2, Clouds: "0123"}}
+	EnsureWeather(&state)
+	if want := string([]byte{0, 1, 2, 3}); state.Map.Clouds != want {
+		t.Fatalf("旧编码没有迁移：%v", []byte(state.Map.Clouds))
+	}
+	want := map[string]string{"0101": "", "0102": WeatherCloud, "0201": WeatherRain, "0202": WeatherStorm}
+	for coord, expected := range want {
+		if got := weatherAt(state.Map, coord); got != expected {
+			t.Fatalf("%s 天气应为 %q，实际 %q", coord, expected, got)
+		}
+	}
+}
+
+// 云层数直接映射成天气名：1 多云、2 降雨、3 层及以上风暴。
+func TestWeatherAtReadsLayers(t *testing.T) {
+	state := State{Map: MapDefinition{Rows: 2, Cols: 2, Clouds: string([]byte{0, 1, 2, 5})}}
+	want := map[string]string{"0101": "", "0102": WeatherCloud, "0201": WeatherRain, "0202": WeatherStorm}
+	for coord, expected := range want {
+		if got := weatherAt(state.Map, coord); got != expected {
+			t.Fatalf("%s 天气应为 %q，实际 %q", coord, expected, got)
+		}
+	}
 }
 
 // 75% 顺风、25% 随机：单朵云在固定东风下，大部分时候应该往风吹向（西）挪。
@@ -98,15 +163,12 @@ func TestCloudsMostlyDriftDownwind(t *testing.T) {
 	for trial := 0; trial < trials; trial++ {
 		state := State{Turn: 3, WeatherTurns: 6, Wind: "E", RNGState: uint64(trial*7919 + 1), Map: MapDefinition{Rows: 12, Cols: 12}}
 		cells := make([]byte, 12*12)
-		for index := range cells {
-			cells[index] = '0'
-		}
-		cells[(6-1)*12+(6-1)] = '1' // 中心一朵云
+		cells[(6-1)*12+(6-1)] = 1 // 中心一朵云
 		state.Map.Clouds = string(cells)
 		StepWeather(&state)
 		row, col := 0, 0
 		for index := 0; index < len(state.Map.Clouds); index++ {
-			if state.Map.Clouds[index] == '1' {
+			if state.Map.Clouds[index] == 1 {
 				row, col = index/12+1, index%12+1
 			}
 		}
@@ -117,17 +179,6 @@ func TestCloudsMostlyDriftDownwind(t *testing.T) {
 	}
 	if downwind < trials*60/100 {
 		t.Fatalf("顺风移动比例太低：%d/%d", downwind, trials)
-	}
-}
-
-// 云层数直接映射成天气名：1 多云、2 降雨、3 风暴。
-func TestWeatherAtReadsLayers(t *testing.T) {
-	state := State{Map: MapDefinition{Rows: 2, Cols: 2, Clouds: "0123"}}
-	want := map[string]string{"0101": "", "0102": WeatherCloud, "0201": WeatherRain, "0202": WeatherStorm}
-	for coord, expected := range want {
-		if got := weatherAt(state.Map, coord); got != expected {
-			t.Fatalf("%s 天气应为 %q，实际 %q", coord, expected, got)
-		}
 	}
 }
 
@@ -142,7 +193,7 @@ func TestWeatherFallsBackToStaticCells(t *testing.T) {
 	}
 }
 
-// 逐格风向表里每个字符都合法；同种子结果稳定。
+// 同一颗种子铺出来的云一样；开局层数只会落在 0–3。
 func TestWeatherLockedToSeed(t *testing.T) {
 	first := State{WeatherTurns: 6, RNGState: 123, Map: MapDefinition{Rows: 6, Cols: 6}}
 	second := State{WeatherTurns: 6, RNGState: 123, Map: MapDefinition{Rows: 6, Cols: 6}}
@@ -151,7 +202,9 @@ func TestWeatherLockedToSeed(t *testing.T) {
 	if first.Map.Clouds != second.Map.Clouds {
 		t.Fatal("同种子铺出来的云层不一致")
 	}
-	if strings.Trim(first.Map.Clouds, "0123") != "" {
-		t.Fatalf("天气层里有非法字符：%q", first.Map.Clouds)
+	for index := 0; index < len(first.Map.Clouds); index++ {
+		if layers := first.Map.Clouds[index]; layers > weatherStormLayers {
+			t.Fatalf("开局云层数应当只有 0–3，实际 %d", layers)
+		}
 	}
 }
