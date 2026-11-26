@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"strings"
 )
 
 // 视图补丁：拿两份投影做 diff，算出"和上一帧相比变了哪些东西"。
@@ -22,6 +23,18 @@ import (
 type patchNoneType struct{}
 
 var patchNone patchNoneType
+
+// patchDelete 表示"这个字段在新快照里被 omitempty 省略了，客户端把本地这一支删掉"。
+//
+// 没有它，补丁和快照就是两种形状：补丁只能发值（字段从 3 变成 0 就发 0），而快照
+// 会直接把 0 省略掉。客户端按 JSON 合并，本地视图就永远比服务端多几个"归零但没删"
+// 的键；反过来，如果服务端不发这个 0，客户端又会留着过期值（移动冷却一直显示 3）。
+// 所以补丁里用 null 明确表达"这一支没了"，合并语义是 delete。
+type patchDeleteType struct{}
+
+var patchDelete patchDeleteType
+
+func (patchDeleteType) MarshalJSON() ([]byte, error) { return []byte("null"), nil }
 
 // patchKeyFields 是主键候选字段，按顺序认第一个非空的。
 // 客户端（web/src/patch.ts、watch.html）必须用同一套顺序。
@@ -98,6 +111,8 @@ type structMeta struct {
 type structField struct {
 	index int
 	name  string
+	// omitempty：tag 带 omitempty 的字段在零值时会从快照里消失，补丁得跟着表达"删掉"。
+	omitempty bool
 }
 
 type structKeyField struct {
@@ -134,7 +149,7 @@ func buildStructMeta(t reflect.Type) *structMeta {
 		if skip {
 			continue
 		}
-		meta.fields = append(meta.fields, structField{index: index, name: name})
+		meta.fields = append(meta.fields, structField{index: index, name: name, omitempty: hasJSONOption(field.Tag.Get("json"), "omitempty")})
 	}
 	for _, candidate := range patchKeyFields {
 		found, ok := t.FieldByNameFunc(func(name string) bool {
@@ -243,10 +258,17 @@ func diffAny(cache diffCache, prev, next reflect.Value) any {
 		}
 		patch := map[string]any{}
 		for _, field := range meta.fields {
-			change := diffAny(cache, prev.Field(field.index), next.Field(field.index))
-			if change != any(patchNone) {
-				patch[field.name] = change
+			nextField := next.Field(field.index)
+			change := diffAny(cache, prev.Field(field.index), nextField)
+			if change == any(patchNone) {
+				continue
 			}
+			if field.omitempty && isEmptyJSONValue(nextField) {
+				// 新值会被 omitempty 吃掉：让客户端删键，而不是留一个快照里不存在的零值。
+				patch[field.name] = patchDelete
+				continue
+			}
+			patch[field.name] = change
 		}
 		if len(patch) == 0 {
 			return patchNone
@@ -274,6 +296,37 @@ func structFieldJSONName(field reflect.StructField) (string, bool) {
 		return field.Name, false
 	}
 	return name, false
+}
+
+// hasJSONOption 判断 json tag 里有没有某个选项（目前只关心 omitempty）。
+func hasJSONOption(tag, option string) bool {
+	parts := strings.Split(tag, ",")
+	for _, part := range parts[1:] {
+		if part == option {
+			return true
+		}
+	}
+	return false
+}
+
+// isEmptyJSONValue 和 encoding/json 的 omitempty 判定保持一致：nil、false、0、
+// 空字符串、空数组、空 map 会被省略；结构体永远不省略（哪怕每个字段都是零值）。
+func isEmptyJSONValue(value reflect.Value) bool {
+	switch value.Kind() {
+	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
+		return value.Len() == 0
+	case reflect.Bool:
+		return !value.Bool()
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return value.Int() == 0
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return value.Uint() == 0
+	case reflect.Float32, reflect.Float64:
+		return value.Float() == 0
+	case reflect.Interface, reflect.Pointer:
+		return value.IsNil()
+	}
+	return false
 }
 
 func indexComma(tag string) int {
@@ -306,9 +359,11 @@ func diffMap(cache diffCache, prev, next reflect.Value) any {
 		}
 	}
 	for _, key := range prev.MapKeys() {
+		name := key.String()
 		if !next.MapIndex(key).IsValid() {
-			// 视图的键来自结构体投影，正常不会消失。真丢了就整块重发，别留删不掉的旧键。
-			return next.Interface()
+			// 键消失了（舰队撤出 fleet_stays、岸头物资耗光）：客户端的合并不会自己删键，
+			// 用 null 明确让它删，否则本地永远留着一条服务端已经没有的记录。
+			patch[name] = patchDelete
 		}
 	}
 	if len(patch) == 0 {
@@ -317,52 +372,81 @@ func diffMap(cache diffCache, prev, next reflect.Value) any {
 	return patch
 }
 
-// isEntityList 判断一个数组是不是"实体列表"：每个元素都能认出主键，而且主键不重复。
-// 认出主键就按 id 合并（只发变了的属性），认不出就整块替换。
+// sliceKeys 取出数组里每个元素的主键；认不出来或者主键重复，就不是"实体列表"。
+// 认得出就按主键合并（只发变了的属性），认不出就整块替换。
 //
 // 不按路径写死：载舰的飞机、舰队的成员都是嵌在实体里的数组，路径是动态的，
 // 写死一份清单迟早漏；这里按元素本身判断，嵌套多深都一样。
-func isEntityList(cache diffCache, list reflect.Value) bool {
+func sliceKeys(cache diffCache, list reflect.Value) ([]string, bool) {
 	if list.Len() == 0 {
-		return false
+		return nil, false
 	}
+	keys := make([]string, list.Len())
 	seen := make(map[string]bool, list.Len())
 	for index := 0; index < list.Len(); index++ {
 		_, key := patchKey(cache, list.Index(index))
 		if key == "" || seen[key] {
-			return false
+			return nil, false
 		}
 		seen[key] = true
+		keys[index] = key
 	}
-	return true
+	return keys, true
 }
 
+// diffSlice 按主键增量合并实体数组。
+//
+// 顺序也必须合得对：客户端是"老元素原位更新、新元素追加到尾部、删掉的摘掉"，
+// 所以只有当新数组恰好是"老元素保持原相对顺序（允许有删除）++ 新元素"时，
+// 增量合并出来的顺序才和快照一致。不满足就整块重发——距离参考圈按距离排序，
+// 舰队一动新圈会插到数组最前面，照追加合并客户端画出来的同心圆顺序就是错的。
+// 事件列表正好相反：新事件永远追加在尾部，所以它走增量补丁，而且快照必须
+// 按时间正序返回（见 store.recentEvents）。
 func diffSlice(cache diffCache, prev, next reflect.Value) any {
-	if !isEntityList(cache, prev) || !isEntityList(cache, next) {
-		if valuesEqual(prev, next) {
-			return patchNone
+	beforeKeys, okBefore := sliceKeys(cache, prev)
+	afterKeys, okAfter := sliceKeys(cache, next)
+	if okBefore && okAfter {
+		if patch, merged := entityListPatch(cache, prev, next, beforeKeys, afterKeys); merged {
+			return patch
 		}
-		return next.Interface()
 	}
-	before := make(map[string]reflect.Value, prev.Len())
-	for index := 0; index < prev.Len(); index++ {
-		item := prev.Index(index)
-		_, key := patchKey(cache, item)
-		before[key] = item
+	if valuesEqual(prev, next) {
+		return patchNone
 	}
-	upsert := make([]any, 0, next.Len())
-	seen := make(map[string]bool, next.Len())
-	for index := 0; index < next.Len(); index++ {
+	return next.Interface()
+}
+
+// entityListPatch 真正算增量补丁。merged=false 表示顺序合不拢，调用方整块重发。
+func entityListPatch(cache diffCache, prev, next reflect.Value, beforeKeys, afterKeys []string) (any, bool) {
+	before := make(map[string]int, len(beforeKeys))
+	for index, key := range beforeKeys {
+		before[key] = index
+	}
+	// 顺序检查：新元素后面又出现老元素，或者老元素相对顺序变了，都没法靠追加合并。
+	last, metNew := -1, false
+	for _, key := range afterKeys {
+		position, exists := before[key]
+		if !exists {
+			metNew = true
+			continue
+		}
+		if metNew || position < last {
+			return nil, false
+		}
+		last = position
+	}
+	upsert := make([]any, 0, len(afterKeys))
+	for index, key := range afterKeys {
 		item := next.Index(index)
-		keyField, key := patchKey(cache, item)
-		seen[key] = true
-		old, exists := before[key]
+		oldIndex, exists := before[key]
 		if !exists {
 			// 新出现的元素：整条给，客户端没有底子可合并。
 			upsert = append(upsert, item.Interface())
 			continue
 		}
-		change := diffAny(cache, old, item)
+		// 处理过就从 before 里摘掉，剩下的就是被删除的元素。
+		delete(before, key)
+		change := diffAny(cache, prev.Index(oldIndex), item)
 		if change == any(patchNone) {
 			continue
 		}
@@ -370,20 +454,19 @@ func diffSlice(cache diffCache, prev, next reflect.Value) any {
 		// 改的是散落在 wind、units[].deck、aviation.carriers[] 里的几个字段，
 		// 这样一条补丁只有几十字节，而不是整条记录重发。
 		if partial, ok := change.(map[string]any); ok {
+			keyField, _ := patchKey(cache, item)
 			partial[keyField] = key
 			upsert = append(upsert, partial)
 			continue
 		}
 		upsert = append(upsert, item.Interface())
 	}
-	remove := make([]string, 0)
+	remove := make([]string, 0, len(before))
 	for key := range before {
-		if !seen[key] {
-			remove = append(remove, key)
-		}
+		remove = append(remove, key)
 	}
 	if len(upsert) == 0 && len(remove) == 0 {
-		return patchNone
+		return patchNone, true
 	}
 	patch := map[string]any{}
 	if len(upsert) > 0 {
@@ -394,7 +477,7 @@ func diffSlice(cache diffCache, prev, next reflect.Value) any {
 		sort.Strings(remove)
 		patch["remove"] = remove
 	}
-	return patch
+	return patch, true
 }
 func valuesEqual(left, right reflect.Value) bool {
 	if !left.IsValid() || !right.IsValid() {

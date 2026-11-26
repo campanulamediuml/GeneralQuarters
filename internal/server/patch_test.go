@@ -50,6 +50,13 @@ func TestViewPatchRoundTrip(t *testing.T) {
 			before: `{"losses":{"A":{},"B":{}},"outcome":null}`,
 			after:  `{"losses":{"A":{"ship":1},"B":{}},"outcome":{"reason":"x"}}`,
 		},
+		{
+			// map 里的键消失（舰队撤出 fleet_stays）也必须能合并回去：
+			// 客户端是逐键合并，不会自己删掉服务端已经没有的键。
+			name:   "对象键消失",
+			before: `{"fleet_stays":{"f1":"0101","f2":"0202"}}`,
+			after:  `{"fleet_stays":{"f1":"0101"}}`,
+		},
 	}
 	for _, item := range cases {
 		t.Run(item.name, func(t *testing.T) {
@@ -144,4 +151,79 @@ func TestPatchKeyFromCachedMeta(t *testing.T) {
 	if field, key := patchKey(newDiffCache(), reflect.ValueOf(event{ID: 42})); field != "id" || key != "42" {
 		t.Fatalf("数字主键应转成字符串：%q %q", field, key)
 	}
+}
+
+// 快照会按 omitempty 省掉零值字段，补丁必须把"这个键没了"表达成 null，
+// 否则客户端合并出来的视图永远比快照多几个字段（补丁只能发值，发不出删除）。
+func TestPatchDeleteMarksFieldsTheSnapshotOmits(t *testing.T) {
+	type fuel struct {
+		Tank int `json:"tank,omitempty"`
+	}
+	type unit struct {
+		ID       string   `json:"id"`
+		Cooldown int      `json:"cooldown,omitempty"`
+		Moves    []string `json:"moves,omitempty"`
+		Fuel     fuel     `json:"fuel"`
+		// Keep 没有 omitempty：归零也必须显式下发 0，不能删键。
+		Keep int `json:"keep"`
+	}
+	before := unit{ID: "u1", Cooldown: 3, Moves: []string{"0101"}, Fuel: fuel{Tank: 2}, Keep: 1}
+	after := unit{ID: "u1"}
+	patch := diffView(before, after)
+	encoded, err := json.Marshal(patch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, needle := range []string{`"cooldown":null`, `"moves":null`, `"tank":null`, `"keep":0`} {
+		if !containsString(string(encoded), needle) {
+			t.Fatalf("补丁里没有 %s：%s", needle, encoded)
+		}
+	}
+	// 客户端 null = 删键，合并结果必须和"重新拉一份快照"完全一致。
+	beforeJSON := viewFromJSON(t, string(mustJSON(t, before)))
+	afterJSON := viewFromJSON(t, string(mustJSON(t, after)))
+	merged := applyTestPatch(beforeJSON, viewFromJSON(t, string(encoded)))
+	if !reflect.DeepEqual(merged, afterJSON) {
+		t.Fatalf("合并结果和快照不一致：得到 %#v，期望 %#v", merged, afterJSON)
+	}
+}
+
+// 实体数组只有在"老元素原顺序 + 新元素追加尾部"时才能增量合并：
+// 客户端往数组尾部 push，新元素插在最前面（距离参考圈重排）就会画反。
+func TestPatchEntityListFallsBackWhenOrderIsNotAppendOnly(t *testing.T) {
+	type cell struct {
+		Coord string `json:"coord"`
+	}
+	// 追加：走增量补丁。
+	before := []cell{{Coord: "0101"}, {Coord: "0102"}}
+	after := []cell{{Coord: "0101"}, {Coord: "0102"}, {Coord: "0103"}}
+	patch, ok := diffView(before, after).(map[string]any)
+	if !ok || patch["upsert"] == nil {
+		t.Fatalf("追加新元素应该走增量补丁：%#v", diffView(before, after))
+	}
+	// 插到最前面：整块重发。
+	prepended := []cell{{Coord: "0100"}, {Coord: "0101"}}
+	if _, whole := diffView(before, prepended).([]cell); !whole {
+		t.Fatalf("新元素插在前面时必须整块重发（客户端只能往后追加）：%#v", diffView(before, prepended))
+	}
+	// 中间插入：同样整块重发。
+	inserted := []cell{{Coord: "0101"}, {Coord: "0100"}, {Coord: "0102"}}
+	if _, whole := diffView(before, inserted).([]cell); !whole {
+		t.Fatalf("中间插入也要整块重发：%#v", diffView(before, inserted))
+	}
+	// 删掉中间一个但顺序没变：仍然走增量补丁（remove 带主键）。
+	trimmed := []cell{{Coord: "0101"}}
+	patch, ok = diffView(before, trimmed).(map[string]any)
+	if !ok || patch["remove"] == nil {
+		t.Fatalf("只删元素应该走增量补丁：%#v", diffView(before, trimmed))
+	}
+}
+
+func mustJSON(t *testing.T, value any) []byte {
+	t.Helper()
+	encoded, err := json.Marshal(value)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return encoded
 }

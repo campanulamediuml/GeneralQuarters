@@ -60,6 +60,11 @@ func applyTestPatch(base, patch any) any {
 			merged[key] = value
 		}
 		for key, value := range typed {
+			// null = 这个字段在新快照里被 omitempty 省略了，本地要删键（见 patch.go 的 patchDelete）。
+			if value == any(patchDelete) || value == nil {
+				delete(merged, key)
+				continue
+			}
 			merged[key] = applyTestPatch(baseMap[key], value)
 		}
 		return merged

@@ -907,7 +907,9 @@
 
   function renderEvents(data) {
     var target = document.getElementById('events');
-    var events = (data.events || []).slice(0, 60);
+    // 事件按时间正序返回（补丁只能往数组尾部追加，快照必须同序）；
+    // 页面上要"最新的在最上面"，所以取尾部 60 条再翻过来。
+    var events = (data.events || []).slice(-60).reverse();
     if (!events.length) { target.innerHTML = '<li class="empty">暂无战报</li>'; return; }
     target.innerHTML = events.map(function (event) {
       var stamp = event.created_at ? new Date(event.created_at) : null;
@@ -974,7 +976,11 @@
     if (patch && typeof patch === 'object' && !Array.isArray(patch) && base && typeof base === 'object' && !Array.isArray(base)) {
       var out = {};
       for (var key in base) if (Object.prototype.hasOwnProperty.call(base, key)) out[key] = base[key];
-      for (var name in patch) if (Object.prototype.hasOwnProperty.call(patch, name)) out[name] = mergeValue(base[name], patch[name]);
+      // null = 这一支在新快照里被 omitempty 省略了，客户端要删键
+      for (var name in patch) if (Object.prototype.hasOwnProperty.call(patch, name)) {
+        if (patch[name] === null) { delete out[name]; continue; }
+        out[name] = mergeValue(base[name], patch[name]);
+      }
       return out;
     }
     return patch;

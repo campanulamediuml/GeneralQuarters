@@ -508,26 +508,21 @@ func (s *Store) Resolve(ctx context.Context, room Room, newState game.State, eve
 
 // AllEvents 是观战视角的战报：不按 audience 过滤，双方阵营的内部事件都能看到。
 func (s *Store) AllEvents(ctx context.Context, roomID string) ([]Event, error) {
-	rows, err := s.DB.QueryContext(ctx, `SELECT id,turn,sequence,type,text,created_at FROM events WHERE room_id=? ORDER BY id DESC LIMIT 200`, roomID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	events := []Event{}
-	for rows.Next() {
-		var event Event
-		var created string
-		if err := rows.Scan(&event.ID, &event.Turn, &event.Sequence, &event.Type, &event.Text, &created); err != nil {
-			return nil, err
-		}
-		event.CreatedAt, _ = time.Parse(time.RFC3339Nano, created)
-		events = append(events, event)
-	}
-	return events, rows.Err()
+	return s.recentEvents(ctx, `SELECT id,turn,sequence,type,text,created_at FROM events WHERE room_id=? ORDER BY id DESC LIMIT 200`, roomID)
 }
 
 func (s *Store) Events(ctx context.Context, roomID, faction string) ([]Event, error) {
-	rows, err := s.DB.QueryContext(ctx, `SELECT id,turn,sequence,type,text,created_at FROM events WHERE room_id=? AND (audience='all' OR audience=?) ORDER BY id DESC LIMIT 100`, roomID, faction)
+	return s.recentEvents(ctx, `SELECT id,turn,sequence,type,text,created_at FROM events WHERE room_id=? AND (audience='all' OR audience=?) ORDER BY id DESC LIMIT 100`, roomID, faction)
+}
+
+// recentEvents 取最近若干条，但按时间正序（旧 -> 新）返回。
+//
+// 顺序不是随手定的：视图推送只发"和上一帧的差异"，事件是新元素，补丁只能把它们
+// 追加到客户端数组的尾部。快照如果按倒序给（最新在前），合并出来的列表顺序就会
+// 和重新拉一次快照的顺序对不上——界面上新事件会跑到最底下，而且每回合漂一次。
+// 所以查询仍然用 DESC LIMIT 拿"最近的 N 条"，只是在返回前翻成正序。
+func (s *Store) recentEvents(ctx context.Context, query string, args ...any) ([]Event, error) {
+	rows, err := s.DB.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -542,5 +537,11 @@ func (s *Store) Events(ctx context.Context, roomID, faction string) ([]Event, er
 		event.CreatedAt, _ = time.Parse(time.RFC3339Nano, created)
 		events = append(events, event)
 	}
-	return events, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	for left, right := 0, len(events)-1; left < right; left, right = left+1, right-1 {
+		events[left], events[right] = events[right], events[left]
+	}
+	return events, nil
 }

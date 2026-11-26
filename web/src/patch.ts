@@ -66,8 +66,14 @@ function merge(target: unknown, patch: unknown): unknown {
   }
   if (patch && typeof patch === 'object' && !Array.isArray(patch) && target && typeof target === 'object' && !Array.isArray(target)) {
     for (const [key, value] of Object.entries(patch as Record<string, unknown>)) {
+      // null = "这一支在新快照里被 omitempty 省略了"，删键而不是留一个快照里不存在的值。
+      // 全量快照里没有这个键，补丁合并后也不该有，否则本地视图会永远比服务端多几个空字段。
+      if (value === null) {
+        delete (target as Record<string, unknown>)[key]
+        continue
+      }
       const current = (target as Record<string, unknown>)[key]
-      if (value && typeof value === 'object' && current && typeof current === 'object') merge(current, value)
+      if (typeof value === 'object' && current && typeof current === 'object' && !Array.isArray(current)) merge(current, value)
       else (target as Record<string, unknown>)[key] = value
     }
     return target
