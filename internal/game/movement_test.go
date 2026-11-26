@@ -45,15 +45,14 @@ func TestFleetMovementIntervalsAndCooldown(t *testing.T) {
 func TestSpecialFleetSpeedsAndFlooding(t *testing.T) {
 	destroyer := &Unit{ID: "dd", FleetID: "dd", Type: "DD", Card: ShipCard{SpeedClass: "fast", DamageControl: 5}}
 	state := State{Units: map[string]*Unit{"dd": destroyer}}
-	if interval := FleetMoveInterval(state, destroyer); interval != 2 {
-		t.Fatalf("纯高速驱逐舰间隔应为2：%d", interval)
+	// 驱逐舰没有特例：纯高速驱逐舰队也是 3 回合，和普通/快速舰队一样。
+	if interval := FleetMoveInterval(state, destroyer); interval != 3 {
+		t.Fatalf("纯高速驱逐舰间隔应为3：%d", interval)
 	}
-	// 2 回合的前提是"全队都是 DD 且全是 fast"。纯 DD 但只是 normal 的，照样 3 回合：
-	// 这个特例看的是驱逐舰的高速，不是"是不是驱逐舰"。
 	plainDD := &Unit{ID: "dd2", FleetID: "dd2", Type: "DD", Card: ShipCard{SpeedClass: "normal", DamageControl: 5}}
 	plainState := State{Units: map[string]*Unit{"dd2": plainDD}}
 	if interval := FleetMoveInterval(plainState, plainDD); interval != 3 {
-		t.Fatalf("纯驱逐舰队但不是高速时也应是3回合：%d", interval)
+		t.Fatalf("普通驱逐舰队间隔应为3：%d", interval)
 	}
 	battleship := &Unit{ID: "bb", FleetID: "dd", Type: "BB", Card: ShipCard{SpeedClass: "normal", DamageControl: 7}}
 	state.Units["bb"] = battleship

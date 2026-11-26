@@ -34,7 +34,6 @@ func FleetMoveInterval(state State, unit *Unit) int {
 		return 24
 	}
 	fleetID := FleetKey(unit)
-	pureFastDD := true
 	interval := 0
 	for _, member := range state.Units {
 		if FleetKey(member) != fleetID {
@@ -47,12 +46,6 @@ func FleetMoveInterval(state State, unit *Unit) int {
 		if memberInterval > interval {
 			interval = memberInterval
 		}
-		if member.Type != "DD" || speed != "fast" {
-			pureFastDD = false
-		}
-	}
-	if pureFastDD && interval > 0 {
-		return 2
 	}
 	if interval == 0 {
 		return 24
