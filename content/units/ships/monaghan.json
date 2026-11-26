@@ -13,7 +13,7 @@
   "light_aa": 4.0,
   "surface_radar": false,
   "air_radar": false,
-  "speed_class": "fast",
+  "speed_class": "normal",
   "torpedo_salvos": 3,
   "aircraft": 0,
   "deck_capacity": 0,
