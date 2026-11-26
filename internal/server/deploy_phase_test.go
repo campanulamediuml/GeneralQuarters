@@ -91,19 +91,23 @@ func TestDeployPhaseFlow(t *testing.T) {
 		t.Fatalf("部署移动没有生效，舰队仍在原位")
 	}
 
-	// 部署阶段可以撤回"部署完毕"：点过之后动舰队会把它清掉。
+	// 点过"部署完毕"就是部署结束：之后的部署操作一律拒绝，ready 也不能被撤回。
+	// 以前这里允许再拖一次并自动撤回 ready，玩家手滑挪一下舰队，准备状态就无声消失了。
 	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, nil); status != http.StatusOK {
 		t.Fatalf("部署完毕失败：%d", status)
 	}
 	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/commands", map[string]any{
 		"command_id": "deploy-in-2", "type": "SET_MOVE", "unit_id": unitID, "coord": from,
-	}, nil); status != http.StatusOK {
-		t.Fatalf("部署完毕之后仍应允许调整（并自动撤回就绪）：%d", status)
+	}, nil); status != http.StatusConflict {
+		t.Fatalf("部署完毕之后的部署操作应被锁定（409），实际 %d", status)
 	}
 	afterMove := fetchViewMap(t, a, created.RoomID)
 	youAfter, _ := afterMove["you"].(map[string]any)
-	if ready, _ := youAfter["ready"].(bool); ready {
-		t.Fatal("部署阶段调整舰队后应撤回「部署完毕」")
+	if ready, _ := youAfter["ready"].(bool); !ready {
+		t.Fatal("被拒绝的部署操作不应撤回「部署完毕」")
+	}
+	if !ownFleetAt(afterMove, faction, target) {
+		t.Fatal("被拒绝的部署操作不应真的移动舰队")
 	}
 
 	// 双方都点部署完毕：进入第 1 回合，回合号不变。

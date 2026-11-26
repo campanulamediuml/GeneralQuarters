@@ -252,7 +252,8 @@ const deploying = computed(() => state.value?.phase === 'deploy')
 // 界面只保留"看"：能选舰队、开角色卡、开日志，但拖不动、放不了飞机、改不了目标。
 // 以前这里还能继续改（服务端会顺手把 ready 撤回），等于"准备"根本不算数。
 // 部署阶段例外：拖动会自动把"部署完毕"撤回，所以不锁操作。
-const locked = computed(() => Boolean(state.value?.you.ready) && !deploying.value)
+// 点过「部署完毕」和回合内「就绪」一样锁死操作：部署阶段没有可撤销的中间态。
+const locked = computed(() => Boolean(state.value?.you.ready))
 
 // 地图交互提示不再弹横幅（玩家嫌吵）：冷却回合数在舰队面板里已经写明，
 // 拖动失败时最多在控制台留一条，不影响界面。
@@ -811,9 +812,9 @@ async function airCommand(type: 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' 
 // 手滑点错也能救——再发一条命令，服务端会自动把 ready 撤回（那条路径保留）。
 async function toggleReady() {
   if (!state.value || actionBusy.value) return
-  // 部署阶段允许撤回"部署完毕"；开战之后 ready 仍然不可逆。
-  const ready = deploying.value ? !state.value.you.ready : true
-  if (!deploying.value && state.value.you.ready) return
+  // 部署完毕和回合就绪都是单向的：按钮在 ready 之后直接禁用，不再提供撤回。
+  if (state.value.you.ready) return
+  const ready = true
   actionBusy.value = true
   try {
     // 只发"我要 ready"。响应只是一条回执：ready 标记、回合结算、战报都走推送。
@@ -889,7 +890,7 @@ onUnmounted(() => {
       </div>
       <div v-if="hasScoreObjective" class="rail-vp"><span>当前 VP</span><strong>{{ formatVP(scoreBoard.mine) }} : {{ formatVP(scoreBoard.enemy) }}</strong><small>我方 : 敌方</small></div>
       <div v-else class="rail-vp"><span>当前 VP</span><strong>0 : 0</strong><small>本剧本不计分</small></div>
-      <button class="rail-next" :class="{ locked: state?.you.ready || waitingForOpponent }" :disabled="!state || actionBusy || waitingForOpponent || (!deploying && state.you.ready)" @click="toggleReady"><span>{{ waitingForOpponent ? '等待对手' : deploying ? (state?.you.ready ? '已部署完毕' : '部署完毕') : state?.you.ready ? '准备完成' : '下一回合' }}</span><b>▶</b></button>
+      <button class="rail-next" :class="{ locked: state?.you.ready || waitingForOpponent }" :disabled="!state || actionBusy || waitingForOpponent || state.you.ready" @click="toggleReady"><span>{{ waitingForOpponent ? '等待对手' : deploying ? (state?.you.ready ? '已部署完毕' : '部署完毕') : state?.you.ready ? '等待结算' : '下一回合' }}</span><b>▶</b></button>
     </aside>
 
     <div class="command-main">
@@ -908,11 +909,11 @@ onUnmounted(() => {
             <strong>{{ state.clock.time }}</strong>
             <span class="clock-window">{{ clockWindowLabel }}</span>
           </div>
-          <div class="turn-actions"><span class="ready-count">{{ readyCount }} / {{ state.players.length }} 已就绪</span><button class="ready-button" :class="{ locked: state.you.ready }" :disabled="actionBusy || waitingForOpponent || (!deploying && state.you.ready)" :title="deploying ? (state.you.ready ? '你已经点过部署完毕：继续拖舰队会自动撤回，等对手也点完就开战' : '双方都把舰队摆好后各点一次：进第 1 回合，部署不算回合') : waitingForOpponent ? '对手还没进房：把房间 token 发给他，两名玩家都到齐后回合才会推进' : state.you.ready ? '已就绪，等对方完成部署后本回合结算' : ''" @click="toggleReady">{{ waitingForOpponent ? '等待对手进房' : deploying ? (state.you.ready ? '已部署完毕 · 等待对手' : '部署完毕') : state.you.ready ? '已就绪 · 等待对方' : '完成部署，结束回合' }}</button></div>
+          <div class="turn-actions"><span class="ready-count">{{ readyCount }} / {{ state.players.length }} 已就绪</span><button class="ready-button" :class="{ locked: state.you.ready }" :disabled="actionBusy || waitingForOpponent || state.you.ready" :title="deploying ? (state.you.ready ? '已经点过部署完毕：操作已锁定，等对手也点完就开战' : '双方都把舰队摆好后各点一次：进第 1 回合，部署不算回合') : waitingForOpponent ? '对手还没进房：把房间 token 发给他，两名玩家都到齐后回合才会推进' : state.you.ready ? '已就绪，等对方完成部署后本回合结算' : ''" @click="toggleReady">{{ waitingForOpponent ? '等待对手进房' : deploying ? (state.you.ready ? '已部署完毕 · 等待对手' : '部署完毕') : state.you.ready ? '已就绪 · 等待对方' : '完成部署，结束回合' }}</button></div>
         </div>
         <!-- 部署阶段横幅：说明可拖的范围和"部署不算回合"，避免玩家到处找回合按钮。 -->
         <div v-if="deploying" class="deploy-strip">
-          <span>部署阶段：把舰队拖到高亮区内（锚点 {{ state.deploy_zone?.anchor }} · 半径 {{ state.deploy_zone?.radius }} 格），可以整编、拆分、合并。</span>
+          <span>部署阶段：把舰队拖到高亮区内（锚点 {{ state.deploy_zone?.anchor }} · 半径 {{ state.deploy_zone?.radius }} 格），可以整编、拆分、合并；点过「部署完毕」后操作锁定。</span>
           <b>{{ readyCount }} / {{ state.players.length }} 已部署完毕 · 双方都点完才进第 1 回合</b>
         </div>
         <!-- 房主在等对手时，邀请 token 必须摆在明面上：它原本藏在"战局 / 房间"折叠面板里，

@@ -702,7 +702,7 @@ function startDrag(unit: FleetGroup, event: PointerEvent) {
   dragDebug('pointerdown', { unit: unit.id, faction: unit.faction, coord: unit.coord, moves: unit.legal_moves, cooldown: unit.move_cooldown, pointerType: event.pointerType, button: event.button })
   // 本回合已就绪 = 冻结：连拖都不该开始，否则玩家拖一半才发现服务端根本不收。
   if (props.locked) {
-    emit('notice', '本回合已就绪，操作已锁定：等双方就绪由服务器结算，下一回合才能再操作')
+    emit('notice', '已就绪，操作已锁定：等双方都确认后由服务器统一结算')
     return
   }
   if (unit.faction !== props.playerFaction || (event.pointerType === 'mouse' && event.button !== 0)) return

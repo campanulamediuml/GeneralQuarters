@@ -125,7 +125,7 @@
 
 响应只是一条回执`{"accepted":true,"turn":N}`，最新状态走WebSocket推送。所有当前玩家ready后，服务器同步完成结算并提升`turn`。单人沙盒中唯一玩家ready即可结算。
 
-**部署阶段**（`state.phase == "deploy"`）：双方都ready才算"部署完毕"，服务器把`phase`切到`battle`开战，**回合号不增加**（部署不算回合，仍停在第 1 回合），这一帧的回执是`{"accepted":true,"phase":"battle","turn":1}`。部署阶段是唯一允许`{"ready":false}`的场景——已经点过部署完毕还能撤回来改阵型；任何部署动作（`SET_MOVE`/`CLEAR_MOVE`/`MERGE_FLEET`/`REORGANIZE_HEX`）也会自动撤回该玩家的ready。开战之后ready重新变成不可撤销。
+**部署阶段**（`state.phase == "deploy"`）：双方都ready才算"部署完毕"，服务器把`phase`切到`battle`开战，**回合号不增加**（部署不算回合，仍停在第 1 回合），这一帧的回执是`{"accepted":true,"phase":"battle","turn":1}`。部署阶段是唯一允许`{"ready":false}`的场景，作为脚本兜底；点过部署完毕后本侧的任何部署动作（`SET_MOVE`/`CLEAR_MOVE`/`MERGE_FLEET`/`REORGANIZE_HEX`）都会被拒绝（409），不再自动撤回ready。开战之后ready重新变成不可撤销。
 
 **ready 即冻结**：一名玩家ready之后，本回合该玩家提交的任何 `/commands` 都会被拒绝（409，错误信息说明"本回合已就绪，操作已锁定"），不会再像以前那样自动撤回ready再接受命令。要改就得等下一回合。前端同时把这块棋盘锁成只读：不能拖舰队、不能改航行/交战/整编、不能放飞或改目标，只能查看。`{"ready":false}` 也已禁止：ready 一旦提交就不可撤销，脚本必须等本回合结算。
 

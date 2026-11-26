@@ -625,8 +625,13 @@ func (s *Server) doCommand(msg roomMsg) roomReply {
 	// 以前这里会自动把 ready 撤回再接受命令，等于"准备"完全没有约束力：
 	// 玩家点了准备还能继续改，对手以为局面定了，结算出来的却是改过的版本。
 	deployPhase := game.InDeployPhase(room.State)
-	// 部署阶段的"部署完毕"是可撤回的：还没开战，改主意就应该能再拖一次。
-	if player.Ready && !deployPhase {
+	// 点过"部署完毕"就是部署结束，和回合内的"就绪"一样锁死操作。
+	// 以前部署阶段特意允许再拖一次并顺手撤回 ready，结果玩家点了部署完毕、
+	// 手滑挪了一下舰队，准备状态就被无声撤掉了。
+	if player.Ready {
+		if deployPhase {
+			return roomError(http.StatusConflict, "部署已经完成：点过「部署完毕」后操作就锁定了，等对手也点完进入第 1 回合")
+		}
 		return roomError(http.StatusConflict, "本回合已就绪，操作已锁定：双方就绪后由服务器统一结算，下一回合才能再操作")
 	}
 	// 同回合内的操作本来就该互相覆盖：订单按 (room, turn, player, unit) 落库，后写的顶掉先写的。
@@ -686,10 +691,6 @@ func (s *Server) doCommand(msg roomMsg) roomReply {
 			return roomError(http.StatusConflict, "命令结算失败："+err.Error())
 		}
 		actor.room = room
-		if deployPhase {
-			// 动了部署就等于撤回"部署完毕"：ApplyImmediate 已经在库里清了 ready，这里同步内存。
-			actor.setReady(player.ID, false)
-		}
 		s.publishRoom(roomID)
 		return roomReply{status: http.StatusOK, body: response}
 	}
