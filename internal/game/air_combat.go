@@ -54,7 +54,7 @@ func activeAircraft(state *State, aircraftList []*AirUnit) []*AirUnit {
 func shipCards(ships []Unit) []AirShipCard {
 	cards := make([]AirShipCard, 0, len(ships))
 	for _, ship := range ships {
-		cards = append(cards, AirShipCard{ID: ship.ID, Name: ship.Name, Type: ship.Type, Strength: ship.Strength})
+		cards = append(cards, AirShipCard{ID: ship.ID, Name: ship.Name, Type: ship.Type, Strength: ship.Strength, Picture: ship.Card.Picture})
 	}
 	return cards
 }
@@ -181,33 +181,10 @@ func performAirAttack(state *State, attacker *AirUnit, targets []*AirUnit, attac
 	return events
 }
 
-func ammunitionDepletionChance(faction string, own, opposing int) float64 {
-	if opposing < 1 {
-		opposing = 1
-	}
-	ratio := float64(own) / float64(opposing)
-	if faction == "B" {
-		switch {
-		case ratio > 5:
-			return 10
-		case ratio > 3:
-			return 25
-		case ratio >= 1:
-			return 50
-		default:
-			return 75
-		}
-	}
-	switch {
-	case ratio > 4:
-		return 10
-	case ratio > 2:
-		return 25
-	case ratio > 0.5:
-		return 50
-	default:
-		return 75
-	}
+// ammunitionDepletionChance 是战斗机弹药耗尽的概率：兵力比越悬殊越容易打空。
+// 各阵营的拐点在 FactionRules.AmmunitionBands 里（日军更早打空）。
+func ammunitionDepletionChance(state State, faction string, own, opposing int) float64 {
+	return rulesFor(state, faction).AmmunitionDepletionChance(own, opposing)
 }
 
 func resolveAmmunition(state *State, attackers, defenders []*AirUnit, report *AirCombatReport) []EngineEvent {
@@ -227,7 +204,7 @@ func resolveAmmunition(state *State, attackers, defenders []*AirUnit, report *Ai
 			if aircraft.Kind != "fighter" || !operationalAircraft(state, aircraft) {
 				continue
 			}
-			chance := ammunitionDepletionChance(aircraft.Faction, group.ownCount, group.otherCount)
+			chance := ammunitionDepletionChance(*state, aircraft.Faction, group.ownCount, group.otherCount)
 			if probabilityRoll(&state.RNGState) >= chance {
 				continue
 			}
@@ -412,8 +389,8 @@ func aaHitChance(state State, coord string, heavy bool, faction string) float64 
 	case "storm":
 		chance -= 2
 	}
-	if heavy && state.Year >= 1943 && state.Doctrines[faction] == "us" {
-		chance += 2
+	if heavy {
+		chance += rulesFor(state, faction).HeavyAALateBonus
 	}
 	return chance
 }
@@ -520,7 +497,7 @@ func resolveHeavyAA(state *State, attackers []*AirUnit, defenders []Unit, coord 
 // carrierLightAABoost 返回美军航母"并入舰队最高轻防空"的那部分加成（规则书 675 行）。
 // 规则书 119 行：CVL/CVE 在空袭结算中视为 CV，所以轻航母同样享受。
 func carrierLightAABoost(state State, target *Unit) float64 {
-	if CarrierEquivalentType(target.Type) != "CV" || state.Doctrines[target.Faction] != "us" {
+	if CarrierEquivalentType(target.Type) != "CV" || !rulesFor(state, target.Faction).FleetLightAAMerge {
 		return 0
 	}
 	highest := 0.0
@@ -1151,6 +1128,20 @@ func resolveGroundLandingRisk(state *State, aircraft *AirfieldAirUnit) (bool, []
 	}
 	delete(state.GroundAir, aircraft.ID)
 	return true, []EngineEvent{{Type: "air_landing_crash", Audience: aircraft.Faction, Text: fmt.Sprintf("%s备用油透支（剩余%d），着陆失败，算子损毁", model, reserve)}}
+}
+
+// nightGroundLandingCrash 夜间降落机场：每个算子额外 20% 摔毁（规则书 535 行）。
+// 结算顺序按规则书 80 行：航程不足 → 跑道状况 → 夜间降落，所以它排在最后。
+func nightGroundLandingCrash(state *State, aircraft *AirfieldAirUnit) (bool, []EngineEvent) {
+	if state == nil || aircraft == nil || !state.Night {
+		return false, nil
+	}
+	if probabilityRoll(&state.RNGState) >= 20 {
+		return false, nil
+	}
+	model := aircraft.Model
+	delete(state.GroundAir, aircraft.ID)
+	return true, []EngineEvent{{Type: "night_landing_crash", Audience: aircraft.Faction, Text: model + "夜间降落失败，冲出跑道"}}
 }
 
 func advanceAircraftReturn(state *State, aircraft *AirUnit) []EngineEvent {

@@ -404,9 +404,12 @@ func victoryPointOutcome(state State, scores map[string]float64, reason string, 
 	}
 
 	capNote := ""
-	if level == VictoryLevelStrategic && highFaction == "B" && factionHasSupplyObjective(state, "B") && !factionCompletedSupplyObjective(state, "B") {
+	// 投送目标是剧本里写的（珊瑚海：日军必须在莫尔兹比港卸下 20 单位），
+	// 所以"谁背着投送目标"要去 objectives 里查，不能假设一定是 B 阵营——
+	// 换个剧本或把攻守互换，这条判断就会静默失效。
+	if level == VictoryLevelStrategic && factionHasSupplyObjective(state, highFaction) && !factionCompletedSupplyObjective(state, highFaction) {
 		level = VictoryLevelTactical
-		capNote = "；日军未投送满20单位，战略胜利降为战术胜利"
+		capNote = "；未完成投送目标，战略胜利降为战术胜利"
 	}
 
 	winner := highFaction

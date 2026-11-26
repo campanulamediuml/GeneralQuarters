@@ -6,7 +6,7 @@ import "testing"
 // 13 hex 外的水上侦察机飞回来要 14 回合，固定"提前两回合"等于把人送进海里。
 func TestFarReconRecalledByDistance(t *testing.T) {
 	state := State{Turn: 30, DayHours: 0, TurnsPerDay: 72}
-	state.Timeline = &Timeline{TurnMinutes: 20, ServiceStart: "04:00", LaunchStart: "05:20", RecoverBy: "19:40", NightLoss: true}
+	state.Timeline = &Timeline{TurnMinutes: 20, ServiceStart: "04:00", LaunchStart: "05:20", RecoverBy: "19:40"}
 	carrier := &Unit{ID: "cv", Faction: "B", Name: "翔鹤", Coord: "1030"}
 	state.Units = map[string]*Unit{"cv": carrier}
 	// 水侦速度 1 hex/回合，扇面半径 6：走完扇面还要再飞 6 hex 回来 = 13 回合（含着舰余量）。
@@ -40,7 +40,7 @@ func TestFarReconRecalledByDistance(t *testing.T) {
 // 还来得及的编队要到"刚好够回"的那一刻才收，不提前浪费一轮任务时间。
 func TestRecallFiresAtLastChance(t *testing.T) {
 	state := State{Turn: 52, DayHours: 0, TurnsPerDay: 72} // 17:00，距 19:40 还有 8 回合
-	state.Timeline = &Timeline{TurnMinutes: 20, ServiceStart: "04:00", LaunchStart: "05:20", RecoverBy: "19:40", NightLoss: true}
+	state.Timeline = &Timeline{TurnMinutes: 20, ServiceStart: "04:00", LaunchStart: "05:20", RecoverBy: "19:40"}
 	state.Units = map[string]*Unit{"cv": {ID: "cv", Faction: "B", Coord: "1030"}}
 	// 已经扫完扇面、正在往回飞的水侦，在母舰 6 hex 外：6 回合航程 + 1 着舰余量 = 7 回合，
 	// 而距天黑只剩 8 回合——正好是"现在必须掉头"的那一回合。
@@ -65,7 +65,7 @@ func TestRecallFiresAtLastChance(t *testing.T) {
 // 已经来不及的飞机不再召回（召也回不来），只发一条明确的警告。
 func TestDoomedAircraftWarning(t *testing.T) {
 	state := State{Turn: 55, DayHours: 0, TurnsPerDay: 72}
-	state.Timeline = &Timeline{TurnMinutes: 20, ServiceStart: "04:00", LaunchStart: "05:20", RecoverBy: "19:40", NightLoss: true}
+	state.Timeline = &Timeline{TurnMinutes: 20, ServiceStart: "04:00", LaunchStart: "05:20", RecoverBy: "19:40"}
 	state.Units = map[string]*Unit{"cv": &Unit{ID: "cv", Faction: "B", Coord: "1030"}}
 	doomed := &AirUnit{ID: "far", CarrierID: "cv", Faction: "B", Model: "E13A", Kind: "recon", Status: "recon",
 		Coord: "1055", OnCycle: true, CycleKind: "recon", TaskID: "r1", TaskKind: "recon"}

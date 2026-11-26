@@ -123,11 +123,11 @@ func TestTwoPlayerCommandAndTurnFlow(t *testing.T) {
 		}
 	}
 
-	invalid := map[string]any{"command_id": "invalid", "base_version": 1, "type": "SET_MOVE", "unit_id": "a-bb-01", "coord": "0404"}
+	invalid := map[string]any{"command_id": "invalid", "type": "SET_MOVE", "unit_id": "a-bb-01", "coord": "0404"}
 	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/commands", invalid, nil); status != http.StatusBadRequest {
 		t.Fatalf("非法移动状态码%d", status)
 	}
-	valid := map[string]any{"command_id": "move-1", "base_version": 1, "type": "SET_MOVE", "unit_id": "a-bb-01", "coord": "0203"}
+	valid := map[string]any{"command_id": "move-1", "type": "SET_MOVE", "unit_id": "a-bb-01", "coord": "0203"}
 	var moveView map[string]any
 	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/commands", valid, &moveView); status != http.StatusOK {
 		t.Fatalf("合法移动被拒绝：%v", moveView)
@@ -135,9 +135,27 @@ func TestTwoPlayerCommandAndTurnFlow(t *testing.T) {
 	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/commands", valid, nil); status != http.StatusOK {
 		t.Fatal("幂等重试失败")
 	}
+	// 同一回合内对同一支舰队反复下命令是正常的：后写的顶掉先写的（订单按 unit 做主键）。
+	// 以前这里靠 base_version 相等来卡，导致玩家点第二下就被拒——重复操作不该失败。
+	// 0201 和 0203 都是 0202 的相邻格：先挪到 0201，验证后写覆盖先写。
+	rerouted := map[string]any{"command_id": "move-2", "type": "SET_MOVE", "unit_id": "a-bb-01", "coord": "0201"}
+	var reroutedBody map[string]any
+	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/commands", rerouted, &reroutedBody); status != http.StatusOK {
+		t.Fatalf("同回合内的重复操作被拒绝：status=%d body=%v", status, reroutedBody)
+	}
+	var reroutedView testView
+	_ = a.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &reroutedView)
+	if len(reroutedView.Orders) != 1 || reroutedView.Orders[0].Coord != "0201" {
+		t.Fatalf("后写的命令没有覆盖先写的：%+v", reroutedView.Orders)
+	}
+	// 改回去，后续断言仍然按 0203 结算。
+	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/commands", map[string]any{"command_id": "move-3", "type": "SET_MOVE", "unit_id": "a-bb-01", "coord": "0203"}, nil); status != http.StatusOK {
+		t.Fatal("改回原目标失败")
+	}
 	var moved testView
 	_ = a.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &moved)
-	if moved.Version != 2 {
+	// 三条命令各推进一次版本：move-1(2)、move-2(3)、move-3(4)。
+	if moved.Version != 4 {
 		t.Fatalf("移动命令未更新版本：%+v", moved)
 	}
 	// 移动是"本回合规划"：提交后不立刻位移，只登记在待结算命令里。
@@ -146,13 +164,13 @@ func TestTwoPlayerCommandAndTurnFlow(t *testing.T) {
 	}
 
 	var readyView testView
-	if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": 2, "ready": true}, &readyView); status != http.StatusOK || readyView.Version != 2 {
+	if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &readyView); status != http.StatusOK || readyView.Version != 4 {
 		t.Fatal("单方ready不应结算")
 	}
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": 2, "ready": true}, &readyView); status != http.StatusOK {
+	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &readyView); status != http.StatusOK {
 		t.Fatal("双方ready结算失败")
 	}
-	if readyView.Turn != 2 || readyView.Version != 3 {
+	if readyView.Turn != 2 || readyView.Version != 5 {
 		t.Fatalf("回合版本错误：%+v", readyView)
 	}
 	// 结算完毕后进入新回合：位置应为规划目标，移动标记在新回合开始时清空。
@@ -166,9 +184,11 @@ func TestTwoPlayerCommandAndTurnFlow(t *testing.T) {
 		t.Fatal("回合结算没有执行规划的移动")
 	}
 
-	stale := map[string]any{"command_id": "move-stale", "base_version": 1, "type": "SET_MOVE", "unit_id": "a-bb-01", "coord": "0204"}
+	// 只有跨回合的过期提交必须拒绝：那条命令是基于上一回合的战场做的决定，
+	// 落到新回合会错误地执行。这是 base_turn 唯一负责的事。
+	stale := map[string]any{"command_id": "move-stale", "base_turn": 1, "type": "SET_MOVE", "unit_id": "a-bb-01", "coord": "0205"}
 	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/commands", stale, nil); status != http.StatusConflict {
-		t.Fatal("过期版本未被拒绝")
+		t.Fatal("过期回合的命令未被拒绝")
 	}
 	persisted, err := store.Open(dbPath)
 	if err != nil {
@@ -192,7 +212,7 @@ func TestSoloReadyAndInvalidToken(t *testing.T) {
 	var created roomResponse
 	_ = a.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"scenario_id": "_fixture", "solo": true}, &created)
 	var view testView
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": 1, "ready": true}, &view); status != http.StatusOK || view.Turn != 2 {
+	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &view); status != http.StatusOK || view.Turn != 2 {
 		t.Fatalf("单人沙盒未结算：%+v", view)
 	}
 	other := newTestClient(t, a.base)
@@ -257,8 +277,8 @@ func TestConcurrentCommandsHaveSingleWinner(t *testing.T) {
 	}
 	// 同一版本并发命令只能有一个成功：用两条会立即改变权威状态的命令（给同一个机库算子分配任务）来验证。
 	commands := []map[string]any{
-		{"command_id": "concurrent-flag", "base_version": 1, "type": "LAUNCH_CAP", "aircraft_id": "a2-cv-01-fighter-x1", "aircraft_ids": []string{"a2-cv-01-fighter-x1"}},
-		{"command_id": "concurrent-screen", "base_version": 1, "type": "LAUNCH_STRIKE", "aircraft_id": "a2-cv-01-fighter-x1", "aircraft_ids": []string{"a2-cv-01-fighter-x1"}},
+		{"command_id": "concurrent-flag", "type": "LAUNCH_CAP", "aircraft_id": "a2-cv-01-fighter-x1", "aircraft_ids": []string{"a2-cv-01-fighter-x1"}},
+		{"command_id": "concurrent-screen", "type": "LAUNCH_STRIKE", "aircraft_id": "a2-cv-01-fighter-x1", "aircraft_ids": []string{"a2-cv-01-fighter-x1"}},
 	}
 	statuses := make(chan int, len(commands))
 	errors := make(chan error, len(commands))
@@ -286,7 +306,11 @@ func TestConcurrentCommandsHaveSingleWinner(t *testing.T) {
 			statuses <- response.StatusCode
 		}()
 	}
-	accepted, conflicts := 0, 0
+	// 并发下必须只有一个成功，但"输的那个"不一定是版本冲突：
+	// 房间请求是串行化执行的，后到的那条会看到前一条已经落库的权威状态，
+	// 于是由 ValidateOrder 用语义错误拒掉（"算子已经属于其他任务"）。
+	// 这比版本号更精确：拒绝理由是真实的业务冲突，而不是"你的快照旧了"。
+	accepted, rejected := 0, 0
 	for range commands {
 		select {
 		case err := <-errors:
@@ -295,15 +319,15 @@ func TestConcurrentCommandsHaveSingleWinner(t *testing.T) {
 			switch status {
 			case http.StatusOK:
 				accepted++
-			case http.StatusConflict:
-				conflicts++
+			case http.StatusConflict, http.StatusBadRequest:
+				rejected++
 			default:
 				t.Fatalf("并发命令返回意外状态码：%d", status)
 			}
 		}
 	}
-	if accepted != 1 || conflicts != 1 {
-		t.Fatalf("同一版本并发命令应只有一个成功：accepted=%d conflicts=%d", accepted, conflicts)
+	if accepted != 1 || rejected != 1 {
+		t.Fatalf("并发命令应只有一个成功：accepted=%d rejected=%d", accepted, rejected)
 	}
 	var view testView
 	if status := a.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &view); status != http.StatusOK || view.Version != 2 {
@@ -324,7 +348,7 @@ func TestSectorReconCommandPersistsAndAdvances(t *testing.T) {
 	}
 	version := int64(1)
 	command := map[string]any{
-		"command_id": "recon-sector-1", "base_version": version, "type": "LAUNCH_RECON", "aircraft_id": "b-cv-04-dive_bomber-x1",
+		"command_id": "recon-sector-1", "type": "LAUNCH_RECON", "aircraft_id": "b-cv-04-dive_bomber-x1",
 		"heading": "W", "sector_width": 60,
 	}
 	if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/commands", command, nil); status != http.StatusOK {
@@ -351,10 +375,10 @@ func TestSectorReconCommandPersistsAndAdvances(t *testing.T) {
 		status string
 	}{{2, "servicing", "service"}, {3, "lifting", "elevator"}, {4, "launching", "recon"}} {
 		var ready testView
-		if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": version, "ready": true}, &ready); status != http.StatusOK {
+		if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &ready); status != http.StatusOK {
 			t.Fatal("A ready失败")
 		}
-		if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": version, "ready": true}, &ready); status != http.StatusOK {
+		if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &ready); status != http.StatusOK {
 			t.Fatal("B ready失败")
 		}
 		version++
@@ -372,10 +396,10 @@ func TestSectorReconCommandPersistsAndAdvances(t *testing.T) {
 	}
 
 	var ready testView
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": version, "ready": true}, &ready); status != http.StatusOK {
+	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &ready); status != http.StatusOK {
 		t.Fatal("A ready失败")
 	}
-	if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": version, "ready": true}, &ready); status != http.StatusOK {
+	if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &ready); status != http.StatusOK {
 		t.Fatal("B ready失败")
 	}
 	if ready.Turn != 5 || len(ready.Aviation.Tasks) != 1 || ready.Aviation.Tasks[0].Phase != "active" || ready.Aviation.Tasks[0].ReconDistance != 2 || ready.Aviation.Tasks[0].CurrentCoord != "0206" {

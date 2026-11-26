@@ -290,6 +290,26 @@ function assignTarget(target: string, taskID = '') {
   } else selectionHint.value = '这一栏还没有可执行的任务'
 }
 
+// 机身还在机库/跑道上的任务算子可以直接撤回：拖回机库是同一个命令，
+// 但算子在窄任务栏里被挤掉或者手边没鼠标时，玩家得有个能点的地方——
+// 否则拖进转场以后就没有任何按钮能把这架飞机要回来。
+const airborneStatus = new Set(['cap', 'recon', 'attack', 'attack_holding', 'cover', 'transfer'])
+function withdrawableIDs(task: AirTask) {
+  return (task.aircraft || [])
+    .filter((aircraft) => !airborneStatus.has(aircraft.status))
+    // 升降机上 / 刚刚落舰的算子服务端不收，等它这一轮回收走完再撤回。
+    .filter((aircraft) => ['service', 'deck', 'ready'].includes(aircraft.status))
+    .map((aircraft) => aircraft.id)
+}
+
+function withdrawTaskAircraft(task: AirTask) {
+  if (refuseLocked()) return
+  const ids = withdrawableIDs(task)
+  if (!ids.length) return
+  selectedIDs.value = ids
+  emitBatch('RETURN_TO_HANGAR', ids)
+}
+
 function emitBatch(type: AirCommandType, ids: string[], options?: CommandOptions) {
   emit('command', type, ids, options)
   selectedIDs.value = []
@@ -410,10 +430,14 @@ const departedPhases = ['launching', 'active', 'recovering']
 function laneTasks(lane: TaskLane) {
   const matching = tasks.value.filter((task) => task.kind === lane.kind)
   if (lane.slot === undefined) return matching
+  // 只有"两栏一组"的任务才按槽位切：侦察两组、打击两栏。
+  // 转场和空中掩护各自只有一栏，以前也被 index%2 切掉一半——
+  // 图卢维尔4支转场编队只显示2支，被藏起来的那两支连撤回按钮都点不到。
   if (lane.kind === 'recon') return matching.filter((_, index) => index === lane.slot)
-  const slotted = matching.filter((_, index) => index % 2 === lane.slot)
-  if (lane.kind !== 'attack') return slotted
-  return slotted.filter((task) => !departedPhases.includes(task.phase))
+  if (lane.kind !== 'attack') return matching
+  return matching
+    .filter((_, index) => index % 2 === lane.slot)
+    .filter((task) => !departedPhases.includes(task.phase))
 }
 
 // 已经从这一栏出发、正在天上飞或者正在回收的编队数。
@@ -441,11 +465,18 @@ function aircraftAt(zone: AirZone) {
   return aircraft.filter((item) => ['deck', 'ready', 'recovery'].includes(item.status) || (item.status === 'elevator' && elevatorZone(item.id) === 'deck'))
 }
 
+// 叠加只合并"同型同状态"的算子；损伤/检修必须进 key。
+// 以前 key 里没有这两个字段，一个机库里坏了一架的 B-17 会被并进健康那叠，
+// 叠卡片只画第一架的标记，"损"标签就整个消失了——舰载机和岸基机都会中招。
+function aircraftStackKey(aircraft: AirUnit, extra = '') {
+  return `${aircraft.definition_id}|${aircraft.status}|${aircraft.task_id || ''}|${aircraft.elevator_id || ''}|${aircraft.damaged ? 'dmg' : 'ok'}|${aircraft.maintenance || 0}${extra}`
+}
+
 function aircraftStacks(zone: AirZone) {
   if (expandStacks.value) return aircraftAt(zone).map((aircraft) => ({ aircraft, ids: [aircraft.id] }))
   const stacks = new Map<string, { aircraft: AirUnit; ids: string[] }>()
   for (const aircraft of aircraftAt(zone)) {
-    const key = `${aircraft.definition_id}|${aircraft.status}|${aircraft.task_id || ''}|${aircraft.elevator_id || ''}`
+    const key = aircraftStackKey(aircraft)
     const stack = stacks.get(key)
     if (stack) stack.ids.push(aircraft.id)
     else stacks.set(key, { aircraft, ids: [aircraft.id] })
@@ -456,7 +487,7 @@ function aircraftStacks(zone: AirZone) {
 function taskAircraftStacks(task: AirTask) {
   const stacks = new Map<string, { aircraft: AirUnit; ids: string[] }>()
   for (const aircraft of task.aircraft) {
-    const key = `${aircraft.definition_id}|${aircraft.status}|${aircraft.remaining_range}`
+    const key = aircraftStackKey(aircraft, `|${aircraft.remaining_range}`)
     const stack = stacks.get(key)
     if (stack) stack.ids.push(aircraft.id)
     else stacks.set(key, { aircraft, ids: [aircraft.id] })
@@ -482,6 +513,14 @@ function hangarCounterHint(aircraft: AirUnit) {
   if (!aircraft.task_id) return counterHint(aircraft)
   const task = tasks.value.find((item) => item.id === aircraft.task_id)
   return `已加入${task ? taskTitle(task) : '航空任务'} · 整备中`
+}
+
+// 机场没有机库（默认上限 99999 = 实际上不限），面板上写"无上限"而不是显示一个假数字；
+// 剧本显式配了小上限的机场照常显示 N / M。
+const AIRFIELD_HANGAR_UNLIMITED = 99999
+function hangarText(carrier: CarrierAirStatus) {
+  if (carrier.hangar_capacity >= AIRFIELD_HANGAR_UNLIMITED) return `${carrier.hangar_used}（无上限）`
+  return `${carrier.hangar_used} / ${carrier.hangar_capacity}`
 }
 
 function operationName(carrier: CarrierAirStatus) {
@@ -551,6 +590,14 @@ function operationName(carrier: CarrierAirStatus) {
               <span class="task-priority">P{{ task.priority }}</span>
               <span class="task-queue">队列 {{ task.queue_position }}</span>
               <button class="task-flag" :class="{ active: task.priority === 1 }" :aria-label="`将${taskTitle(task)}设为最高优先级`" :disabled="busy" @click.stop="emit('command', 'PRIORITIZE_AIR_TASK', [task.id])">⚑</button>
+              <button
+                v-if="withdrawableIDs(task).length"
+                class="task-unassign"
+                :disabled="busy || locked"
+                :aria-label="`把${taskTitle(task)}的算子撤回机库`"
+                title="撤回机库：取消这个任务里还在机库/跑道上的算子（空中的请用召回）"
+                @click.stop="withdrawTaskAircraft(task)"
+              >⇤ 撤回</button>
               <span v-if="radioActions(task).rtb || radioActions(task).retarget" class="task-radio-group">
                 <button v-if="radioActions(task).retarget" class="task-radio" :class="{ spent: radioStatus(task.id)?.used }" :title="radioTitle(task.id)" :aria-label="`无线电改目标${taskTitle(task)}`" :disabled="busy || radioStatus(task.id)?.used" @click.stop="emit('selectTarget', task.id)">◎</button>
                 <button v-if="radioActions(task).retask" class="task-radio" :class="{ spent: radioStatus(task.id)?.used }" :title="`改令 —— ${radioTitle(task.id)}`" :aria-label="`无线电改令${taskTitle(task)}`" :disabled="busy || radioStatus(task.id)?.used" @click.stop="emit('command', 'RETASK_AIR', [], { task_id: task.id, task_kind: radioActions(task).retask })">{{ radioActions(task).retask === 'transfer' ? '⇢' : '⇠' }}</button>
@@ -600,7 +647,7 @@ function operationName(carrier: CarrierAirStatus) {
             <span>岸炮 <b>{{ airfield.coastal }}</b></span>
             <span>雷达 <b>{{ airfield.radar ? '有' : '无' }}</b></span>
           </div>
-          <div class="hangar-meter"><span>机库</span><strong>{{ selectedCarrier.hangar_used }} / {{ selectedCarrier.hangar_capacity }}</strong></div>
+          <div class="hangar-meter"><span>停机位</span><strong>{{ hangarText(selectedCarrier) }}</strong></div>
           <div class="carrier-operation"><span :class="`operation-${selectedCarrier.operation || 'idle'}`">{{ operationName(selectedCarrier) }}</span><small>{{ isSeaplaneBase(selectedCarrier) ? `水上起降位 ${selectedCarrier.deck_length}` : isAirfield(selectedCarrier) ? `可用跑道 ${selectedCarrier.deck_length}` : `起飞 ${selectedCarrier.launch_used} / ${selectedCarrier.deck_length}` }}</small></div>
           <p v-if="selectedCarrier.blocked_reason" class="carrier-blocked">⚠ {{ selectedCarrier.blocked_reason }}</p>
           <p v-else-if="selectedCarrier.prevented_by" class="carrier-blocked">⚠ 甲板已满：{{ selectedCarrier.prevented_by }}</p>
@@ -608,7 +655,7 @@ function operationName(carrier: CarrierAirStatus) {
       </section>
 
       <section v-if="selectedCarrier" class="air-storage-zone hangar-zone mission-hangar" :class="{ 'drop-active': dragOver === 'hangar' }" data-drop-target="hangar" @click="assignTarget('hangar')" @dragover.prevent="dragOver = 'hangar'" @dragleave="dragOver = ''" @drop.prevent="assignTarget('hangar')">
-        <header><div><span class="section-kicker">HANGAR</span><h3>机库 / 任务整备</h3></div><strong>{{ selectedCarrier.hangar_used }} / {{ selectedCarrier.hangar_capacity }}</strong></header>
+        <header><div><span class="section-kicker">HANGAR</span><h3>机库 / 任务整备</h3></div><strong>{{ hangarText(selectedCarrier) }}</strong></header>
         <div class="air-counter-grid">
           <div v-for="stack in aircraftStacks('hangar')" :key="stack.aircraft.id" class="air-counter-item" :data-aircraft-id="stack.aircraft.id" :data-status="stack.aircraft.status" :data-stack-count="stack.ids.length">
             <AircraftCounter :aircraft="stack.aircraft" :stack-count="stack.ids.length" :player-faction="playerFaction" :class="{ selected: stack.ids.some((id) => selectedIDs.includes(id)), selectable: !stack.aircraft.task_id }" :draggable="!stack.aircraft.task_id" @click.stop="!stack.aircraft.task_id && selectCounter(stack.aircraft, stack.ids)" @toggle-cycle="toggleCycle(stack.aircraft, stack.ids)" @dragstart="!stack.aircraft.task_id && startDrag(stack.aircraft, $event, stack.ids)" @dragend="endDrag" />

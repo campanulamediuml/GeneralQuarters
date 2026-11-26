@@ -123,7 +123,7 @@ func contactDecayInterval(level int) int {
 
 // decayContactIntel 在回合结束时衰减情报：
 // 上一回合没有获得该舰队的任何新侦查结果、也没有侦察机持续跟踪时，视为脱离接触。
-// 白天按情报等级每 2–4 回合 -1 级（等级越低存续越久），夜间每 1 回合 -1 级；
+// 白天每 2 回合 -1 级（规则书 604–610 行），夜间每 1 回合 -1 级；
 // 衰减不改变显示位置，继续停留在最后发现位置。低等级情报在掉级前会提前发"即将失效"提示。
 func decayContactIntel(state *State) []EngineEvent {
 	events := []EngineEvent{}
@@ -161,6 +161,8 @@ func decayContactIntel(state *State) []EngineEvent {
 					state.IntelStaleTurns = map[string]int{}
 				}
 				state.IntelStaleTurns[key]++
+				// 快照里的接触带一份"几回合没更新"，AI 才能判断坐标还可不可信。
+				contact.StaleTurns = state.IntelStaleTurns[key]
 				interval := contactDecayInterval(contact.Level)
 				if state.IntelStaleTurns[key]%interval != 0 {
 					// 低等级情报快到期时提前预警，别让玩家以为坐标还在有效期内。

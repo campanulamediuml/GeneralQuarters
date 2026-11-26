@@ -239,30 +239,36 @@ type AirfieldDefinition struct {
 	Coord   string       `json:"coord"`
 	Type    AirfieldType `json:"type"`
 	// Picture 可覆盖按规模自动选的机场标识图片（相对 content/ 的路径）。
-	Picture  string   `json:"picture,omitempty"`
-	Runways  int      `json:"runways"`
-	Radar    bool     `json:"radar,omitempty"`
-	HeavyAA  float64  `json:"heavy_aa,omitempty"`
-	LightAA  float64  `json:"light_aa,omitempty"`
-	Coastal  int      `json:"coastal,omitempty"`
-	Aircraft []string `json:"aircraft"`
+	Picture string  `json:"picture,omitempty"`
+	Runways int     `json:"runways"`
+	Radar   bool    `json:"radar,omitempty"`
+	HeavyAA float64 `json:"heavy_aa,omitempty"`
+	LightAA float64 `json:"light_aa,omitempty"`
+	Coastal int     `json:"coastal,omitempty"`
+	// HangarCapacity 是停机上限（航空算子数），剧本可覆盖；留空时按初始跑道数 ×6 推导。
+	// 航母有独立机库容量，机场以前完全没有上限，转场可以把一堆飞机堆进同一个机场。
+	HangarCapacity int      `json:"hangar_capacity,omitempty"`
+	Aircraft       []string `json:"aircraft"`
 }
 
 // Airfield 是运行时的机场状态。生命值 = 初始跑道数 × 5，可用跑道由生命值推导。
 type Airfield struct {
-	ID          string       `json:"id"`
-	Faction     string       `json:"faction"`
-	Name        string       `json:"name"`
-	Coord       string       `json:"coord"`
-	Type        AirfieldType `json:"type"`
-	Picture     string       `json:"picture,omitempty"`
-	Runways     int          `json:"runways"`
-	Strength    int          `json:"strength"`
-	MaxStrength int          `json:"max_strength"`
-	Radar       bool         `json:"radar,omitempty"`
-	HeavyAA     float64      `json:"heavy_aa,omitempty"`
-	LightAA     float64      `json:"light_aa,omitempty"`
-	Coastal     int          `json:"coastal,omitempty"`
+	ID      string       `json:"id"`
+	Faction string       `json:"faction"`
+	Name    string       `json:"name"`
+	Coord   string       `json:"coord"`
+	Type    AirfieldType `json:"type"`
+	Picture string       `json:"picture,omitempty"`
+	Runways int          `json:"runways"`
+	// HangarCapacity 是这个机场能停放的航空算子上限（含在外执行任务、返航后仍要落回来的）。
+	// 转场进入已满的机场会被拒绝；返航/备降不受限，避免自家飞机被容量卡在天上。
+	HangarCapacity int     `json:"hangar_capacity"`
+	Strength       int     `json:"strength"`
+	MaxStrength    int     `json:"max_strength"`
+	Radar          bool    `json:"radar,omitempty"`
+	HeavyAA        float64 `json:"heavy_aa,omitempty"`
+	LightAA        float64 `json:"light_aa,omitempty"`
+	Coastal        int     `json:"coastal,omitempty"`
 	// 本回合剩余的起降通行次数：每条可用跑道每回合最多 12 次（规则书 250 行）。
 	// 机场受袭会把正在起降的算子挤回机库，并占用通行次数（规则书 218 行）。
 	OpsRemaining int `json:"ops_remaining,omitempty"`
@@ -347,22 +353,25 @@ type AirfieldAirUnit struct {
 
 // AirfieldAirStatus 是前端航空面板用的机场整备状态。
 type AirfieldAirStatus struct {
-	UnitID      string            `json:"unit_id"`
-	Faction     string            `json:"faction"`
-	Name        string            `json:"name"`
-	Type        AirfieldType      `json:"type"`
-	Picture     string            `json:"picture,omitempty"`
-	Coord       string            `json:"coord"`
-	Strength    int               `json:"strength"`
-	MaxStrength int               `json:"max_strength"`
-	MaxRunways  int               `json:"max_runways"`
-	Runways     int               `json:"runways"`
-	Radar       bool              `json:"radar"`
-	HeavyAA     float64           `json:"heavy_aa"`
-	LightAA     float64           `json:"light_aa"`
-	Coastal     int               `json:"coastal"`
-	HangarUsed  int               `json:"hangar_used"`
-	Aircraft    []AirfieldAirUnit `json:"aircraft"`
+	UnitID         string       `json:"unit_id"`
+	Faction        string       `json:"faction"`
+	Name           string       `json:"name"`
+	Type           AirfieldType `json:"type"`
+	Picture        string       `json:"picture,omitempty"`
+	Coord          string       `json:"coord"`
+	Strength       int          `json:"strength"`
+	MaxStrength    int          `json:"max_strength"`
+	MaxRunways     int          `json:"max_runways"`
+	Runways        int          `json:"runways"`
+	Radar          bool         `json:"radar"`
+	HeavyAA        float64      `json:"heavy_aa"`
+	LightAA        float64      `json:"light_aa"`
+	Coastal        int          `json:"coastal"`
+	HangarUsed     int          `json:"hangar_used"`
+	HangarCapacity int          `json:"hangar_capacity"`
+	// EnemySupplies 是敌方卸在本机场的滩头物资；只要还有货，机场生命值按 0 计且不修复。
+	EnemySupplies int               `json:"enemy_supplies,omitempty"`
+	Aircraft      []AirfieldAirUnit `json:"aircraft"`
 }
 
 // PictureOrDefault 让老存档（还没有 picture 字段）也能拿到按规模算出来的机场标识图片。
@@ -448,25 +457,28 @@ type ShipDamage struct {
 }
 
 type Unit struct {
-	ID           string      `json:"id"`
-	DefinitionID string      `json:"definition_id"`
-	FleetID      string      `json:"fleet_id"`
-	FleetName    string      `json:"fleet_name"`
-	Name         string      `json:"name"`
-	Type         string      `json:"type"`
-	Faction      string      `json:"faction"`
-	Coord        string      `json:"coord"`
-	Heading      string      `json:"heading"`
-	Strength     int         `json:"strength"`
-	MaxStrength  int         `json:"max_strength"`
-	Moved        bool        `json:"moved"`
-	MoveCooldown int         `json:"move_cooldown,omitempty"`
-	Confusion    int         `json:"confusion,omitempty"`
-	ContactLevel int         `json:"contact_level,omitempty"`
-	Card         ShipCard    `json:"card"`
-	Damage       *ShipDamage `json:"damage,omitempty"`
-	Deck         *FlightDeck `json:"deck,omitempty"`
-	LegalMoves   []string    `json:"legal_moves,omitempty"`
+	ID           string `json:"id"`
+	DefinitionID string `json:"definition_id"`
+	FleetID      string `json:"fleet_id"`
+	FleetName    string `json:"fleet_name"`
+	Name         string `json:"name"`
+	Type         string `json:"type"`
+	Faction      string `json:"faction"`
+	Coord        string `json:"coord"`
+	Heading      string `json:"heading"`
+	Strength     int    `json:"strength"`
+	MaxStrength  int    `json:"max_strength"`
+	Moved        bool   `json:"moved"`
+	MoveCooldown int    `json:"move_cooldown,omitempty"`
+	Confusion    int    `json:"confusion,omitempty"`
+	ContactLevel int    `json:"contact_level,omitempty"`
+	// ContactStaleTurns 是这条情报已经连续几回合没更新（0 = 本回合刚刷新）。
+	// 事件里一直有"情报已过期N回合"的文字，但机器玩家读不到。
+	ContactStaleTurns int         `json:"contact_stale_turns,omitempty"`
+	Card              ShipCard    `json:"card"`
+	Damage            *ShipDamage `json:"damage,omitempty"`
+	Deck              *FlightDeck `json:"deck,omitempty"`
+	LegalMoves        []string    `json:"legal_moves,omitempty"`
 	// EffectiveSpeed 是算上进水层数之后的实际航速档位（fast/normal/slow/very_slow/disabled）。
 	// 卡面 speed_class 是设计值，玩家需要看的是"现在到底跑多快"：兵牌上的白条就按它画。
 	EffectiveSpeed string `json:"effective_speed,omitempty"`
@@ -505,7 +517,9 @@ type FleetGroup struct {
 	MoveInterval int    `json:"move_interval"`
 	Confusion    int    `json:"confusion,omitempty"`
 	ContactLevel int    `json:"contact_level,omitempty"`
-	ContactSize  string `json:"contact_size,omitempty"`
+	// ContactStaleTurns 是这条情报已经连续几回合没更新（0 = 本回合刚刷新）。
+	ContactStaleTurns int    `json:"contact_stale_turns,omitempty"`
+	ContactSize       string `json:"contact_size,omitempty"`
 	// ContactCapitals 是情报 3 级能看出的主力舰类别：carrier / battleship / heavy_cruiser。
 	ContactCapitals []string `json:"contact_capitals,omitempty"`
 	LegalMoves      []string `json:"legal_moves,omitempty"`
@@ -683,8 +697,14 @@ type AirTask struct {
 	CurrentRingHexes []string `json:"current_ring_hexes,omitempty"`
 	// ReturnTurns 是这支编队"走完任务再落回母舰"还要几个回合（含排队着舰余量）。
 	// 前端拿它和 clock.night_in_turns 一比，就能在天黑前提醒玩家"这波回不来了"。
-	ReturnTurns       int                `json:"return_turns,omitempty"`
-	NightSafe         bool               `json:"night_safe,omitempty"`
+	ReturnTurns int `json:"return_turns"`
+	// NightSafe 不能用 omitempty：false 正是最要紧的那个值（这波天黑前回不来），
+	// 省略掉以后前端和 AI 看到的是"字段不存在"，跟"安全"分不开。
+	NightSafe bool `json:"night_safe"`
+	// TurnsToDark / NightMargin 是给机器玩家算账用的：距天黑还剩几回合、返航后富余几回合。
+	// NightMargin < 0 等于"走完任务再回来就摸黑了"。没有昼夜循环的剧本里 TurnsToDark = -1。
+	TurnsToDark       int                `json:"turns_to_dark"`
+	NightMargin       int                `json:"night_margin"`
 	ReconSectors      []ReconSector      `json:"recon_sectors,omitempty"`
 	DistanceReference *DistanceReference `json:"distance_reference,omitempty"`
 }
@@ -726,6 +746,9 @@ type FleetContact struct {
 	Heading      string `json:"heading,omitempty"`
 	Count        int    `json:"count"`
 	Members      []Unit `json:"members,omitempty"`
+	// StaleTurns 是这条情报已经连续几个回合没更新（0 = 本回合刚刷新）。
+	// 事件里早就有"情报已过期N回合"的文字，但 AI 读不到；这里给结构化字段。
+	StaleTurns int `json:"stale_turns"`
 }
 
 // StrikeTarget 是本次空袭的目标类型：舰船（对舰攻击）或机场（对地攻击）。
@@ -751,6 +774,9 @@ type AirShipCard struct {
 	Name     string `json:"name"`
 	Type     string `json:"type"`
 	Strength int    `json:"strength"`
+	// Picture 是舰船卡的素材路径：空战动画里的舰船剪影要用同一批资源，
+	// 否则战报画面只能画内置手绘剪影，和地图兵牌长得不一样。
+	Picture string `json:"picture,omitempty"`
 }
 
 // StrikeAllocation 记录一个攻击算子最终分配到哪艘舰、对它有几次命中。
@@ -935,7 +961,19 @@ func ParseCoord(coord string) (int, int, error) {
 	return row, col, nil
 }
 
+// Coord 把行列号拼成四字符 hex 坐标（行、列各两位，不足补零）。
+//
+// 没用 fmt.Sprintf：这是全模拟里调用最密的函数之一，侦察扇面、距离环、航迹展开
+// 都在内层循环里按格调它。手写两位拼接比格式化快一个数量级，分配从 3 次降到 1 次。
+// 只有两位装不下的越界行列（≥100）才退回格式化，保持原有的十进制输出。
 func Coord(row, col int) string {
+	if row < 100 && col < 100 && row >= 0 && col >= 0 {
+		buf := [4]byte{
+			byte('0' + row/10%10), byte('0' + row%10),
+			byte('0' + col/10%10), byte('0' + col%10),
+		}
+		return string(buf[:])
+	}
 	return fmt.Sprintf("%02d%02d", row, col)
 }
 
@@ -969,12 +1007,9 @@ func offsetCube(row, col int) (int, int, int) {
 	return x, y, z
 }
 
-func Distance(a, b string) int {
-	ar, ac, errA := ParseCoord(a)
-	br, bc, errB := ParseCoord(b)
-	if errA != nil || errB != nil {
-		return 999
-	}
+// distanceRC 是 Distance 的整数版：已经拿到行列号时直接用，省掉两次坐标串解析。
+// 扇面扫描、距离环、距离参照表都在内层循环里算距离，走这里能省掉每格一次 Atoi。
+func distanceRC(ar, ac, br, bc int) int {
 	ax, ay, az := offsetCube(ar, ac)
 	bx, by, bz := offsetCube(br, bc)
 	dx, dy, dz := ax-bx, ay-by, az-bz
@@ -996,17 +1031,27 @@ func Distance(a, b string) int {
 	return dz
 }
 
+func Distance(a, b string) int {
+	ar, ac, errA := ParseCoord(a)
+	br, bc, errB := ParseCoord(b)
+	if errA != nil || errB != nil {
+		return 999
+	}
+	return distanceRC(ar, ac, br, bc)
+}
+
 func BuildDistanceReference(gameMap MapDefinition, origin string, maxDistance int) *DistanceReference {
-	if _, _, err := ParseCoord(origin); err != nil || maxDistance < 1 {
+	originRow, originCol, err := ParseCoord(origin)
+	if err != nil || maxDistance < 1 {
 		return nil
 	}
 	reference := &DistanceReference{Origin: origin, MaxDistance: maxDistance, Cells: []DistanceHex{}}
+	// 距离用整数算：原来每格都把坐标拼成串再解析回去，一张图就是 2×3328 次 Atoi。
 	for row := 1; row <= gameMap.Rows; row++ {
 		for col := 1; col <= gameMap.Cols; col++ {
-			coord := Coord(row, col)
-			distance := Distance(origin, coord)
+			distance := distanceRC(originRow, originCol, row, col)
 			if distance <= maxDistance {
-				reference.Cells = append(reference.Cells, DistanceHex{Coord: coord, Distance: distance})
+				reference.Cells = append(reference.Cells, DistanceHex{Coord: Coord(row, col), Distance: distance})
 			}
 		}
 	}
@@ -1020,5 +1065,4 @@ type Timeline struct {
 	ServiceStart string `json:"service_start,omitempty"`
 	LaunchStart  string `json:"launch_start,omitempty"`
 	RecoverBy    string `json:"recover_by,omitempty"`
-	NightLoss    bool   `json:"night_loss,omitempty"`
 }

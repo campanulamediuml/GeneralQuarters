@@ -6,7 +6,7 @@ import "testing"
 // 否则会留下"甲板上有任务、不能放飞、又拖不回机库"的死状态。
 func TestNightParksDockedAircraft(t *testing.T) {
 	state := sandboxState(t)
-	state.Timeline = &Timeline{TurnMinutes: 20, ServiceStart: "04:00", LaunchStart: "05:20", RecoverBy: "19:40", NightLoss: true}
+	state.Timeline = &Timeline{TurnMinutes: 20, ServiceStart: "04:00", LaunchStart: "05:20", RecoverBy: "19:40"}
 	state.TurnsPerDay = 72
 	state.DayHours = 0
 	state.Turn = 60 // 19:40 入夜

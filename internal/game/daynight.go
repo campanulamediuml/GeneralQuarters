@@ -18,9 +18,11 @@ import (
 //   - service_start 之前不进行机库整备（珊瑚海：04:00 开始整备）
 //   - launch_start 之前不允许放飞（珊瑚海：05:20 第一轮升空）
 //   - recover_by 之后算夜间（珊瑚海：19:40 全员回收截止）
-//   - night_loss 为真时，入夜那一刻还在天上的算子直接坠海，不给迫降判定
 //
 // 规则书 199 行："所有自动循环进行的飞机会在天黑前返航，在天黑前一回合集中降落。"
+// 但"天黑"本身不是损失：入夜时还在天上的算子照常飞行、照常返航，
+// 落地时逐个结算夜间摔毁（规则书 531–537 行：航母 70%、机场 20%）。
+// 以前这里有一条"入夜那一刻还在天上=坠海"的私设，结果远程打击波会整波凭空消失。
 
 // NightStartHour / DayStartHour 是没有 timeline 的剧本使用的默认昼夜边界
 // （19:40 回收截止，05:20 第一轮升空）。
@@ -164,8 +166,8 @@ func formatClock(hour float64) string {
 	return fmt.Sprintf("%02d:%02d", h, m)
 }
 
-// setNightState 切换天色并产生必要事件。配置了 timeline.night_loss 的剧本，
-// 在入夜那一刻把还在天上的算子直接判为坠海（珊瑚海：19:40 之后没有迫降机会）。
+// setNightState 切换天色并产生必要事件。入夜不判损失：还在天上的算子照常飞，
+// 落地时按夜间规则逐架判摔毁（航母 70%、机场 20%，规则书 531–537 行）。
 func setNightState(state *State, night bool) []EngineEvent {
 	if state.TurnsPerDay <= 0 || state.Night == night {
 		return nil
@@ -175,8 +177,9 @@ func setNightState(state *State, night bool) []EngineEvent {
 		return []EngineEvent{{Type: "day_night", Audience: "all", Text: "天色转亮，航空作业恢复正常"}}
 	}
 	events := []EngineEvent{{Type: "day_night", Audience: "all", Text: "夜幕降临：夜间降落有极高的摔毁风险"}}
-	if state.Timeline != nil && state.Timeline.NightLoss {
-		events = append(events, forceNightLanding(state)...)
+	// 天黑不判损失，只提醒：还在天上的算子会继续飞到目的地，落地时按夜间规则各判一次摔毁。
+	if airborneCount := countAirborne(*state); airborneCount > 0 {
+		events = append(events, EngineEvent{Type: "night_airborne", Audience: "all", Text: fmt.Sprintf("夜幕降临：%d 个算子仍在空中，返航落地时逐个判夜间摔毁（航母70%%、机场20%%）", airborneCount)})
 	}
 	// 入夜后舰上不再有"待发任务"：全部解除任务、收回机库。
 	// 否则玩家看到的是"甲板上还挂着任务、又拖不回机库、也不能放飞"的死状态。
@@ -373,6 +376,11 @@ func recallLoopingAircraftBeforeNight(state *State) []EngineEvent {
 		// 打击编队是一次性出击，来不来得及完全由玩家自己决定：服务器只提醒一次，不替玩家掉头。
 		// 以前这里一刀切强制返航，于是傍晚从拉包尔打莫尔兹比（19 hex）在起飞那一刻就被判
 		// "走完任务再返航要 38 回合"直接弹回机场，等于取消了整个远程陆攻。
+		// 转场是跨多日的移动，不是一次出击：远程转场（水机 1 hex/回合）本来就要飞好几天，
+		// 按"天黑前必须回家"去召回，等于每天傍晚都把转场踢回原点。
+		if aircraft.Status == "transfer" {
+			continue
+		}
 		if aircraft.Status == "attack" || aircraft.Status == "attack_holding" {
 			if need >= remaining && !aircraft.NightWarned {
 				aircraft.NightWarned = true
@@ -419,6 +427,10 @@ func recallLoopingAircraftBeforeNight(state *State) []EngineEvent {
 			continue
 		}
 		need := groundTurnsToLanded(*state, aircraft)
+		// 机场编队的转场同样不参与入夜召回：那是跨多日的移动。
+		if aircraft.Status == "transfer" {
+			continue
+		}
 		// 机场打击编队同理：打得完打不完是玩家的赌注，服务器只提醒一次。
 		if aircraft.Status == "attack" || aircraft.Status == "attack_holding" {
 			if need >= remaining && !aircraft.NightWarned {
@@ -443,54 +455,19 @@ func recallLoopingAircraftBeforeNight(state *State) []EngineEvent {
 	return events
 }
 
-// forceNightLanding 处理"天黑那一刻还在天上"的算子。
-//
-// 不再原地删除：一架 13 hex 外的侦察机和一架就在母舰上空盘旋的 CAP，
-// 直接一起"坠海损失"既不公平、也看不到判定过程。现在的处理是：
-//   - 全部强制转入返航（还在执行任务的一律终止）；
-//   - 燃油够不够决定它能不能回家，不够的按燃油耗尽坠毁；
-//   - 回到甲板的按夜间着舰判定（航母 70% 摔毁、机场 20%），回来一架算一架。
-//
-// 也就是说 19:40 之后不是"全灭"，而是"摸黑返航，然后各凭运气"。
-func forceNightLanding(state *State) []EngineEvent {
-	events := []EngineEvent{}
-	for _, id := range sortedAirUnitIDs(*state) {
-		aircraft := state.Aircraft[id]
-		if aircraft == nil || !airborne(aircraft) {
-			continue
+// 天黑不再判任何损失：入夜时在天上的算子继续飞（规则书 531–537 行），
+// 落地那一刻才按夜间规则逐架判摔毁。这里删掉旧的 forceNightLanding，
+// 它会把 2 hex 外的算子直接 delete 掉——玩家看到的就是"打击波凭空消失"。
+
+// countAirborne 数一下现在还有多少算子在天上（舰载 + 陆基），只用于入夜提醒。
+func countAirborne(state State) int {
+	count := 0
+	for _, aircraft := range state.Aircraft {
+		if aircraft != nil && airborne(aircraft) {
+			count++
 		}
-		carrier := state.Units[aircraft.CarrierID]
-		if carrier != nil && !aircraft.Seaplane && Distance(aircraft.Coord, carrier.Coord) <= 2 {
-			// 天黑前最后一个机会：够得着母舰就当场强制着舰（夜间着舰照常判摔毁）。
-			aircraft.Coord = carrier.Coord
-			aircraft.Returning = true
-			forward := aircraft.ForwardCoord
-			aircraft.ForwardCoord = ""
-			events = append(events, advanceAircraftReturn(state, aircraft)...)
-			_ = forward
-			if state.Aircraft[aircraft.ID] != nil && airborne(aircraft) {
-				// 甲板满了、或者升降机排队排不下：天黑之后不可能再等，按坠海处理。
-				delete(state.Aircraft, aircraft.ID)
-				events = append(events, EngineEvent{Type: "air_destroyed", Audience: aircraft.Faction, Text: fmt.Sprintf("%s天黑未能落回甲板，坠毁", aircraft.Model)})
-			}
-			continue
-		}
-		delete(state.Aircraft, aircraft.ID)
-		events = append(events, EngineEvent{Type: "air_destroyed", Audience: aircraft.Faction, Text: fmt.Sprintf("%s天黑时仍在空中，未能返航", aircraft.Model)})
 	}
-	// 机场编队同理：够得着机场就当场降落，够不着就算损失。
-	for _, aircraft := range groundAirborneUnits(*state) {
-		airfield := airfieldFor(state, aircraft.AirfieldID)
-		if airfield != nil && Distance(aircraft.Coord, airfield.Coord) <= 2 {
-			aircraft.Coord = airfield.Coord
-			aircraft.Returning = true
-			events = append(events, landGroundAircraft(state, aircraft, airfield)...)
-			continue
-		}
-		delete(state.GroundAir, aircraft.ID)
-		events = append(events, EngineEvent{Type: "air_destroyed", Audience: aircraft.Faction, Text: fmt.Sprintf("%s天黑时仍在空中，未能返航", aircraft.Model)})
-	}
-	return events
+	return count + len(groundAirborneUnits(state))
 }
 
 // clearCycleParams 抹掉自动循环参数。夜间清场用：第二天 04:00 之后由玩家重新分配任务，

@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"log"
@@ -11,12 +13,14 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
 
 	"generalquarters/api"
 	"generalquarters/content"
+	_ "modernc.org/sqlite"
 	"generalquarters/internal/server"
 	"generalquarters/internal/store"
 	webui "generalquarters/web"
@@ -43,6 +47,12 @@ func main() {
 	mux := http.NewServeMux()
 	app := server.New(database, filepath.Join(dataDir, "content"), os.Getenv("GQ_SECURE_COOKIE") == "true")
 	app.RegisterRoutes(mux)
+	// 重启后双方 ready 标记还在库里、却没人再发 ready，回合结算会永远等不到触发。
+	runCtx, stopRun := context.WithCancel(context.Background())
+	defer stopRun()
+	app.StartTurnReconciler(runCtx)
+	// 回放用的回合快照在后台压缩：写入路径只写原样 JSON，worker 负责把已结束的回合压成 gzip。
+	database.StartTurnCompressor(runCtx, 0, 0)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"status":"ok"}`))
@@ -67,6 +77,7 @@ func main() {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 	<-stop
+	stopRun()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = httpServer.Shutdown(ctx)
@@ -111,25 +122,108 @@ func ensureContent(dataDir string) error {
 	})
 }
 
+const backupKeep = 3
+
+// backupDatabase 在打开数据库之前留一份一致的快照。
+//
+// 以前是直接 io.Copy 那个 .db 文件：WAL 里还没 checkpoint 的提交会被漏掉，
+// 备份其实是"几分钟前的数据库"；而且每次启动都复制一份、从不清理——
+// 开发期反复重启，5.9 GB 的旧备份就这么堆在 data/backups 里。
+// 现在用 VACUUM INTO 生成一致快照（包含 WAL 里的内容），只保留最近 backupKeep 份；
+// 库文件自上次备份后没被改动过就直接跳过，不白复制一份 45 MB。
 func backupDatabase(dataDir, dbPath string) error {
-	if _, err := os.Stat(dbPath); err != nil {
-		return err
-	}
-	if err := os.MkdirAll(filepath.Join(dataDir, "backups"), 0o750); err != nil {
-		return err
-	}
-	source, err := os.Open(dbPath)
+	info, err := os.Stat(dbPath)
 	if err != nil {
 		return err
 	}
-	defer source.Close()
-	target, err := os.Create(filepath.Join(dataDir, "backups", "generalquarters-"+time.Now().UTC().Format("20060102T150405Z")+".db"))
+	dir := filepath.Join(dataDir, "backups")
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return err
+	}
+	if newest, ok := newestBackup(dir); ok && !newest.ModTime().Before(info.ModTime()) {
+		return pruneBackups(dir, backupKeep)
+	}
+	target := uniqueBackupPath(dir)
+	db, err := sql.Open("sqlite", fmt.Sprintf("file:%s?_pragma=busy_timeout(5000)", dbPath))
 	if err != nil {
 		return err
 	}
-	defer target.Close()
-	_, err = io.Copy(target, source)
-	return err
+	defer db.Close()
+	if _, err := db.Exec("VACUUM INTO " + quoteSQLString(target)); err != nil {
+		_ = os.Remove(target)
+		return err
+	}
+	return pruneBackups(dir, backupKeep)
+}
+
+func quoteSQLString(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", "''") + "'"
+}
+
+func uniqueBackupPath(dir string) string {
+	base := "generalquarters-" + time.Now().UTC().Format("20060102T150405Z")
+	path := filepath.Join(dir, base+".db")
+	for index := 1; ; index++ {
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			return path
+		}
+		path = filepath.Join(dir, fmt.Sprintf("%s-%d.db", base, index))
+	}
+}
+
+// newestBackup 返回目录里最新的一份备份（按文件名里的时间戳排序，秒级）。
+func newestBackup(dir string) (os.FileInfo, bool) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, false
+	}
+	var newest os.FileInfo
+	for _, entry := range entries {
+		if entry.IsDir() || !backupName(entry.Name()) {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		if newest == nil || info.ModTime().After(newest.ModTime()) {
+			newest = info
+		}
+	}
+	return newest, newest != nil
+}
+
+func backupName(name string) bool {
+	return strings.HasPrefix(name, "generalquarters-") && strings.HasSuffix(name, ".db")
+}
+
+// pruneBackups 只留最近 keep 份，避免备份目录无限膨胀。
+func pruneBackups(dir string, keep int) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+	files := make([]os.FileInfo, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() || !backupName(entry.Name()) {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
+		files = append(files, info)
+	}
+	if len(files) <= keep {
+		return nil
+	}
+	sort.Slice(files, func(a, b int) bool { return files[a].ModTime().After(files[b].ModTime()) })
+	for _, info := range files[keep:] {
+		if err := os.Remove(filepath.Join(dir, info.Name())); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func registerSPA(mux *http.ServeMux) {

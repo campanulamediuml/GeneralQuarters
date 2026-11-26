@@ -8,22 +8,24 @@ import (
 
 // AirfieldContact 是侦察发现的敌方机场（只上报类型与跑道数，不返回防空和燃料等细节）。
 type AirfieldContact struct {
-	ID           string       `json:"id"`
-	Name         string       `json:"name"`
-	Faction      string       `json:"faction"`
-	Coord        string       `json:"coord"`
-	Type         AirfieldType `json:"type"`
-	Picture      string       `json:"picture,omitempty"`
-	Runways      int          `json:"runways"`
-	MaxRunways   int          `json:"max_runways"`
-	Strength     int          `json:"strength"`
-	MaxStrength  int          `json:"max_strength"`
-	Radar        bool         `json:"radar"`
-	HeavyAA      float64      `json:"heavy_aa"`
-	LightAA      float64      `json:"light_aa"`
-	Coastal      int          `json:"coastal"`
-	HangarUsed   int          `json:"hangar_used"`
-	ContactLevel int          `json:"contact_level"`
+	ID          string       `json:"id"`
+	Name        string       `json:"name"`
+	Faction     string       `json:"faction"`
+	Coord       string       `json:"coord"`
+	Type        AirfieldType `json:"type"`
+	Picture     string       `json:"picture,omitempty"`
+	Runways     int          `json:"runways"`
+	MaxRunways  int          `json:"max_runways"`
+	Strength    int          `json:"strength"`
+	MaxStrength int          `json:"max_strength"`
+	Radar       bool         `json:"radar"`
+	HeavyAA     float64      `json:"heavy_aa"`
+	LightAA     float64      `json:"light_aa"`
+	Coastal     int          `json:"coastal"`
+	HangarUsed  int          `json:"hangar_used"`
+	// EnemySupplies 是敌方卸在这个机场上的滩头物资：只要有货，机场就处于被压制状态。
+	EnemySupplies int `json:"enemy_supplies,omitempty"`
+	ContactLevel  int `json:"contact_level"`
 }
 
 // setAirfieldContact 记录/刷新敌方机场情报；每次发现把情报等级 +1（最高 4），并同步最新位置。
@@ -126,6 +128,7 @@ func airfieldContactView(state State, airfield *Airfield, contact AirfieldContac
 	contact.LightAA = airfield.LightAA
 	contact.Coastal = airfield.Coastal
 	contact.HangarUsed = groundedAirCount(state, airfield.ID)
+	contact.EnemySupplies = enemySuppliesAt(state, airfield)
 	return contact
 }
 
@@ -158,9 +161,10 @@ func VisibleGroundAir(state State, faction string) []AirfieldAirStatus {
 		}
 		status := AirfieldAirStatus{
 			UnitID: airfield.ID, Faction: airfield.Faction, Name: airfield.Name, Type: NormalizeAirfieldType(airfield.Type), Picture: airfield.PictureOrDefault(), Coord: airfield.Coord,
-			Strength: airfield.Strength, MaxStrength: airfield.MaxStrength, MaxRunways: airfield.Runways,
+			Strength: airfield.Strength, MaxStrength: airfield.MaxStrength, MaxRunways: airfield.Runways, EnemySupplies: enemySuppliesAt(state, airfield),
 			Runways: RunwaysAvailable(airfield.Strength, airfield.Runways), Radar: airfield.Radar,
-			HeavyAA: airfield.HeavyAA, LightAA: airfield.LightAA, Coastal: airfield.Coastal,
+			HangarCapacity: airfield.HangarCapacity,
+			HeavyAA:        airfield.HeavyAA, LightAA: airfield.LightAA, Coastal: airfield.Coastal,
 			Aircraft: []AirfieldAirUnit{},
 		}
 		for _, aircraftID := range sortedGroundAirIDs(state, airfield.ID) {
@@ -201,6 +205,98 @@ func unitIsSeaplane(state State, aircraft *AirfieldAirUnit) bool {
 	return false
 }
 
+// AirfieldHangarUnlimited 是机场的默认上限：机场没有机库，飞机停在露天停机位，
+// 不按航母机库那样卡容量，所以默认给一个"实际上等于不限"的大数。
+// 检查逻辑和航母走同一套（airfieldHangarFull），剧本仍可用 airfields[].hangar_capacity
+// 给某个小机场写一个真实上限。
+const AirfieldHangarUnlimited = 99999
+
+// airfieldHangarUsed 统计停在机场上的算子（机库/整备/跑道/回收），
+// 不含已经升空执行任务的——那些返航时会落回来，但不占当前停机位。
+// 必须和界面上的"机库 X / Y"同源，否则会出现"显示 10/18、转场却说已满"。
+func airfieldHangarUsed(state State, airfieldID string) int {
+	used := 0
+	for _, aircraft := range state.GroundAir {
+		if aircraft != nil && aircraft.AirfieldID == airfieldID && !airfieldAirborne(aircraft) {
+			used++
+		}
+	}
+	return used
+}
+
+// airfieldHangarFull 校验再收 incoming 个算子会不会超过机场上限。
+// 容量 0 的老存档按"无上限"处理；默认 99999 时这条检查永远通过。
+func airfieldHangarFull(state State, airfield *Airfield, incoming int) error {
+	if airfield == nil || incoming <= 0 {
+		return nil
+	}
+	capacity := airfield.HangarCapacity
+	if capacity <= 0 {
+		capacity = AirfieldHangarUnlimited
+	}
+	used := airfieldHangarUsed(state, airfield.ID)
+	if used+incoming > capacity {
+		return fmt.Errorf("%s停放机位已满（%d/%d 个航空算子），无法再接收转场", airfield.Name, used, capacity)
+	}
+	return nil
+}
+
+// NormalizeAirfieldHangar 给老存档补默认上限（机场没有机库，默认不限制）。
+// 迁移：上一版默认值是"跑道数×6"，那个值不是剧本写的，读档时一并抬到无上限。
+func NormalizeAirfieldHangar(state *State) {
+	if state == nil {
+		return
+	}
+	for _, airfield := range state.Airfields {
+		if airfield == nil {
+			continue
+		}
+		legacyDefault := airfield.Runways * 6
+		if airfield.HangarCapacity <= 0 || airfield.HangarCapacity == legacyDefault {
+			airfield.HangarCapacity = AirfieldHangarUnlimited
+		}
+	}
+}
+
+// friendlyCarrierHostAt 在指定 hex 找一艘能接收这架机场算子的己方航母（有空余机库、且该机型能上舰）。
+// 陆基侦察机/轰炸机和带浮筒的水机不能上舰；舰载型的 F4F、SBD 这些可以从陆地机场补上航母。
+func friendlyCarrierHostAt(state State, faction, coord string, aircraft *AirfieldAirUnit, incoming int) *Unit {
+	if aircraft == nil || coord == "" || aircraft.AirfieldOnly || unitIsSeaplane(state, aircraft) {
+		return nil
+	}
+	for _, id := range sortedUnitIDs(state.Units) {
+		unit := state.Units[id]
+		if unit == nil || unit.Faction != faction || unit.Coord != coord || !IsCarrier(unit) {
+			continue
+		}
+		if unit.Card.HangarCapacity <= 0 || unit.Card.Aircraft+incoming > unit.Card.HangarCapacity {
+			continue
+		}
+		return unit
+	}
+	return nil
+}
+
+// boardGroundAircraftOnCarrier 把飞到航母上空的机场算子转成舰载机算子：停在甲板上等待下降整备。
+func boardGroundAircraftOnCarrier(state *State, aircraft *AirfieldAirUnit, carrier *Unit) {
+	if state.Aircraft == nil {
+		state.Aircraft = map[string]*AirUnit{}
+	}
+	unit := groundAirUnit(*state, aircraft)
+	unit.CarrierID = carrier.ID
+	unit.Status = "recovery"
+	unit.Launched = false
+	unit.TaskID = ""
+	unit.TaskKind = ""
+	unit.TargetCoord = ""
+	unit.Coord = carrier.Coord
+	copied := unit
+	state.Aircraft[aircraft.ID] = &copied
+	delete(state.GroundAir, aircraft.ID)
+	carrier.Card.Aircraft++
+	carrier.Deck.Operation = "recover"
+}
+
 func airfieldAirborne(aircraft *AirfieldAirUnit) bool {
 	switch aircraft.Status {
 	case "cap", "cover", "recon", "attack_holding", "attack", "transfer":
@@ -229,6 +325,15 @@ func AdvanceAirfields(state *State) []EngineEvent {
 	events := []EngineEvent{}
 	for _, id := range sortedAirfieldIDs(*state) {
 		airfield := state.Airfields[id]
+		// 敌方滩头物资还压在这个机场上：生命值按 0 计、跑道全废，清滩之前完全不走修复逻辑。
+		// 运输船把货卸在你的机场上，等于机场正在被占领——不修好也不放行作业。
+		if enemySuppliesAt(*state, airfield) > 0 {
+			if airfield.Strength > 0 {
+				airfield.Strength = 0
+				events = append(events, EngineEvent{Type: "airfield_occupied", Audience: airfield.Faction, Text: fmt.Sprintf("%s被敌方滩头物资压制，跑道全部瘫痪（清滩前无法修复）", airfield.Name)})
+			}
+			continue
+		}
 		if airfield.Strength < airfield.MaxStrength && d10(state) <= 2 {
 			airfield.Strength++
 			events = append(events, EngineEvent{Type: "airfield_repaired", Audience: airfield.Faction, Text: fmt.Sprintf("%s修复1点跑道（%d/%d）", airfield.Name, airfield.Strength, airfield.MaxStrength)})
@@ -738,6 +843,16 @@ func validateGroundCycleOrder(state State, order Order, ids []string) error {
 	return nil
 }
 
+// groundOrderNeedsRunway 判断命令是否要占用跑道起飞。
+// 无跑道机场仍必须能召回、取消任务和改优先级——这些操作不产生起飞。
+func groundOrderNeedsRunway(orderType string) bool {
+	switch orderType {
+	case "LAUNCH_CAP", "LAUNCH_COVER", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_TRANSFER":
+		return true
+	}
+	return false
+}
+
 // ValidateGroundAirOrder 校验机场航空命令：LAUNCH_CAP / LAUNCH_RECON / LAUNCH_STRIKE / PRIORITIZE_AIR_TASK / SET_STRIKE_TARGET。
 func ValidateGroundAirOrder(state State, order Order) error {
 	if !state.ServiceWindowOpen() && nightBlockedAirOrder(order.Type) {
@@ -784,11 +899,19 @@ func ValidateGroundAirOrder(state State, order Order) error {
 	if airfield == nil {
 		return fmt.Errorf("机场不存在")
 	}
-	if RunwaysAvailable(airfield.Strength, airfield.Runways) == 0 {
+	// 只有"起飞"类命令才需要跑道：规则书 222 行允许飞机在无跑道机场降落，
+	// 召回、取消任务、改优先级这些不该被炸平的跑道一起锁死。
+	if groundOrderNeedsRunway(order.Type) && RunwaysAvailable(airfield.Strength, airfield.Runways) == 0 {
 		return fmt.Errorf("%s已经没有可用跑道", airfield.Name)
 	}
 	switch order.Type {
 	case "LAUNCH_CAP", "LAUNCH_COVER", "LAUNCH_RECON", "LAUNCH_STRIKE":
+		// 规则书 211 行：CAP 只掩护自己所在 hex 及周围 1 hex。
+		// 212 行"指派 CAP 去其他友军上空"在游戏里就是空中掩护任务（LAUNCH_COVER），
+		// 它会跟着被掩护的舰队走；CAP 不接受远程坐标，免得飞过去守一个不会跟的格子。
+		if order.Type == "LAUNCH_CAP" && order.Coord != "" && order.Coord != airfield.Coord {
+			return fmt.Errorf("CAP 只掩护本机场上空；要给其他友军上空提供掩护，请使用 LAUNCH_COVER")
+		}
 		if sameTaskAssignmentGround(list, order) {
 			return nil
 		}
@@ -866,28 +989,40 @@ func ValidateGroundAirOrder(state State, order Order) error {
 			return nil
 		}
 		dest := friendlyAirfieldAtCoord(state, airfield.Faction, order.Coord)
+		// 目的地不是机场时，允许舰载型飞机补上航母：陆基机场起飞（或从别的机场转来）的
+		// F4F/SBD 这类机型可以落在己方航母上，这条以前完全没实现，任务建了却永远设不上目标。
+		var host *Unit
 		if dest == nil {
-			return fmt.Errorf("转场目的地必须是己方机场")
+			host = friendlyCarrierHostAt(state, airfield.Faction, order.Coord, list[0], len(list))
+			if host == nil {
+				return fmt.Errorf("转场目的地必须是己方机场或还有机库空位的航母")
+			}
 		}
-		if dest.ID == airfield.ID {
+		if dest != nil && dest.ID == airfield.ID {
 			return fmt.Errorf("不能转场到同一个机场")
 		}
-		if RunwaysAvailable(dest.Strength, dest.Runways) == 0 {
+		if dest != nil && RunwaysAvailable(dest.Strength, dest.Runways) == 0 {
 			return fmt.Errorf("%s已经没有可用跑道，无法接收转场", dest.Name)
 		}
-		if airfield.Type == AirfieldSeaplane && dest.Type != AirfieldSeaplane {
+		if dest != nil && airfield.Type == AirfieldSeaplane && dest.Type != AirfieldSeaplane {
 			return fmt.Errorf("水上飞机基地的算子只能转场到另一个水上飞机基地")
 		}
 		for _, aircraft := range list {
-			if !dest.HardensFor(aircraft.Kind, unitIsSeaplane(state, aircraft)) {
+			if dest != nil && !dest.HardensFor(aircraft.Kind, unitIsSeaplane(state, aircraft)) {
 				return fmt.Errorf("%s无法起降%s", dest.Name, aircraft.Model)
 			}
+			if dest == nil && friendlyCarrierHostAt(state, airfield.Faction, order.Coord, aircraft, len(list)) == nil {
+				return fmt.Errorf("%s无法在%s的航母上降落（机库已满或机型不能上舰）", aircraft.Model, order.Coord)
+			}
 			limit := SortieBaseRange(aircraft.BaseRange, LoadoutTransfer)
-			if need := Distance(airfield.Coord, dest.Coord); need > limit {
-				return fmt.Errorf("%s转场航程%d hex（挂副油箱），飞到%s需要%d hex", aircraft.Model, limit, dest.Name, need)
+			if need := Distance(airfield.Coord, order.Coord); need > limit {
+				return fmt.Errorf("%s转场航程%d hex（挂副油箱），飞到%s需要%d hex", aircraft.Model, limit, order.Coord, need)
 			}
 		}
-		return nil
+		if dest == nil {
+			return nil
+		}
+		return airfieldHangarFull(state, dest, len(list))
 	case "SET_STRIKE_TARGET":
 		if len(list) != 1 {
 			return fmt.Errorf("只有编队可以设置目标")
@@ -909,18 +1044,24 @@ func ValidateGroundAirOrder(state State, order Order) error {
 			}
 			return nil
 		case "transfer":
-			// 转场改目的地：必须是己方机场（地面转场落不了舰）。
+			// 转场改目的地：己方机场，或者有空余机库的己方航母（舰载型飞机）。
 			dest := friendlyAirfieldAtCoord(state, airfield.Faction, order.Coord)
+			members := groundTaskAircraft(state, list[0].TaskID)
 			if dest == nil {
-				return fmt.Errorf("转场目的地必须是己方机场")
+				if host := friendlyCarrierHostAt(state, airfield.Faction, order.Coord, list[0], len(members)); host == nil {
+					return fmt.Errorf("转场目的地必须是己方机场或还有机库空位的航母")
+				}
 			}
-			if !dest.HardensFor(list[0].Kind, unitIsSeaplane(state, list[0])) {
+			if dest != nil && !dest.HardensFor(list[0].Kind, unitIsSeaplane(state, list[0])) {
 				return fmt.Errorf("%s无法起降%s", dest.Name, list[0].Model)
 			}
-			if need, limit := Distance(airfield.Coord, dest.Coord), SortieBaseRange(list[0].BaseRange, LoadoutTransfer); need > limit {
-				return fmt.Errorf("%s转场航程%d hex，飞到%s需要%d hex", list[0].Model, limit, dest.Name, need)
+			if need, limit := Distance(airfield.Coord, order.Coord), SortieBaseRange(list[0].BaseRange, LoadoutTransfer); need > limit {
+				return fmt.Errorf("%s转场航程%d hex，飞到%s需要%d hex", list[0].Model, limit, order.Coord, need)
 			}
-			return nil
+			if dest == nil {
+				return nil
+			}
+			return airfieldHangarFull(state, dest, len(members))
 		}
 		return fmt.Errorf("只有攻击编队或转场编队可以设置目标")
 	case "SET_STRIKE_DISPERSION":
@@ -1231,7 +1372,7 @@ func AdvanceGroundAir(state *State) []EngineEvent {
 				aircraft.Maintenance--
 			}
 			if aircraft.Damaged && aircraft.Status == "hangar" {
-				if probabilityRoll(&state.RNGState) < aircraftRepairChance(aircraft.Faction, state.Doctrines) {
+				if probabilityRoll(&state.RNGState) < aircraftRepairChance(*state, aircraft.Faction) {
 					aircraft.Damaged = false
 					events = append(events, EngineEvent{Type: "aircraft_repaired", Audience: aircraft.Faction, Text: aircraft.Model + "损伤修复完成，可以重新分配任务"})
 				}
@@ -1277,8 +1418,14 @@ func AdvanceGroundAir(state *State) []EngineEvent {
 				processedAttack[aircraft.TaskID] = true
 			}
 		case "transfer":
+			// 被召回/中止的转场要真的往回飞：以前这里不看 Returning，一直走 advanceGroundTransfer，
+			// 目的地被清空后每回合都判一次"目的地不再是我方机场"，目标在原点和其他机场之间来回跳。
 			if !processedAttack[aircraft.TaskID] {
-				events = append(events, advanceGroundTransfer(state, aircraft)...)
+				if aircraft.Returning {
+					events = append(events, advanceGroundAirReturn(state, aircraft)...)
+				} else {
+					events = append(events, advanceGroundTransfer(state, aircraft)...)
+				}
 				processedAttack[aircraft.TaskID] = true
 			}
 		}
@@ -1293,7 +1440,9 @@ func groundAirSpeed(state State, aircraft *AirfieldAirUnit) int {
 	if aircraft == nil {
 		return 2
 	}
-	if airfield := airfieldFor(&state, aircraft.AirfieldID); airfield != nil && airfield.Type == AirfieldSeaplane {
+	// 规则书 200 行：水上飞机和双翼机每回合移动 1 hex，其他飞机 2 hex。
+	// 按机种本身判断，而不是只看基地类型——水机停在陆上机场时同样是 1 hex。
+	if unitIsSeaplane(state, aircraft) {
 		return 1
 	}
 	return 2
@@ -1606,6 +1755,11 @@ func landGroundAircraft(state *State, aircraft *AirfieldAirUnit, airfield *Airfi
 			return append(events, EngineEvent{Type: "hard_landing", Audience: airfield.Faction, Text: fmt.Sprintf("%s在无跑道的%s迫降失败，机体检修中", aircraft.Model, airfield.Name)})
 		}
 	}
+	// 夜间降落：机场每个算子额外 20% 摔毁（规则书 535 行）。
+	// 以前只有舰载机的 70% 判了，陆基机夜间落下等于白捡——同一个夜里两套待遇。
+	if crashed, crashEvents := nightGroundLandingCrash(state, aircraft); crashed {
+		return append(events, crashEvents...)
+	}
 	return append(events, EngineEvent{Type: "air_landed", Audience: airfield.Faction, Text: fmt.Sprintf("%s降落在%s", aircraft.Model, airfield.Name)})
 }
 
@@ -1673,7 +1827,7 @@ func advanceGroundPatrol(state *State, aircraft *AirfieldAirUnit, kind string) [
 	return events
 }
 
-// advanceGroundTransfer 让转场编队飞向目标机场：每回合 2 格，全部抵达后落到新基地。
+// advanceGroundTransfer 让转场编队飞向目标机场：每回合 1 格（规则书 209 行），全部抵达后落到新基地。
 //
 // 目的地中途被敌方打掉（机场被占）就返航原基地，而不是凭空消失。
 // 落地沿用 landGroundAircraft，所以无跑道迫降、损伤这些判定和正常回收一致。
@@ -1683,19 +1837,34 @@ func advanceGroundTransfer(state *State, aircraft *AirfieldAirUnit) []EngineEven
 		return nil
 	}
 	dest := friendlyAirfieldAtCoord(*state, aircraft.Faction, aircraft.TargetCoord)
+	// 目的地也可以是己方航母：陆基机场的舰载型飞机补上航母就是这条路径。
+	var host *Unit
 	if dest == nil {
-		for _, member := range members {
-			member.Returning = true
-			member.TargetCoord = member.OriginCoord
+		host = friendlyCarrierHostAt(*state, aircraft.Faction, aircraft.TargetCoord, aircraft, 1)
+		if host == nil {
+			for _, member := range members {
+				member.Returning = true
+				member.TargetCoord = member.OriginCoord
+			}
+			return []EngineEvent{{Type: "transfer_aborted", Audience: aircraft.Faction, Text: fmt.Sprintf("%s的目的地已不再是我方机场或航母，转场中止返航", aircraft.Model)}}
 		}
-		return []EngineEvent{{Type: "transfer_aborted", Audience: aircraft.Faction, Text: fmt.Sprintf("%s的目的地已不再是我方机场，转场中止返航", aircraft.Model)}}
+	}
+	destCoord := aircraft.TargetCoord
+	if dest != nil {
+		destCoord = dest.Coord
+	}
+	destName := "航母"
+	if dest != nil {
+		destName = dest.Name
+	} else if host != nil {
+		destName = host.Name
 	}
 	events := []EngineEvent{}
 	moved := false
 	arrived := 0
 	for _, member := range members {
-		for steps := 0; steps < 2 && member.Coord != dest.Coord; steps++ {
-			next := nextGroundFlightCoord(*state, member, member.Coord, dest.Coord)
+		for steps := 0; steps < 1 && member.Coord != destCoord; steps++ {
+			next := nextGroundFlightCoord(*state, member, member.Coord, destCoord)
 			if next == "" {
 				break
 			}
@@ -1703,13 +1872,25 @@ func advanceGroundTransfer(state *State, aircraft *AirfieldAirUnit) []EngineEven
 			member.Spend(1)
 			moved = true
 		}
-		if member.Coord == dest.Coord {
+		if member.Coord == destCoord {
 			arrived++
 		}
 	}
 	if arrived < len(members) {
 		if moved {
-			events = append(events, EngineEvent{Type: "transfer_enroute", Audience: aircraft.Faction, Text: fmt.Sprintf("%s转场编队飞往%s，当前在%s", aircraft.Model, dest.Name, aircraft.Coord)})
+			events = append(events, EngineEvent{Type: "transfer_enroute", Audience: aircraft.Faction, Text: fmt.Sprintf("%s转场编队飞往%s，当前在%s", aircraft.Model, destName, aircraft.Coord)})
+		}
+		return events
+	}
+	if host != nil {
+		// 上舰：逐架转成舰载机算子停在甲板回收位，机库满的留给下一回合。
+		for _, member := range members {
+			if host.Card.HangarCapacity > 0 && host.Card.Aircraft >= host.Card.HangarCapacity {
+				member.Returning = false
+				continue
+			}
+			boardGroundAircraftOnCarrier(state, member, host)
+			events = append(events, EngineEvent{Type: "transfer_arrived", Audience: aircraft.Faction, Text: fmt.Sprintf("%s转场抵达%s，加入舰载机队", aircraft.Model, host.Name)})
 		}
 		return events
 	}
@@ -1739,7 +1920,12 @@ func advanceGroundRecon(state *State, aircraft *AirfieldAirUnit) []EngineEvent {
 	}
 	origin := aircraft.OriginCoord
 	events := []EngineEvent{}
-	for steps := 0; steps < 2; steps++ {
+	// 每步扫「当前圈 + 下一圈」；同一回合内每圈只判一次，否则两格速度的飞机会把
+	// 中间那圈再掷一遍骰子，等于白送一次发现判定。
+	scannedRings := map[int]bool{}
+	// 搜索航速同样按机种走：飞行艇／水侦每回合 1 hex，其余 2 hex（规则书 200 行）。
+	// 以前这里写死 2，H6K 实际比规则快一倍。
+	for steps := 0; steps < groundAirSpeed(*state, aircraft); steps++ {
 		if aircraft.Returning {
 			if aircraft.Coord == airfield.Coord {
 				return append(events, landGroundAircraft(state, aircraft, airfield)...)
@@ -1757,7 +1943,10 @@ func advanceGroundRecon(state *State, aircraft *AirfieldAirUnit) []EngineEvent {
 		// 下一距离圈"里落在扇面内的整段弧，和舰载侦察同一套几何。
 		// 以前这里只判"本格 + 正前方一格"，H6K 从敌舰队旁边两格飞过去也发现不了。
 		ring := Distance(origin, aircraft.Coord)
-		coords := ReconScannedRingHexes(state.Map, origin, aircraft.Coord, aircraft.Heading, aircraft.SectorWidth, aircraft.ReconRadius)
+		coords := []string{}
+		for _, r := range reconRingsToScan(ring, aircraft.ReconRadius, scannedRings) {
+			coords = append(coords, ReconRingHexes(state.Map, origin, aircraft.Heading, aircraft.SectorWidth, r)...)
+		}
 		events = append(events, searchGroundReconStep(state, aircraft, coords, ring)...)
 		if forward == "" {
 			aircraft.Returning = true
@@ -1832,8 +2021,15 @@ func groundReconChance(state State, aircraft *AirfieldAirUnit, members []Unit) f
 	if aircraft.SectorWidth == 120 {
 		chance /= 2
 	}
+	// 与舰载侦察一致：水上飞机最终发现率 ×2（飞得慢，但驻空久、效率高）。
+	if unitIsSeaplane(state, aircraft) {
+		chance *= 2
+	}
 	if chance < 0 {
 		return 0
+	}
+	if chance > 100 {
+		chance = 100
 	}
 	return chance
 }
@@ -1887,8 +2083,14 @@ func GroundAviationView(state State, faction string) AviationView {
 				}
 			}
 		}
-		if task.AirborneCount > 0 && state.TurnsPerDay > 0 {
-			task.NightSafe = task.ReturnTurns < turnsUntilNight(state)
+		if state.TurnsPerDay > 0 {
+			task.TurnsToDark = turnsUntilNight(state)
+			task.NightMargin = task.TurnsToDark - task.ReturnTurns
+			task.NightSafe = task.NightMargin > 0
+		} else {
+			task.TurnsToDark = -1
+			task.NightMargin = 0
+			task.NightSafe = true
 		}
 		task.Phase = "servicing"
 		if task.AirborneCount > 0 {
@@ -2188,18 +2390,25 @@ func clearFleetStay(state *State, fleetID string) {
 }
 
 // shoreTargetAt 返回某 hex 上可供岸轰的敌方机场。
+// 水上飞机基地不算岸轰目标：它们锚在海上，没有跑道和固定设施可炸，
+// 舰炮打过去只是往水里扔铁（规则上"炮击对水上飞机基地无效"）。
 func shoreTargetAt(state State, faction, coord string) *Airfield {
 	for _, id := range sortedAirfieldIDs(state) {
 		airfield := state.Airfields[id]
-		if airfield.Faction != faction && airfield.Coord == coord {
-			return airfield
+		if airfield.Faction == faction || airfield.Coord != coord {
+			continue
 		}
+		if airfield.Type == AirfieldSeaplane {
+			continue
+		}
+		return airfield
 	}
 	return nil
 }
 
 // canBombard 返回本舰队本回合可以岸轰的目标机场。
 // 条件：有主炮、在目标 hex 停留满 1 回合、同 hex 没有敌方舰队、舰队混乱为 0。
+// 目标通常是敌方机场；自家机场被敌人卸下滩头物资时也允许"清滩"——只打物资，不打自己的设施。
 func canBombard(state State, unit *Unit) *Airfield {
 	if unit == nil || unit.Card.Gunnery <= 0 || unitSmoking(unit) {
 		return nil
@@ -2220,7 +2429,22 @@ func canBombard(state State, unit *Unit) *Airfield {
 			return nil
 		}
 	}
-	return shoreTargetAt(state, unit.Faction, unit.Coord)
+	if enemyAirfield := shoreTargetAt(state, unit.Faction, unit.Coord); enemyAirfield != nil {
+		return enemyAirfield
+	}
+	// 防守方清滩：敌人在自家机场卸了货，等敌舰队撤走后可以岸轰滩头物资。
+	// 只对"这个 hex 上确实有敌方滩头物资"开放，否则炮口就会对准自己的机场。
+	enemy := OppositeFaction(unit.Faction)
+	if shoreSupplies(state, enemy, unit.Coord) <= 0 {
+		return nil
+	}
+	for _, id := range sortedAirfieldIDs(state) {
+		airfield := state.Airfields[id]
+		if airfield.Faction == unit.Faction && airfield.Coord == unit.Coord {
+			return airfield
+		}
+	}
+	return nil
 }
 
 // resolveShoreBombardment 结算岸轰：舰队先与岸炮互射，命中再作用于机场。
@@ -2255,26 +2479,37 @@ func hexHitModifier(state State, coord string) float64 {
 
 func bombardFleet(state *State, fleetID string, airfield *Airfield) []EngineEvent {
 	events := []EngineEvent{}
-	// 岸炮先开火：命中随机舰船，每点岸炮 30% 独立判定
-	coastalHits := 0
-	for shots := airfield.Coastal; shots > 0; shots-- {
-		if probabilityRoll(&state.RNGState) >= 30+hexHitModifier(*state, airfield.Coord) {
-			continue
-		}
-		alive := fleetMembers(state, fleetID)
-		if len(alive) == 0 {
+	fleetFaction := ""
+	for _, member := range fleetMembers(state, fleetID) {
+		if member.Faction != "" {
+			fleetFaction = member.Faction
 			break
 		}
-		target := state.Units[alive[int(nextUint64(&state.RNGState)%uint64(len(alive)))].ID]
-		if target == nil {
-			continue
+	}
+	// 清滩：炮击自家机场上被敌人卸下的滩头物资。岸炮是自家的不会还击，也不能把自己的跑道炸了。
+	clearingBeach := fleetFaction != "" && airfield.Faction == fleetFaction
+	// 岸炮先开火：命中随机舰船，每点岸炮 30% 独立判定
+	coastalHits := 0
+	if !clearingBeach {
+		for shots := airfield.Coastal; shots > 0; shots-- {
+			if probabilityRoll(&state.RNGState) >= 30+hexHitModifier(*state, airfield.Coord) {
+				continue
+			}
+			alive := fleetMembers(state, fleetID)
+			if len(alive) == 0 {
+				break
+			}
+			target := state.Units[alive[int(nextUint64(&state.RNGState)%uint64(len(alive)))].ID]
+			if target == nil {
+				continue
+			}
+			coastalHits++
+			events = append(events, applyHits(state, []ShellHit{{AttackerID: airfield.ID, TargetID: target.ID}})...)
 		}
-		coastalHits++
-		events = append(events, applyHits(state, []ShellHit{{AttackerID: airfield.ID, TargetID: target.ID}})...)
 	}
 	// 舰队炮击机场：普通舰每次命中 -1 生命值并摧毁至多 1 架地面飞机，战列舰 -2 / 至多 2 架
 	// 舰队在开火前指定目标，同一次齐射只结算一类（规则书 513 行）：
-	// 滩头物资仍有余量就打物资，否则打机场。
+	// 敌方滩头物资仍有余量就打物资，否则打机场。
 	gunneryHits, airfieldDamage, groundLoss, coastalLoss := 0, 0, 0, 0
 	supplyHits := 0
 	bombardFaction := ""
@@ -2290,9 +2525,15 @@ func bombardFleet(state *State, fleetID string, airfield *Airfield) []EngineEven
 				continue
 			}
 			gunneryHits++
-			if shoreSupplies(*state, bombardFaction, airfield.Coord) > 0 {
-				removeShoreSupplies(state, bombardFaction, airfield.Coord, 1)
+			// 规则书 520 行：只摧毁"敌方投送"的滩头物资，绝不炸自己刚卸下的货。
+			enemyFaction := OppositeFaction(bombardFaction)
+			if shoreSupplies(*state, enemyFaction, airfield.Coord) > 0 {
+				removeShoreSupplies(state, enemyFaction, airfield.Coord, 1)
 				supplyHits++
+				continue
+			}
+			if clearingBeach {
+				// 清滩只打物资：滩头清空后炮口不再对准自家机场，避免自伤跑道和岸炮。
 				continue
 			}
 			damage, aircraft := 1, 1
@@ -2343,7 +2584,7 @@ func bombardFleet(state *State, fleetID string, airfield *Airfield) []EngineEven
 	if coastalLoss > 0 {
 		coastalText = fmt.Sprintf("，岸炮-%d", coastalLoss)
 	}
-	events = append(events, EngineEvent{Type: "shore_bombardment", Audience: "all", Text: fmt.Sprintf("%s在%s对%s岸轰：命中机场%d次（生命值-%d，摧毁地面飞机%d%s%s），岸炮反击命中%d次，舰队混乱+4", leaderName, airfield.Coord, airfield.Name, gunneryHits, airfieldDamage, groundLoss, supText, coastalText, coastalHits)})
+	events = append(events, EngineEvent{Type: "shore_bombardment", Audience: "all", Text: fmt.Sprintf("%s在%s对%s岸轰：命中%d次（机场生命值-%d，摧毁地面飞机%d%s%s），岸炮反击命中%d次，舰队混乱+4", leaderName, airfield.Coord, airfield.Name, gunneryHits, airfieldDamage, groundLoss, supText, coastalText, coastalHits)})
 	return events
 }
 
@@ -2400,44 +2641,28 @@ func resolvePortSupply(state *State) []EngineEvent {
 }
 
 // radarDetectionChance 按单位类型和距离给出"每回合发现来袭编队"的概率。
-func radarDetectionChance(unit *Unit, distance int) float64 {
-	if distance < 1 || distance > 5 {
+// 距离表来自 FactionRules：主力舰对空雷达美日不同（90/70/50/30/10 对 85/65/45/25/5），
+// 其余带雷达舰船和没雷达的单位用同一张表。
+func radarDetectionChance(state State, unit *Unit, distance int) float64 {
+	if unit == nil || distance < 1 || distance > 5 {
 		return 0
 	}
-	tables := map[string][5]float64{
-		"us_capital":  {90, 70, 50, 30, 10},
-		"jp_capital":  {85, 65, 45, 25, 5},
-		"other_radar": {60, 40, 20, 0, 0},
-		"no_radar":    {30, 0, 0, 0, 0},
-	}
+	rules := rulesFor(state, unit.Faction)
 	damage := EnsureDamage(unit)
-	key := "no_radar"
-	if unit.Card.AirRadar && !damage.AirRadarDisabled {
-		switch {
-		case IsCarrier(unit) || unit.Type == "BB":
-			key = "us_capital"
-			if unit.Faction == "B" {
-				key = "jp_capital"
-			}
-		default:
-			key = "other_radar"
-		}
+	if !unit.Card.AirRadar || damage.AirRadarDisabled {
+		return rules.NoRadar[distance-1]
 	}
-	return tables[key][distance-1]
+	if IsCarrier(unit) || unit.Type == "BB" {
+		return rules.CapitalShipRadar[distance-1]
+	}
+	return rules.OtherRadar[distance-1]
 }
 
 // airfieldRadarChance 是机场雷达的发现概率（规则书 736–742 行）。
 // 机场和舰艇不是同一张表：美军机场 100/80/60/40/20，日军机场 80/60/40/20/0。
-// 以前机场是拿舰艇表算的：美军机场套"航母/战列舰"那行、日军机场套日军主力舰那行，
-// 机场雷达比同距离的航母还弱，跟规则对不上。
-func airfieldRadarChance(faction string, distance int) float64 {
-	if distance < 1 || distance > 5 {
-		return 0
-	}
-	if faction == "B" {
-		return [5]float64{80, 60, 40, 20, 0}[distance-1]
-	}
-	return [5]float64{100, 80, 60, 40, 20}[distance-1]
+// 以前机场是拿舰艇表算的，机场雷达比同距离的航母还弱，跟规则对不上。
+func airfieldRadarChance(state State, faction string, distance int) float64 {
+	return rulesFor(state, faction).AirfieldRadarChance(distance)
 }
 
 // noRadarChance 是没装雷达的单位在 1 hex 内的发现概率（规则书 742 行）。
@@ -2455,7 +2680,7 @@ func radarDetects(state State, defender, coord string) bool {
 		if ship.Faction != defender {
 			continue
 		}
-		chance := radarDetectionChance(ship, Distance(ship.Coord, coord))
+		chance := radarDetectionChance(state, ship, Distance(ship.Coord, coord))
 		if chance <= 0 {
 			continue
 		}
@@ -2480,7 +2705,7 @@ func radarDetects(state State, defender, coord string) bool {
 			continue
 		}
 		distance := Distance(airfield.Coord, coord)
-		chance := airfieldRadarChance(airfield.Faction, distance)
+		chance := airfieldRadarChance(state, airfield.Faction, distance)
 		if !airfield.Radar {
 			chance = applyWeatherToDetection(noRadarChance(distance), weatherAt(state.Map, coord))
 		}

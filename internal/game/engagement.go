@@ -60,12 +60,15 @@ func engageChanceAgainstFleet(state State, faction, coord, fleetID, fleetCoord s
 	}
 	chance += 5 * float64(len(aircraft))
 	for _, aircraft := range aircraft {
-		// 日军攻击队剩余航程小于"距离返航目的地+2"时成功率 -50%
-		if aircraft.Faction == "B" {
-			if mother := state.Units[aircraft.CarrierID]; mother != nil && aircraft.Range() < Distance(aircraft.Coord, mother.Coord)+2 {
-				chance -= 50
-				break
-			}
+		// 日军攻击队剩余航程小于"距离返航目的地+2"时成功率 -50%：
+		// 这是"日军指挥官在油量紧张时更容易慌"的剧本规则，从 FactionRules 取。
+		penalty := rulesFor(state, aircraft.Faction).ShortRangeEngagePenalty
+		if penalty <= 0 {
+			continue
+		}
+		if mother := state.Units[aircraft.CarrierID]; mother != nil && aircraft.Range() < Distance(aircraft.Coord, mother.Coord)+2 {
+			chance -= penalty
+			break
 		}
 	}
 	if chance < 0 {

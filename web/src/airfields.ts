@@ -66,6 +66,8 @@ export function airfieldContactStatus(airfield: AirfieldContact): GroundAirStatu
     light_aa: airfield.light_aa ?? 0,
     coastal: airfield.coastal ?? 0,
     hangar_used: airfield.hangar_used ?? 0,
+    hangar_capacity: airfield.hangar_capacity ?? 0,
+    enemy_supplies: airfield.enemy_supplies ?? 0,
     aircraft: [],
   }
 }

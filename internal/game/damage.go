@@ -352,10 +352,7 @@ func applyShellHit(state *State, hit ShellHit) []EngineEvent {
 	if IsCarrier(target) && probabilityRoll(&state.RNGState) < 75 {
 		damage := EnsureDamage(target)
 		damage.DeckDamaged = true
-		destroyChance := 1.0
-		if state.Doctrines[target.Faction] == "japan" {
-			destroyChance = 10
-		}
+		destroyChance := rulesFor(*state, target.Faction).DeckDestroyChance
 		if probabilityRoll(&state.RNGState) < destroyChance {
 			damage.DeckDestroyed = true
 			damage.DeckDamaged = false

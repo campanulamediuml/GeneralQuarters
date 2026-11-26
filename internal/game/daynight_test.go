@@ -77,53 +77,68 @@ func TestLoopingAircraftRecallBeforeNight(t *testing.T) {
 	}
 }
 
-// 珊瑚海时间线：天黑之后空中不许还有飞机。
-// 够得着母舰（2 hex 内，一回合航程）的当场强制着舰并按夜间风险判定；
-// 够不着的直接判损失。这样"天黑前一回合降落、降落占一回合"的计划才有意义。
-func TestNightLossResolvesAirborneAircraft(t *testing.T) {
+// 天黑不是损失：入夜那一刻还在天上的算子继续飞，返航落地时才逐个判夜间摔毁。
+// 以前这里一刀切"天黑还在天上=坠海"，远程打击波会整波凭空消失。
+func TestNightfallKeepsAircraftFlying(t *testing.T) {
 	state := State{Turn: 24, DayHours: 12, TurnsPerDay: 72}
-	state.Timeline = &Timeline{TurnMinutes: 20, ServiceStart: "04:00", LaunchStart: "05:20", RecoverBy: "19:40", NightLoss: true}
+	state.Timeline = &Timeline{TurnMinutes: 20, ServiceStart: "04:00", LaunchStart: "05:20", RecoverBy: "19:40"}
 	carrier := &Unit{ID: "cv", Faction: "A", Name: "列克星敦", Coord: "0505", Card: ShipCard{HangarCapacity: 8}}
 	carrier.Deck = &FlightDeck{Length: 4, Elevators: []*AircraftElevator{{ID: "e1", Capacity: 2, Status: "idle"}}}
 	state.Units = map[string]*Unit{"cv": carrier}
 	state.Aircraft = map[string]*AirUnit{
-		// 就在母舰上空：强制着舰（夜间 70% 摔毁，可能活也可能死，但不能还在天上）。
+		// 就在母舰上空：落地要过夜间 70% 判定，但不会被入夜直接删掉。
 		"homebound": {ID: "homebound", CarrierID: "cv", Faction: "A", Model: "SBD", Status: "attack", Coord: "0505", MaxRange: 10, RemainingRange: 5},
-		// 十几格外：天黑就是回不去。
-		"lost": {ID: "lost", CarrierID: "cv", Faction: "A", Model: "SBD", Status: "attack", Coord: "0808", MaxRange: 10, RemainingRange: 5},
+		// 十几格外：继续飞，燃油与落地判定照常结算。
+		"far":  {ID: "far", CarrierID: "cv", Faction: "A", Model: "SBD", Status: "attack", Coord: "0808", MaxRange: 10, RemainingRange: 5},
 		"deck": {ID: "deck", CarrierID: "cv", Faction: "A", Model: "F4F", Status: "hangar"},
 	}
-	UpdateDayNight(&state)
+	events := UpdateDayNight(&state)
 	if !state.Night {
 		t.Fatalf("第 24 回合应入夜：%.2f", clockAt(state))
 	}
-	if state.Aircraft["lost"] != nil {
-		t.Fatal("天黑时还在远处空中的算子应当判损失")
-	}
-	for _, aircraft := range state.Aircraft {
-		if airborne(aircraft) {
-			t.Fatalf("天黑之后不应还有算子在空中：%s status=%s", aircraft.ID, aircraft.Status)
+	for _, id := range []string{"homebound", "far", "deck"} {
+		if state.Aircraft[id] == nil {
+			t.Fatalf("%s 在天黑时被凭空删掉了", id)
 		}
 	}
-	if state.Aircraft["deck"] == nil {
-		t.Fatal("机库里的算子不该被夜间规则带走")
+	for _, event := range events {
+		if event.Type == "air_destroyed" || event.Type == "air_night_lost" {
+			t.Fatalf("入夜不该判任何损失：%s：%s", event.Type, event.Text)
+		}
 	}
 }
 
-// 没配 timeline 的剧本不做夜间直接坠毁：仍然走降落判定。
-func TestNightLossNeedsTimeline(t *testing.T) {
-	state := State{Turn: 24, DayHours: 12, TurnsPerDay: 72}
-	state.Aircraft = map[string]*AirUnit{"late": {ID: "late", Faction: "A", Model: "SBD", Status: "attack", Coord: "0505"}}
-	UpdateDayNight(&state)
-	if state.Aircraft["late"] == nil {
-		t.Fatal("没有 timeline.night_loss 时不应直接判坠海")
+// 陆基机夜间落地要过 20% 摔毁判定；舰载机是 70%。两边都得判，不能只有航母那一套。
+func TestNightLandingRiskAppliesToAirfields(t *testing.T) {
+	state := State{Turn: 1, Night: true, RNGState: 5}
+	airfield := &Airfield{ID: "af", Faction: "A", Type: AirfieldLarge, Coord: "0505", Runways: 3, Strength: 15}
+	state.Airfields = map[string]*Airfield{"af": airfield}
+	state.GroundAir = map[string]*AirfieldAirUnit{"b17": {
+		ID: "b17", AirfieldID: "af", Faction: "A", Model: "B-17 空中堡垒", Kind: "heavy_bomber",
+		Status: "attack", Coord: "0505", MaxRange: 37, RemainingRange: 20,
+	}}
+	crashes := 0
+	for attempt := 0; attempt < 200; attempt++ {
+		plane := &AirfieldAirUnit{ID: "p", AirfieldID: "af", Faction: "A", Model: "B-17 空中堡垒", Kind: "heavy_bomber",
+			Status: "attack", Coord: "0505", MaxRange: 37, RemainingRange: 20}
+		state.GroundAir["p"] = plane
+		events := landGroundAircraft(&state, plane, airfield)
+		if state.GroundAir["p"] == nil {
+			crashes++
+			if len(events) == 0 || events[len(events)-1].Type != "night_landing_crash" {
+				t.Fatalf("摔毁时没有 night_landing_crash 事件：%+v", events)
+			}
+		}
+	}
+	if crashes == 0 || crashes >= 200 {
+		t.Fatalf("夜间降落机场 20%% 摔毁判定没有生效：200 次里摔了 %d 次", crashes)
 	}
 }
 
 // 时间线窗口：04:00 之前不整备，05:20 之前不放飞，19:40 之后算夜间。
 func TestTimelineWindows(t *testing.T) {
 	state := State{Turn: 1, DayHours: 0, TurnsPerDay: 72}
-	state.Timeline = &Timeline{TurnMinutes: 20, ServiceStart: "04:00", LaunchStart: "05:20", RecoverBy: "19:40", NightLoss: true}
+	state.Timeline = &Timeline{TurnMinutes: 20, ServiceStart: "04:00", LaunchStart: "05:20", RecoverBy: "19:40"}
 	cases := []struct {
 		turn     int
 		clock    string

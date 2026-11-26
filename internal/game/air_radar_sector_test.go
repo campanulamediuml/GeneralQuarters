@@ -30,16 +30,17 @@ func TestReconAirCoverageRespectsSector(t *testing.T) {
 
 // 回归：机场雷达用机场自己的表，不能套舰艇表。
 func TestAirfieldRadarTable(t *testing.T) {
-	if got := airfieldRadarChance("A", 1); got != 100 {
+	state := State{Doctrines: map[string]string{"A": "us", "B": "japan"}}
+	if got := airfieldRadarChance(state, "A", 1); got != 100 {
 		t.Fatalf("美军机场 1 hex 发现率应为 100%%，实际 %.0f", got)
 	}
-	if got := airfieldRadarChance("A", 5); got != 20 {
+	if got := airfieldRadarChance(state, "A", 5); got != 20 {
 		t.Fatalf("美军机场 5 hex 发现率应为 20%%，实际 %.0f", got)
 	}
-	if got := airfieldRadarChance("B", 5); got != 0 {
+	if got := airfieldRadarChance(state, "B", 5); got != 0 {
 		t.Fatalf("日军机场 5 hex 发现率应为 0%%，实际 %.0f", got)
 	}
-	if got := airfieldRadarChance("B", 1); got != 80 {
+	if got := airfieldRadarChance(state, "B", 1); got != 80 {
 		t.Fatalf("日军机场 1 hex 发现率应为 80%%，实际 %.0f", got)
 	}
 }

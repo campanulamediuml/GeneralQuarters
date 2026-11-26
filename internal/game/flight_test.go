@@ -52,15 +52,15 @@ func TestRadarDetectionChanceTable(t *testing.T) {
 	state := sandboxState(t)
 	cv := state.Units["a2-cv-01"]
 	for distance, want := range map[int]float64{1: 90, 2: 70, 3: 50, 4: 30, 5: 10} {
-		if got := radarDetectionChance(cv, distance); got != want {
+		if got := radarDetectionChance(state, cv, distance); got != want {
 			t.Fatalf("航母雷达 %d hex 发现率应为 %.0f，实际 %.0f", distance, want, got)
 		}
 	}
 	dd := state.Units["a-dd-01"]
-	if got := radarDetectionChance(dd, 1); got != 30 {
+	if got := radarDetectionChance(state, dd, 1); got != 30 {
 		t.Fatalf("无雷达单位 1 hex 发现率应为 30，实际 %.0f", got)
 	}
-	if got := radarDetectionChance(dd, 2); got != 0 {
+	if got := radarDetectionChance(state, dd, 2); got != 0 {
 		t.Fatalf("无雷达单位 2 hex 应为 0，实际 %.0f", got)
 	}
 }

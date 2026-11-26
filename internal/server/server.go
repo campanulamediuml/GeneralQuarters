@@ -78,8 +78,11 @@ type joinRoomRequest struct {
 }
 
 type commandRequest struct {
-	CommandID     string            `json:"command_id"`
-	BaseVersion   int64             `json:"base_version"`
+	CommandID string `json:"command_id"`
+	// BaseTurn：客户端提交这条命令时看到的回合号。只用来拒绝"回合已经结算"的过期提交；
+	// 同回合内的重复操作一律接受（后写的覆盖先写的），不需要也不应该比对版本号。
+	// 0 表示没带（老客户端/脚本），不做回合校验。
+	BaseTurn      int               `json:"base_turn"`
 	Type          string            `json:"type"`
 	UnitID        string            `json:"unit_id"`
 	TargetUnitID  string            `json:"target_unit_id"`
@@ -102,8 +105,9 @@ type commandRequest struct {
 }
 
 type readyRequest struct {
-	BaseVersion int64 `json:"base_version"`
-	Ready       bool  `json:"ready"`
+	// BaseTurn 见 commandRequest：只拦"回合已结算"的过期 ready，不比对版本号。
+	BaseTurn int  `json:"base_turn"`
+	Ready    bool `json:"ready"`
 }
 
 type roomResponse struct {
@@ -250,7 +254,7 @@ func (s *Server) joinRoom(w http.ResponseWriter, r *http.Request) {
 }
 
 // commandFingerprint 把一条命令的可识别字段拼成指纹：用来区分"同一命令重试"和
-// "复用 command_id 的另一条命令"。只取业务字段，不含 command_id / base_version。
+// "复用 command_id 的另一条命令"。只取业务字段，不含 command_id / base_turn。
 func commandFingerprint(request commandRequest) string {
 	parts := []string{
 		request.Type, request.UnitID, request.TargetUnitID, request.AircraftID,
@@ -296,8 +300,11 @@ func (s *Server) handleCommand(w http.ResponseWriter, r *http.Request, roomID st
 		writeError(w, http.StatusConflict, "本回合已就绪，操作已锁定：双方就绪后由服务器统一结算，下一回合才能再操作")
 		return
 	}
-	if room.Version != request.BaseVersion {
-		writeError(w, http.StatusConflict, "状态已更新，请刷新后重试")
+	// 同回合内的操作本来就该互相覆盖：订单按 (room, turn, player, unit) 落库，后写的顶掉先写的。
+	// 唯一必须拒绝的是"回合已经结算完"——那说明这条命令是基于上一回合的战场做的决定，
+	// 落到新回合会错误地执行（比如把已经开出去的舰再挪一次）。
+	if request.BaseTurn > 0 && request.BaseTurn != room.Turn {
+		writeError(w, http.StatusConflict, "本回合已经结算：请基于当前回合重新操作")
 		return
 	}
 	order := game.Order{Type: request.Type, UnitID: request.UnitID, TargetUnitID: request.TargetUnitID, AircraftID: request.AircraftID, AircraftIDs: request.AircraftIDs, TaskID: request.TaskID, Coord: game.NormalizeToken(request.Coord), TargetFleetID: request.TargetFleetID, Heading: strings.ToUpper(request.Heading), SectorWidth: request.SectorWidth, Assignments: request.Assignments, TaskKind: strings.ToLower(request.TaskKind), Loadout: strings.ToLower(request.Loadout), Disperse: request.Disperse, Engagement: strings.ToLower(request.Engagement), Cycle: request.Cycle}
@@ -344,7 +351,7 @@ func (s *Server) handleCommand(w http.ResponseWriter, r *http.Request, roomID st
 		default:
 			events = game.ApplyImmediateOrganization(&room.State, order)
 		}
-		response, _ := json.Marshal(map[string]any{"accepted": true, "command_id": request.CommandID, "version": room.Version + 1})
+		response, _ := json.Marshal(map[string]any{"accepted": true, "command_id": request.CommandID, "turn": room.Turn, "version": room.Version + 1})
 		room, err = s.store.ApplyImmediate(r.Context(), room, player.ID, request.CommandID, fingerprint, string(response), room.State, events)
 		if err != nil {
 			writeError(w, http.StatusConflict, "命令结算失败："+err.Error())
@@ -382,7 +389,7 @@ func pendingRadioTask(ctx context.Context, s *store.Store, roomID string, turn i
 
 // savePlannedOrder 把一条待结算命令存进 orders 表（重复提交同一条移动不会重复记账）。
 func (s *Server) savePlannedOrder(w http.ResponseWriter, r *http.Request, room store.Room, roomID string, player store.Player, request commandRequest, order game.Order) {
-	response, _ := json.Marshal(map[string]any{"accepted": true, "command_id": request.CommandID, "version": room.Version + 1})
+	response, _ := json.Marshal(map[string]any{"accepted": true, "command_id": request.CommandID, "turn": room.Turn, "version": room.Version + 1})
 	// 先推进版本（commands 表在这里写幂等响应），再落待结算命令；顺序反了会让幂等重试撞上主键冲突。
 	room, err := s.store.BumpVersion(r.Context(), room, player.ID, request.CommandID, commandFingerprint(request), string(response))
 	if err != nil {
@@ -411,6 +418,71 @@ func resolveRoomTurn(state *game.State, orders []game.Order) (events []game.Engi
 	return game.ResolveOrders(state, orders)
 }
 
+// StartTurnReconciler 周期巡检"所有玩家都已 ready、房间却没动"的对局。
+// 重启会把 ready 标记留在库里，但不会再有新的 ready 请求触发结算，
+// handleReady 里的结算逻辑永远等不到第二次触发——T108 卡住就是这个原因。
+func (s *Server) StartTurnReconciler(ctx context.Context) {
+	go func() {
+		ticker := time.NewTicker(20 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				s.settleStalledRooms(ctx)
+			}
+		}
+	}()
+}
+
+// stalledReadyAfter 是允许的静止时间：正常结算就在 ready 请求里完成，
+// 超过这个时间还没推进，说明触发结算的请求已经丢了。
+const stalledReadyAfter = 45 * time.Second
+
+func (s *Server) settleStalledRooms(ctx context.Context) {
+	rooms, err := s.store.StalledReadyRooms(ctx, stalledReadyAfter)
+	if err != nil {
+		return
+	}
+	for _, room := range rooms {
+		roomID := room.ID
+		s.submitRoom(roomID, func() { s.resolveStalledRoom(ctx, roomID) })
+	}
+}
+
+func (s *Server) resolveStalledRoom(ctx context.Context, roomID string) {
+	room, err := s.store.Room(ctx, roomID)
+	if err != nil || room.Status != "running" || room.State.Outcome != nil {
+		return
+	}
+	players, err := s.store.Players(ctx, roomID)
+	if err != nil || len(players) == 0 || (!room.Solo && len(players) < 2) {
+		return
+	}
+	for _, player := range players {
+		if !player.Ready {
+			return
+		}
+	}
+	records, err := s.store.Orders(ctx, roomID, room.Turn, "")
+	if err != nil {
+		return
+	}
+	orders := make([]game.Order, 0, len(records))
+	for _, record := range records {
+		orders = append(orders, record.Order)
+	}
+	room.State.Turn = room.Turn
+	events := resolveRoomTurn(&room.State, orders)
+	room.State.Turn = room.Turn + 1
+	resolved, err := s.store.Resolve(ctx, room, room.State, events)
+	if err != nil {
+		return
+	}
+	log.Printf("房间 %s 双方已 ready 但停在第 %d 回合，巡检已自动结算", roomID, room.Turn)
+	s.hub.broadcast(roomID, "turn_resolved", resolved.Version)
+}
 func (s *Server) handleReady(w http.ResponseWriter, r *http.Request, roomID string, player store.Player) {
 	var request readyRequest
 	if err := decodeJSON(r, &request); err != nil {
@@ -422,8 +494,8 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request, roomID stri
 		writeError(w, http.StatusNotFound, "房间不存在")
 		return
 	}
-	if room.Version != request.BaseVersion {
-		writeError(w, http.StatusConflict, "状态已更新，请刷新后重试")
+	if request.BaseTurn > 0 && request.BaseTurn != room.Turn {
+		writeError(w, http.StatusConflict, "本回合已经结算：请基于当前回合重新操作")
 		return
 	}
 	// 就绪必须不可逆：ready 之后不能再改主意，也不能用 ready:false 解锁。
@@ -524,22 +596,23 @@ func (s *Server) writeState(w http.ResponseWriter, r *http.Request, roomID strin
 		"room_id": room.ID, "status": room.Status, "turn": room.Turn, "version": room.Version,
 		"scenario": map[string]any{"id": room.State.ScenarioID, "name": room.State.ScenarioName, "description": room.State.Description},
 		"map":      room.State.Map, "units": game.VisibleUnits(room.State, player.Faction), "fleets": game.VisibleFleets(room.State, player.Faction),
-		"aviation":        game.VisibleAviation(room.State, player.Faction),
-		"airfields":       game.VisibleAirfields(room.State, player.Faction),
-		"ground_air":      game.VisibleGroundAir(room.State, player.Faction),
-		"ground_tasks":    game.GroundAviationView(room.State, player.Faction).Tasks,
-		"ground_aircraft": game.GroundAircraftView(room.State, player.Faction),
-		"air_combats":     game.VisibleAirCombats(room.State, player.Faction),
-		"fleet_stays":     game.VisibleFleetStays(room.State, player.Faction),
-		"fleet_sessions":  game.VisibleFleetSessions(room.State, player.Faction),
-		"shore_supplies":  game.VisibleShoreSupplies(room.State, player.Faction),
-		"radio_used":      game.VisibleRadioUsage(room.State, player.Faction),
-		"radio_tasks":     game.AirborneRadioTasks(room.State, player.Faction),
-		"wind":            game.VisibleWind(room.State, player.Faction),
-		"night":           room.State.Night,
-		"clock":           game.Clock(room.State),
-		"enemy_air":       game.VisibleEnemyAir(room.State, player.Faction),
-		"losses":          game.VisibleLosses(room.State, player.Faction),
+		"aviation":             game.VisibleAviation(room.State, player.Faction),
+		"airfields":            game.VisibleAirfields(room.State, player.Faction),
+		"ground_air":           game.VisibleGroundAir(room.State, player.Faction),
+		"ground_tasks":         game.GroundAviationView(room.State, player.Faction).Tasks,
+		"ground_aircraft":      game.GroundAircraftView(room.State, player.Faction),
+		"air_combats":          game.VisibleAirCombats(room.State, player.Faction),
+		"fleet_stays":          game.VisibleFleetStays(room.State, player.Faction),
+		"fleet_sessions":       game.VisibleFleetSessions(room.State, player.Faction),
+		"shore_supplies":       game.VisibleShoreSupplies(room.State, player.Faction),
+		"enemy_shore_supplies": game.VisibleEnemyShoreSupplies(room.State, player.Faction),
+		"radio_used":           game.VisibleRadioUsage(room.State, player.Faction),
+		"radio_tasks":          game.AirborneRadioTasks(room.State, player.Faction),
+		"wind":                 game.VisibleWind(room.State, player.Faction),
+		"night":                room.State.Night,
+		"clock":                game.Clock(room.State),
+		"enemy_air":            game.VisibleEnemyAir(room.State, player.Faction),
+		"losses":               game.VisibleLosses(room.State, player.Faction),
 		// scores 是战果分：击沉/击落 + 已完成的投送目标；剧本用 score 目标时按它判定。
 		"scores":     game.VictoryPoints(room.State),
 		"outcome":    room.State.Outcome,

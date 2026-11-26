@@ -88,7 +88,7 @@ func TestWebSocketRPCUsesRoomAPIAndEnforcesRoomScope(t *testing.T) {
 	if denied.Status != http.StatusForbidden {
 		t.Fatalf("spectate RPC status=%d", denied.Status)
 	}
-	_ = conn.WriteJSON(wsRequest{Type: "rpc_request", ID: "ready", Method: http.MethodPost, Path: "/api/v1/rooms/" + created.RoomID + "/ready", Body: json.RawMessage("{\"base_version\":1,\"ready\":true}")})
+	_ = conn.WriteJSON(wsRequest{Type: "rpc_request", ID: "ready", Method: http.MethodPost, Path: "/api/v1/rooms/" + created.RoomID + "/ready", Body: json.RawMessage("{\"ready\":true}")})
 	ready := readWSResponse(t, conn, "ready")
 	if ready.Status != http.StatusOK {
 		t.Fatalf("ready status=%d body=%s", ready.Status, ready.Body)
@@ -123,7 +123,7 @@ func TestWebSocketSpectatorSubscribesByRoomAndToken(t *testing.T) {
 		t.Fatalf("not a spectator view: %#v", view["spectator"])
 	}
 	var readyView testView
-	if status := host.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": 1, "ready": true}, &readyView); status != http.StatusOK {
+	if status := host.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &readyView); status != http.StatusOK {
 		t.Fatalf("ready status %d", status)
 	}
 	_ = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
@@ -175,13 +175,13 @@ func TestWebSocketPlayerReceivesTurnResolved(t *testing.T) {
 	hostConn := dialTestWS(t, host, "/ws?room_id="+created.RoomID)
 	guestConn := dialTestWS(t, guest, "/ws?room_id="+created.RoomID)
 
-	if err := hostConn.WriteJSON(wsRequest{Type: "rpc_request", ID: "ready-host", Method: http.MethodPost, Path: "/api/v1/rooms/" + created.RoomID + "/ready", Body: json.RawMessage(`{"base_version":1,"ready":true}`)}); err != nil {
+	if err := hostConn.WriteJSON(wsRequest{Type: "rpc_request", ID: "ready-host", Method: http.MethodPost, Path: "/api/v1/rooms/" + created.RoomID + "/ready", Body: json.RawMessage(`{"ready":true}`)}); err != nil {
 		t.Fatal(err)
 	}
 	if response := readWSResponse(t, hostConn, "ready-host"); response.Status != http.StatusOK {
 		t.Fatalf("host ready status=%d body=%s", response.Status, response.Body)
 	}
-	if status := guest.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": 1, "ready": true}, nil); status != http.StatusOK {
+	if status := guest.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, nil); status != http.StatusOK {
 		t.Fatalf("guest ready status %d", status)
 	}
 

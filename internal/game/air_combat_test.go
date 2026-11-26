@@ -122,8 +122,11 @@ func TestAmmunitionDepletionThresholds(t *testing.T) {
 		{"A", 5, 1, 10}, {"A", 3, 1, 25}, {"A", 2, 1, 50}, {"A", 1, 2, 75},
 		{"B", 6, 1, 10}, {"B", 4, 1, 25}, {"B", 2, 1, 50}, {"B", 1, 2, 75},
 	}
+	// 阵营 A 用美军曲线、B 用日军曲线：国家差异全部来自 FactionRules。
+	doctrine := map[string]string{"A": "us", "B": "japan"}
 	for _, test := range cases {
-		if got := ammunitionDepletionChance(test.faction, test.own, test.opposing); got != test.want {
+		state := State{Doctrines: doctrine}
+		if got := ammunitionDepletionChance(state, test.faction, test.own, test.opposing); got != test.want {
 			t.Fatalf("%s弹药比例%d/%d=%v，期望%v", test.faction, test.own, test.opposing, got, test.want)
 		}
 	}

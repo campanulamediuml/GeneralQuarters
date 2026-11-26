@@ -2,6 +2,27 @@ package game
 
 import "testing"
 
+// 防守方要能看到敌人卸在自家机场上的滩头物资：看不见数量，清滩机制就只有上帝视角能玩。
+func TestVisibleEnemyShoreSuppliesOnOwnAirfield(t *testing.T) {
+	state := coralCombatState(t)
+	airfield := state.Airfields["af-a-moresby"]
+	state.ShoreSupplies = map[string]int{
+		"B|" + airfield.Coord: 20,
+		"A|" + airfield.Coord: 3,
+		"B|9999":              5,
+	}
+	got := VisibleEnemyShoreSupplies(state, "A")
+	if got[airfield.Coord] != 20 || len(got) != 1 {
+		t.Fatalf("防守方应只看到自家机场上的敌方物资：%+v", got)
+	}
+	if own := VisibleShoreSupplies(state, "A"); own[airfield.Coord] != 3 {
+		t.Fatalf("自家滩头物资应保持原样：%+v", own)
+	}
+	if enemy := VisibleEnemyShoreSupplies(state, "B"); len(enemy) != 0 {
+		t.Fatalf("进攻方不该靠这个字段看到别处的物资：%+v", enemy)
+	}
+}
+
 // TestShoreBombardmentRequiresStayAndNoEnemy 岸轰条件：停留满 1 回合、有主炮、同 hex 无敌舰队、无混乱。
 func TestShoreBombardmentRequiresStayAndNoEnemy(t *testing.T) {
 	state := sandboxState(t)
@@ -27,6 +48,38 @@ func TestShoreBombardmentRequiresStayAndNoEnemy(t *testing.T) {
 	state.Units["b-cv-01"].Coord = airfield.Coord
 	if canBombard(state, leader) != nil {
 		t.Fatal("同 hex 有敌舰队时不能岸轰")
+	}
+}
+
+// 水上飞机基地锚在海上，没有跑道和固定设施可炸：舰队停在上面也不能岸轰。
+func TestSeaplaneBaseImmuneToShoreBombardment(t *testing.T) {
+	state := coralCombatState(t)
+	base := state.Airfields["af-b-rabaul-seaplane"]
+	if base == nil || base.Type != AirfieldSeaplane {
+		t.Fatalf("缺少拉包尔水上飞机基地：%+v", base)
+	}
+	moveFleet := func(coord string) {
+		for _, unit := range state.Units {
+			if FleetKey(unit) == "TF44" {
+				unit.Coord = coord
+			}
+		}
+	}
+	moveFleet(base.Coord)
+	state.FleetStays = map[string]string{"TF44": base.Coord}
+	leader := state.Units["a-cl-01"]
+	if leader == nil {
+		t.Fatal("找不到 TF44 旗舰")
+	}
+	if got := canBombard(state, leader); got != nil {
+		t.Fatalf("水上飞机基地不应成为岸轰目标，实际选中 %s", got.ID)
+	}
+	// 同一支舰队挪到陆上机场格就该能轰，证明上面返回 nil 不是坐标不合法造成的。
+	airfield := state.Airfields["af-b-rabaul"]
+	moveFleet(airfield.Coord)
+	state.FleetStays = map[string]string{"TF44": airfield.Coord}
+	if got := canBombard(state, leader); got == nil || got.ID != airfield.ID {
+		t.Fatalf("陆上机场应可岸轰，实际 %+v", got)
 	}
 }
 
@@ -173,5 +226,52 @@ func TestDayLandingOnCarrierIsSafe(t *testing.T) {
 		if _, still := state.Aircraft[aircraft.ID]; !still {
 			t.Fatalf("白天降落不应摔毁（seed=%d）", seed)
 		}
+	}
+}
+
+// 回归：舰队在敌方机场卸完货后再岸轰，不能把自己投送的滩头物资当成敌方物资打掉。
+// 规则书 520 行只允许摧毁"敌方投送"的滩头物资；旧实现按炮击方自己的阵营查库存，
+// 于是日军在莫尔兹比卸下的 6 点货被自己一轮齐射清空。
+func TestShoreBombardmentDoesNotDestroyOwnSupplies(t *testing.T) {
+	state := sandboxState(t)
+	airfield := state.Airfields["af-b-sentry"]
+	for _, unit := range state.Units {
+		if FleetKey(unit) == "TG-A" {
+			unit.Coord = airfield.Coord
+			unit.Confusion = 0
+		}
+	}
+	state.FleetStays = map[string]string{"TG-A": airfield.Coord}
+	key := "A|" + airfield.Coord
+	state.ShoreSupplies = map[string]int{key: 6}
+	state.RNGState = 52
+	resolveShoreBombardment(&state)
+	if got := state.ShoreSupplies[key]; got != 6 {
+		t.Fatalf("岸轰摧毁了自己投送的滩头物资：期望 6，实际 %d", got)
+	}
+}
+
+// 清滩：敌人在自家机场卸下滩头物资，守方舰队可以岸轰滩头清掉它们，
+// 而且这一轮只打物资，不会炸自己的跑道和岸炮。
+func TestShoreBombardmentClearsEnemySuppliesOnOwnAirfield(t *testing.T) {
+	state := sandboxState(t)
+	port := state.Airfields["af-a-lighthouse"]
+	for _, unit := range state.Units {
+		if FleetKey(unit) == "TG-A" {
+			unit.Coord = port.Coord
+			unit.Confusion = 0
+		}
+	}
+	state.FleetStays = map[string]string{"TG-A": port.Coord}
+	key := "B|" + port.Coord
+	state.ShoreSupplies = map[string]int{key: 6}
+	state.RNGState = 52
+	strength := port.Strength
+	resolveShoreBombardment(&state)
+	if got := state.ShoreSupplies[key]; got >= 6 {
+		t.Fatalf("守方岸轰应清掉敌方滩头物资：期望 <6，实际 %d", got)
+	}
+	if port.Strength != strength {
+		t.Fatalf("清滩不应损坏自家机场：%d -> %d", strength, port.Strength)
 	}
 }

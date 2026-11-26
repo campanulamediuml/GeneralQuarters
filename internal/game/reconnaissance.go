@@ -68,53 +68,124 @@ type sectorPoint struct {
 // 这就是实际会被判定的搜索范围：searchReconStep 每走一步扫掉「当前距离圈 + 下一距离圈」
 // 落在本扇面内的全部格子，所以扇面宽度是真的覆盖差异，不是只影响概率的装饰。
 func ReconSectorHexes(gameMap MapDefinition, origin, heading string, width, radius int) []string {
-	heading = strings.ToUpper(heading)
-	axis, ok := reconHeadings[heading]
-	originRow, originCol, err := ParseCoord(origin)
-	if !ok || err != nil || (width != 60 && width != 120) || radius < 1 {
-		return []string{}
-	}
-	originX, originY := hexCenter(originRow, originCol)
-	hexes := []string{}
-	for row := 1; row <= gameMap.Rows; row++ {
-		for col := 1; col <= gameMap.Cols; col++ {
-			coord := Coord(row, col)
-			if coord == origin || Distance(origin, coord) > radius {
-				continue
-			}
-			x, y := hexCenter(row, col)
-			if sectorIntersectsHex(sectorPoint{x - originX, y - originY}, axis, float64(width)) {
-				hexes = append(hexes, coord)
-			}
-		}
+	scan := reconSectorScan(gameMap, origin, heading, width, radius)
+	hexes := make([]string, len(scan))
+	for index, item := range scan {
+		hexes[index] = item.coord
 	}
 	return hexes
 }
 
 func ReconRingHexes(gameMap MapDefinition, origin, heading string, width, ring int) []string {
-	all := ReconSectorHexes(gameMap, origin, heading, width, ring)
-	ringHexes := make([]string, 0, len(all))
-	for _, coord := range all {
-		if Distance(origin, coord) == ring {
-			ringHexes = append(ringHexes, coord)
+	outer := reconSectorScan(gameMap, origin, heading, width, ring)
+	ringHexes := make([]string, 0, len(outer))
+	for _, item := range outer {
+		if item.ring == ring {
+			ringHexes = append(ringHexes, item.coord)
 		}
 	}
 	return ringHexes
 }
 
+// reconHex 是扇面扫描的一个结果：格子坐标 + 它落在第几圈。
+type reconHex struct {
+	coord string
+	ring  int
+}
+
+// reconSectorScan 一次扫完整张地图，返回扇面内（1 ≤ 距离 ≤ radius）的全部格子。
+// 输出顺序是行优先，和以前逐格扫地图的顺序一致。
+//
+// 以前每要一个距离圈就调一次 ReconSectorHexes，而它会把整张地图（珊瑚海 52×64）
+// 从头扫一遍；UI 画侦察扇面又要把 1..radius 每一圈都取出来，于是一张侦察牌就是
+// 十几次全图扫描。而每扫一格都要 Sprintf 一次坐标、再 Atoi 解析回来算距离——
+// 观战快照 55 ms 里 68% 花在这上面。现在坐标和距离都用整数算，
+// 只有真的落进扇面的格子才生成坐标串。
+func reconSectorScan(gameMap MapDefinition, origin, heading string, width, radius int) []reconHex {
+	heading = strings.ToUpper(heading)
+	axis, ok := reconHeadings[heading]
+	originRow, originCol, err := ParseCoord(origin)
+	if !ok || err != nil || (width != 60 && width != 120) || radius < 1 {
+		return nil
+	}
+	originX, originY := hexCenter(originRow, originCol)
+	// 候选格只有"以 origin 为心、半径 radius 的圆盘"，不用扫整张地图：
+	// 六向移动里行列每步最多变 1，所以半径 R 的圆盘一定落在 ±R 的行列方框内。
+	rowLo, rowHi := originRow-radius, originRow+radius
+	colLo, colHi := originCol-radius, originCol+radius
+	if rowLo < 1 {
+		rowLo = 1
+	}
+	if colLo < 1 {
+		colLo = 1
+	}
+	if rowHi > gameMap.Rows {
+		rowHi = gameMap.Rows
+	}
+	if colHi > gameMap.Cols {
+		colHi = gameMap.Cols
+	}
+	if rowHi > 99 {
+		rowHi = 99
+	}
+	if colHi > 99 {
+		colHi = 99
+	}
+	// 角向预剪：格心到原点的连线离扇面轴线超过「半张角 + 该格自身的半张角」时，
+	// 整格都不可能碰到扇面，连几何判定都不用做。
+	// 判据用点积写，避免每格一次 atan2：设轴单位向量 u、半角余弦 c，
+	// 点在扇面内等价于 dot(p,u) >= |p|·c；六边形内任一点离格心不超过 1，
+	// 于是 dot+1 < (|p|-1)·c 时整格必然在外。
+	axisRadians := axis * math.Pi / 180
+	axisX, axisY := math.Cos(axisRadians), math.Sin(axisRadians)
+	halfCos := math.Cos(float64(width) / 2 * math.Pi / 180)
+	hexes := make([]reconHex, 0, 3*radius*(radius+1))
+	for row := rowLo; row <= rowHi; row++ {
+		for col := colLo; col <= colHi; col++ {
+			ring := distanceRC(originRow, originCol, row, col)
+			if ring < 1 || ring > radius {
+				continue
+			}
+			x, y := hexCenter(row, col)
+			dx, dy := x-originX, y-originY
+			distance := math.Hypot(dx, dy)
+			if distance > 2 && dx*axisX+dy*axisY+1 < (distance-1)*halfCos {
+				continue
+			}
+			if !sectorIntersectsHex(sectorPoint{dx, dy}, axis, float64(width)) {
+				continue
+			}
+			hexes = append(hexes, reconHex{coord: Coord(row, col), ring: ring})
+		}
+	}
+	return hexes
+}
+
+const hexSqrt3 = 1.7320508075688772
+
 func hexCenter(row, col int) (float64, float64) {
-	x := math.Sqrt(3) * (float64(col) - 0.5)
+	x := hexSqrt3 * (float64(col) - 0.5)
 	if row%2 == 1 {
-		x += math.Sqrt(3) / 2
+		x += hexSqrt3 / 2
 	}
 	return x, 1.5 * float64(row-1)
 }
 
-func sectorIntersectsHex(center sectorPoint, axis, width float64) bool {
-	vertices := make([]sectorPoint, 6)
-	for index := range vertices {
+// hexVertexOffsets 是六边形六个顶点相对格心的偏移。角度固定，算一次就够：
+// sectorIntersectsHex 每格要试 6 个顶点，原来每格现算 6 组 sin/cos。
+var hexVertexOffsets = func() [6]sectorPoint {
+	var offsets [6]sectorPoint
+	for index := range offsets {
 		angle := float64(index*60-30) * math.Pi / 180
-		vertices[index] = sectorPoint{center.x + math.Cos(angle), center.y + math.Sin(angle)}
+		offsets[index] = sectorPoint{math.Cos(angle), math.Sin(angle)}
+	}
+	return offsets
+}()
+
+func sectorIntersectsHex(center sectorPoint, axis, width float64) bool {
+	var vertices [6]sectorPoint
+	for index, offset := range hexVertexOffsets {
+		vertices[index] = sectorPoint{center.x + offset.x, center.y + offset.y}
 	}
 	radius := math.Hypot(center.x, center.y) + 1.000001
 	for _, vertex := range vertices {
@@ -122,7 +193,7 @@ func sectorIntersectsHex(center sectorPoint, axis, width float64) bool {
 			return true
 		}
 	}
-	for _, edgeAngle := range []float64{axis - width/2, axis + width/2} {
+	for _, edgeAngle := range [2]float64{axis - width/2, axis + width/2} {
 		radians := edgeAngle * math.Pi / 180
 		rayEnd := sectorPoint{radius * math.Cos(radians), radius * math.Sin(radians)}
 		for index, start := range vertices {
@@ -196,6 +267,15 @@ func edgeCrossesSectorArc(start, end sectorPoint, radius, axis, width float64) b
 }
 
 func reconSpeed(aircraft *AirUnit) int {
+	return aircraftSpeed(aircraft)
+}
+
+// aircraftSpeed 是"执行任务时每回合能走几格"（规则书 200 行）：
+// 水上飞机（含飞行艇）和双翼机 1 hex，其余 2 hex。
+func aircraftSpeed(aircraft *AirUnit) int {
+	if aircraft == nil {
+		return 2
+	}
 	if aircraft.Seaplane {
 		return 1
 	}
@@ -221,24 +301,40 @@ func advanceRecon(state *State, aircraft *AirUnit) []EngineEvent {
 			aircraft.TrackingFleetID = ""
 			aircraft.Returning = true
 		} else {
-			aircraft.Coord = members[0].Coord
-			aircraft.ReconDistance = Distance(aircraft.OriginCoord, aircraft.Coord)
+			// 跟踪也是飞行：按机速朝被跟踪舰队推进，不能直接把自己的坐标改成对方的坐标。
+			// 以前是瞬移——水侦一回合能"跳"3 格，返航时又要从对方位置往回飞，
+			// 等于凭空多出一段根本没飞过的航程。
+			steps := 0
+			target := members[0].Coord
+			for steps < reconSpeed(aircraft) && aircraft.Coord != target {
+				next := nextFlightCoord(*state, aircraft, target)
+				if next == "" {
+					break
+				}
+				aircraft.Coord = next
+				aircraft.ReconDistance = Distance(aircraft.OriginCoord, aircraft.Coord)
+				aircraft.Spend(1)
+				steps++
+			}
+			if steps == 0 {
+				// 已经和目标同格，或绕不过去：原地盘旋也烧 1 点油。
+				aircraft.ReconDistance = Distance(aircraft.OriginCoord, aircraft.Coord)
+				aircraft.Spend(1)
+			}
 			if aircraft.Range() <= Distance(aircraft.Coord, carrier.Coord) {
 				aircraft.TrackingFleetID = ""
 				aircraft.Returning = true
 				events = append(events, EngineEvent{Type: "recon_returning", Audience: aircraft.Faction, Text: aircraft.Model + "燃料达到返航余量，停止跟踪并返航"})
-				// 就地掉头，本回合不再判定脚下这一格：敌舰就在当前位置，
-				// 再判一次会立刻重新锁定，燃料不足的编队就永远回不了家。
-				aircraft.Spend(1)
 				return events
-			} else {
-				aircraft.Spend(1)
-				return append(events, resolveTracking(state, aircraft, members)...)
 			}
+			return append(events, resolveTracking(state, aircraft, members)...)
 		}
 	}
 
 	steps := reconSpeed(aircraft)
+	// 同一回合内同一距离圈只判一次：每步都会扫「当前圈 + 下一圈」，
+	// 不限重的话两格速度的飞机会把中间那圈再掷一遍骰子。
+	scannedRings := map[int]bool{}
 	for steps > 0 {
 		if aircraft.Returning && aircraft.Coord == carrier.Coord {
 			crashed, riskEvents := resolveLandingRisk(state, aircraft)
@@ -263,7 +359,7 @@ func advanceRecon(state *State, aircraft *AirUnit) []EngineEvent {
 		} else {
 			forward = nextReconCoord(state.Map, aircraft.Coord, aircraft.Heading)
 		}
-		events = append(events, searchReconStep(state, aircraft, forward)...)
+		events = append(events, searchReconStep(state, aircraft, forward, scannedRings)...)
 		if aircraft.TrackingFleetID != "" {
 			return events
 		}
@@ -375,18 +471,13 @@ func ReconScanBandHexes(gameMap MapDefinition, origin, heading string, width, ra
 	if radius < 1 || origin == "" {
 		return []string{}
 	}
-	seen := map[string]bool{}
-	out := []string{}
 	// 搜索带 = 扇面内每一圈整段弧的并集：飞机每飞到一圈就判一次那一圈，
 	// 所以整趟侦察覆盖的就是整块扇形，而不是一条航迹线。
-	for ring := 1; ring <= radius; ring++ {
-		for _, coord := range ReconRingHexes(gameMap, origin, heading, width, ring) {
-			if seen[coord] {
-				continue
-			}
-			seen[coord] = true
-			out = append(out, coord)
-		}
+	// 并集就等于半径 radius 的扇面本身，扫一次即可，不用逐圈重扫整张地图。
+	scan := reconSectorScan(gameMap, origin, heading, width, radius)
+	out := make([]string, len(scan))
+	for index, item := range scan {
+		out[index] = item.coord
 	}
 	sort.Strings(out)
 	return out
@@ -401,22 +492,37 @@ func ReconScannedRingHexes(gameMap MapDefinition, origin, coord, heading string,
 	if radius <= 0 {
 		radius = 99
 	}
-	seen := map[string]bool{}
-	out := []string{}
 	ring := Distance(origin, coord)
-	for _, r := range []int{ring, ring + 1} {
-		if r < 1 || r > radius {
+	if ring > radius {
+		return []string{}
+	}
+	scan := reconSectorScan(gameMap, origin, heading, width, radius)
+	out := []string{}
+	for _, item := range scan {
+		if item.ring != ring && item.ring != ring+1 {
 			continue
 		}
-		for _, item := range ReconRingHexes(gameMap, origin, heading, width, r) {
-			if seen[item] {
-				continue
-			}
-			seen[item] = true
-			out = append(out, item)
-		}
+		out = append(out, item.coord)
 	}
 	sort.Strings(out)
+	return out
+}
+
+// reconRingsToScan 返回本步要判定的距离圈：当前圈 + 下一圈。
+// 同一回合内一圈只判一次——两格速度的飞机会连续走两步，不做去重的话
+// 中间那圈会在相邻两步各掷一次骰子，等于白拿一次发现判定（规则书 540 行）。
+func reconRingsToScan(ring, radius int, scanned map[int]bool) []int {
+	if radius <= 0 {
+		radius = 99
+	}
+	out := []int{}
+	for _, r := range []int{ring, ring + 1} {
+		if r < 1 || r > radius || scanned[r] {
+			continue
+		}
+		scanned[r] = true
+		out = append(out, r)
+	}
 	return out
 }
 
@@ -426,7 +532,7 @@ func ReconScannedRingHexes(gameMap MapDefinition, origin, coord, heading string,
 // 每走一步扫掉以起飞点为圆心、落在本机扇面内的「当前距离圈 + 下一距离圈」全部格子。
 // 60° 是窄扇面、120° 是宽扇面（覆盖翻倍但发现率减半），宽度是真的覆盖差异，
 // 而不是只影响概率的装饰；去程和返程都会重扫一遍。
-func searchReconStep(state *State, aircraft *AirUnit, forward string) []EngineEvent {
+func searchReconStep(state *State, aircraft *AirUnit, forward string, scannedRings map[int]bool) []EngineEvent {
 	// 每步扫掉"当前距离圈 + 下一距离圈"里属于本扇面的整段弧。
 	// 以前只判"本格 + 正前方一格"（120° 再加左右），等于沿航迹的一条 2–4 格窄带：
 	// 战斗机从舰队旁边 2 格飞过去都发现不了，12 hex 距离上几乎永远接不了敌。
@@ -438,7 +544,11 @@ func searchReconStep(state *State, aircraft *AirUnit, forward string) []EngineEv
 	if carrier := state.Units[aircraft.CarrierID]; carrier != nil {
 		origin = carrier.Coord
 	}
-	coords := ReconScannedRingHexes(state.Map, origin, aircraft.Coord, aircraft.Heading, aircraft.SectorWidth, aircraft.ReconRadius)
+	ring := Distance(origin, aircraft.Coord)
+	coords := []string{}
+	for _, r := range reconRingsToScan(ring, aircraft.ReconRadius, scannedRings) {
+		coords = append(coords, ReconRingHexes(state.Map, origin, aircraft.Heading, aircraft.SectorWidth, r)...)
+	}
 	// 侦察诊断日志：为什么会扫不到（圆心/方位/半径圈/最近敌舰距离）。
 	if os.Getenv("GQ_RECON_LOG") != "" {
 		nearest, inside := 999, false
@@ -458,7 +568,7 @@ func searchReconStep(state *State, aircraft *AirUnit, forward string) []EngineEv
 			}
 		}
 		log.Printf("recon %s faction=%s origin=%s plane=%s ring=%d sector=%d scanned=%d nearestEnemy=%d inArc=%v heading=%s",
-			aircraft.Model, aircraft.Faction, origin, aircraft.Coord, Distance(origin, aircraft.Coord), aircraft.SectorWidth, len(coords), nearest, inside, aircraft.Heading)
+			aircraft.Model, aircraft.Faction, origin, aircraft.Coord, ring, aircraft.SectorWidth, len(coords), nearest, inside, aircraft.Heading)
 	}
 	if len(coords) == 0 {
 		return nil
@@ -554,10 +664,8 @@ func discoverEnemyAirfieldsAt(state *State, aircraft *AirfieldAirUnit, coords []
 }
 func reconDetectionChance(state State, aircraft *AirUnit, members []Unit) float64 {
 	chance := 25.0
-	// 开战初期日军精锐机组：基础发现率 +10%（1942 年及以前）。
-	if state.Doctrines[aircraft.Faction] == "japan" && state.Year > 0 && state.Year <= 1942 {
-		chance += 10
-	}
+	// 开战初期精锐机组：基础发现率 +10%（1942 年及以前，按 doctrine 取）。
+	chance += rulesFor(state, aircraft.Faction).EarlyWarReconBonus
 	for _, unit := range members {
 		if isCapitalShip(unit.Type) {
 			chance += 5
@@ -599,6 +707,10 @@ func reconDetectionChance(state State, aircraft *AirUnit, members []Unit) float6
 	}
 	if aircraft.SectorWidth == 120 {
 		chance /= 2
+	}
+	// 水上飞机（含飞行艇）飞得慢，但驻空久、观察条件好：最终发现率 ×2。
+	if aircraft.Seaplane {
+		chance *= 2
 	}
 	return math.Max(0, math.Min(100, chance))
 }
@@ -764,13 +876,16 @@ func projectedContactUnits(contact FleetContact) []Unit {
 			// 情报 4 级编成完全已知，舰队名也用真名（以前这里覆盖成"侦察接触 · 情报4"，
 			// 于是地图和敌军面板上永远看不到对方到底叫 TF17 还是 MO 机动部队）。
 			units[index].ContactLevel = 4
+			// 情报等级 4 也可能已经放了几回合：把"多少回合没刷新"一起带出去，
+			// 否则 AI 只知道等级满，不知道坐标已经飘了。
+			units[index].ContactStaleTurns = contact.StaleTurns
 			units[index].LegalMoves = nil
 		}
 		return units
 	}
 	// 情报等级 < 4 时位置不可靠：按等级给出固定偏移（规则书 144–147 行）。
 	display := intelDisplayCoord(contact)
-	marker := Unit{FleetID: contact.FleetID, FleetName: fmt.Sprintf("侦察接触 · 情报%d", level), Faction: contact.Faction, Coord: display, Heading: heading, ContactLevel: level}
+	marker := Unit{FleetID: contact.FleetID, FleetName: fmt.Sprintf("侦察接触 · 情报%d", level), Faction: contact.Faction, Coord: display, Heading: heading, ContactLevel: level, ContactStaleTurns: contact.StaleTurns}
 	if level <= 2 {
 		// 1 级只显示一个算子（连规模都不给）；2 级只给编队大小。
 		marker.ID = fmt.Sprintf("contact-%s-marker", contact.FleetID)
@@ -822,18 +937,16 @@ func reconInEnemyCAPRange(state State, coord string, capFaction string) bool {
 
 // reconExposureChance 侦察机被发现的概率：基础 30%，处于敌方 CAP 范围内 50%，敌方美军对空雷达额外 +20%。
 func reconExposureChance(state State, recon *AirUnit) float64 {
-	enemy := "B"
-	if recon.Faction == "B" {
-		enemy = "A"
-	}
+	enemy := opposingFaction(recon.Faction)
 	chance := 30.0
 	if reconInEnemyCAPRange(state, recon.Coord, enemy) {
 		chance = 50
 	}
-	if state.Doctrines[enemy] == "us" {
+	// 敌方对空雷达越成熟，侦察机越容易被抓到（美军 +20%）。
+	if bonus := rulesFor(state, enemy).AirRadarReconDetectBonus; bonus > 0 {
 		for _, unit := range state.Units {
 			if unit.Faction == enemy && unit.Card.AirRadar && !EnsureDamage(unit).AirRadarDisabled {
-				chance += 20
+				chance += bonus
 				break
 			}
 		}
@@ -859,12 +972,11 @@ func resolveReconExposure(state *State) []EngineEvent {
 		if recon == nil || recon.TrackingFleetID == "" {
 			continue
 		}
-		enemy := "B"
-		if recon.Faction == "B" {
-			enemy = "A"
-		}
+		enemy := opposingFaction(recon.Faction)
 		if probabilityRoll(&state.RNGState) <= reconExposureChance(*state, recon) {
-			events = append(events, EngineEvent{Type: "recon_spotted", Audience: enemy, Text: "侦察机位置被雷达发现：" + recon.Coord})
+			// 基础 30% 的暴露判定跟雷达无关（目视/无线电测向也可能暴露），
+			// 所以文案不能写成"被雷达发现"——日军没有对空雷达也会收到这条。
+			events = append(events, EngineEvent{Type: "recon_spotted", Audience: enemy, Text: "侦察机位置被发现：" + recon.Coord})
 		}
 		if !reconInEnemyCAPRange(*state, recon.Coord, enemy) {
 			continue
@@ -878,9 +990,7 @@ func resolveReconExposure(state *State) []EngineEvent {
 		case "storm":
 			chance -= 20
 		}
-		if state.Doctrines[recon.Faction] == "us" {
-			chance += 20
-		}
+		chance += rulesFor(*state, recon.Faction).ReconInCAPBonus
 		count := 0
 		for _, cap := range state.Aircraft {
 			if cap.Faction == enemy && cap.Status == "cap" && !cap.Returning && Distance(capCoord(*state, cap), recon.Coord) <= 1 {

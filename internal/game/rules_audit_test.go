@@ -48,13 +48,13 @@ func TestVerySlowSpeedClassIsItsOwnTier(t *testing.T) {
 
 // 规则书 387 行：损伤算子每回合 10% 修复，日军 3%。阵营必须看 doctrine 而不是内部代号。
 func TestAircraftRepairChanceUsesDoctrine(t *testing.T) {
-	if got := aircraftRepairChance("B", map[string]string{"B": "japan"}); got != 3 {
+	if got := aircraftRepairChance(State{Doctrines: map[string]string{"B": "japan"}}, "B"); got != 3 {
 		t.Fatalf("日军损伤算子修复率应为 3%%，实际 %v", got)
 	}
-	if got := aircraftRepairChance("A", map[string]string{"A": "us"}); got != 10 {
+	if got := aircraftRepairChance(State{Doctrines: map[string]string{"A": "us"}}, "A"); got != 10 {
 		t.Fatalf("美军损伤算子修复率应为 10%%，实际 %v", got)
 	}
-	if got := aircraftRepairChance("J", map[string]string{"J": "japan"}); got != 3 {
+	if got := aircraftRepairChance(State{Doctrines: map[string]string{"J": "japan"}}, "J"); got != 3 {
 		t.Fatalf("按 doctrine 判断日军修复率应为 3%%，实际 %v", got)
 	}
 }

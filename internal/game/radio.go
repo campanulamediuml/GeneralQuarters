@@ -46,10 +46,7 @@ func IsRadioOrder(orderType string) bool {
 
 // radioLossPerHex 返回每 1hex 的距离惩罚：日军没有无线电信标，衰减翻倍。
 func radioLossPerHex(state State, faction string) float64 {
-	if state.Doctrines[faction] == "japan" {
-		return 20
-	}
-	return 10
+	return rulesFor(state, faction).RadioPenaltyPerHex
 }
 
 // radioRange 返回编队到最近友军舰队或机场的距离（0 表示同格）。

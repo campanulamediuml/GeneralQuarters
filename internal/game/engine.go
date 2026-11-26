@@ -343,7 +343,8 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 // 1942 年及以前，日军 D3A/B5N 对舰攻击 +1，零战空战 +1。
 // 这是飞行员的素质加成，不该写进机型档案（那样 1944 年的同一机型也会带着这 +1）。
 func elitePilotBonus(state State, faction, kind string, airCombat, antiShip int) (int, int) {
-	if state.Doctrines[faction] != "japan" || state.Year <= 0 || state.Year > 1942 {
+	// 精锐机组是"国家 + 年份"的规则，不是机型属性：1944 年的同一机型不该还带着这 +1。
+	if rulesFor(state, faction).ElitePilotBonus == 0 {
 		return airCombat, antiShip
 	}
 	switch kind {
@@ -399,7 +400,12 @@ func deployAirfields(state *State, scenario ScenarioDefinition, airDefinitions a
 			ID: definition.ID, Faction: definition.Faction, Name: definition.Name, Coord: definition.Coord,
 			Type: definition.Type, Picture: AirfieldPicture(definition.Type, definition.Picture),
 			Runways: definition.Runways, MaxStrength: definition.Runways * 5,
-			Radar: definition.Radar, HeavyAA: definition.HeavyAA, LightAA: definition.LightAA, Coastal: definition.Coastal,
+			HangarCapacity: definition.HangarCapacity,
+			Radar:          definition.Radar, HeavyAA: definition.HeavyAA, LightAA: definition.LightAA, Coastal: definition.Coastal,
+		}
+		if airfield.HangarCapacity <= 0 {
+			// 机场没有机库：默认不限制（99999），剧本要限制某个小机场时自己写数。
+			airfield.HangarCapacity = AirfieldHangarUnlimited
 		}
 		airfield.Strength = airfield.MaxStrength
 		state.Airfields[definition.ID] = airfield
@@ -867,31 +873,103 @@ func ApplyImmediateMove(state *State, order Order) []EngineEvent {
 	return events
 }
 
+// applyReorganization 是整编的唯一实现：提交命令时和回合结算时都走它。
+// 以前两份代码各写一遍，只有提交那一版会给新编队起名，结算那一版只改 FleetID，
+// 于是拆分出来的舰队名字时有时无。
+func applyReorganization(state *State, order Order) (string, bool) {
+	faction := ""
+	for unitID := range order.Assignments {
+		if unit := state.Units[unitID]; unit != nil {
+			faction = unit.Faction
+		}
+		break
+	}
+	if validateReorganization(*state, faction, order) != nil {
+		return faction, false
+	}
+	fleetNames := map[string]string{}
+	for _, unit := range state.Units {
+		if unit.FleetName != "" {
+			fleetNames[FleetKey(unit)] = unit.FleetName
+		}
+	}
+	// 拆分出来的新编队没有历史名。以前直接拿 fleetID 当代号，地图和舰队面板上
+	// 就显示成 split-mwjwyzw / split-mwwjw452 这种内部 id，玩家根本认不出谁是谁。
+	// 这里改按"原舰队名·分队"派生，撞名时再挂上旗舰名；遍历顺序固定，
+	// 免得同一次整编因为 map 顺序不同，两队分到不一样的名字。
+	taken := map[string]bool{}
+	for _, name := range fleetNames {
+		taken[name] = true
+	}
+	unitIDs := make([]string, 0, len(order.Assignments))
+	for unitID := range order.Assignments {
+		unitIDs = append(unitIDs, unitID)
+	}
+	sort.Strings(unitIDs)
+	for _, unitID := range unitIDs {
+		fleetID := order.Assignments[unitID]
+		unit := state.Units[unitID]
+		if unit == nil {
+			continue
+		}
+		name := fleetNames[fleetID]
+		if name == "" {
+			parent := fleetNames[FleetKey(unit)]
+			if parent == "" {
+				parent = unit.FleetName
+			}
+			name = fleetID
+			if parent != "" && parent != fleetID {
+				name = parent + "·分队"
+				if taken[name] {
+					name = parent + "·" + unit.Name
+				}
+			}
+			fleetNames[fleetID] = name
+			taken[name] = true
+		}
+		unit.FleetID = fleetID
+		unit.FleetName = name
+		LockFleetMovement(state, fleetID, 3)
+	}
+	return faction, true
+}
+
+// NormalizeFleetNames 修历史存档：早期拆分出来的编队直接把 split-<uuid> 当舰队名，
+// 地图和舰队面板上就是一串内部 id。这里只改"名字等于自己舰队 id 的 split-* 编队"，
+// 幂等，可以每次读档都跑。
+func NormalizeFleetNames(state *State) {
+	named := map[string]string{}
+	// 按 unitID 排序取名字：map 遍历顺序不固定，同一支分队不能一下叫"惠普尔"
+	// 一下叫"莫里斯"，否则每次读档舰队名都会变。
+	ids := make([]string, 0, len(state.Units))
+	for id := range state.Units {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		unit := state.Units[id]
+		if unit == nil {
+			continue
+		}
+		key := FleetKey(unit)
+		if !strings.HasPrefix(key, "split-") || unit.FleetName != key {
+			continue
+		}
+		name := named[key]
+		if name == "" {
+			name = unit.Name + "·分队"
+			named[key] = name
+		}
+		unit.FleetName = name
+	}
+}
+
 func ApplyImmediateOrganization(state *State, order Order) []EngineEvent {
 	if order.Type == "REORGANIZE_HEX" {
-		faction := ""
-		for unitID := range order.Assignments {
-			if unit := state.Units[unitID]; unit != nil {
-				faction = unit.Faction
-			}
-			break
-		}
-		if validateReorganization(*state, faction, order) != nil {
+		faction, ok := applyReorganization(state, order)
+		if !ok {
 			return nil
-		}
-		fleetNames := map[string]string{}
-		for _, unit := range state.Units {
-			if unit.FleetName != "" {
-				fleetNames[FleetKey(unit)] = unit.FleetName
-			}
-		}
-		for unitID, fleetID := range order.Assignments {
-			state.Units[unitID].FleetID = fleetID
-			state.Units[unitID].FleetName = fleetNames[fleetID]
-			if state.Units[unitID].FleetName == "" {
-				state.Units[unitID].FleetName = fleetID
-			}
-			LockFleetMovement(state, fleetID, 3)
 		}
 		return []EngineEvent{{Type: "fleet_reorganized", Audience: faction, Text: order.Coord + "内舰队编成已更新，3回合内无法移动"}}
 	}
@@ -982,19 +1060,9 @@ func ResolveOrders(state *State, orders []Order) []EngineEvent {
 		if order.Type != "REORGANIZE_HEX" {
 			continue
 		}
-		faction := ""
-		for unitID := range order.Assignments {
-			if unit := state.Units[unitID]; unit != nil {
-				faction = unit.Faction
-			}
-			break
-		}
-		if validateReorganization(*state, faction, order) != nil {
+		faction, ok := applyReorganization(state, order)
+		if !ok {
 			continue
-		}
-		for unitID, fleetID := range order.Assignments {
-			state.Units[unitID].FleetID = fleetID
-			LockFleetMovement(state, fleetID, 3)
 		}
 		events = append(events, EngineEvent{Type: "fleet_reorganized", Audience: faction, Text: order.Coord + "内舰队编成已更新，3回合内无法移动"})
 	}
@@ -1298,6 +1366,7 @@ func VisibleFleets(state State, faction string) []FleetGroup {
 			fleet.Moved = fleet.Moved || unit.Moved
 			if unit.ContactLevel > fleet.ContactLevel {
 				fleet.ContactLevel = unit.ContactLevel
+				fleet.ContactStaleTurns = unit.ContactStaleTurns
 			}
 		}
 		if fleet.ContactLevel > 0 {

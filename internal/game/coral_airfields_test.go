@@ -6,8 +6,33 @@ import (
 )
 
 // 回归：珊瑚海真实剧本的陆基航空队（拉包尔 / 莫尔兹比港）。
-// 拉包尔：0323，6 架零战 + 6 架 G4M + 3 架 G3M（陆攻挂鱼雷）。
-// 莫尔兹比港：1611，2 架 SBD + 4 架 P-40 + 3 架 B-25。
+// 拉包尔机场：0224（陆地），6 架零战 + 6 架 G4M + 3 架 G3M（陆攻挂鱼雷）；
+// 拉包尔水上飞机基地：0323（浅海），4 架 H6K——水机基地不能建在陆地，机场不能建在水上。
+// 莫尔兹比港：1611，2 架 SBD + 4 架 P-40 + 3 架 B-25，岸炮 6。
+
+// 规则书只禁止单座战斗机做扇面搜索：B-17/B-25 这类陆基轰炸机同样可以挂侦察任务。
+// 1942 年 5 月第 19 轰炸大队就是用 B-17 从汤斯维尔跑远程搜索，这条规则必须留得住。
+func TestLevelBomberCanFlyRecon(t *testing.T) {
+	state := coralCombatState(t)
+	state.Timeline = nil
+	state.Night = false
+	b17 := state.GroundAir["af-a-moresby-b17-1"]
+	if b17 == nil {
+		t.Fatal("莫尔兹比缺少 B-17")
+	}
+	order := Order{Type: "LAUNCH_RECON", AircraftIDs: []string{b17.ID}, Heading: "SE", SectorWidth: 60}
+	if err := ValidateGroundAirOrder(state, order); err != nil {
+		t.Fatalf("B-17 应该能执行扇面搜索：%v", err)
+	}
+	ApplyGroundAirOrder(&state, order)
+	if b17.TaskID == "" || b17.TaskKind != "recon" {
+		t.Fatalf("B-17 应挂上侦察任务，实际 task=%q kind=%q", b17.TaskID, b17.TaskKind)
+	}
+	if b17.ReconRadius != GroundReconRadius(b17) || b17.ReconRadius < 15 {
+		t.Fatalf("B-17 侦察半径应按机型算，实际 %d（上限 %d）", b17.ReconRadius, b17.ReconRadiusLimit)
+	}
+}
+
 func TestCoralRealLandBasedAirGroups(t *testing.T) {
 	scenario, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")
 	if err != nil {
@@ -18,8 +43,12 @@ func TestCoralRealLandBasedAirGroups(t *testing.T) {
 		t.Fatal(err)
 	}
 	rabaul := state.Airfields["af-b-rabaul"]
-	if rabaul == nil || rabaul.Coord != "0323" || rabaul.Faction != "B" {
+	if rabaul == nil || rabaul.Coord != "0224" || rabaul.Faction != "B" || rabaul.Type != AirfieldMedium {
 		t.Fatalf("拉包尔机场部署错误：%+v", rabaul)
+	}
+	seaplaneBase := state.Airfields["af-b-rabaul-seaplane"]
+	if seaplaneBase == nil || seaplaneBase.Coord != "0323" || seaplaneBase.Type != AirfieldSeaplane || seaplaneBase.Coastal != 0 {
+		t.Fatalf("拉包尔水上飞机基地部署错误：%+v", seaplaneBase)
 	}
 	moresby := state.Airfields["af-a-moresby"]
 	if moresby == nil || moresby.Coord != "1611" || moresby.Faction != "A" {
@@ -33,9 +62,10 @@ func TestCoralRealLandBasedAirGroups(t *testing.T) {
 		groups[aircraft.AirfieldID][aircraft.DefinitionID]++
 	}
 	want := map[string]map[string]int{
-		"af-b-rabaul":     {"fighter": 6, "g4m": 6, "g3m": 3},
-		"af-a-moresby":    {"dive_bomber": 2, "p40": 4, "b25": 3, "b17": 3},
-		"af-a-townsville": {"b17": 4, "b26": 4, "p40": 4},
+		"af-b-rabaul":          {"fighter": 6, "g4m": 6, "g3m": 3},
+		"af-b-rabaul-seaplane": {"h6k": 4},
+		"af-a-moresby":         {"dive_bomber": 2, "p40": 4, "b25": 3, "b17": 3},
+		"af-a-townsville":      {"b17": 4, "b26": 4, "p40": 4},
 	}
 	for airfieldID, expected := range want {
 		for kind, count := range expected {
@@ -89,7 +119,7 @@ func TestCoralRealSeaplaneBases(t *testing.T) {
 	}
 	wantBases := map[string]string{
 		"af-b-tulagi":    "1541",
-		"af-b-deboyne":   "1023",
+		"af-b-deboyne":   "1923",
 		"af-b-shortland": "0831",
 		"af-b-rekata":    "1238",
 		"af-a-bowen":     "4613",

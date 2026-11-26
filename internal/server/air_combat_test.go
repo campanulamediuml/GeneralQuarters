@@ -17,9 +17,9 @@ func TestAviationQueueThroughREST(t *testing.T) {
 		t.Fatalf("创建房间状态码%d", status)
 	}
 	commands := []map[string]any{
-		{"command_id": "cap-1", "base_version": 1, "type": "LAUNCH_CAP", "aircraft_ids": []string{"a2-cv-01-fighter-x1"}},
-		{"command_id": "recon-1", "base_version": 2, "type": "LAUNCH_RECON", "aircraft_ids": []string{"a2-cv-04-dive_bomber-x1"}, "heading": "W", "sector_width": 60},
-		{"command_id": "priority-1", "base_version": 3, "type": "PRIORITIZE_AIR_TASK", "aircraft_id": "a2-cv-04-dive_bomber-x1"},
+		{"command_id": "cap-1", "type": "LAUNCH_CAP", "aircraft_ids": []string{"a2-cv-01-fighter-x1"}},
+		{"command_id": "recon-1", "type": "LAUNCH_RECON", "aircraft_ids": []string{"a2-cv-04-dive_bomber-x1"}, "heading": "W", "sector_width": 60},
+		{"command_id": "priority-1", "type": "PRIORITIZE_AIR_TASK", "aircraft_id": "a2-cv-04-dive_bomber-x1"},
 	}
 	for _, command := range commands {
 		var response map[string]any
@@ -62,7 +62,7 @@ func TestAirCombatResolutionThroughREST(t *testing.T) {
 		t.Fatal(err)
 	}
 	var resolved testView
-	if status := client.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": 1, "ready": true}, &resolved); status != http.StatusOK {
+	if status := client.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &resolved); status != http.StatusOK {
 		t.Fatalf("Ready结算状态码%d", status)
 	}
 	if resolved.Turn != 2 || len(resolved.AirCombats) != 1 {
@@ -89,9 +89,9 @@ func TestCrossCarrierStrikeUsesSingleTaskThroughREST(t *testing.T) {
 		t.Fatalf("创建房间状态码%d", status)
 	}
 	commands := []map[string]any{
-		{"command_id": "strike-1", "base_version": 1, "type": "LAUNCH_STRIKE", "aircraft_ids": []string{"a2-cv-01-dive_bomber-x1"}},
-		{"command_id": "strike-2", "base_version": 2, "type": "LAUNCH_STRIKE", "aircraft_ids": []string{"a2-cv-02-dive_bomber-x1"}, "task_id": "a2-cv-01-dive_bomber-x1"},
-		{"command_id": "strike-3", "base_version": 3, "type": "LAUNCH_STRIKE", "aircraft_ids": []string{"a2-cv-03-dive_bomber-x1"}, "task_id": "a2-cv-01-dive_bomber-x1"},
+		{"command_id": "strike-1", "type": "LAUNCH_STRIKE", "aircraft_ids": []string{"a2-cv-01-dive_bomber-x1"}},
+		{"command_id": "strike-2", "type": "LAUNCH_STRIKE", "aircraft_ids": []string{"a2-cv-02-dive_bomber-x1"}, "task_id": "a2-cv-01-dive_bomber-x1"},
+		{"command_id": "strike-3", "type": "LAUNCH_STRIKE", "aircraft_ids": []string{"a2-cv-03-dive_bomber-x1"}, "task_id": "a2-cv-01-dive_bomber-x1"},
 	}
 	for _, command := range commands {
 		var response map[string]any

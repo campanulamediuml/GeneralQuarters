@@ -31,6 +31,8 @@ const draftAssignments = ref<Record<string, string>>({})
 const activePanel = ref<'map' | 'rules' | 'settings' | 'aviation' | 'airCombat' | 'log' | 'results'>('map')
 const activeAirCombat = ref<AirCombatReport | null>(null)
 const counterSide = ref<'front' | 'back'>('front')
+// 舰队详情面板可以收起兵牌：只留标题和按钮那一行，把地图让出来。
+const fleetCardsCollapsed = ref(false)
 const aviationFocusID = ref('')
 const aviationFleetID = ref('')
 // 选中的机场（机场与舰队共用航空界面，靠它切换数据源）
@@ -47,7 +49,18 @@ let refreshTimer: ReturnType<typeof setTimeout> | undefined
 let stateRequest = 0
 let reconnectTimer: ReturnType<typeof setTimeout> | undefined
 let reconnectDelay = 1000
-let lastAirCombatID = ''
+// 已经播过的最后一份战报。要跟着"这个房间 + 这个浏览器标签页"走：
+//   - 只放内存里：WebSocket 重连（loadState）时还在，但整页刷新就丢了，会重播；
+//   - 放 sessionStorage：刷新也不重播，关掉标签页自然清掉，不影响旁观别人的对局。
+const combatSeenKey = 'gq:combat-seen:' + (typeof window === 'undefined' ? '' : window.location.pathname)
+function readSeenCombat(): string {
+  try { return sessionStorage.getItem(combatSeenKey) || '' } catch { return '' }
+}
+function rememberCombat(id: string) {
+  lastAirCombatID = id
+  try { sessionStorage.setItem(combatSeenKey, id) } catch { /* 隐私模式：退化成内存记录 */ }
+}
+let lastAirCombatID = readSeenCombat()
 
 const ownUnits = computed(() => state.value?.units.filter((unit) => unit.faction === state.value?.you.faction) || [])
 const fleets = computed(() => state.value?.fleets || [])
@@ -104,7 +117,7 @@ function groundCarrierView() {
     name: airfield.name,
     type: airfield.type,
     hangar_used: airfield.hangar_used,
-    hangar_capacity: airfield.aircraft.length,
+    hangar_capacity: airfield.hangar_capacity || 0,
     deck_length: airfield.runways,
     deck_capacity: airfield.max_runways,
     deck_used: airfield.aircraft.filter((item) => ['deck', 'ready', 'recovery'].includes(item.status)).length,
@@ -270,35 +283,50 @@ const combatQueue = ref<AirCombatReport[]>([])
 function checkAirCombat(next: GameView, initial = false) {
   const reports = next.air_combats || []
   if (!reports.length) return false
+  const latestID = reports[reports.length - 1].id
   if (initial) {
-    lastAirCombatID = reports[reports.length - 1].id
+    rememberCombat(latestID)
     return false
   }
   const seenIndex = reports.findIndex((report) => report.id === lastAirCombatID)
-  const fresh = seenIndex >= 0 ? reports.slice(seenIndex + 1) : reports.slice(-1)
+  if (seenIndex < 0) {
+    // 记住的那份已经滚出服务端保留窗口（只留最近 20 份），或者换了房间。
+    // 这只说明"窗口动了"，不代表有新战报：直接对齐到最新一份并静默跳过。
+    // 以前这里回退成 reports.slice(-1)，于是每次重连/刷新都会把最新战报重播一遍。
+    rememberCombat(latestID)
+    return false
+  }
+  const fresh = reports.slice(seenIndex + 1)
   if (!fresh.length) return false
-  lastAirCombatID = fresh[fresh.length - 1].id
+  rememberCombat(fresh[fresh.length - 1].id)
   combatQueue.value.push(...fresh)
-  playNextAirCombat()
+  // 正在播的那一份不能被打断：以前这里直接 playNext，props.report.id 一变动画就从头开始，
+  // 一次结算出"拦截 + 空袭"两份报告时前一份播一半就跳掉，看起来像被卡掉。
+  if (!activeAirCombat.value) playNextAirCombat()
   return true
 }
 
 function playNextAirCombat() {
   const nextReport = combatQueue.value.shift()
-  if (!nextReport) return
+  if (!nextReport) {
+    // 队列清空后必须把当前报告放掉：否则下一场结算会以为"上一份还在播"而永远排不进队列。
+    activeAirCombat.value = null
+    return
+  }
   activeAirCombat.value = nextReport
   activePanel.value = 'airCombat'
 }
 
 function closeAirCombat() {
   activePanel.value = 'map'
+  activeAirCombat.value = null
   playNextAirCombat()
 }
 
 function baselineAirCombat(next: GameView) {
   const reports = next.air_combats || []
   const latest = reports[reports.length - 1]
-  if (latest) lastAirCombatID = latest.id
+  if (latest) rememberCombat(latest.id)
 }
 
 async function loadState(initial = false) {
@@ -446,6 +474,23 @@ const strikeTargetLabel = computed(() => {
   return task?.name || id
 })
 
+// 正在选目标的编队是什么类型，决定提示语：转场选的是己方机场，打击选的是敌舰/机场，掩护选的是空域。
+// 以前一律写"选择打击目标"，转场玩家点自己的机场时才完全看不出这一下该落在哪儿。
+const strikeTargetSelection = computed(() => {
+  const id = strikeTargetTaskID.value
+  if (!id) return { kind: '', verb: '', hint: '' }
+  const task = (state.value?.aviation.tasks || []).find((item) => item.id === id) ?? (state.value?.ground_tasks || []).find((item) => item.id === id)
+  if (task?.kind === 'transfer') {
+    // 转场航程 = 该任务飞机当前挂载的满油航程（副油箱 + 转场加成），编队里取最保守的一架。
+    // 服务端只在还没起飞时按这个距离校验一次，所以先把上限摆给玩家看。
+    const ranges = (task.aircraft || []).map((item) => item.max_range || 0).filter((value) => value > 0)
+    const limit = ranges.length ? Math.min(...ranges) : 0
+    return { kind: 'transfer', verb: '选择转场目的地', hint: limit ? `点击可降落的机场或舰队 · 本队转场航程 ${limit} hex` : '点击可降落的机场或舰队' }
+  }
+  if (task?.kind === 'cover') return { kind: 'cover', verb: '选择掩护空域', hint: '点击要掩护的 hex' }
+  return { kind: 'attack', verb: '选择打击目标', hint: '点击目标 hex' }
+})
+
 function cancelStrikeTarget() {
   strikeTargetTaskID.value = ''
   // 从地图上的编队牌点进"选目标"，取消后还得站在地图上；从整编栏进去的才回航空界面。
@@ -552,7 +597,7 @@ async function move(coord: string) {
   if (!state.value || !selectedUnit.value || actionBusy.value || locked.value) return
   actionBusy.value = true
   try {
-    await api.command(props.roomID, state.value.version, { type: 'SET_MOVE', unit_id: selectedUnit.value.id, coord })
+    await api.command(props.roomID, state.value.turn, { type: 'SET_MOVE', unit_id: selectedUnit.value.id, coord })
     await loadState()
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : '命令失败'
@@ -562,6 +607,8 @@ async function move(coord: string) {
 }
 
 const shoreSupplyTotal = computed(() => Object.values(state.value?.shore_supplies || {}).reduce((sum, value) => sum + value, 0))
+// 敌方卸在自家机场上的货：看得见才谈得上决定要不要回去清滩。
+const enemyShoreSupplyTotal = computed(() => Object.values(state.value?.enemy_shore_supplies || {}).reduce((sum, value) => sum + value, 0))
 
 // 风向：每回合每支舰队可以调整一次朝向，影响航母的甲板容量。
 // 风向按"来向"记：ortho（偏离来风 60°）仍带迎面分量，是侧逆风 +1；
@@ -579,7 +626,7 @@ async function setFleetHeading(heading: ReconHeading) {
   if (!state.value || !selectedUnit.value || actionBusy.value || locked.value) return
   actionBusy.value = true
   try {
-    await api.command(props.roomID, state.value.version, { type: 'SET_HEADING', unit_id: selectedUnit.value.id, heading })
+    await api.command(props.roomID, state.value.turn, { type: 'SET_HEADING', unit_id: selectedUnit.value.id, heading })
     await loadState()
     error.value = ''
   } catch (cause) {
@@ -603,7 +650,7 @@ async function setAutoNav(coord: string) {
   if (!state.value || !selectedUnit.value || actionBusy.value || locked.value) return
   actionBusy.value = true
   try {
-    await api.command(props.roomID, state.value.version, { type: 'SET_AUTO_NAV', unit_id: selectedUnit.value.id, coord, engagement: selectedEngagement.value })
+    await api.command(props.roomID, state.value.turn, { type: 'SET_AUTO_NAV', unit_id: selectedUnit.value.id, coord, engagement: selectedEngagement.value })
     navTargeting.value = false
     await loadState()
     error.value = ''
@@ -618,7 +665,7 @@ async function clearAutoNav() {
   if (!state.value || !selectedUnit.value || actionBusy.value || locked.value) return
   actionBusy.value = true
   try {
-    await api.command(props.roomID, state.value.version, { type: 'SET_AUTO_NAV', unit_id: selectedUnit.value.id, coord: '' })
+    await api.command(props.roomID, state.value.turn, { type: 'SET_AUTO_NAV', unit_id: selectedUnit.value.id, coord: '' })
     await loadState()
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : '取消自动航行失败'
@@ -631,7 +678,7 @@ async function setEngagement(setting: 'aggressive' | 'advantage' | 'avoid') {
   if (!state.value || !selectedUnit.value || actionBusy.value || locked.value) return
   actionBusy.value = true
   try {
-    await api.command(props.roomID, state.value.version, { type: 'SET_ENGAGEMENT', unit_id: selectedUnit.value.id, engagement: setting })
+    await api.command(props.roomID, state.value.turn, { type: 'SET_ENGAGEMENT', unit_id: selectedUnit.value.id, engagement: setting })
     await loadState()
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : '设置交战方式失败'
@@ -648,7 +695,7 @@ async function setDisperse(disperse: boolean) {
   if (!state.value || !task || actionBusy.value || locked.value) return
   actionBusy.value = true
   try {
-    await api.command(props.roomID, state.value.version, { type: 'SET_STRIKE_DISPERSION', aircraft_id: task.id, disperse })
+    await api.command(props.roomID, state.value.turn, { type: 'SET_STRIKE_DISPERSION', aircraft_id: task.id, disperse })
     await loadState()
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : '设置攻击方式失败'
@@ -669,7 +716,7 @@ const outcomeText = computed(() => {
 async function clearOrder(key: string) {
   if (!state.value || locked.value) return
   try {
-    await api.command(props.roomID, state.value.version, key.startsWith('task-') ? { type: 'CLEAR_MOVE', task_id: key } : { type: 'CLEAR_MOVE', unit_id: key })
+    await api.command(props.roomID, state.value.turn, key.startsWith('task-') ? { type: 'CLEAR_MOVE', task_id: key } : { type: 'CLEAR_MOVE', unit_id: key })
     await loadState()
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : '取消失败'
@@ -699,7 +746,7 @@ async function applyReorganization() {
   if (!state.value || !menuCoord.value || actionBusy.value || locked.value) return
   actionBusy.value = true
   try {
-    await api.command(props.roomID, state.value.version, { type: 'REORGANIZE_HEX', unit_id: `hex-${menuCoord.value}`, coord: menuCoord.value, assignments: draftAssignments.value })
+    await api.command(props.roomID, state.value.turn, { type: 'REORGANIZE_HEX', unit_id: `hex-${menuCoord.value}`, coord: menuCoord.value, assignments: draftAssignments.value })
     closeManager()
     await loadState()
   } catch (cause) {
@@ -717,7 +764,7 @@ async function airCommand(type: 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' 
     const payload = type === 'RECALL_AIR' || type === 'RETASK_AIR' || type === 'RETARGET_AIR'
       ? { type, task_id: options?.task_id, coord: options?.coord, task_kind: options?.task_kind }
       : { type, aircraft_id: aircraftIDs[0], aircraft_ids: aircraftIDs, ...options }
-    await api.command(props.roomID, state.value.version, payload)
+    await api.command(props.roomID, state.value.turn, payload)
     await loadState()
     error.value = ''
   } catch (cause) {
@@ -734,14 +781,17 @@ async function toggleReady() {
   actionBusy.value = true
   const requestID = ++stateRequest
   try {
-    const next = await api.ready(props.roomID, state.value.version, true)
+    const next = await api.ready(props.roomID, state.value.turn, true)
     if (requestID !== stateRequest) return
     const combatStarted = checkAirCombat(next)
     state.value = next
     selectedID.value = ''
     selectedAirTaskID.value = ''
     menuCoord.value = ''
-    activePanel.value = combatStarted ? 'airCombat' : 'map'
+    // 战斗动画正在播时不能把面板按回地图：那样组件被卸载，定时器全部清掉，
+    // 动画就停在半路。没有新战报也没有在播的动画时才回到地图。
+    if (combatStarted && !activeAirCombat.value) activePanel.value = 'airCombat'
+    else if (!combatStarted && !activeAirCombat.value) activePanel.value = 'map'
   } catch (cause) {
     if (requestID === stateRequest) error.value = cause instanceof Error ? cause.message : '准备状态失败'
   } finally {
@@ -832,8 +882,7 @@ onUnmounted(() => {
           <small>首页「或凭邀请加入」填这个就能进</small>
           <a v-if="watchPath" class="watch-link" :href="watchPath" target="_blank" rel="noreferrer">观战页 ↗</a>
         </div>
-        <!-- 就绪即冻结：本回合命令已锁定，界面只保留查看 -->
-        <p v-if="locked" class="frozen-banner" role="status">本回合已就绪 · 操作已锁定：双方就绪后由服务器统一结算，下一回合才能再操作</p>
+        <!-- 就绪即冻结：本回合命令已锁定，界面只保留查看；不再挂整条横幅，靠按钮禁用态与就地提示表达 -->
         <p v-if="error" class="error-banner game-error" role="alert">{{ error }}</p>
 
         <p v-if="outcomeText" class="outcome-banner" role="status">{{ outcomeText }}</p>
@@ -853,7 +902,7 @@ onUnmounted(() => {
                     <button v-for="h in headingChoices" :key="h" :disabled="selectedFleetWind.changed || actionBusy || locked" :title="locked ? '本回合已就绪，操作已锁定' : `转向${h}`" @click.stop="setFleetHeading(h)">{{ h }}</button>
                   </span>
                 </template>
-              </div><div v-if="strikeTargetTaskID" class="strike-map-target"><span>选择打击目标：{{ strikeTargetLabel }} · 点击目标hex</span><button @click="cancelStrikeTarget">取消</button></div><div class="map-legend"><span><i class="legend-a"></i>A 阵营</span><span><i class="legend-b"></i>B 阵营</span><span><i class="legend-move"></i>可移动</span></div></div>
+              </div><div v-if="strikeTargetTaskID" class="strike-map-target"><span>{{ strikeTargetSelection.verb }}：{{ strikeTargetLabel }} · {{ strikeTargetSelection.hint }}</span><button @click="cancelStrikeTarget">取消</button></div><div class="map-legend"><span><i class="legend-a"></i>A 阵营</span><span><i class="legend-b"></i>B 阵营</span><span><i class="legend-move"></i>可移动</span></div></div>
             <div class="map-canvas">
               <HexMap :map="state.map" :fleets="fleets" :player-faction="state.you.faction" :selected-unit="selectedUnit" :orders="state.orders" :recon-tasks="[...state.aviation.tasks, ...(state.ground_tasks || [])].filter((task) => task.kind === 'recon')" :air-tasks="state.aviation.tasks" :airfields="airfields" :ground-aircraft="groundAircraft" :ground-tasks="groundTasks" :enemy-air="state.enemy_air || []" :distance-reference="distanceReference" :distance-origin="distanceOrigin" :selected-air-task-id="mapAirTaskID" :locked="locked" :strike-targeting="Boolean(strikeTargetTaskID)" :nav-targeting="navTargeting" @select-airfield="selectAirfield" @inspect-airfield="inspectAirfield" @select-unit="selectMapUnit" @select-hex="selectHex" @manage-hex="openFleetChoices" @move="move" @notice="mapNotice" @select-air-task="selectMapAirTask" />
               <!-- 编队牌：整编栏里出发后就撤走的打击/转场编队，详情与无线电操作在这里 -->
@@ -882,7 +931,7 @@ onUnmounted(() => {
                   </footer>
                 </div>
               </section>
-              <section v-if="selectedFleet" class="fleet-workbench map-fleet-workbench" :class="{ 'fleet-panel-bottom': fleetPanelBottom }" :data-fleet-id="selectedFleet.fleet_id">
+              <section v-if="selectedFleet" class="fleet-workbench map-fleet-workbench" :class="{ 'fleet-panel-bottom': fleetPanelBottom, 'cards-collapsed': fleetCardsCollapsed }" :data-fleet-id="selectedFleet.fleet_id">
                 <header><div><span class="section-kicker">TASK FORCE · {{ selectedFleet.coord }}</span><h2>{{ selectedFleet.name }}</h2><small><span v-if="shoreTargetFor(selectedFleet)" class="fleet-shore" title="本回合可与岸炮互射：每点火炮 25%、每点岸炮 30%，命中扣机场生命值与地面飞机">岸轰可用</span>{{ selectedFleet.count }}艘 · <template v-if="selectedFleetTransports.length">货物 {{ selectedFleetCargo }} · </template>{{ selectedFleet.move_interval }}回合一格 · <b :class="selectedFleet.move_cooldown ? 'fleet-cooling' : 'fleet-ready'">{{ selectedFleet.move_cooldown ? `还需${selectedFleet.move_cooldown}回合` : '可移动' }}</b> · 点击舰船算子查看角色卡</small>
                   <div class="fleet-nav" :data-destination="selectedFleet.destination || ''">
                     <span class="nav-status">{{ selectedFleet.destination ? `自动航行 → ${selectedFleet.destination}` : '未设置自动航行' }}</span>
@@ -891,8 +940,8 @@ onUnmounted(() => {
                     <span class="nav-engagement">
                       <button v-for="(label, value) in engagementLabels" :key="value" :class="{ active: selectedEngagement === value }" :disabled="actionBusy || locked" :title="locked ? '本回合已就绪，操作已锁定' : ''" @click.stop="setEngagement(value as 'aggressive' | 'advantage' | 'avoid')">{{ label }}</button>
                     </span>
-                  </div></div><div class="fleet-workbench-actions"><button @click="counterSide = counterSide === 'front' ? 'back' : 'front'">{{ counterSide === 'front' ? '查看兵牌背面' : '查看兵牌正面' }}</button><button :disabled="locked" :title="locked ? '本回合已就绪，操作已锁定' : ''" @click="openManager(selectedFleet.coord)">舰队整编</button><button v-if="selectedFleet.members.some((unit) => ['CV', 'CVL', 'CVE'].includes(unit.type))" @click="openAviation(selectedFleet.fleet_id)">航空作业</button><button aria-label="关闭舰队详情" @click="selectedID = ''">×</button></div></header>
-                <div class="fleet-counter-grid"><button v-for="member in selectedFleet.members" :key="member.id" class="fleet-counter-button" :class="{ active: selectedUnit?.id === member.id }" :data-ship-id="member.id" @click="selectFleetMember(member)"><ShipCounter :unit="member" :side="counterSide" /></button></div>
+                  </div></div><div class="fleet-workbench-actions"><button @click="counterSide = counterSide === 'front' ? 'back' : 'front'">{{ counterSide === 'front' ? '查看兵牌背面' : '查看兵牌正面' }}</button><button :disabled="locked" :title="locked ? '本回合已就绪，操作已锁定' : ''" @click="openManager(selectedFleet.coord)">舰队整编</button><button v-if="selectedFleet.members.some((unit) => ['CV', 'CVL', 'CVE'].includes(unit.type))" @click="openAviation(selectedFleet.fleet_id)">航空作业</button><button class="fleet-toggle-cards" :aria-pressed="fleetCardsCollapsed" @click="fleetCardsCollapsed = !fleetCardsCollapsed">{{ fleetCardsCollapsed ? '展开兵牌' : '收起兵牌' }}</button><button aria-label="关闭舰队详情" @click="selectedID = ''">×</button></div></header>
+                <div v-show="!fleetCardsCollapsed" class="fleet-counter-grid"><button v-for="member in selectedFleet.members" :key="member.id" class="fleet-counter-button" :class="{ active: selectedUnit?.id === member.id }" :data-ship-id="member.id" @click="selectFleetMember(member)"><ShipCounter :unit="member" :side="counterSide" /></button></div>
               </section>
               <section v-if="inspectedFleet" class="fleet-workbench enemy-fleet-workbench" :data-fleet-id="inspectedFleet.fleet_id">
                 <header><div><span class="section-kicker">ENEMY CONTACT · {{ inspectedFleet.coord }}</span><h2>{{ contactIntelLabel(inspectedFleet) }}</h2><small>情报{{ inspectedFleet.contact_level || 0 }}级{{ (inspectedFleet.contact_level || 0) >= 4 ? ' · 编成与状态已知 · 点击舰船查看角色卡' : ' · 只能确认这一级的信息' }}</small></div><div class="fleet-workbench-actions"><button v-if="(inspectedFleet.contact_level || 0) >= 4" @click="counterSide = counterSide === 'front' ? 'back' : 'front'">{{ counterSide === 'front' ? '查看兵牌背面' : '查看兵牌正面' }}</button><button aria-label="关闭" @click="selectedID = ''">×</button></div></header>
@@ -924,6 +973,7 @@ onUnmounted(() => {
                   <section v-if="state.join_token" class="side-card invite-card"><div><span class="section-kicker">INVITE PLAYER B</span></div><button class="token-display" @click="copyToken"><code>{{ state.join_token }}</code><span>{{ copied ? '已复制' : '复制' }}</span></button><div v-if="watchPath" class="watch-row"><a :href="watchPath" target="_blank" rel="noreferrer">观战页 ↗</a><button @click="copyWatchLink">{{ watchCopied ? '链接已复制' : '复制观战链接' }}</button></div></section>
                   <section class="side-card orders-card"><div class="side-card-head"><span class="section-kicker">PENDING ORDERS</span><span>{{ state.orders.length }}</span></div><div v-if="state.orders.length" class="order-list"><div v-for="order in state.orders" :key="order.unit_id || order.task_id"><span>{{ order.task_id ? `任务 ${order.task_id}` : unitName(order.unit_id) }}</span><code>{{ order.type === 'MERGE_FLEET' ? `整编 → ${unitName(order.target_unit_id || '')}` : order.type === 'REORGANIZE_HEX' ? `整编hex ${order.coord}` : order.type === 'RECALL_AIR' ? '无线电召回' : order.type === 'RETASK_AIR' ? `无线电改令 → ${order.task_kind}` : `预定 → ${order.coord}` }}</code><button aria-label="取消命令" @click="clearOrder(order.unit_id || order.task_id || '')">×</button></div></div><p v-else class="empty-copy">尚未下达移动或整编命令</p>
                     <div class="supply-summary"><span>滩头物资</span><b>{{ shoreSupplyTotal }}</b><small v-for="(value, coord) in state.shore_supplies || {}" :key="coord">{{ coord }}:{{ value }}</small></div>
+                    <div v-if="enemyShoreSupplyTotal" class="supply-summary enemy-supplies"><span>敌方滩头物资</span><b>{{ enemyShoreSupplyTotal }}</b><small v-for="(value, coord) in state.enemy_shore_supplies || {}" :key="coord">{{ coord }}:{{ value }}</small><small class="supply-hint">可派舰队岸轰清除</small></div>
                   </section>
                   <section class="side-card players-card"><div class="side-card-head"><span class="section-kicker">PLAYERS</span></div><div v-for="player in state.players" :key="player.id" class="player-row"><span class="player-faction" :class="`seal-${player.faction.toLowerCase()}`">{{ player.faction }}</span><span>{{ player.name }}</span><i :class="{ online: player.connected }"></i><b :class="{ ready: player.ready }">{{ player.ready ? '已就绪' : '部署中' }}</b></div></section>
                   <section class="side-card log-card"><div class="side-card-head"><span class="section-kicker">COMBAT LOG</span><button class="text-button" @click="activePanel = 'log'">全部日志</button></div><div class="event-list"><div v-for="event in orderedEvents.slice(0, 4)" :key="event.id" class="event-row"><span>T{{ String(event.turn).padStart(2, '0') }}</span><p>{{ event.text }}</p></div></div></section>
@@ -951,7 +1001,7 @@ onUnmounted(() => {
         <section v-else-if="activePanel === 'settings'" class="workspace-page"><span class="section-kicker">SETTINGS</span><h1>作战室设置</h1><div class="settings-grid"><div class="side-card"><h2>当前会话</h2><p>指挥官：{{ state.you.name }}</p><p>阵营：{{ state.you.faction }} · 内部房间 ID：<code>{{ state.room_id }}</code></p><p v-if="state.join_token">房间 token：<code>{{ state.join_token }}</code></p><p v-if="watchPath">观战地址：<a :href="watchPath" target="_blank" rel="noreferrer">{{ watchPath }} ↗</a></p><p>连接方式：{{ socketStatus === 'online' ? 'WebSocket实时同步' : 'WebSocket重连中' }}</p></div><div class="side-card"><h2>地图与资源</h2><p>坐标格式：ABCD（行 + 列）</p><p>地图与剧本从服务器持久化内容目录载入。</p><a class="secondary-link" href="/api/docs" target="_blank">查看API与AI扩展文档 ↗</a></div></div></section>
         <AviationPanel v-else-if="activePanel === 'aviation'" :key="selectedAirfield ? 'airfield-' + selectedAirfield.unit_id : 'fleet'" :aviation="aviationCarriers ?? state.aviation" :units="ownUnits" :fleet-id="aviationFleetId" :targets="strikeTargets" :player-faction="state.you.faction" :focus-unit-id="aviationFocusID" :selected-aircraft-id="selectedAirTaskID" :busy="actionBusy || locked" :locked="locked" :airfield="selectedAirfield" :radio-tasks="state.radio_tasks" :clock="state.clock" @command="airCommand" @select-aircraft="selectAircraft" @select-target="chooseStrikeTarget" />
         <ResultsPanel v-else-if="activePanel === 'results'" :state="state" />
-        <AirCombatPanel v-else-if="activePanel === 'airCombat' && activeAirCombat" :report="activeAirCombat" @close="closeAirCombat" />
+        <AirCombatPanel v-else-if="activePanel === 'airCombat' && activeAirCombat" :report="activeAirCombat" :has-next="combatQueue.length > 0" @close="closeAirCombat" />
         <section v-else class="workspace-page"><span class="section-kicker">EVENT LOG</span><h1>日志信息</h1><div class="full-log"><div v-for="event in orderedEvents" :key="event.id" class="full-log-row"><span>T{{ String(event.turn).padStart(2, '0') }}</span><code>#{{ event.id }}</code><p>{{ event.text }}</p><time>{{ new Date(event.created_at).toLocaleTimeString() }}</time></div></div></section>
       </template>
     </div>

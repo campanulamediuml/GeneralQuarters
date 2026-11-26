@@ -1,6 +1,6 @@
 {
  "id": "_coral_real",
- "version": 39,
+ "version": 42,
  "name": "珊瑚海 · 1942年5月（25海里/hex）",
  "map": "_coral_real",
  "units": "sandbox",
@@ -18,8 +18,7 @@
   "turn_minutes": 20,
   "service_start": "04:00",
   "launch_start": "05:20",
-  "recover_by": "19:40",
-  "night_loss": true
+  "recover_by": "19:40"
  },
  "description": "战役简报：\n1942年5月，日军决定攻略莫尔兹比港，美军必须拦截这次增援。\n\n- 日军战役目标：在莫尔兹比港卸下 20 单位货物。\n- 美军战役目标：阻止日军完成投送。\n- 双方都只投入了有限的航母力量，这是人类历史上第一次航母对决；航母被击沉按机库容量计入 VP，不单独设“航母全灭”目标。\n- 360 回合上限是唯一强制结算点；投送完成或彻底失败都只影响 VP，不提前结束，最终胜负由 VP 比值决定。\n- VP 计分：航母按机库容量，战列舰/战列巡洋舰 6、重巡 3、轻巡 2、驱逐 1、运输船 1，每摧毁一个航空算子 0.25；完成 20 单位投送计 20 VP，未完成则由阻止方计 20 VP。\n- 双方 VP 比值小于 1.25 平分秋色，1.25 到 2 为战术胜利，大于 2 为战略胜利；日军未投送满 20 单位前不能获得战略胜利。\n\n一回合 20 分钟：04:00 开始甲板整备，05:20 首轮升空，19:40 前必须全员回收。对局上限 5 天，共 360 回合。",
  "objectives": [
@@ -1007,6 +1006,21 @@
    "carrier": "a-cv-01"
   },
   {
+   "id": "a-cv-01-fighter-x6",
+   "unit": "fighter",
+   "carrier": "a-cv-01"
+  },
+  {
+   "id": "a-cv-01-fighter-x7",
+   "unit": "fighter",
+   "carrier": "a-cv-01"
+  },
+  {
+   "id": "a-cv-01-fighter-x8",
+   "unit": "fighter",
+   "carrier": "a-cv-01"
+  },
+  {
    "id": "a-cv-01-dive_bomber-x1",
    "unit": "dive_bomber",
    "carrier": "a-cv-01"
@@ -1067,6 +1081,16 @@
    "carrier": "a-cv-01"
   },
   {
+   "id": "a-cv-01-torpedo_bomber-x4",
+   "unit": "torpedo_bomber",
+   "carrier": "a-cv-01"
+  },
+  {
+   "id": "a-cv-01-torpedo_bomber-x5",
+   "unit": "torpedo_bomber",
+   "carrier": "a-cv-01"
+  },
+  {
    "id": "a-cv-02-fighter-x1",
    "unit": "fighter",
    "carrier": "a-cv-02"
@@ -1083,6 +1107,26 @@
   },
   {
    "id": "a-cv-02-fighter-x4",
+   "unit": "fighter",
+   "carrier": "a-cv-02"
+  },
+  {
+   "id": "a-cv-02-fighter-x5",
+   "unit": "fighter",
+   "carrier": "a-cv-02"
+  },
+  {
+   "id": "a-cv-02-fighter-x6",
+   "unit": "fighter",
+   "carrier": "a-cv-02"
+  },
+  {
+   "id": "a-cv-02-fighter-x7",
+   "unit": "fighter",
+   "carrier": "a-cv-02"
+  },
+  {
+   "id": "a-cv-02-fighter-x8",
    "unit": "fighter",
    "carrier": "a-cv-02"
   },
@@ -1132,6 +1176,16 @@
    "carrier": "a-cv-02"
   },
   {
+   "id": "a-cv-02-dive_bomber-x10",
+   "unit": "dive_bomber",
+   "carrier": "a-cv-02"
+  },
+  {
+   "id": "a-cv-02-dive_bomber-x11",
+   "unit": "dive_bomber",
+   "carrier": "a-cv-02"
+  },
+  {
    "id": "a-cv-02-torpedo_bomber-x1",
    "unit": "torpedo_bomber",
    "carrier": "a-cv-02"
@@ -1143,6 +1197,16 @@
   },
   {
    "id": "a-cv-02-torpedo_bomber-x3",
+   "unit": "torpedo_bomber",
+   "carrier": "a-cv-02"
+  },
+  {
+   "id": "a-cv-02-torpedo_bomber-x4",
+   "unit": "torpedo_bomber",
+   "carrier": "a-cv-02"
+  },
+  {
+   "id": "a-cv-02-torpedo_bomber-x5",
    "unit": "torpedo_bomber",
    "carrier": "a-cv-02"
   },
@@ -1222,7 +1286,7 @@
    "id": "af-b-deboyne",
    "faction": "B",
    "name": "德伯因水上飞机基地",
-   "coord": "1023",
+   "coord": "1923",
    "type": "seaplane",
    "runways": 4,
    "radar": false,
@@ -1238,7 +1302,7 @@
    "id": "af-b-rabaul",
    "faction": "B",
    "name": "拉包尔机场",
-   "coord": "0323",
+   "coord": "0224",
    "type": "medium",
    "runways": 2,
    "radar": false,
@@ -1264,6 +1328,24 @@
    ]
   },
   {
+   "id": "af-b-rabaul-seaplane",
+   "faction": "B",
+   "name": "拉包尔水上飞机基地",
+   "coord": "0323",
+   "type": "seaplane",
+   "runways": 4,
+   "radar": false,
+   "heavy_aa": 0,
+   "light_aa": 2,
+   "coastal": 0,
+   "aircraft": [
+    "af-b-rabaul-h6k-1",
+    "af-b-rabaul-h6k-2",
+    "af-b-rabaul-h6k-3",
+    "af-b-rabaul-h6k-4"
+   ]
+  },
+  {
    "id": "af-a-moresby",
    "faction": "A",
    "name": "莫尔兹比港机场",
@@ -1273,7 +1355,7 @@
    "radar": false,
    "heavy_aa": 3,
    "light_aa": 20,
-   "coastal": 0,
+   "coastal": 6,
    "aircraft": [
     "af-a-moresby-dive_bomber-1",
     "af-a-moresby-dive_bomber-2",

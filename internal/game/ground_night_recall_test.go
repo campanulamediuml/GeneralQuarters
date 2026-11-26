@@ -30,7 +30,7 @@ func TestGroundStrikeNotForceRecalledBeforeNight(t *testing.T) {
 	plane.SetRange(20)
 
 	// 造一个"快到天黑"的时间线：TurnsPerDay 与当前回合配合，使剩余回合很小。
-	state.Timeline = &Timeline{TurnMinutes: 20, ServiceStart: "04:00", LaunchStart: "05:20", RecoverBy: "19:40", NightLoss: true}
+	state.Timeline = &Timeline{TurnMinutes: 20, ServiceStart: "04:00", LaunchStart: "05:20", RecoverBy: "19:40"}
 	state.TurnsPerDay = 72
 	state.DayHours = 0
 	state.Turn = 71 // 23:40 之前两回合天黑
@@ -72,7 +72,7 @@ func TestGroundReconRecalledBeforeNight(t *testing.T) {
 	plane.Returning = false
 	plane.SetRange(20)
 
-	state.Timeline = &Timeline{TurnMinutes: 20, ServiceStart: "04:00", LaunchStart: "05:20", RecoverBy: "19:40", NightLoss: true}
+	state.Timeline = &Timeline{TurnMinutes: 20, ServiceStart: "04:00", LaunchStart: "05:20", RecoverBy: "19:40"}
 	state.TurnsPerDay = 72
 	state.DayHours = 0
 	state.Turn = 71

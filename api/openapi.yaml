@@ -109,7 +109,7 @@ paths:
     post:
       tags: [Commands]
       summary: 提交立即生效的移动、整编或航空命令
-      description: command_id用于幂等重试，base_version用于拒绝过期操作。移动、整编和航空任务分配立即结算；升降机、甲板、攻击编组、扇面hex、发现判定和情报只由服务端计算。PREPARE_AIR已废弃，整备和提升必须绑定任务。CLEAR_MOVE仅清理旧版协议的待结算命令。
+      description: command_id用于幂等重试；base_turn可选，只用于拒绝跨回合的过期操作——同回合内重复命令一律接受，后写的覆盖先写的。移动、整编和航空任务分配立即结算；升降机、甲板、攻击编组、扇面hex、发现判定和情报只由服务端计算。PREPARE_AIR已废弃，整备和提升必须绑定任务。CLEAR_MOVE仅清理旧版协议的待结算命令。
       parameters:
         - {$ref: '#/components/parameters/RoomID'}
       requestBody:
@@ -142,9 +142,9 @@ paths:
           application/json:
             schema:
               type: object
-              required: [base_version, ready]
+              required: [ready]
               properties:
-                base_version: {type: integer, format: int64, example: 1}
+                base_turn: {type: integer, example: 1, description: 提交时看到的回合号，可选；落后于当前回合会被拒绝}
                 ready: {type: boolean, example: true}
       responses:
         '200':
@@ -177,7 +177,7 @@ components:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
     Conflict:
-      description: base_version已过期或回合正在结算
+      description: 回合已结算（base_turn 落后）或命令校验失败
       content:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
@@ -195,10 +195,10 @@ components:
         join_token: {type: string, description: 仅创建房间时返回}
     Command:
       type: object
-      required: [command_id, base_version, type]
+      required: [command_id, type]
       properties:
         command_id: {type: string, maxLength: 128}
-        base_version: {type: integer, format: int64}
+        base_turn: {type: integer, description: 提交时看到的回合号，可选；落后于当前回合会被拒绝}
         type: {type: string, enum: [SET_MOVE, CLEAR_MOVE, SET_HEADING, SET_AUTO_NAV, SET_ENGAGEMENT, SET_LOADOUT, MERGE_FLEET, REORGANIZE_HEX, LAUNCH_CAP, LAUNCH_COVER, LAUNCH_RECON, LAUNCH_STRIKE, LAUNCH_TRANSFER, PREPARE_AIR, RETURN_TO_HANGAR, RECOVER_AIR, PRIORITIZE_AIR_TASK, SET_STRIKE_TARGET, SET_STRIKE_DISPERSION, SET_AIR_CYCLE]}
         unit_id: {type: string, description: 舰船移动与整编命令必填, example: a-bb-01}
         target_unit_id: {type: string, description: MERGE_FLEET必填，目标舰队中的单位, example: a-dd-01}
@@ -209,7 +209,7 @@ components:
         engagement: {type: string, enum: [aggressive, advantage, avoid], description: SET_AUTO_NAV和SET_ENGAGEMENT使用；aggressive=逢敌必战，advantage=优势交战，avoid=避免近战}
         target_fleet_id: {type: string, description: SET_STRIKE_TARGET/LAUNCH_STRIKE可显式指定敌方舰队；目标hex同时有敌方机场和舰队时用它选择打舰队，省略则维持机场优先, example: TF44}
         loadout: {type: string, description: SET_LOADOUT必填，例如 bomb、torpedo、bomb+tank、torpedo+tank},
-        heading: {type: string, enum: [E, SE, SW, W, NW, NE], description: LAUNCH_RECON必填，搜索航线中轴；侦察机、TBF鱼雷机和SB2C俯冲轰炸机可执行, example: W}
+        heading: {type: string, enum: [E, SE, SW, W, NW, NE], description: LAUNCH_RECON必填，搜索航线中轴；舰载机限侦察机/TBF/SB2C，陆基机场除战斗机外均可执行（含B-17/B-25/B-26）, example: W}
         sector_width: {type: integer, enum: [60, 120], description: LAUNCH_RECON必填；120度最终发现率减半, example: 60}
         recon_radius: {type: integer, minimum: 0, description: 可选；省略或为0时使用recon_radius_limit，手动值不能超过该上限, example: 6}
         assignments:

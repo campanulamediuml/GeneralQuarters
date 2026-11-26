@@ -208,9 +208,13 @@ export interface AirTask {
   /** 攻击编队的攻击方式：true = 分散攻击（规则书 624–631 行） */
   disperse?: boolean
   /** 走完任务再落回母舰还要几回合（含排队着舰余量） */
-  return_turns?: number
+  return_turns: number
   /** 天黑前能否回来：false 表示这波任务注定赶不上 19:40 的回收截止 */
-  night_safe?: boolean
+  night_safe: boolean
+  /** 距天黑还剩几回合；没有昼夜循环的剧本为 -1 */
+  turns_to_dark: number
+  /** 富余回合数 = turns_to_dark - return_turns，小于 0 就是这波回不来 */
+  night_margin: number
   heading?: ReconHeading
   sector_width?: 60 | 120
   recon_radius?: number
@@ -297,6 +301,8 @@ export interface AirShipCard {
   name: string
   type: string
   strength: number
+  /** 舰船卡素材路径（misc/image/ship/*.png），空战动画按它画剪影 */
+  picture?: string
 }
 
 export interface StrikeAllocation {
@@ -364,6 +370,10 @@ export interface AirfieldContact {
   light_aa?: number
   coastal?: number
   hangar_used?: number
+  /** 停机上限：跑道数×6，剧本可覆盖（转场进入已满机场会被拒绝） */
+  hangar_capacity?: number
+  /** 敌方卸在这个机场上的滩头物资；有货时机场瘫痪 */
+  enemy_supplies?: number
   contact_level: number
 }
 
@@ -432,6 +442,9 @@ export interface GroundAirStatus {
   light_aa: number
   coastal: number
   hangar_used: number
+  /** 停机上限（航空算子数）：跑道数×6，剧本可覆盖；转场进入已满机场会被拒绝 */
+  hangar_capacity: number
+  enemy_supplies?: number
   aircraft: GroundAirUnit[]
 }
 
@@ -469,6 +482,8 @@ export interface GameView {
   fleet_stays?: Record<string, string>
   fleet_sessions?: Record<string, number>
   shore_supplies?: Record<string, number>
+  /** 敌方卸在己方机场上的滩头物资：坐标 → 数量 */
+  enemy_shore_supplies?: Record<string, number>
   wind?: { wind: string; fleets: { fleet_id: string; heading: string; relation: string; has_carrier: boolean; deck_modifier: number; changed: boolean }[] }
   radio_used?: string[]
   /** 剧本时间线快照；没配 DayHours/TurnsPerDay 的剧本为 null */

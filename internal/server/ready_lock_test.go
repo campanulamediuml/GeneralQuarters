@@ -24,7 +24,7 @@ func TestReadyFreezesCommands(t *testing.T) {
 	_ = a.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &initial)
 
 	var readyView testView
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": initial.Version, "ready": true}, &readyView); status != http.StatusOK {
+	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &readyView); status != http.StatusOK {
 		t.Fatalf("ready 失败：%d", status)
 	}
 	if !readyView.You.Ready {
@@ -32,7 +32,7 @@ func TestReadyFreezesCommands(t *testing.T) {
 	}
 
 	// ready 不能撤销：必须拒绝 ready:false，且就绪标记保持。
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": readyView.Version, "ready": false}, nil); status != http.StatusBadRequest {
+	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": false}, nil); status != http.StatusBadRequest {
 		t.Fatalf("ready:false 应被拒绝（400），实际 %d", status)
 	}
 	var stillReady testView
@@ -55,7 +55,7 @@ func TestReadyFreezesCommands(t *testing.T) {
 		t.Fatal("找不到可以移动的己方单位")
 	}
 	status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/commands", map[string]any{
-		"command_id": "freeze-move-1", "base_version": state.Version, "type": "SET_MOVE", "unit_id": unitID, "coord": "0202",
+		"command_id": "freeze-move-1", "type": "SET_MOVE", "unit_id": unitID, "coord": "0202",
 	}, nil)
 	if status != http.StatusConflict {
 		t.Fatalf("就绪后应拒绝命令（409），实际 %d", status)
@@ -71,7 +71,7 @@ func TestReadyFreezesCommands(t *testing.T) {
 
 	// 对手就绪后正常结算，回合推进。
 	var resolved testView
-	if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": after.Version, "ready": true}, &resolved); status != http.StatusOK {
+	if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &resolved); status != http.StatusOK {
 		t.Fatalf("双方就绪结算失败：%d", status)
 	}
 	if resolved.Turn != 2 {

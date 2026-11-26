@@ -236,6 +236,40 @@ func nightBlockedAirOrder(orderType string) bool {
 	return false
 }
 
+// validateCarrierTransferRange 校验舰载机转场的目的地距离。
+//
+// 规则只要求"起飞那一刻够得着"：这里按当时的母舰位置查一次，
+// 已经在天上的算子直接跳过——目标舰队之后跑远了，飞机照样按原目标飞，
+// 燃油照烧，不再复检。
+func validateCarrierTransferRange(state State, aircraftList []*AirUnit, carrier *Unit, coord string) error {
+	if carrier == nil || coord == "" || !inBounds(state.Map, coord) {
+		return nil
+	}
+	// 转场到机场也走同一套容量检查（机场默认不限，只有显式配了上限的小机场会拒绝）。
+	if dest := friendlyAirfieldAtCoord(state, carrier.Faction, coord); dest != nil {
+		incoming := 0
+		for _, aircraft := range aircraftList {
+			if aircraft != nil && !airborne(aircraft) {
+				incoming++
+			}
+		}
+		if err := airfieldHangarFull(state, dest, incoming); err != nil {
+			return err
+		}
+	}
+	need := Distance(carrier.Coord, coord)
+	for _, aircraft := range aircraftList {
+		if aircraft == nil || airborne(aircraft) {
+			continue
+		}
+		limit := SortieBaseRange(aircraft.BaseRange, LoadoutTransfer)
+		if need > limit {
+			return fmt.Errorf("%s转场航程%d hex（副油箱+转场加成），到%s需要%d hex", aircraft.Model, limit, coord, need)
+		}
+	}
+	return nil
+}
+
 func ValidateAirOrder(state State, faction string, order Order) error {
 	if !state.ServiceWindowOpen() && nightBlockedAirOrder(order.Type) {
 		return fmt.Errorf("夜间无法执行航空任务")
@@ -385,6 +419,11 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 				}
 			}
 		}
+		if order.Type == "LAUNCH_TRANSFER" {
+			if err := validateCarrierTransferRange(state, aircraftList, carrier, order.Coord); err != nil {
+				return err
+			}
+		}
 		if status == "deck" || status == "ready" {
 			// 甲板/待发算子会立刻起飞，同样受剧本的放飞时间窗限制。
 			if !state.LaunchWindowOpen() {
@@ -412,6 +451,11 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 			// 降不下去时玩家就是靠这条命令把编队改到另一支舰队。
 			if order.Coord == "" || !inBounds(state.Map, order.Coord) {
 				return fmt.Errorf("目标 hex 无效")
+			}
+			if aircraftList[0].TaskKind == "transfer" {
+				// 还没起飞时按母舰位置查一次航程；已经在天上的不再复检。
+				task := taskAircraft(state, aircraftList[0].TaskID)
+				return validateCarrierTransferRange(state, task, carrier, order.Coord)
 			}
 			return nil
 		default:
@@ -1288,13 +1332,9 @@ func advanceAircraftService(state *State) []EngineEvent {
 }
 
 // aircraftRepairChance 是损伤算子回机库后每回合的修复概率（规则书 387 行）：美军 10%，日军 3%。
-// 阵营必须按 doctrine 判断，不能拿内部代号当日军——沙盘剧本里 B 确实是日本，
-// 但换剧本（或以后加第三方）就会静默错阵营。
-func aircraftRepairChance(faction string, doctrines map[string]string) float64 {
-	if doctrines[faction] == "japan" {
-		return 3
-	}
-	return 10
+// 具体数值在 FactionRules 里（按 doctrine 解析），这里只是给调用点一个短名字。
+func aircraftRepairChance(state State, faction string) float64 {
+	return rulesFor(state, faction).RepairChance
 }
 
 // serviceComplete 判断机库加油整备是否已完成：需要 2 个整备回合，且没有待修/待检修状态。
@@ -1501,7 +1541,7 @@ func AdvanceAviation(state *State) []EngineEvent {
 			// 损伤、检修、时间窗未开都只是"等"，不算失败；母舰不可用或航程不够才结束循环。
 			events = append(events, restartCycledTask(state, aircraft)...)
 			if aircraft.Damaged && aircraft.Status == "hangar" {
-				chance := aircraftRepairChance(aircraft.Faction, state.Doctrines)
+				chance := aircraftRepairChance(*state, aircraft.Faction)
 				if probabilityRoll(&state.RNGState) < chance {
 					aircraft.Damaged = false
 					events = append(events, EngineEvent{Type: "aircraft_repaired", Audience: aircraft.Faction, Text: aircraft.Model + "损伤修复完成，可以重新分配任务"})
@@ -1654,7 +1694,9 @@ func advanceCarrierlessRecon(state *State, aircraft *AirUnit) []EngineEvent {
 		return nil
 	}
 	model := aircraft.Model
-	landAtAirfield(state, aircraft, airfield)
+	if crashed := landAtAirfield(state, aircraft, airfield); crashed != nil {
+		return crashed
+	}
 	return []EngineEvent{{Type: "air_landed_airfield", Audience: aircraft.Faction, Text: fmt.Sprintf("%s失去母舰，降落在%s", model, airfield.Name)}}
 }
 
@@ -1683,6 +1725,22 @@ func aviationBlockReason(state State, unit *Unit) string {
 	return ""
 }
 
+// aboardAircraft 统计已经在舰上的算子：机库、整备、甲板、待发、回收、升降机。
+// 升空在外执行任务的算子不算占机库——它们返航时正是要落回这些位置。
+func aboardAircraft(state State, carrierID string) int {
+	used := 0
+	for _, aircraft := range state.Aircraft {
+		if aircraft == nil || aircraft.CarrierID != carrierID {
+			continue
+		}
+		switch aircraft.Status {
+		case "hangar", "service", "deck", "ready", "recovery", "elevator":
+			used++
+		}
+	}
+	return used
+}
+
 func landingBlockReason(state State, carrier *Unit) string {
 	if carrier == nil || carrier.Deck == nil {
 		return "母舰不存在"
@@ -1703,6 +1761,10 @@ func landingBlockReason(state State, carrier *Unit) string {
 		return "本回合正在放飞，甲板不能同时回收"
 	case deckUsed(state, carrier.ID) >= carrier.Deck.Length:
 		return fmt.Sprintf("甲板已满（%d/%d），需要先清出整备或回收位置", deckUsed(state, carrier.ID), carrier.Deck.Length)
+	case carrier.Card.HangarCapacity > 0 && aboardAircraft(state, carrier.ID) >= carrier.Card.HangarCapacity:
+		// 机库满了就收不回来：还空着的甲板只是作业位，飞机落下来没处整备。
+		// 编队里先到的那批会逐架填满机库，剩下的只能挂在舰队头顶盘旋、照常耗油。
+		return fmt.Sprintf("机库已满（%d/%d），无法继续回收", aboardAircraft(state, carrier.ID), carrier.Card.HangarCapacity)
 	}
 	return ""
 }
@@ -1742,7 +1804,9 @@ func loseCarrierAircraft(state *State, aircraft *AirUnit) []EngineEvent {
 	}
 	if airfield := alternateAirfield(state, aircraft); airfield != nil {
 		model := aircraft.Model
-		landAtAirfield(state, aircraft, airfield)
+		if crashed := landAtAirfield(state, aircraft, airfield); crashed != nil {
+			return crashed
+		}
 		return []EngineEvent{{Type: "air_landed_airfield", Audience: aircraft.Faction, Text: fmt.Sprintf("%s失去母舰，转移至%s机库", model, airfield.Name)}}
 	}
 	// 既没有可降落的航母也没有机场：不凭空消失，留在空中盘旋，
@@ -1798,11 +1862,19 @@ func airfieldCanAccept(state *State, airfield *Airfield, aircraft *AirUnit) bool
 		return false
 	}
 	// 规则书：飞机不能在无跑道的机场起飞，但可以降落（降落时 60% 迫降失败进入损伤状态）。
-	// 机型限制只针对"野战机场只收战斗机"这一条；侦察机/鱼雷机在野战机场同样可以紧急降落，只是会受损概率高。
-	if aircraft.Kind == "fighter" {
-		return true
+	//
+	// 备降点必须和飞机的起降方式对得上：水上飞机只能落水上飞机基地，
+	// 陆基机不能落到水上基地。以前这里反着写——凡是"不是水上基地"的机场都收，
+	// 结果莫尔兹比港这种陆地机场把整队 SOC 海鸥收了进去。
+	kind := NormalizeAirfieldType(airfield.Type)
+	if aircraft.Seaplane && kind != AirfieldSeaplane {
+		return false
 	}
-	return airfield.Type != "" && NormalizeAirfieldType(airfield.Type) != AirfieldSeaplane
+	if !aircraft.Seaplane && kind == AirfieldSeaplane {
+		return false
+	}
+	// 和航母机库同一套检查：机场默认 99999（等于不限），只有剧本显式写了上限才可能卡住。
+	return airfieldHangarFull(*state, airfield, 1) == nil
 }
 
 // alternateAirfield 在母舰无法降落时寻找最近的可用机场（同阵营、能收该机型）。
@@ -1904,20 +1976,29 @@ func advanceAirfieldDivert(state *State, aircraft *AirUnit) []EngineEvent {
 	if aircraft.Coord != airfield.Coord {
 		return nil
 	}
+	// 到了才发现机场停满（只可能发生在剧本显式设了小上限的机场）：不硬塞，继续盘旋等位。
+	if err := airfieldHangarFull(*state, airfield, 1); err != nil {
+		aircraft.DivertAirfield = ""
+		aircraft.TargetCoord = ""
+		return []EngineEvent{{Type: "air_loiter", Audience: aircraft.Faction, Text: fmt.Sprintf("%s抵达%s，但%s，继续盘旋等位", model, airfield.Name, err.Error())}}
+	}
 	aircraft.DivertAirfield = ""
-	landAtAirfield(state, aircraft, airfield)
+	if crashed := landAtAirfield(state, aircraft, airfield); crashed != nil {
+		return crashed
+	}
 	return []EngineEvent{{Type: "air_landed_airfield", Audience: aircraft.Faction, Text: fmt.Sprintf("%s母舰无法回收，转场降落在%s", model, airfield.Name)}}
 }
 
 // landAtAirfield 让舰载机在机场降落：转为机场地面算子（状态 recovery，下一回合进机库），
 // 并从舰载机列表移除，避免同一算子同时存在于航母和机场两套数据里。
-func landAtAirfield(state *State, aircraft *AirUnit, airfield *Airfield) {
+// 返回非空事件表示夜间降落摔毁，算子已经从 state.Aircraft 移除。
+func landAtAirfield(state *State, aircraft *AirUnit, airfield *Airfield) []EngineEvent {
 	if state.GroundAir == nil {
 		state.GroundAir = map[string]*AirfieldAirUnit{}
 	}
 	if _, exists := state.GroundAir[aircraft.ID]; exists {
 		delete(state.Aircraft, aircraft.ID)
-		return
+		return nil
 	}
 	// 无跑道的机场按规则"可以降落但有 60% 迫降失败"，失败进入损伤状态
 	damaged := false
@@ -1927,12 +2008,22 @@ func landAtAirfield(state *State, aircraft *AirUnit, airfield *Airfield) {
 	state.GroundAir[aircraft.ID] = &AirfieldAirUnit{
 		ID: aircraft.ID, DefinitionID: aircraft.DefinitionID, AirfieldID: airfield.ID, Faction: aircraft.Faction,
 		Model: aircraft.Model, Kind: aircraft.Kind, Picture: aircraft.Picture, PictureMode: aircraft.PictureMode, Status: "recovery", Strength: aircraft.Strength,
+		// 基础航程和挂载必须跟着算子一起转成机场侧的数据：
+		// 以前只抄了 MaxRange，改用机场那套"按挂载重建航程"时 base 是 0，
+		// 换一次挂载就会把航程算飞掉。
+		BaseRange: aircraft.BaseRange, Loadout: aircraft.Loadout,
 		MaxRange: aircraft.MaxRange, RemainingRange: aircraft.MaxRange,
 		AirCombat: aircraft.AirCombat, AntiShip: aircraft.AntiShip, AntiGround: aircraft.AntiGround,
 		Seaplane: aircraft.Seaplane, AirfieldOnly: aircraft.AirfieldOnly, TorpedoCapable: aircraft.TorpedoCapable, HighAltitudeBomber: aircraft.HighAltitudeBomber,
 		Coord: airfield.Coord, Damaged: damaged, ReconRadiusLimit: max(1, aircraft.MaxRange/2),
 	}
 	delete(state.Aircraft, aircraft.ID)
+	// 夜间着陆机场：每个算子额外 20% 摔毁（规则书 535 行）。
+	if state.Night && probabilityRoll(&state.RNGState) < 20 {
+		delete(state.GroundAir, aircraft.ID)
+		return []EngineEvent{{Type: "night_landing_crash", Audience: aircraft.Faction, Text: aircraft.Model + "夜间降落失败，冲出跑道"}}
+	}
+	return nil
 }
 
 // canRestartCAP 判断 CAP 循环能否重新开始：母舰可用、航程够、本回合没有被打废。
@@ -2157,8 +2248,17 @@ func VisibleAviation(state State, faction string) AviationView {
 		}
 		// NightSafe：这支编队在天黑前落得回去。前端只认这个布尔值，
 		// 不重复实现一遍"距离/速度/天黑"的折算。
-		if task.AirborneCount > 0 && state.TurnsPerDay > 0 {
-			task.NightSafe = task.ReturnTurns < turnsUntilNight(state)
+		// TurnsToDark / NightMargin 是同一笔账的结构化版本：AI 拿不到事件文本，
+		// 只靠 night_safe 的布尔值没法判断"再等一回合还来不来得及"。
+		if state.TurnsPerDay > 0 {
+			task.TurnsToDark = turnsUntilNight(state)
+			task.NightMargin = task.TurnsToDark - task.ReturnTurns
+			task.NightSafe = task.NightMargin > 0
+		} else {
+			// 没有昼夜循环的剧本（沙盒、单日剧本）：不存在"天黑前回不来"。
+			task.TurnsToDark = -1
+			task.NightMargin = 0
+			task.NightSafe = true
 		}
 		switch kind {
 		case "cap":

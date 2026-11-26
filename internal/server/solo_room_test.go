@@ -16,7 +16,7 @@ func TestTwoPlayerRoomRejectsLoneReady(t *testing.T) {
 	}
 	var initial testView
 	_ = a.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &initial)
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": initial.Version, "ready": true}, nil); status != http.StatusBadRequest {
+	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, nil); status != http.StatusBadRequest {
 		t.Fatalf("单人 ready 应被拒绝：%d", status)
 	}
 	var after testView
@@ -34,13 +34,13 @@ func TestTwoPlayerRoomRejectsLoneReady(t *testing.T) {
 	var bState testView
 	_ = b.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &bState)
 	var readyView testView
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": bState.Version, "ready": true}, &readyView); status != http.StatusOK {
+	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &readyView); status != http.StatusOK {
 		t.Fatalf("两人都在时应能 ready：%d", status)
 	}
 	if readyView.Turn != 1 {
 		t.Fatalf("只有一方 ready 不该结算：turn=%d", readyView.Turn)
 	}
-	if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": readyView.Version, "ready": true}, &readyView); status != http.StatusOK {
+	if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &readyView); status != http.StatusOK {
 		t.Fatalf("双方 ready 结算失败：%d", status)
 	}
 	if readyView.Turn != 2 {
@@ -62,7 +62,7 @@ func TestSoloRoomResolvesAlone(t *testing.T) {
 		t.Fatal("单人房应把 solo 标记返回给前端")
 	}
 	var readyView testView
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"base_version": initial.Version, "ready": true}, &readyView); status != http.StatusOK {
+	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &readyView); status != http.StatusOK {
 		t.Fatalf("单人房 ready 失败：%d", status)
 	}
 	if readyView.Turn != 2 {

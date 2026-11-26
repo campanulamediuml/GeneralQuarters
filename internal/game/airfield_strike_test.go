@@ -161,7 +161,7 @@ func TestGroundStrikeAllowsMixedAircraftTypes(t *testing.T) {
 	}
 	state.Night = false
 	state.Turn = 30 // 白天整备窗口，避免夜间校验先拦下
-	order := Order{Type: "LAUNCH_STRIKE", AircraftIDs: []string{sbd.ID, b25.ID}, Coord: "0323"}
+	order := Order{Type: "LAUNCH_STRIKE", AircraftIDs: []string{sbd.ID, b25.ID}, Coord: "0224"}
 	if err := ValidateOrder(state, "A", order); err != nil {
 		t.Fatalf("同机场同状态的混合机型应允许出击：%v", err)
 	}

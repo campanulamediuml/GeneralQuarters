@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"generalquarters/internal/game"
+	"generalquarters/internal/store"
 )
 
 //go:embed watch.html
@@ -37,17 +38,23 @@ func (s *Server) spectate(w http.ResponseWriter, r *http.Request, roomID string)
 		writeError(w, http.StatusInternalServerError, "读取战报失败")
 		return
 	}
+	writeJSON(w, http.StatusOK, buildSpectateView(room, players, events))
+}
+
+// spectateView 把房间状态整理成观战页要的那一份 JSON 视图。
+// 抽出来是为了能单独量它的开销：接口一次请求里真正的重活几乎都在这里。
+func buildSpectateView(room store.Room, players []store.Player, events []store.Event) map[string]any {
 	state := room.State
 	units := []game.Unit{}
 	fleets := []game.FleetGroup{}
 	airfields := []game.AirfieldContact{}
 	groundAir := []game.AirfieldAirStatus{}
+	groundTasks := spectatorGroundTasks(state)
 	stays := map[string]string{}
 	carriers := []game.CarrierAirStatus{}
 	tasks := []game.AirTask{}
 	combats := []game.AirCombatReport{}
 	seenCombat := map[string]bool{}
-	losses := map[string]game.LossLedger{}
 	for _, faction := range []string{"A", "B"} {
 		for _, unit := range game.VisibleUnits(state, faction) {
 			if unit.Faction == faction {
@@ -77,10 +84,8 @@ func (s *Server) spectate(w http.ResponseWriter, r *http.Request, roomID string)
 		for fleetID, coord := range game.VisibleFleetStays(state, faction) {
 			stays[fleetID] = coord
 		}
-		for side, ledger := range game.VisibleLosses(state, faction) {
-			losses[side] = ledger
-		}
 	}
+	losses := spectatorLosses(state)
 	response := map[string]any{
 		"room_id": room.ID, "status": room.Status, "turn": room.Turn, "version": room.Version,
 		"scenario":       map[string]any{"id": state.ScenarioID, "name": state.ScenarioName, "description": state.Description},
@@ -90,6 +95,7 @@ func (s *Server) spectate(w http.ResponseWriter, r *http.Request, roomID string)
 		"aviation":       map[string]any{"carriers": carriers, "tasks": tasks},
 		"airfields":      airfields,
 		"ground_air":     groundAir,
+		"ground_tasks":   groundTasks,
 		"air_combats":    combats,
 		"fleet_stays":    stays,
 		"losses":         losses,
@@ -104,7 +110,41 @@ func (s *Server) spectate(w http.ResponseWriter, r *http.Request, roomID string)
 		"events":         events,
 		"spectator":      true,
 	}
-	writeJSON(w, http.StatusOK, response)
+	return response
+}
+
+// spectatorLosses 合并双方的损失台账。
+//
+// VisibleLosses 会把"对方阵营的飞机损失"抹掉（盲棋：不能靠台账数出对手还剩多少飞机）。
+// 观战要按阵营分别投影再合并，而且**自己那一份必须优先**：以前后处理的 B 视图
+// 直接把 A 的飞机损失覆盖成空，观战页显示 A 一架飞机都没丢过。
+func spectatorLosses(state game.State) map[string]game.LossLedger {
+	merged := map[string]game.LossLedger{}
+	for _, faction := range []string{"A", "B"} {
+		for side, ledger := range game.VisibleLosses(state, faction) {
+			if side == faction {
+				merged[side] = ledger
+				continue
+			}
+			if _, exists := merged[side]; !exists {
+				merged[side] = ledger
+			}
+		}
+	}
+	return merged
+}
+
+// spectatorGroundTasks 合并双方机场航空任务。观战页的基地侦察扇面、CAP 牌都从这份数据取；
+// 私有快照按阵营各自投影，观战要两边都看，所以这里逐阵营合并并补上 faction 供上色。
+func spectatorGroundTasks(state game.State) []game.AirTask {
+	tasks := []game.AirTask{}
+	for _, faction := range []string{"A", "B"} {
+		for _, task := range game.GroundAviationView(state, faction).Tasks {
+			task.Faction = faction
+			tasks = append(tasks, task)
+		}
+	}
+	return tasks
 }
 
 // watchPage 是给旁观者看的只读海图，不依赖前端构建产物，随服务端一起发布。

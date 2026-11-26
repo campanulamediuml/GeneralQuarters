@@ -5,7 +5,7 @@ import "testing"
 // 快照里要直接给出"这波回不回得来"，前端才能在天黑前拦住玩家。
 func TestAviationViewExposesNightSafety(t *testing.T) {
 	state := sandboxState(t)
-	state.Timeline = &Timeline{TurnMinutes: 20, ServiceStart: "04:00", LaunchStart: "05:20", RecoverBy: "19:40", NightLoss: true}
+	state.Timeline = &Timeline{TurnMinutes: 20, ServiceStart: "04:00", LaunchStart: "05:20", RecoverBy: "19:40"}
 	state.TurnsPerDay = 72
 	state.DayHours = 0
 	carrier := state.Units["b-cv-04"]

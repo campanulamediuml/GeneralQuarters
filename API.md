@@ -7,7 +7,7 @@
 - 除健康检查和文档外，接口使用创建或加入房间时签发的HttpOnly Cookie`gq_session`。
 - 成功响应为JSON，错误为`{"error":"人类可读说明"}`。
 - `room_id`标识房间；`join_token`是邀请凭证；二者都不是玩家会话。
-- `base_version`来自最近一次私有快照。状态过期返回409，客户端应重新同步。
+- `base_turn`可选：提交时看到的回合号。只有回合已结算的过期提交会被拒绝（409）；同回合内重复提交一律接受，后写的覆盖先写的。不比对版本号。
 - `command_id`由客户端生成，在玩家范围内唯一。断线重试必须沿用原ID。
 - hex坐标为`ABCD`，AB为行、CD为列，例如`0203`。
 
@@ -54,21 +54,21 @@
 ```json
 {
   "command_id":"01J...",
-  "base_version":1,
+  "base_turn":1,
   "type":"SET_MOVE",
   "unit_id":"a-flag",
   "coord":"0203"
 }
 ```
 
-`coord`必须位于该单位服务器返回的`legal_moves`中。到达可移动时机后，移动由服务器立即生效并递增`version`，不生成待结算移动命令；普通/快速舰队每3回合移动一次（移动后冷却2回合），纯高速驱逐舰每2回合（冷却1回合），慢速每5回合（冷却4回合），极慢每10回合（冷却9回合），失去动力每24回合（冷却23回合）。全队按最慢航速计算，进水降低航速档位；冷却在回合结算开始递减，未归零时返回空的`legal_moves`并拒绝移动。`CLEAR_MOVE`仅用于取消旧版协议遗留的待结算移动命令，包含`command_id`、`base_version`、`type`和`unit_id`。整编后同样锁定3回合，交战后混乱的舰队不能整编。
+`coord`必须位于该单位服务器返回的`legal_moves`中。`SET_MOVE`提交后**只登记本回合的移动规划**（写入房间的待结算`orders`，`version`不变、舰队原地不动），双方就绪、回合结算时统一执行位移；即时生效的只有`SET_HEADING`/`SET_LOADOUT`/`SET_AUTO_NAV`/`SET_ENGAGEMENT`这类命令。到达可移动时机后，普通/快速舰队每3回合移动一次（移动后冷却2回合），纯高速驱逐舰每2回合（冷却1回合），慢速每5回合（冷却4回合），极慢每10回合（冷却9回合），失去动力每24回合（冷却23回合）。全队按最慢航速计算，进水降低航速档位；冷却在回合结算开始递减，未归零时返回空的`legal_moves`并拒绝移动。`CLEAR_MOVE`用于撤销本回合登记过的移动规划，包含`command_id`、`type`和`unit_id`；撤销后舰队本回合留在原地，也不会因此进入移动冷却。整编后同样锁定3回合，交战后混乱的舰队不能整编。
 
 ### 整编舰队
 
 ```json
 {
   "command_id":"01J...",
-  "base_version":1,
+  "base_turn":1,
   "type":"MERGE_FLEET",
   "unit_id":"a-screen",
   "target_unit_id":"a-flag"
@@ -82,7 +82,7 @@
 ```json
 {
   "command_id":"01J...",
-  "base_version":1,
+  "base_turn":1,
   "type":"REORGANIZE_HEX",
   "unit_id":"hex-0302",
   "coord":"0302",
@@ -95,19 +95,19 @@
 ### 航空命令
 
 ```json
-{"command_id":"01J...","base_version":1,"type":"LAUNCH_CAP","aircraft_ids":["air-b-01","air-b-02"]}
+{"command_id":"01J...","base_turn":1,"type":"LAUNCH_CAP","aircraft_ids":["air-b-01","air-b-02"]}
 ```
 
 - 航空命令可使用`aircraft_ids`提交1至20个算子，旧`aircraft_id`单算子格式继续兼容。CAP和侦察必须同母舰、同机型、同阶段；攻击编队可混合攻击机型并跨同一舰队的多艘母舰。所有设施、容量与任务状态均由服务端一次校验和结算。
 - `PREPARE_AIR`：已废弃并返回400。整备、提升、放飞必须绑定任务，客户端不能脱离任务直接切换算子阶段。
 - `RETURN_TO_HANGAR`：取消任务、优先级和任务参数。`service`立即重置为`hangar`；`deck/ready`转为`recovery`，等待本舰升降机下降后才进入`hangar`。`elevator`中的算子不能中途撤回。
 - `LAUNCH_CAP`：将战斗机分配至CAP任务。机库算子立即形成预备任务并进入`service`；已经在甲板的算子立即独立升空。每支舰队共享`cap-<fleet_id>`任务组和一面优先级旗，同一舰队的多艘航母可以同批发CAP，CAP算子仍独立起飞，不等待攻击编队。
-- `LAUNCH_RECON`：将侦察机或攻击机分配至扇面搜索任务，额外提交`heading`和`sector_width`。允许`recon`、`torpedo_bomber`（TBF）和`dive_bomber`（SB2C），拒绝战斗机。例如`{"command_id":"01J...","base_version":1,"type":"LAUNCH_RECON","aircraft_id":"air-b-10","heading":"W","sector_width":60}`。航向为`E/SE/SW/W/NW/NE`，角度只能为60或120。**侦察半径不可提交**（命令里没有这个字段）：服务端一律按机型算`recon_radius_limit`，客户端多传会被忽略；侦察算子独立起飞，不等待其他任务。每支舰队最多同时创建两个侦察组；向已有组加入飞机时提交`task_id`，同一舰队不同母舰的不同可搜索机型可以分批加入，并继承原组的航向和扇面，而不是自动创建或轮流进入另一组。对已经属于该`task_id`的算子重复提交同类型加入命令是幂等操作，不改变任务参数或算子状态；机库整备中的算子不能再作为待分配飞机拖入任务，必须从任务卡拖回机库取消后再分配。跨舰队加入会被拒绝，航空界面也只投影当前选中舰队的舰船和任务。每个侦察任务额外返回`recon_sectors`数组，逐机包含`aircraft_id/status/origin_coord/current_coord/sector_hexes/current_ring_hexes/distance_reference`；同组飞机不再共用唯一扇面条带。未升空的舰上飞机使用母舰当前hex且不生成实际搜索扇面，母舰移动后立即同步坐标；已升空飞机保留自己的起飞顶点和航线位置。
+- `LAUNCH_RECON`：将侦察机或攻击机分配至扇面搜索任务，额外提交`heading`和`sector_width`。舰载机只允许`recon`、`torpedo_bomber`（TBF）和`dive_bomber`（SB2C）；**陆基机场除战斗机外都允许**，B-17/B-25/B-26 这类轰炸机同样可以挂扇面搜索（1942 年 5 月第 19 轰炸大队就是这么干的）。两种情况都拒绝战斗机。例如`{"command_id":"01J...","base_turn":1,"type":"LAUNCH_RECON","aircraft_id":"air-b-10","heading":"W","sector_width":60}`。航向为`E/SE/SW/W/NW/NE`，角度只能为60或120。**侦察半径不可提交**（命令里没有这个字段）：服务端一律按机型算`recon_radius_limit`，客户端多传会被忽略；侦察算子独立起飞，不等待其他任务。每支舰队最多同时创建两个侦察组；向已有组加入飞机时提交`task_id`，同一舰队不同母舰的不同可搜索机型可以分批加入，并继承原组的航向和扇面，而不是自动创建或轮流进入另一组。对已经属于该`task_id`的算子重复提交同类型加入命令是幂等操作，不改变任务参数或算子状态；机库整备中的算子不能再作为待分配飞机拖入任务，必须从任务卡拖回机库取消后再分配。跨舰队加入会被拒绝，航空界面也只投影当前选中舰队的舰船和任务。每个侦察任务额外返回`recon_sectors`数组，逐机包含`aircraft_id/status/origin_coord/current_coord/sector_hexes/current_ring_hexes/distance_reference`；同组飞机不再共用唯一扇面条带。未升空的舰上飞机使用母舰当前hex且不生成实际搜索扇面，母舰移动后立即同步坐标；已升空飞机保留自己的起飞顶点和航线位置。
 - `LAUNCH_STRIKE`：由舰载俯冲轰炸机和鱼雷机和护航战斗机建立攻击编队，可以先创建编队再设置目标；`target_fleet_id`可在同一hex有机场和舰队时指定打舰队。把另一艘同舰队母舰的算子加入已有编队时提交`"task_id":"air-b-03"`并继承目标，已离场编队拒绝加入。部分算子先起飞时为`attack_holding`，任务为`assembling`，每等待一回合`remaining_range`减1；全部成员升空后若未设目标继续等待，不会离场。
-- `SET_STRIKE_TARGET`：通过`aircraft_id`提交攻击`task_id`，通过`coord`提交目标hex，也可以用`target_fleet_id`显式指定敌方舰队；目标hex同时有敌方机场和舰队时，带`target_fleet_id`就打舰队，不带则维持机场优先。服务端仅接受当前视野或情报中已知的敌方目标。改目标导致对舰/对地类型变化时，未升空的算子会自动换挂载并退回整备（鱼雷改炸弹、炸弹改鱼雷都必须重新整备），已升空的算子会拒绝并要求返航。攻击编队每回合推进 2 hex（水上飞机/双翼机 1 hex，规则书 197 行），抵达后才结算；出航途中**每回合**按最新情报校正一次目标——打击编队认的是那支舰队（target_fleet_id），不是起飞时那一格 hex，舰载编队与机场编队一致；入夜前服务器**不再**把打击编队强制掉头，只发一次`night_warning`，天黑仍在空中的按`forceNightLanding`结算（机场 2 hex 内当场降落，其余按损失处理）。任务快照的`return_turns/night_safe`给出"这波回不回得来"。全部成员设置`target_coord`并立即重新判定离场。离场后每回合最多向目标飞行2 hex并逐格耗油，抵达后记录`attack_arrived`战报。任务和算子包含`target_coord`，抵达后由Go完成CAP空战、防空、投弹、撤离空战和返航结算。
+- `SET_STRIKE_TARGET`：通过`aircraft_id`提交攻击`task_id`，通过`coord`提交目标hex，也可以用`target_fleet_id`显式指定敌方舰队；目标hex同时有敌方机场和舰队时，带`target_fleet_id`就打舰队，不带则维持机场优先。服务端仅接受当前视野或情报中已知的敌方目标。改目标导致对舰/对地类型变化时，未升空的算子会自动换挂载并退回整备（鱼雷改炸弹、炸弹改鱼雷都必须重新整备），已升空的算子会拒绝并要求返航。攻击编队每回合推进 2 hex（水上飞机/双翼机 1 hex，规则书 197 行），抵达后才结算；出航途中**每回合**按最新情报校正一次目标——打击编队认的是那支舰队（target_fleet_id），不是起飞时那一格 hex，舰载编队与机场编队一致；入夜前服务器**不再**把打击编队强制掉头，只发一次`night_warning`，天黑仍在空中的按`forceNightLanding`结算（机场 2 hex 内当场降落，其余按损失处理）。任务快照的`return_turns`、`turns_to_dark`、`night_margin`、`night_safe`给出"这波回不回得来"：`turns_to_dark`是距天黑还剩几回合（没有昼夜循环的剧本为 -1），`night_margin = turns_to_dark - return_turns`，小于等于 0 就是走完任务再返航会摸黑着舰。`night_safe`始终显式输出（false 不会被省略），AI 可以直接据此在出击前放弃一波。同样的道理，敌方编队/算子的情报里带`contact_stale_turns`：这条情报已经连续几回合没更新（0 = 本回合刚刷新），配合`contact_level`判断坐标还能不能信。全部成员设置`target_coord`并立即重新判定离场。离场后每回合最多向目标飞行2 hex并逐格耗油，抵达后记录`attack_arrived`战报。任务和算子包含`target_coord`，抵达后由Go完成CAP空战、防空、投弹、撤离空战和返航结算。
 - `LAUNCH_COVER`：空中掩护，机场算子也可以下（只有战斗机，其他机型返回400）。语义和 CAP 一致：`coord` 填要掩护的 hex——舰队所在格或机场格都行，留空表示掩护本机场上空；飞机飞过去后覆盖目标周围1 hex；如果掩护目标hex里有己方舰队，编队会自动跟随该舰队移动，而不是钉在起飞时的hex。敌机进入这个范围按 CAP 参战。目的地可以先用 `SET_STRIKE_TARGET` 改，不必重新分配任务。
-- `LAUNCH_CAP`（机场算子）：同样是"指定一个目标"，`coord` 留空默认守本机场上空；指定舰队所在 hex 时飞机会飞过去在舰队上空巡逻，而不是停在原机场。
-- `LAUNCH_TRANSFER`：转场。舰载机是换母舰或上岸；机场算子则在己方机场之间转移。`coord`填目的地机场hex，留空时先建任务、再按打击任务的同样方式用`SET_STRIKE_TARGET`在地图上点选目的地（没有目的地的转场任务停在跑道上不起飞）。服务端校验目的地是己方机场、有可用跑道、能起降该机型（小型机场只收战斗机、中型机场不收战略轰炸机，水上飞机基地只收水上飞机，反过来轮式飞机也进不了水机基地），且距离不超过转场航程（机种基础航程×1.69，即挂副油箱的转场挂载）。起飞后每回合飞2 hex，全部抵达后落到新机场并进入`recovery`；目的地中途失守则返航原基地。
+- `LAUNCH_CAP`（机场算子）：只掩护本机场上空，`coord` 只能留空或等于本机场坐标；远程给其他友军（舰队所在格或其他机场）提供掩护请用 `LAUNCH_COVER`，掩护编队会跟着被掩护的舰队移动。
+- `LAUNCH_TRANSFER`：转场。舰载机是换母舰或上岸；机场算子在己方机场之间转移，其中**舰载型飞机（非 `airfield_only`、非水机）也可以转场到己方航母**——`coord` 填舰队所在 hex，要求该 hex 上有还有机库空位的航母，抵达后转为舰载机算子进入 `recovery`。`coord`填目的地机场hex，留空时先建任务、再按打击任务的同样方式用`SET_STRIKE_TARGET`在地图上点选目的地（没有目的地的转场任务停在跑道上不起飞）。服务端校验目的地是己方机场、有可用跑道、能起降该机型（小型机场只收战斗机、中型机场不收战略轰炸机，水上飞机基地只收水上飞机，反过来轮式飞机也进不了水机基地），且距离不超过转场航程（机种基础航程×1.69，即挂副油箱的转场挂载）。起飞后每回合飞2 hex，全部抵达后落到新机场并进入`recovery`；目的地中途失守则返航原基地。机场没有机库、默认无停放上限（99999，逻辑上和航母机库共用一套检查但不触发），转场照收；只有剧本在`airfields[].hangar_capacity`写了小值时才可能返回`停放机位已满（N/M）`，此时舰载机备降会跳过该机场。上限只统计停在机场上的算子，升空执行任务的不占名额。
 - 任务创建后立即出现在`aviation.tasks`。通常第1回合为`servicing`，第2回合占用具体升降机并显示`lifting`，第3回合完成提升后由任务放飞并显示`launching`，随后为`active`。算子同时记录`elevator_id`；`preparing`表示已经在甲板但因容量或甲板作业而等待，`assembling`仅用于攻击编队。侦察参数在分配时持久化，扇面顶点使用实际起飞时的母舰位置。
 - `RECOVER_AIR`：将CAP算子回收到各自母舰甲板，状态改为`recovery`；后续回合一一占用升降机执行`lowering`，完成后才回到机库。允许一次回收同舰队多艘母舰的CAP，服务端逐舰检查甲板容量、损伤和不相容作业。侦察机沿航线自动返航，使用同样的甲板与下降流程。
 - `PRIORITIZE_AIR_TASK`：将指定预备、等待或空中任务置为最高优先级，其他任务顺序由服务端调整；优先级参与各舰升降机调度，`queue_position`返回连续队列位置。
@@ -117,7 +117,7 @@
 ### Ready
 
 ```json
-{"base_version":1,"ready":true}
+{"base_turn":1,"ready":true}
 ```
 
 响应为最新私有快照。所有当前玩家ready后，服务器同步完成结算并提升`turn`与`version`。单人沙盒中唯一玩家ready即可结算。

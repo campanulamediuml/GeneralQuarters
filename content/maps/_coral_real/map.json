@@ -1,6 +1,6 @@
 {
  "id": "_coral_real",
- "version": 3,
+ "version": 5,
  "name": "珊瑚海 · 真实比例（64×52，25海里/hex）",
  "rows": 52,
  "cols": 64,
@@ -53,12 +53,12 @@
   {
    "coord": "0223",
    "terrain": "island",
-   "name": "拉包尔"
+   "name": ""
   },
   {
    "coord": "0224",
    "terrain": "island",
-   "name": ""
+   "name": "拉包尔"
   },
   {
    "coord": "0301",
@@ -571,11 +571,6 @@
    "name": ""
   },
   {
-   "coord": "1023",
-   "terrain": "shoal",
-   "name": "德伯因"
-  },
-  {
    "coord": "1034",
    "terrain": "island",
    "name": ""
@@ -929,6 +924,11 @@
    "coord": "1918",
    "terrain": "island",
    "name": ""
+  },
+  {
+   "coord": "1923",
+   "terrain": "shoal",
+   "name": "德伯因"
   },
   {
    "coord": "1944",

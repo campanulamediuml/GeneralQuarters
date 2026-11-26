@@ -30,7 +30,7 @@ func TestTransferSeaplaneToLandAirfieldRejected(t *testing.T) {
 	if flying == nil {
 		t.Fatal("找不到肖特兰的飞行艇")
 	}
-	err := ValidateGroundAirOrder(state, Order{Type: "LAUNCH_TRANSFER", AircraftIDs: []string{flying.ID}, Coord: "0323"})
+	err := ValidateGroundAirOrder(state, Order{Type: "LAUNCH_TRANSFER", AircraftIDs: []string{flying.ID}, Coord: "0224"})
 	if err == nil {
 		t.Fatal("水上飞机不该能转场到陆上机场")
 	}

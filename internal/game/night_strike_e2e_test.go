@@ -6,7 +6,7 @@ import "testing"
 // 不能等 19:40 直接"天黑未能返航"整队报销。
 func TestLateStrikeGroupReturnsBeforeNightfall(t *testing.T) {
 	state := sandboxState(t)
-	state.Timeline = &Timeline{TurnMinutes: 20, ServiceStart: "04:00", LaunchStart: "05:20", RecoverBy: "19:40", NightLoss: true}
+	state.Timeline = &Timeline{TurnMinutes: 20, ServiceStart: "04:00", LaunchStart: "05:20", RecoverBy: "19:40"}
 	state.TurnsPerDay = 72
 	state.DayHours = 0
 	// 沙盒地图 7×9：坐标必须落在图内，否则"飞不回去"是地图的错。

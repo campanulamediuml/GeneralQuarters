@@ -41,7 +41,7 @@ function lossCount(losses: number, total: number) {
   return Math.max(1, Math.min(size, Math.round((losses / Math.max(total, losses)) * size)))
 }
 
-const props = defineProps<{ report: AirCombatReport }>()
+const props = defineProps<{ report: AirCombatReport; hasNext?: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 // 动画四个阶段：closing 对冲/俯冲 → clash 交火/投弹 → losses 损失 → resolved 结算
 const phase = ref<'closing' | 'clash' | 'losses' | 'resolved'>('closing')
@@ -56,6 +56,9 @@ function run() {
   timers.push(setTimeout(() => { phase.value = 'clash' }, 1200))
   timers.push(setTimeout(() => { phase.value = 'losses' }, 2300))
   timers.push(setTimeout(() => { phase.value = 'resolved' }, 3600))
+  // 后面还排着战报（一次结算的"拦截 + 空袭"就是两份）时自动翻到下一份，
+  // 不然玩家不点关闭，第二份就永远排在队列里，看起来像动画丢了。
+  if (props.hasNext) timers.push(setTimeout(() => emit('close'), 5600))
   // 交火阶段后按分配逐条闪红，时序由数据决定
   props.report.target_allocations?.forEach((allocation, index) => {
     if (!allocation.hits) return
@@ -197,7 +200,10 @@ function bomberLane(index: number) {
 
         <div v-else class="fleet-deck" aria-label="被攻击舰队">
           <div v-for="ship in fleetShips" :key="ship.id" class="fleet-ship" :class="{ attacked: ship.hits > 0, target: ship.hits > 0 && phase !== 'resolved' }" :style="{ '--lane': fleetShips.length }">
-            <svg viewBox="0 0 120 40"><ShipSilhouette :type="ship.type" :name="ship.name" /></svg>
+            <!-- 用和地图兵牌同一套素材画剪影。以前这里套了一层 <svg viewBox>，
+                 ShipSilhouette 的蒙版元素在 SVG 命名空间里画不出来，只能退成手绘剪影，
+                 看起来和地图上的船牌完全不是一套资源。 -->
+            <span class="fleet-ship-art"><ShipSilhouette :type="ship.type" :name="ship.name" :picture="ship.picture" /></span>
             <b>{{ ship.name }}</b>
             <small v-if="ship.hits > 0" :key="flashes[ship.id] || 0">{{ ship.attackers.join('/') }} 命中 {{ ship.hits }}</small>
             <small v-else>未受攻击</small>
@@ -304,11 +310,12 @@ function bomberLane(index: number) {
 
 .fleet-deck{position:absolute;left:2%;right:2%;bottom:44px;z-index:2;display:flex;align-items:flex-end;justify-content:space-around;gap:4px;padding:10px 6px 6px;border-top:1px solid #2f4a52;background:linear-gradient(#0d2026cc,#0b1b20ee)}
 .fleet-ship{position:relative;display:flex;flex:1 1 0;min-width:0;flex-direction:column;align-items:center;gap:1px;opacity:.82;transition:transform .4s,opacity .4s}
-.fleet-ship svg{width:100%;max-width:92px;height:auto;color:#6f8c95}
+.fleet-ship-art{display:block;width:100%;max-width:92px;height:26px;color:#6f8c95}
+.fleet-ship-art svg{width:100%;height:100%}
 .fleet-ship b{overflow:hidden;max-width:100%;color:#a9c1c5;font:10px 'Noto Sans SC',sans-serif;text-overflow:ellipsis;white-space:nowrap}
 .fleet-ship small{color:#62787c;font-size:8px}
 .fleet-ship.attacked{opacity:1}
-.fleet-ship.attacked svg{color:#c98f6a}
+.fleet-ship.attacked .fleet-ship-art{color:#c98f6a}
 .fleet-ship.attacked small{color:#e8b48e}
 .fleet-ship.target{transform:translateY(-4px)}
 .fleet-ship.target:before{content:'';position:absolute;inset:-4px -2px 18px;border:1px dashed #d7bb7b88;animation:target-lock 1.2s ease-out infinite}

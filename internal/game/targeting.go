@@ -298,8 +298,8 @@ func advanceAttack(state *State, aircraft *AirUnit) []EngineEvent {
 		if member.Returning || member.Coord == member.TargetCoord || alreadyOnTarget {
 			continue
 		}
-		// 每回合最多前进 2 hex（规则书 196 行），但每一步之前都要确认走完还回得了家。
-		for steps := 0; steps < 2 && member.Coord != member.TargetCoord; steps++ {
+		// 每回合按机种走 1–2 hex（规则书 200 行），但每一步之前都要确认走完还回得了家。
+		for steps := 0; steps < aircraftSpeed(member) && member.Coord != member.TargetCoord; steps++ {
 			next := nextFlightCoord(*state, member, member.TargetCoord)
 			if next == "" {
 				break

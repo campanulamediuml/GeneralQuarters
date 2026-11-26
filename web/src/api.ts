@@ -68,16 +68,18 @@ export const api = {
   state(roomID: string) {
     return request<GameView>('/api/v1/rooms/' + roomID + '/state')
   },
-  command(roomID: string, version: number, order: Order) {
+  // base_turn 只用于拒绝"回合已经结算"的过期提交：同回合内重复操作一律接受，
+  // 后写的顶掉先写的。不用版本号——那是服务端内部的状态计数，不进协议。
+  command(roomID: string, turn: number, order: Order) {
     return request<{ accepted: boolean }>('/api/v1/rooms/' + roomID + '/commands', {
       method: 'POST',
-      body: JSON.stringify({ ...order, command_id: commandID(), base_version: version }),
+      body: JSON.stringify({ ...order, command_id: commandID(), base_turn: turn }),
     })
   },
-  ready(roomID: string, version: number, ready: boolean) {
+  ready(roomID: string, turn: number, ready: boolean) {
     return request<GameView>('/api/v1/rooms/' + roomID + '/ready', {
       method: 'POST',
-      body: JSON.stringify({ base_version: version, ready }),
+      body: JSON.stringify({ base_turn: turn, ready }),
     })
   },
 }

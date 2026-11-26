@@ -18,6 +18,7 @@ const isSeaplane = computed(() => normalizeAirfieldType(props.airfield.type) ===
       <b :title="`生命值 ${airfield.strength} / ${airfield.max_strength}`">{{ airfield.strength }}<small>/{{ airfield.max_strength }}</small></b>
     </header>
     <div class="af-middle" :title="airfieldTypeHint(airfield.type)">
+      <b v-if="airfield.enemy_supplies" class="af-enemy-supplies" :title="`敌方已卸下 ${airfield.enemy_supplies} 点滩头物资：机场生命值归零，清滩前无法修复`">{{ airfield.enemy_supplies }}</b>
       <img v-if="airfieldPictureURL(airfield.picture)" class="af-image-picture" :src="airfieldPictureURL(airfield.picture)" alt="" :data-airfield-picture="airfield.picture" />
       <svg v-else class="af-image" viewBox="0 0 120 34" aria-hidden="true">
         <path class="af-runway" d="M4 22h112v7H4z" />
@@ -53,7 +54,7 @@ const isSeaplane = computed(() => normalizeAirfieldType(props.airfield.type) ===
 .af-image{width:112px;height:32px}
 .af-image-picture{width:34px;height:34px;object-fit:contain}
 .af-runway{fill:var(--af-ink)}.af-stripes{stroke:#fff;stroke-width:1.1;opacity:.5}.af-tower{fill:var(--af-ink)}.af-hangar{fill:var(--af-ink)}
-.af-type{position:absolute;right:5px;top:1px;opacity:.7;font:500 8px 'Noto Sans SC',sans-serif}
+.af-type{position:absolute;right:5px;top:1px;opacity:.7;font:500 8px 'Noto Sans SC',sans-serif}.af-enemy-supplies{position:absolute;left:4px;top:0;color:#b3121f;font:800 15px 'Rajdhani',sans-serif;text-shadow:0 0 2px #fff;pointer-events:none}
 .af-bottom{display:flex;align-items:center;justify-content:space-between;padding:1px 6px;border-top:0;border-radius:0 0 3px 3px;font:700 15px 'Rajdhani',sans-serif}
 .airfield-counter figcaption{overflow:hidden;padding:3px 2px 0;color:#c3d4d0;font-size:10px;text-align:center;text-overflow:ellipsis;white-space:nowrap}
 </style>

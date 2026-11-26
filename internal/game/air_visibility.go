@@ -127,7 +127,7 @@ func detectAirTaskByRadar(state *State, observer string, aircraft *AirUnit) []En
 		if ship.Faction != observer {
 			continue
 		}
-		chance := radarDetectionChance(ship, Distance(ship.Coord, coord))
+		chance := radarDetectionChance(*state, ship, Distance(ship.Coord, coord))
 		if chance <= 0 {
 			continue
 		}
@@ -150,7 +150,7 @@ func detectAirTaskByRadar(state *State, observer string, aircraft *AirUnit) []En
 		// 机场用自己的雷达表（美军 100/80/60/40/20，日军 80/60/40/20/0），
 		// 没装雷达就只走"1 hex 内 30%"那一行，并且吃天气惩罚。
 		distance := Distance(airfield.Coord, coord)
-		chance := airfieldRadarChance(airfield.Faction, distance)
+		chance := airfieldRadarChance(*state, airfield.Faction, distance)
 		if !airfield.Radar {
 			chance = applyWeatherToDetection(noRadarChance(distance), weatherAt(state.Map, coord))
 		}

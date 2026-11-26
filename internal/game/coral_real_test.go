@@ -16,7 +16,7 @@ func TestCoralRealSpawnsInBoxes(t *testing.T) {
 	if scenario.Timeline == nil {
 		t.Fatal("珊瑚海剧本必须带作战时间线")
 	}
-	if scenario.Timeline.ServiceStart != "04:00" || scenario.Timeline.LaunchStart != "05:20" || scenario.Timeline.RecoverBy != "19:40" || !scenario.Timeline.NightLoss {
+	if scenario.Timeline.ServiceStart != "04:00" || scenario.Timeline.LaunchStart != "05:20" || scenario.Timeline.RecoverBy != "19:40" {
 		t.Fatalf("时间线配置错误：%+v", *scenario.Timeline)
 	}
 	if scenario.TurnsPerDay != 72 || scenario.DayHours != 0 {

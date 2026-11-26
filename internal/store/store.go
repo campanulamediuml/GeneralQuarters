@@ -121,6 +121,17 @@ CREATE INDEX IF NOT EXISTS idx_events_room ON events(room_id, id);
 			return err
 		}
 	}
+	// turns 的历史快照由后台 worker 压缩（见 turns.go）：compressed=0 表示还是原样 JSON。
+	// 老库补列时全部记成 0，worker 会按"已结束回合"的规则慢慢把它们压掉。
+	if !s.hasColumn("turns", "compressed") {
+		if _, err := s.DB.Exec(`ALTER TABLE turns ADD COLUMN compressed INTEGER NOT NULL DEFAULT 0`); err != nil {
+			return err
+		}
+	}
+	// 部分索引：worker 每轮只需要找还没压的行，别整表扫。
+	if _, err := s.DB.Exec(`CREATE INDEX IF NOT EXISTS idx_turns_pending ON turns(turn) WHERE compressed = 0`); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -174,7 +185,7 @@ func (s *Store) CreateRoom(ctx context.Context, room Room, player Player, sessio
 	if err != nil {
 		return err
 	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO turns VALUES(?,?,?,?,?)`, room.ID, room.Turn, room.Version, stateJSON, now)
+	_, err = tx.ExecContext(ctx, `INSERT INTO turns(room_id,turn,version,state_json,created_at,compressed) VALUES(?,?,?,?,?,0)`, room.ID, room.Turn, room.Version, stateJSON, now)
 	if err != nil {
 		return err
 	}
@@ -256,9 +267,40 @@ func (s *Store) Room(ctx context.Context, roomID string) (Room, error) {
 		return room, err
 	}
 	game.EnsureAviation(&room.State)
+	game.NormalizeFleetNames(&room.State)
+	game.NormalizeAirfieldHangar(&room.State)
 	return room, nil
 }
 
+// StalledReadyRooms 找出"所有玩家都已 ready、但房间已经超过 olderThan 没动过"的对局。
+// 服务重启后 ready 标记还留在库里，可新的 ready 请求不会再来，结算逻辑就永远等不到
+// 第二次触发，房间会卡死在同一回合（T108 这次就是这么卡住的）。巡检靠这个把房间捞出来。
+func (s *Store) StalledReadyRooms(ctx context.Context, olderThan time.Duration) ([]Room, error) {
+	cutoff := time.Now().UTC().Add(-olderThan).Format(time.RFC3339Nano)
+	rows, err := s.DB.QueryContext(ctx, "SELECT r.id,r.join_token,r.status,r.turn,r.version,r.state_json,r.solo FROM rooms r WHERE r.status='running' AND r.updated_at < ? AND EXISTS(SELECT 1 FROM players p WHERE p.room_id=r.id) AND NOT EXISTS(SELECT 1 FROM players p WHERE p.room_id=r.id AND p.ready=0)", cutoff)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	rooms := []Room{}
+	for rows.Next() {
+		var room Room
+		var stateJSON string
+		var solo int
+		if err := rows.Scan(&room.ID, &room.JoinToken, &room.Status, &room.Turn, &room.Version, &stateJSON, &solo); err != nil {
+			return nil, err
+		}
+		room.Solo = solo != 0
+		if err := json.Unmarshal([]byte(stateJSON), &room.State); err != nil {
+			return nil, err
+		}
+		game.EnsureAviation(&room.State)
+		game.NormalizeFleetNames(&room.State)
+		game.NormalizeAirfieldHangar(&room.State)
+		rooms = append(rooms, room)
+	}
+	return rooms, rows.Err()
+}
 func (s *Store) Players(ctx context.Context, roomID string) ([]Player, error) {
 	rows, err := s.DB.QueryContext(ctx, `SELECT id,room_id,faction,name,is_host,ready,connected FROM players WHERE room_id=? ORDER BY faction`, roomID)
 	if err != nil {
@@ -389,7 +431,10 @@ func (s *Store) ApplyImmediate(ctx context.Context, room Room, playerID, command
 	if _, err := tx.ExecContext(ctx, `UPDATE players SET ready=0 WHERE id=?`, playerID); err != nil {
 		return room, err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE turns SET version=?,state_json=? WHERE room_id=? AND turn=?`, newVersion, data, room.ID, room.Turn); err != nil {
+	// 回合内的这条 UPDATE 把"当回合快照"更新成玩家当前看到的状态。
+	// compressed 必须显式归零：万一 worker 刚好压过这一行，不重置就会变成
+	// "压缩标志=1、内容是明文"，读的时候按 gzip 解压直接失败。
+	if _, err := tx.ExecContext(ctx, `UPDATE turns SET version=?,state_json=?,compressed=0 WHERE room_id=? AND turn=?`, newVersion, data, room.ID, room.Turn); err != nil {
 		return room, err
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO commands VALUES(?,?,?,?,?)`, playerID, commandID, response, now, fingerprint); err != nil {
@@ -433,7 +478,7 @@ func (s *Store) Resolve(ctx context.Context, room Room, newState game.State, eve
 	if _, err := tx.ExecContext(ctx, `DELETE FROM orders WHERE room_id=? AND turn=?`, room.ID, room.Turn); err != nil {
 		return room, err
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO turns VALUES(?,?,?,?,?)`, room.ID, newTurn, newVersion, data, now); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO turns(room_id,turn,version,state_json,created_at,compressed) VALUES(?,?,?,?,?,0)`, room.ID, newTurn, newVersion, data, now); err != nil {
 		return room, err
 	}
 	for sequence, event := range events {

@@ -383,6 +383,8 @@ func exposeFleetAtMaxIntel(state *State, fleetID, reason string) []EngineEvent {
 	if state.IntelStaleTurns != nil {
 		delete(state.IntelStaleTurns, key)
 	}
+	// 情报刚刷新：结构化字段也要归零，否则快照里会留着上一轮的过期计数。
+	contact.StaleTurns = 0
 	if wasLevel >= intelMaxLevel {
 		return nil
 	}
@@ -472,6 +474,38 @@ func removeShoreSupplies(state *State, faction, coord string, amount int) int {
 	return left
 }
 
+// enemySuppliesAt 返回某机场 hex 上由敌方卸下的滩头物资点数。
+func enemySuppliesAt(state State, airfield *Airfield) int {
+	if airfield == nil {
+		return 0
+	}
+	return shoreSupplies(state, OppositeFaction(airfield.Faction), airfield.Coord)
+}
+
+// VisibleEnemyShoreSupplies 返回"敌方卸在己方机场上的滩头物资"。
+// 运输船在自家机场卸了几十吨货，防守方不可能不知道；不把数量告诉防守方，
+// 清滩这条反制就只有上帝视角玩得到，实际打起来没人会想到回防。
+func VisibleEnemyShoreSupplies(state State, faction string) map[string]int {
+	result := map[string]int{}
+	owned := map[string]bool{}
+	for _, airfield := range state.Airfields {
+		if airfield != nil && airfield.Faction == faction {
+			owned[airfield.Coord] = true
+		}
+	}
+	if len(owned) == 0 {
+		return result
+	}
+	for key, value := range state.ShoreSupplies {
+		parts := strings.SplitN(key, "|", 2)
+		if len(parts) != 2 || parts[0] == faction || !owned[parts[1]] {
+			continue
+		}
+		result[parts[1]] += value
+	}
+	return result
+}
+
 // VisibleShoreSupplies 只把自己投送的滩头物资告诉前端。
 func VisibleShoreSupplies(state State, faction string) map[string]int {
 	result := map[string]int{}
@@ -527,6 +561,11 @@ func resolveUnloading(state *State) []EngineEvent {
 		if delivered > 0 {
 			total := addShoreSupplies(state, unit.Faction, unit.Coord, delivered)
 			events = append(events, EngineEvent{Type: "troop_unloading", Audience: unit.Faction, Text: fmt.Sprintf("%s在%s卸载物资%d点（累计%d点）", unit.FleetName, airfield.Name, delivered, total)})
+			// 货一落地，机场就进入被压制状态：生命值归 0、跑道全废，清滩之前修不回来。
+			if airfield.Strength > 0 {
+				airfield.Strength = 0
+				events = append(events, EngineEvent{Type: "airfield_occupied", Audience: "all", Text: fmt.Sprintf("%s被敌方滩头物资压制，跑道全部瘫痪（清滩前无法修复）", airfield.Name)})
+			}
 		}
 		// 卸货的舰队对敌方完全暴露（规则书 535 行），无论白天黑夜。
 		// 放在卸载战报之后：玩家先看到"卸了多少"，再看到"因此暴露了"。

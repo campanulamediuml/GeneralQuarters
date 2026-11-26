@@ -64,7 +64,8 @@ func advanceCover(state *State, aircraft *AirUnit) []EngineEvent {
 // 舰队机库放不下时算子挂在天上（CannotLand），由玩家手动改转场目标。
 func advanceTransfer(state *State, aircraft *AirUnit) []EngineEvent {
 	if aircraft.Coord != aircraft.TargetCoord {
-		for steps := 0; steps < 2 && aircraft.Coord != aircraft.TargetCoord; steps++ {
+		// 规则书 209 行：直接转场的飞机每回合只移动 1 hex。
+		for steps := 0; steps < 1 && aircraft.Coord != aircraft.TargetCoord; steps++ {
 			next := nextFlightCoord(*state, aircraft, aircraft.TargetCoord)
 			if next == "" {
 				break

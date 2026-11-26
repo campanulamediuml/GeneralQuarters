@@ -202,11 +202,11 @@ func TestReconDetectionContactAndReturn(t *testing.T) {
 			enemy = &fleets[index]
 		}
 	}
-	// 情报等级 1 只显示一个算子，位置误差 5 hex 以内（规则书 144 行）。
+	// 情报等级 1 只显示一个算子，位置误差上限 2 hex（规则书 142–147 行；原案 5/3/1 已按实测下调）。
 	if enemy == nil || enemy.Count != 1 || len(enemy.Members) != 1 {
 		t.Fatalf("情报1敌方舰队投影错误：%+v", enemy)
 	}
-	if offset := Distance(enemy.Coord, "0202"); offset > 5 {
+	if offset := Distance(enemy.Coord, "0202"); offset > intelErrorRadius(1) {
 		t.Fatalf("情报1的位置误差超出上限：显示%s，真实0202，误差%d", enemy.Coord, offset)
 	}
 	for _, member := range enemy.Members {

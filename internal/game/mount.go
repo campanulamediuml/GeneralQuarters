@@ -373,12 +373,23 @@ func LightLoadRange(current int) int {
 //
 // 已经手动选过挂载的算子（LoadoutManual）不会被覆盖 —— 机库整备时可以自己定。
 func applyLoadout(state State, aircraft *AirUnit) {
-	if aircraft == nil || aircraft.Launched || aircraft.LoadoutManual {
+	if aircraft == nil || aircraft.Launched {
+		return
+	}
+	// 规则书 59 行：转场不携带任何武器，只挂副油箱再吃那 30% 转场加成。
+	// 手动挂载在转场任务里必须让位：以前被 LoadoutManual 一挡，
+	// 校验按 1.69× 放行、飞机实际只带 1.3× 的油，飞到半路就透支。
+	manual := aircraft.LoadoutManual
+	if manual && aircraft.TaskKind != "transfer" {
 		return
 	}
 	targetKind := strikeTargetKind(state, aircraft)
 	loadout := LoadoutForTaskFor(aircraft.Kind, aircraft.Seaplane, aircraft.AntiGround, aircraft.AntiShip, aircraft.TaskKind, targetKind, aircraft.TorpedoCapable)
 	applyLoadoutChoice(aircraft, loadout)
+	if manual {
+		// 武器已经卸下来了，这次手动挂载跟着作废：转场结束后按任务自动配。
+		aircraft.LoadoutManual = false
+	}
 }
 
 // strikeTargetKind 判断这次攻击是对舰还是对地：目标 hex 上有敌方机场就是对地。
@@ -540,7 +551,12 @@ func LoadoutOptionList(kind string, seaplane bool, antiGround, antiShip int) []m
 // applyGroundLoadout 按任务给机场飞机换上默认挂载。
 // 与舰载机一致：玩家手动选过（LoadoutManual）就不再覆盖。
 func applyGroundLoadout(state State, aircraft *AirfieldAirUnit) {
-	if aircraft == nil || aircraft.LoadoutManual || airfieldAirborne(aircraft) {
+	if aircraft == nil || airfieldAirborne(aircraft) {
+		return
+	}
+	// 与舰载机一致：转场把武器全部卸下来，手动挂载不能留到转场任务里。
+	manual := aircraft.LoadoutManual
+	if manual && aircraft.TaskKind != "transfer" {
 		return
 	}
 	targetKind := StrikeTargetShip
@@ -556,6 +572,9 @@ func applyGroundLoadout(state State, aircraft *AirfieldAirUnit) {
 	}
 	loadout := DefaultLoadoutFor(aircraft.Kind, false, aircraft.AntiGround, aircraft.AntiShip, aircraft.TaskKind, targetKind, aircraft.TorpedoCapable)
 	applyGroundLoadoutChoice(aircraft, loadout)
+	if manual {
+		aircraft.LoadoutManual = false
+	}
 }
 
 // refillFuelForLoadout 让非空中的算子回到满油状态。

@@ -381,14 +381,18 @@
         moved: false
       };
       svg.classList.add('dragging');
-      if (svg.setPointerCapture) svg.setPointerCapture(event.pointerId);
+      // 指针捕获要等到真正拖动再拿：在 pointerdown 就 capture 会把后续 click 重定向到
+      // SVG 根节点，算子和机场上的 click 全部收不到（点舰队/基地没反应就是这么来的）。
     });
     svg.addEventListener('pointermove', function (event) {
       if (!drag || event.pointerId !== drag.pointerId) return;
       var dx = event.clientX - drag.x;
       var dy = event.clientY - drag.y;
       if (!drag.moved && Math.sqrt(dx * dx + dy * dy) < 4) return;
-      if (!drag.moved) event.preventDefault();
+      if (!drag.moved) {
+        event.preventDefault();
+        if (svg.setPointerCapture) svg.setPointerCapture(event.pointerId);
+      }
       drag.moved = true;
       VIEW.x = drag.vx - dx / drag.scaleX;
       VIEW.y = drag.vy - dy / drag.scaleY;
@@ -486,6 +490,57 @@
       '<span>交战 <b>' + escapeHTML(ENGAGEMENT_LABEL[fleet.engagement] || fleet.engagement || '—') + '</b></span>';
     openDetail('FLEET · ' + (fleet.faction === 'A' ? '美军' : '日军'), fleet.fleet_name || fleet.name || fleet.fleet_id || '舰队详情', meta, cards);
   }
+  var AIRFIELD_TYPE_LABEL = { seaplane: '水上飞机基地', small: '小型机场', medium: '中型机场', large: '大型机场' };
+  function airfieldTypeLabel(type) {
+    return AIRFIELD_TYPE_LABEL[String(type || '').toLowerCase()] || '机场';
+  }
+  function numberText(value) {
+    if (value == null) return '0';
+    return Number.isInteger(value) ? String(value) : String(Math.round(value * 10) / 10);
+  }
+  // 观战点基地：属性 + 驻机明细。机库/跑道/空中分开数，才能一眼看出这个基地还剩多少兵。
+  function showAirfieldDetail(airfield) {
+    if (!airfield) return;
+    var aircraft = airfield.aircraft || [];
+    var hangar = 0, strip = 0, airborne = 0;
+    aircraft.forEach(function (item) {
+      var status = String(item.status || '').toLowerCase();
+      if (status === 'hangar') hangar++;
+      else if (AIRBORNE[status]) airborne++;
+      else strip++;
+    });
+    var faction = airfield.faction === 'A' ? '美军' : '日军';
+    var meta = '<span>阵营 <b>' + faction + '</b></span>' +
+      '<span>坐标 <b>' + escapeHTML(airfield.coord || '—') + '</b></span>' +
+      '<span>生命值 <b>' + numberText(airfield.strength) + ' / ' + numberText(airfield.max_strength) + '</b></span>' +
+      '<span>可用跑道 <b>' + numberText(airfield.runways) + ' / ' + numberText(airfield.max_runways) + '</b></span>' +
+      '<span>重型防空 <b>' + numberText(airfield.heavy_aa) + '</b> · 轻型防空 <b>' + numberText(airfield.light_aa) + '</b></span>' +
+      '<span>雷达 <b>' + (airfield.radar ? '有' : '无') + '</b></span>' +
+      (airfield.enemy_supplies ? '<span>敌方滩头物资 <b>' + numberText(airfield.enemy_supplies) + '</b>（清滩前机场不修复）</span>' : '') +
+      '<span>岸炮 <b>' + numberText(airfield.coastal) + '</b></span>' +
+      '<span>机库 <b>' + hangar + '</b> · 跑道待命 <b>' + strip + '</b> · 空中 <b>' + airborne + '</b></span>';
+    var rows = {};
+    aircraft.forEach(function (item) {
+      var key = [item.model || '?', item.status || '', item.loadout || ''].join('|');
+      if (!rows[key]) {
+        rows[key] = { model: item.model || '未知机型', status: item.status, loadout: item.loadout, picture: item.picture, count: 0 };
+      }
+      rows[key].count++;
+    });
+    var baseCard = '<div class="detail-card">' + pictureBlock(airfield.picture, '场', 'ship-pic') +
+      '<div class="detail-copy"><b>' + escapeHTML(airfield.name) + '</b>' +
+      '<small>' + escapeHTML(airfieldTypeLabel(airfield.type) + ' · ' + (airfield.coord || '—')) + '</small></div></div>';
+    var cards = Object.keys(rows).map(function (key) {
+      var row = rows[key];
+      var details = ['状态 ' + statusLabel(row.status), '数量 ' + row.count];
+      if (row.loadout) details.push('挂载 ' + row.loadout);
+      return '<div class="detail-card">' + pictureBlock(row.picture, '机') +
+        '<div class="detail-copy"><b>' + escapeHTML(row.model) + '</b>' +
+        '<small>' + escapeHTML(details.join(' · ')) + '</small></div></div>';
+    }).join('');
+    openDetail('AIRFIELD · ' + faction + ' · ' + airfieldTypeLabel(airfield.type), airfield.name, meta,
+      baseCard + (cards || '<div class="detail-empty">机库空置</div>'));
+  }
   function showAirDetail(group) {
     if (!group) return;
     var rows = {};
@@ -517,7 +572,8 @@
 
   // 侦察机不画机体：画完整搜索扇面，当前距离带用高亮格表示“扫到哪条线”。
   function drawReconSectors(data, marks) {
-    var tasks = (data.aviation && data.aviation.tasks) || [];
+    // 舰队航空 + 机场航空：基地侦察机的扇面以前只画了舰载机那份，观战页看不到水机基地的搜索带。
+    var tasks = ((data.aviation && data.aviation.tasks) || []).concat(data.ground_tasks || []);
     var base = {};
     var currentLayers = [];
     var seenCurrent = {};
@@ -563,10 +619,10 @@
           points: hexPoints(point.x, point.y),
           class: 'recon-cell current',
           fill: sector.color,
-          'fill-opacity': 0.52,
+          'fill-opacity': 0.1,
           stroke: sector.color,
-          'stroke-opacity': 0.95,
-          'stroke-width': 1.4
+          'stroke-opacity': 0.55,
+          'stroke-width': 1.1
         }));
       });
       var title = el('title');
@@ -660,9 +716,18 @@
       if (based > 0) {
         group.appendChild(text(9, -4, '×' + based, COLOR[airfield.faction] || '#cfe0dc', 8, 700, 'start'));
       }
+      // 敌方卸在这个机场上的滩头物资：有货就说明机场正在被占领，用红字标在图标左侧。
+      if (airfield.enemy_supplies) {
+        group.appendChild(text(-10, 3, String(airfield.enemy_supplies), '#ff6b5e', 9, 700, 'end'));
+      }
       var title = el('title');
       title.textContent = airfield.name + ' · ' + airfield.coord + ' · 驻机 ' + based;
       group.appendChild(title);
+      group.setAttribute('class', 'map-airfield');
+      group.setAttribute('data-airfield-id', airfield.unit_id || airfield.id || '');
+      group.setAttribute('data-detail', 'airfield');
+      group.style.cursor = 'pointer';
+      group.addEventListener('click', function (event) { event.stopPropagation(); selectDistance(airfield.coord); showAirfieldDetail(airfield); });
       marks.appendChild(group);
     });
     // 空中单位：按实际坐标画小飞机，A 蓝 B 红；同格多架合并成 ×N。

@@ -13,6 +13,7 @@ type spectateView struct {
 	Units     []game.Unit                `json:"units"`
 	Fleets    []game.FleetGroup          `json:"fleets"`
 	Airfields []game.AirfieldContact     `json:"airfields"`
+	GroundAir []game.AirfieldAirStatus   `json:"ground_air"`
 	Aviation  game.AviationView          `json:"aviation"`
 	Events    []store.Event              `json:"events"`
 	Losses    map[string]game.LossLedger `json:"losses"`
@@ -63,11 +64,76 @@ func TestSpectateMergesBothFactions(t *testing.T) {
 	if airfieldSides["A"] == 0 || airfieldSides["B"] == 0 {
 		t.Fatalf("观战快照缺少某一方的机场：%v", airfieldSides)
 	}
+	// 基地卡片要能点出属性与驻机：观战快照的 ground_air 必须带完整状态和机上名单，
+	// 不能只剩一个坐标——否则点开基地只有名字，没有跑道、防空和机库数。
+	if len(view.GroundAir) == 0 {
+		t.Fatal("观战快照缺少 ground_air")
+	}
+	listed := 0
+	for _, airfield := range view.GroundAir {
+		if airfield.Coord == "" || airfield.MaxRunways == 0 {
+			t.Fatalf("基地%s缺少坐标或跑道数据：%+v", airfield.Name, airfield)
+		}
+		if len(airfield.Aircraft) > 0 {
+			listed++
+			if airfield.Aircraft[0].Model == "" {
+				t.Fatalf("基地%s驻机缺少机型", airfield.Name)
+			}
+		}
+	}
+	if listed == 0 {
+		t.Fatal("观战快照里没有任何驻机数据，基地详情面板会是空的")
+	}
 	if bad := watcher.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/spectate?token=XXXX-XXXX-XXXX", nil, nil); bad != http.StatusForbidden {
 		t.Fatalf("错误 token 应该 403，实际 %d", bad)
 	}
 	// 没有 Cookie 的玩家接口仍然要求会话。
 	if status := watcher.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, nil); status != http.StatusUnauthorized {
 		t.Fatalf("未认证的 state 应该 401，实际 %d", status)
+	}
+}
+
+// 观战页的基地侦察扇面来自 ground_tasks。以前只合并了舰队航空，
+// 机场侦察机飞出去后整条搜索带都不显示，玩家只能看见一个孤零零的机场牌。
+func TestSpectatorGroundTasksCarryReconSectors(t *testing.T) {
+	scenario, gameMap, catalog, err := game.LoadScenario(testContentRoot(t), "_coral_real")
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err := game.NewState(scenario, gameMap, catalog, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pby := state.GroundAir["af-a-vila-pby-1"]
+	if pby == nil {
+		t.Fatal("缺少维拉港 PBY")
+	}
+	airfield := state.Airfields[pby.AirfieldID]
+	if airfield == nil {
+		t.Fatal("缺少维拉港机场")
+	}
+	pby.Status = "recon"
+	pby.TaskID = "recon-vila"
+	pby.TaskKind = "recon"
+	pby.Heading = "W"
+	pby.SectorWidth = 60
+	pby.Coord = airfield.Coord
+	pby.OriginCoord = airfield.Coord
+	pby.ReconRadius = game.GroundReconRadius(pby)
+	pby.ReconDistance = 0
+
+	tasks := spectatorGroundTasks(state)
+	if len(tasks) != 1 {
+		t.Fatalf("观战机场任务数=%d，期望1", len(tasks))
+	}
+	task := tasks[0]
+	if task.Faction != "A" {
+		t.Fatalf("机场任务 faction=%q，期望 A", task.Faction)
+	}
+	if len(task.ReconSectors) != 1 {
+		t.Fatalf("机场侦察任务缺少 recon_sectors：%+v", task)
+	}
+	if len(task.ReconSectors[0].SectorHexes) == 0 {
+		t.Fatal("机场侦察扇面没有 hex，观战页画不出来")
 	}
 }

@@ -189,16 +189,16 @@ func priorDetection(state State, observer string, enemies []Unit) bool {
 func surpriseScore(state *State, faction string, members, enemies []Unit, prior bool) (int, []string) {
 	score := d6(state)
 	modifiers := []string{}
-	doctrine := state.Doctrines[faction]
-	if doctrine == "japan" && state.Year > 0 && state.Year <= 1942 {
-		score++
+	rules := rulesFor(*state, faction)
+	if rules.SurpriseEliteBonus > 0 {
+		score += rules.SurpriseEliteBonus
 		modifiers = append(modifiers, "精锐+1")
 	}
-	if doctrine == "japan" && state.Night {
-		score++
+	if rules.SurpriseNightBonus > 0 {
+		score += rules.SurpriseNightBonus
 		modifiers = append(modifiers, "夜战+1")
 	}
-	if doctrine == "japan" {
+	if rules.SurpriseTorpedoBonus > 0 {
 		torpedoFleet := true
 		for _, unit := range members {
 			switch unit.Type {
@@ -207,16 +207,16 @@ func surpriseScore(state *State, faction string, members, enemies []Unit, prior 
 			}
 		}
 		if torpedoFleet {
-			score++
+			score += rules.SurpriseTorpedoBonus
 			modifiers = append(modifiers, "雷击队+1")
 		}
 	}
-	if doctrine == "us" && hasSurfaceRadar(members) {
-		score++
+	if rules.SurpriseRadarBonus > 0 && hasSurfaceRadar(members) {
+		score += rules.SurpriseRadarBonus
 		modifiers = append(modifiers, "对海雷达+1")
 	}
-	if doctrine == "us" && state.Year >= 1943 {
-		score++
+	if rules.SurpriseYearBonus > 0 {
+		score += rules.SurpriseYearBonus
 		modifiers = append(modifiers, "年份+1")
 	}
 	if prior {
@@ -396,9 +396,7 @@ func torpedoChance(state State, weapon *Unit, target *Unit) float64 {
 	if state.Night {
 		chance += 10
 	}
-	if state.Doctrines[weapon.Faction] == "us" && state.Year > 0 && state.Year < 1944 {
-		chance -= 20
-	}
+	chance -= rulesFor(state, weapon.Faction).EarlyRadarPenalty
 	chance -= 5 * float64(maxConfusion(fleetMembers(&state, FleetKey(weapon))))
 	return math.Max(0, math.Min(100, chance))
 }

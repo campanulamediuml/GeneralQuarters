@@ -63,7 +63,7 @@
 .map-ground-patrol.cover text{fill:#c6eed2}
 
 
-.hex-cell.recon-sector polygon{fill:#64532b55;stroke:#a58c4d}.hex-cell.recon-current polygon{fill:#9b7c3666;stroke:#e4c875;stroke-width:1.8}.air-counter.air-recon{border-color:#d7bb7b;box-shadow:0 0 0 2px #d7bb7b22}.air-task.recon-task{min-height:154px;align-items:flex-start;flex-wrap:wrap}.air-task-copy{min-width:180px;flex:1}.air-task.recon-task .task-priority{position:absolute;left:12px;bottom:9px;margin:0}.recon-sector-map{display:block;width:210px;height:132px;padding:3px;background:#0a191e;border:1px solid #304a52}.recon-sector-map polygon{fill:#132b32;stroke:#34505a;stroke-width:.45}.recon-sector-map polygon.sector{fill:#75612f88;stroke:#b79a55}.recon-sector-map polygon.current-ring{fill:#c2a14c99;stroke:#f0d584;stroke-width:1}.recon-origin{fill:#83c6ac;stroke:#d9eee5;stroke-width:1}.recon-aircraft-marker circle{fill:#d7bb7b;stroke:#14252a;stroke-width:1}.recon-aircraft-marker path{stroke:#14252a;stroke-width:1.2}.recon-dialog{position:fixed;inset:0;z-index:110;display:flex;align-items:center;justify-content:center;padding:20px;background:#030b0ddd}.recon-modal{width:min(680px,100%);padding:24px;border:1px solid #667d7c;background:#11252b;box-shadow:0 30px 100px #000b}.recon-modal>header{display:flex;align-items:flex-start;justify-content:space-between;padding-bottom:14px;border-bottom:1px solid #30474d}.recon-modal h2{margin:6px 0 0;font-size:22px}.recon-modal>header>button{border:0;background:none;color:#9eb1b0;font-size:27px}.recon-modal>p{color:#8fa6a7;font-size:11px;line-height:1.9}.recon-modal fieldset{min-width:0;margin:16px 0;padding:0;border:0}.recon-modal legend{margin-bottom:9px;color:#a9bcba;font-size:11px}.recon-heading-picker{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}.recon-heading-picker legend{grid-column:1/-1}.recon-heading-picker button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 4px;border:1px solid #3a555d;background:#0c1d23;color:#91a8aa}.recon-heading-picker button span{font-size:22px}.recon-heading-picker button b{font:600 12px 'Rajdhani',sans-serif}.recon-heading-picker button small{font-size:9px}.recon-heading-picker button.active{border-color:var(--gold);background:#3b392b;color:var(--gold)}.recon-options{display:grid;grid-template-columns:1.4fr 1fr;gap:18px}.segmented-control{display:grid;grid-template-columns:1fr 1fr}.segmented-control button{display:flex;flex-direction:column;gap:4px;padding:12px;border:1px solid #3a555d;background:#0c1d23;color:#a9bcba;font:600 17px 'Rajdhani',sans-serif}.segmented-control button small{font:9px 'Noto Sans SC',sans-serif;color:#718d92}.segmented-control button.active{border-color:var(--gold);background:#3b392b;color:var(--gold)}.recon-radius{display:flex;flex-direction:column;gap:8px;color:#a9bcba;font-size:11px}.recon-radius input{width:100%;height:47px;padding:0 12px;border:1px solid #3a555d;background:#0c1d23;color:var(--gold);font:600 19px 'Rajdhani',sans-serif}.recon-radius small{color:#718d92;font-size:9px}.recon-brief{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:9px;padding:12px;background:#0b1c21;color:#718d92;font-size:10px}.recon-brief strong{color:#c7d6d2;font-weight:500}.recon-brief i{color:var(--gold);font-style:normal}.recon-modal>footer{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid #30474d}.recon-modal>footer button{padding:10px 18px;font-size:11px}.reset-button{border:1px solid #49636b;background:#142a31;color:#9bb0b1}.apply-button{border:1px solid var(--gold);background:var(--gold);color:#14252a;font-weight:600}
+.hex-cell .recon-tint{fill:#a58c4d;fill-opacity:.09;stroke:none;pointer-events:none}.hex-cell .recon-current-tint{fill:#d8bd76;fill-opacity:.16;stroke:#e9d493;stroke-opacity:.55;stroke-width:1;pointer-events:none}.air-counter.air-recon{border-color:#d7bb7b;box-shadow:0 0 0 2px #d7bb7b22}.air-task.recon-task{min-height:154px;align-items:flex-start;flex-wrap:wrap}.air-task-copy{min-width:180px;flex:1}.air-task.recon-task .task-priority{position:absolute;left:12px;bottom:9px;margin:0}.recon-sector-map{display:block;width:210px;height:132px;padding:3px;background:#0a191e;border:1px solid #304a52}.recon-sector-map polygon{fill:#132b32;stroke:#34505a;stroke-width:.45}.recon-sector-map polygon.sector{fill:#75612f88;stroke:#b79a55}.recon-sector-map polygon.current-ring{fill:#c2a14c99;stroke:#f0d584;stroke-width:1}.recon-origin{fill:#83c6ac;stroke:#d9eee5;stroke-width:1}.recon-aircraft-marker circle{fill:#d7bb7b;stroke:#14252a;stroke-width:1}.recon-aircraft-marker path{stroke:#14252a;stroke-width:1.2}.recon-dialog{position:fixed;inset:0;z-index:110;display:flex;align-items:center;justify-content:center;padding:20px;background:#030b0ddd}.recon-modal{width:min(680px,100%);padding:24px;border:1px solid #667d7c;background:#11252b;box-shadow:0 30px 100px #000b}.recon-modal>header{display:flex;align-items:flex-start;justify-content:space-between;padding-bottom:14px;border-bottom:1px solid #30474d}.recon-modal h2{margin:6px 0 0;font-size:22px}.recon-modal>header>button{border:0;background:none;color:#9eb1b0;font-size:27px}.recon-modal>p{color:#8fa6a7;font-size:11px;line-height:1.9}.recon-modal fieldset{min-width:0;margin:16px 0;padding:0;border:0}.recon-modal legend{margin-bottom:9px;color:#a9bcba;font-size:11px}.recon-heading-picker{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}.recon-heading-picker legend{grid-column:1/-1}.recon-heading-picker button{display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 4px;border:1px solid #3a555d;background:#0c1d23;color:#91a8aa}.recon-heading-picker button span{font-size:22px}.recon-heading-picker button b{font:600 12px 'Rajdhani',sans-serif}.recon-heading-picker button small{font-size:9px}.recon-heading-picker button.active{border-color:var(--gold);background:#3b392b;color:var(--gold)}.recon-options{display:grid;grid-template-columns:1.4fr 1fr;gap:18px}.segmented-control{display:grid;grid-template-columns:1fr 1fr}.segmented-control button{display:flex;flex-direction:column;gap:4px;padding:12px;border:1px solid #3a555d;background:#0c1d23;color:#a9bcba;font:600 17px 'Rajdhani',sans-serif}.segmented-control button small{font:9px 'Noto Sans SC',sans-serif;color:#718d92}.segmented-control button.active{border-color:var(--gold);background:#3b392b;color:var(--gold)}.recon-radius{display:flex;flex-direction:column;gap:8px;color:#a9bcba;font-size:11px}.recon-radius input{width:100%;height:47px;padding:0 12px;border:1px solid #3a555d;background:#0c1d23;color:var(--gold);font:600 19px 'Rajdhani',sans-serif}.recon-radius small{color:#718d92;font-size:9px}.recon-brief{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:9px;padding:12px;background:#0b1c21;color:#718d92;font-size:10px}.recon-brief strong{color:#c7d6d2;font-weight:500}.recon-brief i{color:var(--gold);font-style:normal}.recon-modal>footer{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid #30474d}.recon-modal>footer button{padding:10px 18px;font-size:11px}.reset-button{border:1px solid #49636b;background:#142a31;color:#9bb0b1}.apply-button{border:1px solid var(--gold);background:var(--gold);color:#14252a;font-weight:600}
 @media(max-width:600px){.recon-modal{padding:17px}.recon-heading-picker{grid-template-columns:repeat(3,1fr)}.recon-options{grid-template-columns:1fr;gap:0}.air-task.recon-task{padding-bottom:30px}.recon-sector-map{width:100%;height:150px}}
 
 .counter-back-top{align-items:flex-start}.counter-back-history{display:block;max-width:67px;overflow:hidden;padding-top:2px;font:600 7px/1.25 'Noto Sans SC',sans-serif;text-align:center;text-overflow:ellipsis;white-space:nowrap}.counter-back-top>b{min-width:15px;text-align:right}.counter-back-bottom{align-items:center}.counter-back-bottom>span,.counter-back-bottom>b{min-width:16px;text-align:center}.counter-back-speed{position:absolute;left:4px;top:2px;z-index:2;font:700 15px 'Rajdhani',sans-serif;letter-spacing:-.3px}.counter-back-torpedo{display:inline-grid;place-items:center;min-width:20px!important;height:17px;background:#d99b29;color:#2a291e;font:700 13px 'Rajdhani',sans-serif}.counter-back-depth{display:inline-grid;place-items:center;min-width:19px!important;height:17px;background:#274b56;color:#d7e5e4;font:700 13px 'Rajdhani',sans-serif}.counter-back-elevator{color:#153e4e}.counter-b .counter-back-elevator{color:#4b2927}.counter-cargo{display:inline-grid;place-items:center;min-width:20px;height:18px;background:#d99b29;color:#2a291e;font:700 13px 'Rajdhani',sans-serif}
@@ -176,7 +176,7 @@
 .map-flight-task{pointer-events:none}.map-flight-task>rect{fill:#244754;stroke:#91d2e3;stroke-width:1.2}.map-flight-task.transfer>rect{fill:#4b4630;stroke:#d7bb7b}.map-flight-task .flight-task-symbol{fill:#d9edf0;stroke:none}.map-flight-task text{fill:#d8e9e8;font:7px 'Noto Sans SC',sans-serif;paint-order:stroke;stroke:#0b1b20;stroke-width:2px;stroke-linejoin:round}.map-flight-task .flight-task-range{fill:#9fd6e4}.map-flight-task .flight-task-coord{fill:#f0d58d;text-anchor:middle}.map-flight-task.transfer .flight-task-range{fill:#f0d58d}
 .task-queue{align-self:flex-end;margin-top:auto;color:#78959a;font-size:6px}
 .hex-cell .planned-here circle{fill:#0f2329;stroke:#e3c87e;stroke-width:1.5;opacity:.92}.hex-cell .planned-here path{fill:#e3c87e}
-.task-radio{border:1px solid #3a5a63;background:#12262c;color:#9fd0c1;font-size:13px;line-height:1;padding:3px 6px;border-radius:3px;margin-left:4px}.task-radio:disabled{opacity:.4}.supply-summary{display:flex;flex-wrap:wrap;gap:6px;align-items:baseline;margin-top:8px;font-size:11px;color:var(--muted)}.supply-summary b{color:var(--gold);font-size:13px}
+.task-radio{border:1px solid #3a5a63;background:#12262c;color:#9fd0c1;font-size:13px;line-height:1;padding:3px 6px;border-radius:3px;margin-left:4px}.task-radio:disabled{opacity:.4}.supply-summary{display:flex;flex-wrap:wrap;gap:6px;align-items:baseline;margin-top:8px;font-size:11px;color:var(--muted)}.supply-summary b{color:var(--gold);font-size:13px}.supply-summary.enemy-supplies b{color:#e59889}.supply-summary .supply-hint{color:#8f6f66}
 .task-radio-group{display:inline-flex;gap:4px;margin-left:4px}
 .wind-indicator{display:flex;align-items:center;gap:10px;font-size:11px;color:var(--muted)}.wind-indicator b{color:var(--gold);font-size:13px}.wind-indicator em{font-style:normal}.wind-indicator em.gain{color:#8fd3a4}.wind-indicator em.loss{color:#e08a7c}.heading-picker{display:inline-flex;gap:2px}.heading-picker button{padding:1px 5px;font-size:10px;border:1px solid #345057;background:#12262c;color:#9fc0bc;border-radius:2px}.heading-picker.spent button{opacity:.35}
 .map-enemy-air rect{fill:#3a1414;stroke:#c0504a;stroke-width:1}
@@ -382,7 +382,6 @@
 .map-enemy-air.kind-attack .enemy-air-picture{pointer-events:none}
 .map-enemy-air.kind-attack text{fill:#f3e6e2}
 /* 就绪即冻结：本回合已提交，界面只保留查看 */
-.frozen-banner{margin:12px 28px 0;padding:9px 13px;border:1px solid #d7bb7b;background:#3b392b;color:#e8d39a;font-size:11px;letter-spacing:.4px}
 /* 机场标识图片：三档跑道符号（小/中/大），画在浅色方块里 */
 .map-airfield .airfield-icon{pointer-events:none}
 .map-airfield.unknown .airfield-icon{opacity:.55}
@@ -399,3 +398,58 @@
 .settings-grid a{color:var(--gold)}
 .settings-grid a:hover{text-decoration:underline}
 .settings-grid code{color:#b9cbc7;font-family:'Rajdhani','Noto Sans SC',monospace;letter-spacing:.5px;word-break:break-all}
+
+/* —— 任务卡两行布局 ——
+   窄任务栏里横排放不下时，flex 会把"机队算子"那一行压成 0 宽：飞机牌被右侧信息块
+   完全盖住，玩家把飞机拖进转场之后就在卡片里找不到它，自然也就拖不回来。
+   改成两行——信息/目标在上，机队算子整行在下，算子行永远留得下 64px 的飞机牌。 */
+.mission-grid .air-task.with-air-task-counters{flex-wrap:wrap;align-items:flex-start;align-content:flex-start;row-gap:3px}
+.mission-grid .air-task.with-air-task-counters>.air-task-counters{order:1;flex:1 0 100%;min-width:0;min-height:53px}
+.mission-grid .air-task.with-air-task-counters>.air-task-content{order:2;flex:1 1 100%}
+/* 任务卡里先把机队算子放在最上面：窄任务栏里的卡片高度经常超出一屏，
+   如果算子排在下面，正好被裁掉一半——要拖回机库的飞机就在裁掉的那半里。 */
+.mission-grid .air-task-counters figure.air-counter{margin:0}
+.mission-grid .air-task-content .strike-target-control{flex-wrap:wrap;row-gap:3px}
+.mission-grid .air-task-content .strike-target-card{min-width:74px}
+.strike-dispersion button{white-space:nowrap}
+/* 撤回机库：任务算子还在机库里时的兜底按钮，不依赖拖拽。 */
+.task-unassign{margin-left:4px;padding:2px 6px;border:1px solid #55636a;background:#1b2a30;color:#a8bcbb;font-size:8px;line-height:1.4;border-radius:2px}
+.task-unassign:hover:not(:disabled){border-color:var(--gold);color:var(--gold)}
+.task-unassign:disabled{opacity:.45;cursor:not-allowed}
+.mission-grid .air-task-content .air-task-copy{gap:1px}
+.mission-grid .air-task-content .strike-target-control{margin-top:2px}
+.mission-grid .air-task-counters .loadout-picker{width:100%;max-width:64px;font-size:7px}
+.mission-grid .air-task-counters>div>small{margin-top:1px}
+
+/* 地图上的舰队详情：整块面板收成"内容大小"，不再是 1120px 的大罩子。
+   兵牌 88px，一支 9 舰特混舰队一行放得下；底色不再在右侧留大片空块。 */
+:is(.map-fleet-workbench,.enemy-fleet-workbench){width:max-content;max-width:calc(100% - 24px)}
+:is(.map-fleet-workbench,.enemy-fleet-workbench)>header{padding:6px 10px;gap:10px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) h2{font-size:16px;margin:2px 8px 0 0}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) header small{font-size:9px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) .fleet-workbench-actions{gap:5px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) .fleet-workbench-actions button{padding:5px 8px;font-size:9px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) .fleet-workbench-actions button:last-child{padding:1px 8px;font-size:17px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) .fleet-nav{gap:5px;margin-top:3px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) .fleet-nav button{padding:4px 8px;font-size:9px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) .nav-status{font-size:9px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) .fleet-counter-grid{display:flex;flex-wrap:wrap;gap:4px;padding:6px 8px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) .fleet-counter-button{padding:2px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) .ship-counter{width:88px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) .counter-face{height:72px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) .counter-top{height:17px;padding:2px 4px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) .counter-top>strong{font-size:15px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) .counter-top>b{font-size:14px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) .counter-radars{padding-top:1px;gap:3px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) .counter-radars i{width:7px;height:7px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) .counter-middle{height:36px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) .counter-silhouette{width:78px;height:28px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) .counter-dc{font-size:13px;left:4px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) .counter-class{font-size:6.5px;right:4px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) .counter-payload{min-width:14px;padding:0 2px;font-size:10px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) .counter-bottom{height:17px;padding:0 4px;font-size:11px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) .counter-bottom strong{font-size:12px}
+:is(.map-fleet-workbench,.enemy-fleet-workbench) .ship-counter figcaption{padding-top:1px;font-size:8.5px}
+/* 收起兵牌：只留标题+按钮那一行，地图立刻整块可用 */
+:is(.map-fleet-workbench,.enemy-fleet-workbench).cards-collapsed .fleet-counter-grid{display:none}
+.fleet-toggle-cards{display:inline-flex;align-items:center;gap:4px}
