@@ -35,6 +35,8 @@ type testView struct {
 type testClient struct {
 	client *http.Client
 	base   string
+	// app 指向被测服务端：个别测试要直接看某个房间 worker 的内部计数。
+	app *Server
 }
 
 func newTestClient(t *testing.T, base string) *testClient {
@@ -79,7 +81,9 @@ func setupTestServer(t *testing.T) (*testClient, string, *store.Store, func()) {
 	app.RegisterRoutes(mux)
 	httpServer := httptest.NewServer(mux)
 	cleanup := func() { httpServer.Close(); database.Close() }
-	return newTestClient(t, httpServer.URL), path, database, cleanup
+	client := newTestClient(t, httpServer.URL)
+	client.app = app
+	return client, path, database, cleanup
 }
 
 func TestTwoPlayerCommandAndTurnFlow(t *testing.T) {

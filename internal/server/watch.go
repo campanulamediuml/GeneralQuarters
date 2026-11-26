@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-	"sync/atomic"
 
 	"generalquarters/internal/game"
 	"generalquarters/internal/store"
@@ -15,13 +14,6 @@ import (
 
 //go:embed watch.html
 var watchHTML []byte
-
-// spectateViews 是观战视图的投影次数。
-//
-// 观战链路的重点不是"投影一次多快"（已经压到 1.4 ms），而是"一次变更投影几次"：
-// 一次回合结算会连着广播好几条事件，每条都整份重算就是白白多做几遍。
-// 计数放在这里是为了让测试能直接断言合并生效。
-var spectateViews atomic.Int64
 
 // doSpectate 是"观战"视角：用房间 join_token 换一份不按阵营裁剪的完整快照。
 // 对局本身仍然是两边私有情报各看各的；这个接口只给拿得到邀请 token 的人（房主/旁观者）用，
@@ -54,13 +46,16 @@ func (s *Server) spectateView(ctx context.Context, room store.Room) (map[string]
 	if err != nil {
 		return nil, err
 	}
+	// 投影次数记在房间自己身上：这是观战合并有没有生效的唯一证据，
+	// 但它是房间的账，不该变成一张全局表（几个房间并发时也说不清是谁的）。
+	// 这条路径只在房间 worker 里被调用，所以拿到的就是当前房间的 actor。
+	s.roomActor(room.ID).spectateProjections.Add(1)
 	return buildSpectateView(room, players, events), nil
 }
 
 // buildSpectateView 把房间状态整理成观战页要的那一份 JSON 视图。
 // 抽出来是为了能单独量它的开销：一次观战投影的重活几乎都在这里。
 func buildSpectateView(room store.Room, players []store.Player, events []store.Event) map[string]any {
-	spectateViews.Add(1)
 	state := room.State
 	units := []game.Unit{}
 	fleets := []game.FleetGroup{}

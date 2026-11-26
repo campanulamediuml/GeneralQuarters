@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"generalquarters/internal/game"
@@ -23,6 +24,11 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// Server 只放"跨房间、但不属于任何一局"的东西：持久化、连接路由、房间表、配置。
+//
+// 对局状态一律在 roomActor 里：不同房间之间不共享任何可变状态，也没有任何一把锁
+// 保护"对局"这件事本身。包级的可变变量在这个包里是不允许的——真要跨房间共享，
+// 那它得是不可变的（编译期常量、嵌入资源、查表用的固定表）。
 type Server struct {
 	store      *store.Store
 	contentDir string
@@ -155,6 +161,9 @@ type roomActor struct {
 	// views 是这个房间上一次推给每个玩家、以及观战者的视图。
 	// 只由 worker 自己读写，所以不需要锁：这也是补丁顺序天然正确的原因。
 	views roomViews
+	// spectateProjections 是这个房间投影过几次观战视图。
+	// 用原子量只是为了让测试能从外面读一眼；写的一方永远是 worker 自己。
+	spectateProjections atomic.Int64
 	// meta 是这个房间 diff 用的类型元数据缓存。只有 worker 自己读写，所以不需要锁。
 	meta diffCache
 }

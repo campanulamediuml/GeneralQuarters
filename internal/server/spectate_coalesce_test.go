@@ -23,7 +23,8 @@ func TestSpectatorCoalescesBroadcastBurst(t *testing.T) {
 		t.Fatalf("首帧回合=%v", view["turn"])
 	}
 
-	before := spectateViews.Load()
+	actor := host.app.roomActor(created.RoomID)
+	before := actor.spectateProjections.Load()
 	if status := host.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, nil); status != http.StatusOK {
 		t.Fatalf("ready status %d", status)
 	}
@@ -32,7 +33,7 @@ func TestSpectatorCoalescesBroadcastBurst(t *testing.T) {
 	if last["turn"] != float64(2) {
 		t.Fatalf("观战没收到结算后的状态：%v", last["turn"])
 	}
-	after := spectateViews.Load()
+	after := actor.spectateProjections.Load()
 	// 结算的几条广播都在同一个房间任务里，投影只可能发生在任务结束之后，
 	// 所以这里必须是 1（老实现是每条通知一次，至少 2 次）。
 	if projections := after - before; projections != 1 {
