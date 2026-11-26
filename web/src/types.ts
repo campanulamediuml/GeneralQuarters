@@ -114,6 +114,8 @@ export interface AirUnit {
   /** image（默认）原样显示彩图；mask 只取 alpha 当剪影。 */
   picture_mode?: 'image' | 'mask'
   kind: 'fighter' | 'dive_bomber' | 'torpedo_bomber' | 'recon' | 'level_bomber' | 'medium_bomber' | 'heavy_bomber' | 'strategic_bomber'
+  /** 飞行员熟练度：部署时已折进对空/对舰数值，这里只用于兵牌角标。 */
+  skill?: 'rookie' | 'regular' | 'veteran' | 'ace'
   status: 'hangar' | 'service' | 'elevator' | 'deck' | 'ready' | 'recovery' | 'cap' | 'recon' | 'attack_holding' | 'attack'
   strength: number
   max_range: number

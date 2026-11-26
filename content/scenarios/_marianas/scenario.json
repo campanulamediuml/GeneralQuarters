@@ -672,1802 +672,2162 @@
   {
    "id": "us-cv-01-f6f-x1",
    "unit": "f6f",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-01-f6f-x2",
    "unit": "f6f",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-01-f6f-x3",
    "unit": "f6f",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-01-f6f-x4",
    "unit": "f6f",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-01-f6f-x5",
    "unit": "f6f",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-01-f6f-x6",
    "unit": "f6f",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-01-f6f-x7",
    "unit": "f6f",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-01-f6f-x8",
    "unit": "f6f",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-01-sb2c-x1",
    "unit": "sb2c",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-01-sb2c-x2",
    "unit": "sb2c",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-01-sb2c-x3",
    "unit": "sb2c",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-01-sb2c-x4",
    "unit": "sb2c",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-01-sb2c-x5",
    "unit": "sb2c",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-01-sb2c-x6",
    "unit": "sb2c",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-01-sb2c-x7",
    "unit": "sb2c",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-01-sb2c-x8",
    "unit": "sb2c",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-01-tbf-x1",
    "unit": "tbf",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-01-tbf-x2",
    "unit": "tbf",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-01-tbf-x3",
    "unit": "tbf",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-01-tbf-x4",
    "unit": "tbf",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-01-tbf-x5",
    "unit": "tbf",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-01-tbf-x6",
    "unit": "tbf",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-01-tbf-x7",
    "unit": "tbf",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-01-tbf-x8",
    "unit": "tbf",
-   "carrier": "us-cv-01"
+   "carrier": "us-cv-01",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-f6f-x1",
    "unit": "f6f",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-f6f-x2",
    "unit": "f6f",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-f6f-x3",
    "unit": "f6f",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-f6f-x4",
    "unit": "f6f",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-f6f-x5",
    "unit": "f6f",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-f6f-x6",
    "unit": "f6f",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-f6f-x7",
    "unit": "f6f",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-f6f-x8",
    "unit": "f6f",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-sb2c-x1",
    "unit": "sb2c",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-sb2c-x2",
    "unit": "sb2c",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-sb2c-x3",
    "unit": "sb2c",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-sb2c-x4",
    "unit": "sb2c",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-sb2c-x5",
    "unit": "sb2c",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-sb2c-x6",
    "unit": "sb2c",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-sb2c-x7",
    "unit": "sb2c",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-sb2c-x8",
    "unit": "sb2c",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-tbf-x1",
    "unit": "tbf",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-tbf-x2",
    "unit": "tbf",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-tbf-x3",
    "unit": "tbf",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-tbf-x4",
    "unit": "tbf",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-tbf-x5",
    "unit": "tbf",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-tbf-x6",
    "unit": "tbf",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-tbf-x7",
    "unit": "tbf",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-02-tbf-x8",
    "unit": "tbf",
-   "carrier": "us-cv-02"
+   "carrier": "us-cv-02",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-f6f-x1",
    "unit": "f6f",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-f6f-x2",
    "unit": "f6f",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-f6f-x3",
    "unit": "f6f",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-f6f-x4",
    "unit": "f6f",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-f6f-x5",
    "unit": "f6f",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-f6f-x6",
    "unit": "f6f",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-f6f-x7",
    "unit": "f6f",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-f6f-x8",
    "unit": "f6f",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-sb2c-x1",
    "unit": "sb2c",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-sb2c-x2",
    "unit": "sb2c",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-sb2c-x3",
    "unit": "sb2c",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-sb2c-x4",
    "unit": "sb2c",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-sb2c-x5",
    "unit": "sb2c",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-sb2c-x6",
    "unit": "sb2c",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-sb2c-x7",
    "unit": "sb2c",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-sb2c-x8",
    "unit": "sb2c",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-tbf-x1",
    "unit": "tbf",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-tbf-x2",
    "unit": "tbf",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-tbf-x3",
    "unit": "tbf",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-tbf-x4",
    "unit": "tbf",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-tbf-x5",
    "unit": "tbf",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-tbf-x6",
    "unit": "tbf",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-tbf-x7",
    "unit": "tbf",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-03-tbf-x8",
    "unit": "tbf",
-   "carrier": "us-cv-03"
+   "carrier": "us-cv-03",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-f6f-x1",
    "unit": "f6f",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-f6f-x2",
    "unit": "f6f",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-f6f-x3",
    "unit": "f6f",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-f6f-x4",
    "unit": "f6f",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-f6f-x5",
    "unit": "f6f",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-f6f-x6",
    "unit": "f6f",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-f6f-x7",
    "unit": "f6f",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-f6f-x8",
    "unit": "f6f",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-sb2c-x1",
    "unit": "sb2c",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-sb2c-x2",
    "unit": "sb2c",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-sb2c-x3",
    "unit": "sb2c",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-sb2c-x4",
    "unit": "sb2c",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-sb2c-x5",
    "unit": "sb2c",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-sb2c-x6",
    "unit": "sb2c",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-sb2c-x7",
    "unit": "sb2c",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-sb2c-x8",
    "unit": "sb2c",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-tbf-x1",
    "unit": "tbf",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-tbf-x2",
    "unit": "tbf",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-tbf-x3",
    "unit": "tbf",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-tbf-x4",
    "unit": "tbf",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-tbf-x5",
    "unit": "tbf",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-tbf-x6",
    "unit": "tbf",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-tbf-x7",
    "unit": "tbf",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-04-tbf-x8",
    "unit": "tbf",
-   "carrier": "us-cv-04"
+   "carrier": "us-cv-04",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-f6f-x1",
    "unit": "f6f",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-f6f-x2",
    "unit": "f6f",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-f6f-x3",
    "unit": "f6f",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-f6f-x4",
    "unit": "f6f",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-f6f-x5",
    "unit": "f6f",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-f6f-x6",
    "unit": "f6f",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-f6f-x7",
    "unit": "f6f",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-f6f-x8",
    "unit": "f6f",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-sb2c-x1",
    "unit": "sb2c",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-sb2c-x2",
    "unit": "sb2c",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-sb2c-x3",
    "unit": "sb2c",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-sb2c-x4",
    "unit": "sb2c",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-sb2c-x5",
    "unit": "sb2c",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-sb2c-x6",
    "unit": "sb2c",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-sb2c-x7",
    "unit": "sb2c",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-sb2c-x8",
    "unit": "sb2c",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-tbf-x1",
    "unit": "tbf",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-tbf-x2",
    "unit": "tbf",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-tbf-x3",
    "unit": "tbf",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-tbf-x4",
    "unit": "tbf",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-tbf-x5",
    "unit": "tbf",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-tbf-x6",
    "unit": "tbf",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-tbf-x7",
    "unit": "tbf",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-05-tbf-x8",
    "unit": "tbf",
-   "carrier": "us-cv-05"
+   "carrier": "us-cv-05",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-f6f-x1",
    "unit": "f6f",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-f6f-x2",
    "unit": "f6f",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-f6f-x3",
    "unit": "f6f",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-f6f-x4",
    "unit": "f6f",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-f6f-x5",
    "unit": "f6f",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-f6f-x6",
    "unit": "f6f",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-f6f-x7",
    "unit": "f6f",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-f6f-x8",
    "unit": "f6f",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-sb2c-x1",
    "unit": "sb2c",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-sb2c-x2",
    "unit": "sb2c",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-sb2c-x3",
    "unit": "sb2c",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-sb2c-x4",
    "unit": "sb2c",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-sb2c-x5",
    "unit": "sb2c",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-sb2c-x6",
    "unit": "sb2c",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-sb2c-x7",
    "unit": "sb2c",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-sb2c-x8",
    "unit": "sb2c",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-tbf-x1",
    "unit": "tbf",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-tbf-x2",
    "unit": "tbf",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-tbf-x3",
    "unit": "tbf",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-tbf-x4",
    "unit": "tbf",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-tbf-x5",
    "unit": "tbf",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-tbf-x6",
    "unit": "tbf",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-tbf-x7",
    "unit": "tbf",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-06-tbf-x8",
    "unit": "tbf",
-   "carrier": "us-cv-06"
+   "carrier": "us-cv-06",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-f6f-x1",
    "unit": "f6f",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-f6f-x2",
    "unit": "f6f",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-f6f-x3",
    "unit": "f6f",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-f6f-x4",
    "unit": "f6f",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-f6f-x5",
    "unit": "f6f",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-f6f-x6",
    "unit": "f6f",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-f6f-x7",
    "unit": "f6f",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-f6f-x8",
    "unit": "f6f",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-sb2c-x1",
    "unit": "sb2c",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-sb2c-x2",
    "unit": "sb2c",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-sb2c-x3",
    "unit": "sb2c",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-sb2c-x4",
    "unit": "sb2c",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-sb2c-x5",
    "unit": "sb2c",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-sb2c-x6",
    "unit": "sb2c",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-sb2c-x7",
    "unit": "sb2c",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-sb2c-x8",
    "unit": "sb2c",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-tbf-x1",
    "unit": "tbf",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-tbf-x2",
    "unit": "tbf",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-tbf-x3",
    "unit": "tbf",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-tbf-x4",
    "unit": "tbf",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-tbf-x5",
    "unit": "tbf",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-tbf-x6",
    "unit": "tbf",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-tbf-x7",
    "unit": "tbf",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-07-tbf-x8",
    "unit": "tbf",
-   "carrier": "us-cv-07"
+   "carrier": "us-cv-07",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-f6f-x1",
    "unit": "f6f",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-f6f-x2",
    "unit": "f6f",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-f6f-x3",
    "unit": "f6f",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-f6f-x4",
    "unit": "f6f",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-f6f-x5",
    "unit": "f6f",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-f6f-x6",
    "unit": "f6f",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-f6f-x7",
    "unit": "f6f",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-f6f-x8",
    "unit": "f6f",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-sb2c-x1",
    "unit": "sb2c",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-sb2c-x2",
    "unit": "sb2c",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-sb2c-x3",
    "unit": "sb2c",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-sb2c-x4",
    "unit": "sb2c",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-sb2c-x5",
    "unit": "sb2c",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-sb2c-x6",
    "unit": "sb2c",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-sb2c-x7",
    "unit": "sb2c",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-sb2c-x8",
    "unit": "sb2c",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-tbf-x1",
    "unit": "tbf",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-tbf-x2",
    "unit": "tbf",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-tbf-x3",
    "unit": "tbf",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-tbf-x4",
    "unit": "tbf",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-tbf-x5",
    "unit": "tbf",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-tbf-x6",
    "unit": "tbf",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-tbf-x7",
    "unit": "tbf",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-cv-08-tbf-x8",
    "unit": "tbf",
-   "carrier": "us-cv-08"
+   "carrier": "us-cv-08",
+   "skill": "veteran"
   },
   {
    "id": "us-bb-01-soc-x1",
    "unit": "soc",
-   "carrier": "us-bb-01"
+   "carrier": "us-bb-01",
+   "skill": "regular"
   },
   {
    "id": "us-bb-01-soc-x2",
    "unit": "soc",
-   "carrier": "us-bb-01"
+   "carrier": "us-bb-01",
+   "skill": "regular"
   },
   {
    "id": "us-bb-02-soc-x1",
    "unit": "soc",
-   "carrier": "us-bb-02"
+   "carrier": "us-bb-02",
+   "skill": "regular"
   },
   {
    "id": "us-bb-02-soc-x2",
    "unit": "soc",
-   "carrier": "us-bb-02"
+   "carrier": "us-bb-02",
+   "skill": "regular"
   },
   {
    "id": "us-bb-03-soc-x1",
    "unit": "soc",
-   "carrier": "us-bb-03"
+   "carrier": "us-bb-03",
+   "skill": "regular"
   },
   {
    "id": "us-bb-03-soc-x2",
    "unit": "soc",
-   "carrier": "us-bb-03"
+   "carrier": "us-bb-03",
+   "skill": "regular"
   },
   {
    "id": "us-bb-04-soc-x1",
    "unit": "soc",
-   "carrier": "us-bb-04"
+   "carrier": "us-bb-04",
+   "skill": "regular"
   },
   {
    "id": "us-bb-04-soc-x2",
    "unit": "soc",
-   "carrier": "us-bb-04"
+   "carrier": "us-bb-04",
+   "skill": "regular"
   },
   {
    "id": "us-ca-01-soc-x1",
    "unit": "soc",
-   "carrier": "us-ca-01"
+   "carrier": "us-ca-01",
+   "skill": "regular"
   },
   {
    "id": "us-ca-01-soc-x2",
    "unit": "soc",
-   "carrier": "us-ca-01"
+   "carrier": "us-ca-01",
+   "skill": "regular"
   },
   {
    "id": "us-ca-02-soc-x1",
    "unit": "soc",
-   "carrier": "us-ca-02"
+   "carrier": "us-ca-02",
+   "skill": "regular"
   },
   {
    "id": "us-ca-02-soc-x2",
    "unit": "soc",
-   "carrier": "us-ca-02"
+   "carrier": "us-ca-02",
+   "skill": "regular"
   },
   {
    "id": "us-ca-03-soc-x1",
    "unit": "soc",
-   "carrier": "us-ca-03"
+   "carrier": "us-ca-03",
+   "skill": "regular"
   },
   {
    "id": "us-ca-03-soc-x2",
    "unit": "soc",
-   "carrier": "us-ca-03"
+   "carrier": "us-ca-03",
+   "skill": "regular"
   },
   {
    "id": "us-ca-04-soc-x1",
    "unit": "soc",
-   "carrier": "us-ca-04"
+   "carrier": "us-ca-04",
+   "skill": "regular"
   },
   {
    "id": "us-ca-04-soc-x2",
    "unit": "soc",
-   "carrier": "us-ca-04"
+   "carrier": "us-ca-04",
+   "skill": "regular"
   },
   {
    "id": "jp-cv-01-a6m5-x1",
    "unit": "a6m5",
-   "carrier": "jp-cv-01"
+   "carrier": "jp-cv-01",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-01-a6m5-x2",
    "unit": "a6m5",
-   "carrier": "jp-cv-01"
+   "carrier": "jp-cv-01",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-01-a6m5-x3",
    "unit": "a6m5",
-   "carrier": "jp-cv-01"
+   "carrier": "jp-cv-01",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-01-a6m5-x4",
    "unit": "a6m5",
-   "carrier": "jp-cv-01"
+   "carrier": "jp-cv-01",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-01-a6m5-x5",
    "unit": "a6m5",
-   "carrier": "jp-cv-01"
+   "carrier": "jp-cv-01",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-01-a6m5-x6",
    "unit": "a6m5",
-   "carrier": "jp-cv-01"
+   "carrier": "jp-cv-01",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-01-a6m5-x7",
    "unit": "a6m5",
-   "carrier": "jp-cv-01"
+   "carrier": "jp-cv-01",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-01-a6m5-x8",
    "unit": "a6m5",
-   "carrier": "jp-cv-01"
+   "carrier": "jp-cv-01",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-01-d4y-x1",
    "unit": "d4y",
-   "carrier": "jp-cv-01"
+   "carrier": "jp-cv-01",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-01-d4y-x2",
    "unit": "d4y",
-   "carrier": "jp-cv-01"
+   "carrier": "jp-cv-01",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-01-d4y-x3",
    "unit": "d4y",
-   "carrier": "jp-cv-01"
+   "carrier": "jp-cv-01",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-01-d4y-x4",
    "unit": "d4y",
-   "carrier": "jp-cv-01"
+   "carrier": "jp-cv-01",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-01-d4y-x5",
    "unit": "d4y",
-   "carrier": "jp-cv-01"
+   "carrier": "jp-cv-01",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-01-d4y-x6",
    "unit": "d4y",
-   "carrier": "jp-cv-01"
+   "carrier": "jp-cv-01",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-01-b6n-x1",
    "unit": "b6n",
-   "carrier": "jp-cv-01"
+   "carrier": "jp-cv-01",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-01-b6n-x2",
    "unit": "b6n",
-   "carrier": "jp-cv-01"
+   "carrier": "jp-cv-01",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-01-b6n-x3",
    "unit": "b6n",
-   "carrier": "jp-cv-01"
+   "carrier": "jp-cv-01",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-01-b6n-x4",
    "unit": "b6n",
-   "carrier": "jp-cv-01"
+   "carrier": "jp-cv-01",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-01-b6n-x5",
    "unit": "b6n",
-   "carrier": "jp-cv-01"
+   "carrier": "jp-cv-01",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-01-b6n-x6",
    "unit": "b6n",
-   "carrier": "jp-cv-01"
+   "carrier": "jp-cv-01",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-02-a6m5-x1",
    "unit": "a6m5",
-   "carrier": "jp-cv-02"
+   "carrier": "jp-cv-02",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-02-a6m5-x2",
    "unit": "a6m5",
-   "carrier": "jp-cv-02"
+   "carrier": "jp-cv-02",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-02-a6m5-x3",
    "unit": "a6m5",
-   "carrier": "jp-cv-02"
+   "carrier": "jp-cv-02",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-02-a6m5-x4",
    "unit": "a6m5",
-   "carrier": "jp-cv-02"
+   "carrier": "jp-cv-02",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-02-a6m5-x5",
    "unit": "a6m5",
-   "carrier": "jp-cv-02"
+   "carrier": "jp-cv-02",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-02-a6m5-x6",
    "unit": "a6m5",
-   "carrier": "jp-cv-02"
+   "carrier": "jp-cv-02",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-02-a6m5-x7",
    "unit": "a6m5",
-   "carrier": "jp-cv-02"
+   "carrier": "jp-cv-02",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-02-d4y-x1",
    "unit": "d4y",
-   "carrier": "jp-cv-02"
+   "carrier": "jp-cv-02",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-02-d4y-x2",
    "unit": "d4y",
-   "carrier": "jp-cv-02"
+   "carrier": "jp-cv-02",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-02-d4y-x3",
    "unit": "d4y",
-   "carrier": "jp-cv-02"
+   "carrier": "jp-cv-02",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-02-d4y-x4",
    "unit": "d4y",
-   "carrier": "jp-cv-02"
+   "carrier": "jp-cv-02",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-02-d4y-x5",
    "unit": "d4y",
-   "carrier": "jp-cv-02"
+   "carrier": "jp-cv-02",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-02-d4y-x6",
    "unit": "d4y",
-   "carrier": "jp-cv-02"
+   "carrier": "jp-cv-02",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-02-b6n-x1",
    "unit": "b6n",
-   "carrier": "jp-cv-02"
+   "carrier": "jp-cv-02",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-02-b6n-x2",
    "unit": "b6n",
-   "carrier": "jp-cv-02"
+   "carrier": "jp-cv-02",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-02-b6n-x3",
    "unit": "b6n",
-   "carrier": "jp-cv-02"
+   "carrier": "jp-cv-02",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-02-b6n-x4",
    "unit": "b6n",
-   "carrier": "jp-cv-02"
+   "carrier": "jp-cv-02",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-02-b6n-x5",
    "unit": "b6n",
-   "carrier": "jp-cv-02"
+   "carrier": "jp-cv-02",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-03-a6m5-x1",
    "unit": "a6m5",
-   "carrier": "jp-cv-03"
+   "carrier": "jp-cv-03",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-03-a6m5-x2",
    "unit": "a6m5",
-   "carrier": "jp-cv-03"
+   "carrier": "jp-cv-03",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-03-a6m5-x3",
    "unit": "a6m5",
-   "carrier": "jp-cv-03"
+   "carrier": "jp-cv-03",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-03-a6m5-x4",
    "unit": "a6m5",
-   "carrier": "jp-cv-03"
+   "carrier": "jp-cv-03",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-03-a6m5-x5",
    "unit": "a6m5",
-   "carrier": "jp-cv-03"
+   "carrier": "jp-cv-03",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-03-a6m5-x6",
    "unit": "a6m5",
-   "carrier": "jp-cv-03"
+   "carrier": "jp-cv-03",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-03-a6m5-x7",
    "unit": "a6m5",
-   "carrier": "jp-cv-03"
+   "carrier": "jp-cv-03",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-03-d4y-x1",
    "unit": "d4y",
-   "carrier": "jp-cv-03"
+   "carrier": "jp-cv-03",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-03-d4y-x2",
    "unit": "d4y",
-   "carrier": "jp-cv-03"
+   "carrier": "jp-cv-03",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-03-d4y-x3",
    "unit": "d4y",
-   "carrier": "jp-cv-03"
+   "carrier": "jp-cv-03",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-03-d4y-x4",
    "unit": "d4y",
-   "carrier": "jp-cv-03"
+   "carrier": "jp-cv-03",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-03-d4y-x5",
    "unit": "d4y",
-   "carrier": "jp-cv-03"
+   "carrier": "jp-cv-03",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-03-d4y-x6",
    "unit": "d4y",
-   "carrier": "jp-cv-03"
+   "carrier": "jp-cv-03",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-03-b6n-x1",
    "unit": "b6n",
-   "carrier": "jp-cv-03"
+   "carrier": "jp-cv-03",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-03-b6n-x2",
    "unit": "b6n",
-   "carrier": "jp-cv-03"
+   "carrier": "jp-cv-03",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-03-b6n-x3",
    "unit": "b6n",
-   "carrier": "jp-cv-03"
+   "carrier": "jp-cv-03",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-03-b6n-x4",
    "unit": "b6n",
-   "carrier": "jp-cv-03"
+   "carrier": "jp-cv-03",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-03-b6n-x5",
    "unit": "b6n",
-   "carrier": "jp-cv-03"
+   "carrier": "jp-cv-03",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-04-a6m5-x1",
    "unit": "a6m5",
-   "carrier": "jp-cv-04"
+   "carrier": "jp-cv-04",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-04-a6m5-x2",
    "unit": "a6m5",
-   "carrier": "jp-cv-04"
+   "carrier": "jp-cv-04",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-04-a6m5-x3",
    "unit": "a6m5",
-   "carrier": "jp-cv-04"
+   "carrier": "jp-cv-04",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-04-a6m5-x4",
    "unit": "a6m5",
-   "carrier": "jp-cv-04"
+   "carrier": "jp-cv-04",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-04-a6m5-x5",
    "unit": "a6m5",
-   "carrier": "jp-cv-04"
+   "carrier": "jp-cv-04",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-04-d4y-x1",
    "unit": "d4y",
-   "carrier": "jp-cv-04"
+   "carrier": "jp-cv-04",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-04-d4y-x2",
    "unit": "d4y",
-   "carrier": "jp-cv-04"
+   "carrier": "jp-cv-04",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-04-d4y-x3",
    "unit": "d4y",
-   "carrier": "jp-cv-04"
+   "carrier": "jp-cv-04",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-04-d4y-x4",
    "unit": "d4y",
-   "carrier": "jp-cv-04"
+   "carrier": "jp-cv-04",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-04-b6n-x1",
    "unit": "b6n",
-   "carrier": "jp-cv-04"
+   "carrier": "jp-cv-04",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-04-b6n-x2",
    "unit": "b6n",
-   "carrier": "jp-cv-04"
+   "carrier": "jp-cv-04",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-04-b6n-x3",
    "unit": "b6n",
-   "carrier": "jp-cv-04"
+   "carrier": "jp-cv-04",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-05-a6m5-x1",
    "unit": "a6m5",
-   "carrier": "jp-cv-05"
+   "carrier": "jp-cv-05",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-05-a6m5-x2",
    "unit": "a6m5",
-   "carrier": "jp-cv-05"
+   "carrier": "jp-cv-05",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-05-a6m5-x3",
    "unit": "a6m5",
-   "carrier": "jp-cv-05"
+   "carrier": "jp-cv-05",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-05-a6m5-x4",
    "unit": "a6m5",
-   "carrier": "jp-cv-05"
+   "carrier": "jp-cv-05",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-05-a6m5-x5",
    "unit": "a6m5",
-   "carrier": "jp-cv-05"
+   "carrier": "jp-cv-05",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-05-d4y-x1",
    "unit": "d4y",
-   "carrier": "jp-cv-05"
+   "carrier": "jp-cv-05",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-05-d4y-x2",
    "unit": "d4y",
-   "carrier": "jp-cv-05"
+   "carrier": "jp-cv-05",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-05-d4y-x3",
    "unit": "d4y",
-   "carrier": "jp-cv-05"
+   "carrier": "jp-cv-05",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-05-d4y-x4",
    "unit": "d4y",
-   "carrier": "jp-cv-05"
+   "carrier": "jp-cv-05",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-05-b6n-x1",
    "unit": "b6n",
-   "carrier": "jp-cv-05"
+   "carrier": "jp-cv-05",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-05-b6n-x2",
    "unit": "b6n",
-   "carrier": "jp-cv-05"
+   "carrier": "jp-cv-05",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-05-b6n-x3",
    "unit": "b6n",
-   "carrier": "jp-cv-05"
+   "carrier": "jp-cv-05",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-06-a6m5-x1",
    "unit": "a6m5",
-   "carrier": "jp-cv-06"
+   "carrier": "jp-cv-06",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-06-a6m5-x2",
    "unit": "a6m5",
-   "carrier": "jp-cv-06"
+   "carrier": "jp-cv-06",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-06-a6m5-x3",
    "unit": "a6m5",
-   "carrier": "jp-cv-06"
+   "carrier": "jp-cv-06",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-06-d4y-x1",
    "unit": "d4y",
-   "carrier": "jp-cv-06"
+   "carrier": "jp-cv-06",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-06-d4y-x2",
    "unit": "d4y",
-   "carrier": "jp-cv-06"
+   "carrier": "jp-cv-06",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-06-d4y-x3",
    "unit": "d4y",
-   "carrier": "jp-cv-06"
+   "carrier": "jp-cv-06",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-06-b6n-x1",
    "unit": "b6n",
-   "carrier": "jp-cv-06"
+   "carrier": "jp-cv-06",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-06-b6n-x2",
    "unit": "b6n",
-   "carrier": "jp-cv-06"
+   "carrier": "jp-cv-06",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-07-a6m5-x1",
    "unit": "a6m5",
-   "carrier": "jp-cv-07"
+   "carrier": "jp-cv-07",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-07-a6m5-x2",
    "unit": "a6m5",
-   "carrier": "jp-cv-07"
+   "carrier": "jp-cv-07",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-07-a6m5-x3",
    "unit": "a6m5",
-   "carrier": "jp-cv-07"
+   "carrier": "jp-cv-07",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-07-a6m5-x4",
    "unit": "a6m5",
-   "carrier": "jp-cv-07"
+   "carrier": "jp-cv-07",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-07-a6m5-x5",
    "unit": "a6m5",
-   "carrier": "jp-cv-07"
+   "carrier": "jp-cv-07",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-07-a6m5-x6",
    "unit": "a6m5",
-   "carrier": "jp-cv-07"
+   "carrier": "jp-cv-07",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-07-d4y-x1",
    "unit": "d4y",
-   "carrier": "jp-cv-07"
+   "carrier": "jp-cv-07",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-07-d4y-x2",
    "unit": "d4y",
-   "carrier": "jp-cv-07"
+   "carrier": "jp-cv-07",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-07-d4y-x3",
    "unit": "d4y",
-   "carrier": "jp-cv-07"
+   "carrier": "jp-cv-07",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-07-d4y-x4",
    "unit": "d4y",
-   "carrier": "jp-cv-07"
+   "carrier": "jp-cv-07",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-07-b6n-x1",
    "unit": "b6n",
-   "carrier": "jp-cv-07"
+   "carrier": "jp-cv-07",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-07-b6n-x2",
    "unit": "b6n",
-   "carrier": "jp-cv-07"
+   "carrier": "jp-cv-07",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-07-b6n-x3",
    "unit": "b6n",
-   "carrier": "jp-cv-07"
+   "carrier": "jp-cv-07",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-07-b6n-x4",
    "unit": "b6n",
-   "carrier": "jp-cv-07"
+   "carrier": "jp-cv-07",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-08-a6m5-x1",
    "unit": "a6m5",
-   "carrier": "jp-cv-08"
+   "carrier": "jp-cv-08",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-08-a6m5-x2",
    "unit": "a6m5",
-   "carrier": "jp-cv-08"
+   "carrier": "jp-cv-08",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-08-a6m5-x3",
    "unit": "a6m5",
-   "carrier": "jp-cv-08"
+   "carrier": "jp-cv-08",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-08-a6m5-x4",
    "unit": "a6m5",
-   "carrier": "jp-cv-08"
+   "carrier": "jp-cv-08",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-08-a6m5-x5",
    "unit": "a6m5",
-   "carrier": "jp-cv-08"
+   "carrier": "jp-cv-08",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-08-a6m5-x6",
    "unit": "a6m5",
-   "carrier": "jp-cv-08"
+   "carrier": "jp-cv-08",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-08-d4y-x1",
    "unit": "d4y",
-   "carrier": "jp-cv-08"
+   "carrier": "jp-cv-08",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-08-d4y-x2",
    "unit": "d4y",
-   "carrier": "jp-cv-08"
+   "carrier": "jp-cv-08",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-08-d4y-x3",
    "unit": "d4y",
-   "carrier": "jp-cv-08"
+   "carrier": "jp-cv-08",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-08-d4y-x4",
    "unit": "d4y",
-   "carrier": "jp-cv-08"
+   "carrier": "jp-cv-08",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-08-b6n-x1",
    "unit": "b6n",
-   "carrier": "jp-cv-08"
+   "carrier": "jp-cv-08",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-08-b6n-x2",
    "unit": "b6n",
-   "carrier": "jp-cv-08"
+   "carrier": "jp-cv-08",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-08-b6n-x3",
    "unit": "b6n",
-   "carrier": "jp-cv-08"
+   "carrier": "jp-cv-08",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-08-b6n-x4",
    "unit": "b6n",
-   "carrier": "jp-cv-08"
+   "carrier": "jp-cv-08",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-09-a6m5-x1",
    "unit": "a6m5",
-   "carrier": "jp-cv-09"
+   "carrier": "jp-cv-09",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-09-a6m5-x2",
    "unit": "a6m5",
-   "carrier": "jp-cv-09"
+   "carrier": "jp-cv-09",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-09-a6m5-x3",
    "unit": "a6m5",
-   "carrier": "jp-cv-09"
+   "carrier": "jp-cv-09",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-09-a6m5-x4",
    "unit": "a6m5",
-   "carrier": "jp-cv-09"
+   "carrier": "jp-cv-09",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-09-a6m5-x5",
    "unit": "a6m5",
-   "carrier": "jp-cv-09"
+   "carrier": "jp-cv-09",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-09-a6m5-x6",
    "unit": "a6m5",
-   "carrier": "jp-cv-09"
+   "carrier": "jp-cv-09",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-09-d4y-x1",
    "unit": "d4y",
-   "carrier": "jp-cv-09"
+   "carrier": "jp-cv-09",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-09-d4y-x2",
    "unit": "d4y",
-   "carrier": "jp-cv-09"
+   "carrier": "jp-cv-09",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-09-d4y-x3",
    "unit": "d4y",
-   "carrier": "jp-cv-09"
+   "carrier": "jp-cv-09",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-09-d4y-x4",
    "unit": "d4y",
-   "carrier": "jp-cv-09"
+   "carrier": "jp-cv-09",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-09-b6n-x1",
    "unit": "b6n",
-   "carrier": "jp-cv-09"
+   "carrier": "jp-cv-09",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-09-b6n-x2",
    "unit": "b6n",
-   "carrier": "jp-cv-09"
+   "carrier": "jp-cv-09",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-09-b6n-x3",
    "unit": "b6n",
-   "carrier": "jp-cv-09"
+   "carrier": "jp-cv-09",
+   "skill": "rookie"
   },
   {
    "id": "jp-cv-09-b6n-x4",
    "unit": "b6n",
-   "carrier": "jp-cv-09"
+   "carrier": "jp-cv-09",
+   "skill": "rookie"
   },
   {
    "id": "jp-bb-01-e13a-x1",
    "unit": "e13a",
-   "carrier": "jp-bb-01"
+   "carrier": "jp-bb-01",
+   "skill": "regular"
   },
   {
    "id": "jp-bb-01-e13a-x2",
    "unit": "e13a",
-   "carrier": "jp-bb-01"
+   "carrier": "jp-bb-01",
+   "skill": "regular"
   },
   {
    "id": "jp-bb-02-e13a-x1",
    "unit": "e13a",
-   "carrier": "jp-bb-02"
+   "carrier": "jp-bb-02",
+   "skill": "regular"
   },
   {
    "id": "jp-bb-02-e13a-x2",
    "unit": "e13a",
-   "carrier": "jp-bb-02"
+   "carrier": "jp-bb-02",
+   "skill": "regular"
   },
   {
    "id": "jp-bb-03-e13a-x1",
    "unit": "e13a",
-   "carrier": "jp-bb-03"
+   "carrier": "jp-bb-03",
+   "skill": "regular"
   },
   {
    "id": "jp-bb-03-e13a-x2",
    "unit": "e13a",
-   "carrier": "jp-bb-03"
+   "carrier": "jp-bb-03",
+   "skill": "regular"
   },
   {
    "id": "jp-bb-04-e13a-x1",
    "unit": "e13a",
-   "carrier": "jp-bb-04"
+   "carrier": "jp-bb-04",
+   "skill": "regular"
   },
   {
    "id": "jp-bb-04-e13a-x2",
    "unit": "e13a",
-   "carrier": "jp-bb-04"
+   "carrier": "jp-bb-04",
+   "skill": "regular"
   },
   {
    "id": "jp-bb-05-e13a-x1",
    "unit": "e13a",
-   "carrier": "jp-bb-05"
+   "carrier": "jp-bb-05",
+   "skill": "regular"
   },
   {
    "id": "jp-bb-05-e13a-x2",
    "unit": "e13a",
-   "carrier": "jp-bb-05"
+   "carrier": "jp-bb-05",
+   "skill": "regular"
   },
   {
    "id": "jp-ca-01-e13a-x1",
    "unit": "e13a",
-   "carrier": "jp-ca-01"
+   "carrier": "jp-ca-01",
+   "skill": "regular"
   },
   {
    "id": "jp-ca-01-e13a-x2",
    "unit": "e13a",
-   "carrier": "jp-ca-01"
+   "carrier": "jp-ca-01",
+   "skill": "regular"
   },
   {
    "id": "jp-ca-02-e13a-x1",
    "unit": "e13a",
-   "carrier": "jp-ca-02"
+   "carrier": "jp-ca-02",
+   "skill": "regular"
   },
   {
    "id": "jp-ca-02-e13a-x2",
    "unit": "e13a",
-   "carrier": "jp-ca-02"
+   "carrier": "jp-ca-02",
+   "skill": "regular"
   },
   {
    "id": "jp-ca-03-e13a-x1",
    "unit": "e13a",
-   "carrier": "jp-ca-03"
+   "carrier": "jp-ca-03",
+   "skill": "regular"
   },
   {
    "id": "jp-ca-03-e13a-x2",
    "unit": "e13a",
-   "carrier": "jp-ca-03"
+   "carrier": "jp-ca-03",
+   "skill": "regular"
   },
   {
    "id": "jp-ca-04-e13a-x1",
    "unit": "e13a",
-   "carrier": "jp-ca-04"
+   "carrier": "jp-ca-04",
+   "skill": "regular"
   },
   {
    "id": "jp-ca-04-e13a-x2",
    "unit": "e13a",
-   "carrier": "jp-ca-04"
+   "carrier": "jp-ca-04",
+   "skill": "regular"
   },
   {
    "id": "jp-ca-05-e13a-x1",
    "unit": "e13a",
-   "carrier": "jp-ca-05"
+   "carrier": "jp-ca-05",
+   "skill": "regular"
   },
   {
    "id": "jp-ca-05-e13a-x2",
    "unit": "e13a",
-   "carrier": "jp-ca-05"
+   "carrier": "jp-ca-05",
+   "skill": "regular"
   },
   {
    "id": "jp-ca-06-e13a-x1",
    "unit": "e13a",
-   "carrier": "jp-ca-06"
+   "carrier": "jp-ca-06",
+   "skill": "regular"
   },
   {
    "id": "jp-ca-06-e13a-x2",
    "unit": "e13a",
-   "carrier": "jp-ca-06"
+   "carrier": "jp-ca-06",
+   "skill": "regular"
   }
  ],
  "airfields": [
@@ -2567,12 +2927,12 @@
    "light_aa": 4.0,
    "coastal": 0,
    "aircraft": [
-    "af-b-rota-a6m5-1",
-    "af-b-rota-a6m5-2",
-    "af-b-rota-a6m5-3",
-    "af-b-rota-a6m5-4",
-    "af-b-rota-a6m5-5",
-    "af-b-rota-a6m5-6"
+    "af-b-rota-a6m5-rookie-1",
+    "af-b-rota-a6m5-rookie-2",
+    "af-b-rota-a6m5-rookie-3",
+    "af-b-rota-a6m5-rookie-4",
+    "af-b-rota-a6m5-rookie-5",
+    "af-b-rota-a6m5-rookie-6"
    ]
   },
   {
@@ -2587,16 +2947,16 @@
    "light_aa": 6.0,
    "coastal": 0,
    "aircraft": [
-    "af-b-yap-a6m5-1",
-    "af-b-yap-a6m5-2",
-    "af-b-yap-a6m5-3",
-    "af-b-yap-a6m5-4",
-    "af-b-yap-g4m2-1",
-    "af-b-yap-g4m2-2",
-    "af-b-yap-g4m2-3",
-    "af-b-yap-g4m2-4",
-    "af-b-yap-p1y-1",
-    "af-b-yap-p1y-2"
+    "af-b-yap-a6m5-rookie-1",
+    "af-b-yap-a6m5-rookie-2",
+    "af-b-yap-a6m5-rookie-3",
+    "af-b-yap-a6m5-rookie-4",
+    "af-b-yap-g4m2-rookie-1",
+    "af-b-yap-g4m2-rookie-2",
+    "af-b-yap-g4m2-rookie-3",
+    "af-b-yap-g4m2-rookie-4",
+    "af-b-yap-p1y-rookie-1",
+    "af-b-yap-p1y-rookie-2"
    ]
   },
   {

@@ -664,6 +664,8 @@ func discoverEnemyAirfieldsAt(state *State, aircraft *AirfieldAirUnit, coords []
 }
 func reconDetectionChance(state State, aircraft *AirUnit, members []Unit) float64 {
 	chance := 25.0
+	// 美军侦察基础值 +10%（无线电与情报体系），按 doctrine 取；日军为 0。
+	chance += rulesFor(state, aircraft.Faction).ReconBaseBonus
 	// 开战初期精锐机组：基础发现率 +10%（1942 年及以前，按 doctrine 取）。
 	chance += rulesFor(state, aircraft.Faction).EarlyWarReconBonus
 	for _, unit := range members {

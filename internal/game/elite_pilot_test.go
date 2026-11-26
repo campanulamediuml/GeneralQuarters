@@ -28,7 +28,8 @@ func TestElitePilotBonus1942(t *testing.T) {
 	}
 }
 
-// 侦察发现率：同样的一支小舰队，日军比美军高 10 个点（取未触顶的场景）。
+// 侦察发现率：1942 年日军精锐机组 +10% 正好抵掉美军侦察基础 +10%（净差 0）；
+// 1944 年精锐机组失效，美军靠基础值领先 10 点（取未触顶的场景）。
 func TestElitePilotReconBonus(t *testing.T) {
 	state := sandboxState(t)
 	// 只用一艘驱逐舰做目标，避免发现率撞到 100 的上限。
@@ -43,8 +44,13 @@ func TestElitePilotReconBonus(t *testing.T) {
 	american.Faction = "A"
 
 	diff := reconDetectionChance(state, &japanese, members) - reconDetectionChance(state, &american, members)
-	if diff != 10 {
-		t.Fatalf("日军侦察发现率应高 10 点，实际差 %v", diff)
+	if diff != 0 {
+		t.Fatalf("1942 年双方侦察应持平（精锐 +10 对基础 +10），实际差 %v", diff)
+	}
+	state.Year = 1944
+	diff = reconDetectionChance(state, &japanese, members) - reconDetectionChance(state, &american, members)
+	if diff != -10 {
+		t.Fatalf("1944 年美军靠侦察基础值应领先 10 点，实际差 %v", diff)
 	}
 }
 

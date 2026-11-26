@@ -675,6 +675,10 @@ func resolveGroundStrike(state *State, taskID, coord string) []EngineEvent {
 		if aircraft.Confusion && antiGround > 0 {
 			antiGround--
 		}
+		// 投弹 DC：每架飞机一次判定，过了这一次的对地攻击值 +1（与对舰同一条规则）。
+		if dcCheck(state) {
+			antiGround++
+		}
 		chance := groundHitChance(*state, airfield, groundAircraftView(aircraft), capRemaining)
 		hits := 0
 		report.BombAttempts += antiGround
@@ -775,7 +779,7 @@ func groundAircraftView(aircraft *AirUnit) *AirfieldAirUnit {
 	if aircraft == nil {
 		return &AirfieldAirUnit{}
 	}
-	return &AirfieldAirUnit{ID: aircraft.ID, Model: aircraft.Model, Kind: aircraft.Kind, Seaplane: aircraft.Seaplane, Damaged: aircraft.Damaged || aircraft.Confusion}
+	return &AirfieldAirUnit{ID: aircraft.ID, Model: aircraft.Model, Kind: aircraft.Kind, Skill: aircraft.Skill, Seaplane: aircraft.Seaplane, Damaged: aircraft.Damaged || aircraft.Confusion}
 }
 
 // destroyGroundAircraft 摧毁机场上至多 n 个随机地面飞机算子（优先机库内整装待发的）。
@@ -2244,7 +2248,8 @@ func fleetTrackedByOtherGround(state *State, aircraft *AirfieldAirUnit, fleetID 
 	return false
 }
 func groundReconChance(state State, aircraft *AirfieldAirUnit, members []Unit) float64 {
-	chance := 25.0
+	// 与舰载侦察同源：美军侦察基础值 +10%。
+	chance := 25.0 + rulesFor(state, aircraft.Faction).ReconBaseBonus
 	for _, unit := range members {
 		if isCapitalShip(unit.Type) {
 			chance += 5
@@ -2482,7 +2487,8 @@ func projectGroundReconSector(state State, aircraft *AirfieldAirUnit) ReconSecto
 // groundAirUnit 把机场算子投影成前端通用的 AirUnit，地图与任务栏因此可以复用同一套渲染。
 func groundAirUnit(state State, aircraft *AirfieldAirUnit) AirUnit {
 	return AirUnit{
-		ID: aircraft.ID, DefinitionID: aircraft.DefinitionID, CarrierID: aircraft.AirfieldID, Faction: aircraft.Faction, Model: aircraft.Model, Kind: aircraft.Kind, Picture: aircraft.Picture, PictureMode: aircraft.PictureMode,
+		ID: aircraft.ID, DefinitionID: aircraft.DefinitionID, CarrierID: aircraft.AirfieldID, Faction: aircraft.Faction, Model: aircraft.Model, Kind: aircraft.Kind,
+		Skill: aircraft.Skill, Picture: aircraft.Picture, PictureMode: aircraft.PictureMode,
 		Status: aircraft.Status, Strength: aircraft.Strength, MaxRange: aircraft.MaxRange, RemainingRange: aircraft.Range(),
 		AirCombat: aircraft.AirCombat, AntiShip: aircraft.AntiShip, AntiGround: aircraft.AntiGround,
 		// 陆基机型标记必须带出去：前端靠它区分"航母舰载机"和"机场起降的陆基机"，

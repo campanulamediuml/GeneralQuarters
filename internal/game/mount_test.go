@@ -299,6 +299,7 @@ func TestHeavyBombAddsGroundAttackValue(t *testing.T) {
 			Strength: 2, AirCombat: 1, AntiShip: 4, AntiGround: 4, Loadout: LoadoutBombTank, TaskID: "heavy-task", TaskKind: "attack",
 			Coord: airfield.Coord, TargetCoord: airfield.Coord, RemainingRange: 8, MaxRange: 12},
 	}
+	disableDCCheck(t) // 这条测的是重型炸弹加成，DC 的 ±1 会打乱投弹次数
 	state.RNGState = 20241116
 	resolveGroundStrike(&state, "heavy-task", airfield.Coord)
 	if len(state.AirCombats) != 1 {

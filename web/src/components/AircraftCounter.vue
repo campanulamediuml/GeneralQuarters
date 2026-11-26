@@ -44,6 +44,11 @@ const cycleKind = computed(() => props.aircraft.cycle_kind || props.aircraft.tas
 const canCycle = computed(() => friendly.value && ['cap', 'cover', 'recon'].includes(cycleKind.value || '') && props.aircraft.status !== 'attack')
 const cycleOn = computed(() => Boolean(props.aircraft.on_cycle))
 const cycleLabel = computed(() => (cycleOn.value ? '自动循环已开启，点击取消' : '自动循环已关闭，点击开启'))
+// 飞行员熟练度：普通不画角标，新/老/精三档各占一个字，放在机型名前面。
+// 熟练度在部署时已经折进对空/对舰数值了，角标只负责让人一眼看出这队是谁在飞。
+const skillBadge = computed(() => ({ rookie: '新', veteran: '老', ace: '精' } as Record<string, string>)[props.aircraft.skill || ''] || '')
+const skillLabel = computed(() => ({ rookie: '新手', regular: '普通', veteran: '老兵', ace: '王牌' } as Record<string, string>)[props.aircraft.skill || 'regular'] || '普通')
+const modelTitle = computed(() => skillBadge.value ? `${props.aircraft.model} · 飞行员：${skillLabel.value}` : props.aircraft.model)
 </script>
 
 <template>
@@ -92,7 +97,7 @@ const cycleLabel = computed(() => (cycleOn.value ? '自动循环已开启，点�
         :class="{ 'carrier-based': !aircraft.seaplane && !aircraft.airfield_only, 'low-range': friendly && aircraft.remaining_range <= 1 }"
         :title="friendly ? '剩余航程' : '此挂载下最大航程'"
       >{{ range }}</strong>
-      <span class="aircraft-model" :title="aircraft.model">{{ modelCode }}</span>
+      <span class="aircraft-model" :title="modelTitle"><i v-if="skillBadge" class="aircraft-skill" :data-skill="aircraft.skill">{{ skillBadge }}</i>{{ modelCode }}</span>
     </div>
     <span v-if="stackCount && stackCount > 1" class="aircraft-stack-count" :title="`${stackCount}个同型算子`">×{{ stackCount }}</span>
     <span
@@ -132,7 +137,11 @@ const cycleLabel = computed(() => (cycleOn.value ? '自动循环已开启，点�
 .aircraft-range{display:grid;place-items:center;width:25px;height:20px;background:#426b7b;color:#eef5f3;font:700 14px/1 'Rajdhani',sans-serif}
 .aircraft-range.carrier-based{background:#187caf}
 .aircraft-range.low-range{background:#9c4036}
-.aircraft-model{overflow:hidden;padding-bottom:2px;font:700 9px/1 'Rajdhani',sans-serif;text-align:right;text-overflow:ellipsis;white-space:nowrap}
+.aircraft-model{display:flex;align-items:center;justify-content:flex-end;gap:2px;overflow:hidden;padding-bottom:2px;font:700 9px/1 'Rajdhani',sans-serif;text-align:right;text-overflow:ellipsis;white-space:nowrap}
+.aircraft-skill{flex:none;padding:0 2px;border-radius:2px;background:#c9b37a;color:#1a2228;font:700 8px/11px sans-serif;font-style:normal}
+.aircraft-skill[data-skill=rookie]{background:#8a3428;color:#f6e7c9}
+.aircraft-skill[data-skill=veteran]{background:#7fb3d5;color:#0b2530}
+.aircraft-skill[data-skill=ace]{background:#e0b030;color:#2a1a00}
 .air-counter.air-cap,.air-counter.air-recon,.air-counter.air-deck,.air-counter.air-ready,.air-counter.air-attack,.air-counter.air-attack_holding{border-color:#f0d58d}.air-counter.air-service,.air-counter.air-elevator{border-style:dashed;border-color:#d7bb7b}.air-counter.air-recovery{border-color:#7ec8db}
 .aircraft-stack-count{position:absolute;right:3px;bottom:27px;z-index:2;min-width:25px;padding:3px 4px;border:1px solid #f0d58d;background:#142a31e8;color:#f0d58d;font:700 13px/1 'Rajdhani',sans-serif;text-align:center;box-shadow:0 1px 3px #0007}
 .aircraft-cycle{position:absolute;left:3px;top:19px;z-index:2;display:grid;place-items:center;width:17px;height:17px;padding:0;border:1px solid #2f6f96;border-radius:50%;background:#12242be0;color:#7cc4ee;font:11px/1 sans-serif;cursor:pointer;opacity:.55;filter:grayscale(1)}

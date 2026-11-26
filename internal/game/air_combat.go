@@ -36,6 +36,41 @@ func airCombatChance(attacker, defender int) float64 {
 	}
 }
 
+// dcCheckRate 是 DC 判定的通过率（%）：空战开始和投弹前各掷一次，成功了这一次出手 +1。
+// 原版是每架飞机单独做 DC 判定，成功才吃加成；这里不按机型给不同 DC 值——
+// 航空算子只有空战/对舰/对地/航程/强度五个数，再加一个 DC 值等于凭空造第六个维度。
+// 变量而不是常量：少数回归测试要把 DC 固定成必过/必不过，避免随机数序列漂移。
+var dcCheckRate = 50.0
+
+// dcCheck 掷一次 DC 判定：一半概率通过。
+// 0/100 这两种"必不过/必过"的值不消耗随机数，测试固定结果时不会打乱后续掷骰序列。
+func dcCheck(state *State) bool {
+	if dcCheckRate <= 0 {
+		return false
+	}
+	if dcCheckRate >= 100 {
+		return true
+	}
+	return probabilityRoll(&state.RNGState) < dcCheckRate
+}
+
+// rollDCBonus 为一场空战里的每架飞机各掷一次 DC，成功的记 +1 空战值。
+// 每场空战单独掷，不跨场次保留：雷达前出拦截、投弹后的第二轮回战都会重新判定。
+func rollDCBonus(state *State, groups ...[]*AirUnit) map[string]int {
+	bonus := map[string]int{}
+	for _, group := range groups {
+		for _, aircraft := range group {
+			if !operationalAircraft(state, aircraft) {
+				continue
+			}
+			if dcCheck(state) {
+				bonus[aircraft.ID] = 1
+			}
+		}
+	}
+	return bonus
+}
+
 func operationalAircraft(state *State, aircraft *AirUnit) bool {
 	return aircraft != nil && state.Aircraft[aircraft.ID] != nil && !aircraft.Returning
 }
@@ -161,7 +196,7 @@ func guestCAPPenalty(state State, interceptor *AirUnit, escorts, ownFighters int
 	return -1
 }
 
-func performAirAttack(state *State, attacker *AirUnit, targets []*AirUnit, attackerBonus int, hitUnits map[string]bool, report *AirCombatReport, attackerSide bool) []EngineEvent {
+func performAirAttack(state *State, attacker *AirUnit, targets []*AirUnit, attackerBonus int, dcBonus map[string]int, hitUnits map[string]bool, report *AirCombatReport, attackerSide bool) []EngineEvent {
 	if !operationalAircraft(state, attacker) {
 		return nil
 	}
@@ -169,7 +204,8 @@ func performAirAttack(state *State, attacker *AirUnit, targets []*AirUnit, attac
 	if target == nil {
 		return nil
 	}
-	chance := airCombatChance(attacker.AirCombat+attackerBonus, target.AirCombat)
+	// DC 加成对攻防双方都生效：过了判定的那架飞机这一场空战就是 +1。
+	chance := airCombatChance(attacker.AirCombat+attackerBonus+dcBonus[attacker.ID], target.AirCombat+dcBonus[target.ID])
 	if probabilityRoll(&state.RNGState) >= chance {
 		return nil
 	}
@@ -277,10 +313,12 @@ func resolveDogfight(state *State, attackers, defenders []*AirUnit, report *AirC
 		bomberPenalty = -1
 		capBonus = 1
 	}
+	// 空战开始：每架参战飞机掷一次 DC，成功的这一场空战值 +1（双方都算）。
+	dcBonus := rollDCBonus(state, attackers, defenders)
 	for _, col := range cols {
 		// 1) 护航战斗机轮流攻击本列 CAP
 		for _, escort := range col.escort {
-			events = append(events, performAirAttack(state, escort, col.cap, 0, hitUnits, report, true)...)
+			events = append(events, performAirAttack(state, escort, col.cap, 0, dcBonus, hitUnits, report, true)...)
 		}
 		// 2) CAP 轮流攻击本列护航；没有护航时攻击本列轰炸机
 		targets := col.escort
@@ -288,14 +326,14 @@ func resolveDogfight(state *State, attackers, defenders []*AirUnit, report *AirC
 			targets = col.bomber
 		}
 		for _, cap := range col.cap {
-			events = append(events, performAirAttack(state, cap, targets, 0, hitUnits, report, false)...)
+			events = append(events, performAirAttack(state, cap, targets, 0, dcBonus, hitUnits, report, false)...)
 		}
 		// 3) 轰炸机与 CAP 轮流交战
 		for _, bomber := range col.bomber {
-			events = append(events, performAirAttack(state, bomber, col.cap, bomberPenalty, hitUnits, report, true)...)
+			events = append(events, performAirAttack(state, bomber, col.cap, bomberPenalty, dcBonus, hitUnits, report, true)...)
 		}
 		for _, cap := range col.cap {
-			events = append(events, performAirAttack(state, cap, col.bomber, capBonus, hitUnits, report, false)...)
+			events = append(events, performAirAttack(state, cap, col.bomber, capBonus, dcBonus, hitUnits, report, false)...)
 		}
 	}
 	for _, aircraft := range bombers {
@@ -901,6 +939,10 @@ func resolveBombingOn(state *State, attacker *AirUnit, target *Unit, mixed, capR
 	antiShip := attacker.AntiShip + AttackBonus(attacker.Loadout)
 	if attacker.Confusion && antiShip > 0 {
 		antiShip--
+	}
+	// 投弹前每架飞机掷一次 DC：过了这一次的对舰攻击值 +1（原版"投弹 DC"）。
+	if dcCheck(state) {
+		antiShip++
 	}
 	chance := strikeHitChance(*state, attacker, target, mixed, capRemaining)
 	hits := 0

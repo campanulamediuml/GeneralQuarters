@@ -18,6 +18,10 @@ import (
 // target 是被侦查的敌方舰队。
 func surfaceReconChance(state State, observer, target []Unit) float64 {
 	chance := 50.0
+	// 美军水面瞭望/雷达体系侦察基础值 +10%；observer 为空时（机场雷达）由调用方补。
+	if len(observer) > 0 {
+		chance += rulesFor(state, observer[0].Faction).ReconBaseBonus
+	}
 	if len(target) > 0 {
 		// 天气按目标上空的 hex 判定：雾里找船和被找是同一件事。
 		switch weatherAt(state.Map, target[0].Coord) {
@@ -118,7 +122,8 @@ func resolveSurfaceRecon(state *State) []EngineEvent {
 				continue
 			}
 			// 机场没有舰船，observer 传空：少掉"己方舰队船只每艘+1%"那一项。
-			chance := surfaceReconChance(*state, nil, target)
+			// 侦察基础加成要按机场阵营补上（surfaceReconChance 拿不到 observer 的阵营）。
+			chance := surfaceReconChance(*state, nil, target) + rulesFor(*state, airfield.Faction).ReconBaseBonus
 			roll := probabilityRoll(&state.RNGState)
 			if roll >= chance {
 				continue

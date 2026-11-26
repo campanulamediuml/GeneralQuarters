@@ -34,6 +34,7 @@ func TestAirStrikeResolvesCAPAndReturns(t *testing.T) {
 	}
 	// 目标舰队必须和 CAP 母舰同格，否则 CAP 不会进入拦截范围
 	state.Units["b-cv-01"].Coord = "0608"
+	disableDCCheck(t) // 这条回归依赖固定随机序列，先关掉 DC 掷骰
 	state.RNGState = 42
 	events := resolveAirStrike(&state, "strike-a", "0608")
 	if len(state.AirCombats) != 1 {

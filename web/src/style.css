@@ -562,3 +562,7 @@ path.hex-wind{pointer-events:none;fill:none;stroke:#7fa6b0;stroke-width:1.3;stro
 .mission-grid .elevator-card.elevator-idle-card{opacity:.65}
 .mission-grid .elevator-card .elevator-idle{margin:auto;color:#4f6b72;font-size:9px;letter-spacing:1px}
 @media(max-width:1100px){.mission-grid .elevator-card{flex:1 1 150px}}
+
+/* 舰队面板：舰队防空值（全舰队重型防空之和），和"可移动/还需N回合"同一行 */
+.fleet-aa-value{color:#b9d6de;white-space:nowrap}
+.fleet-aa-value b{color:#f0d58d;font-size:13px;margin-left:2px}

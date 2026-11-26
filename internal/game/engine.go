@@ -360,9 +360,12 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		initialLoadout := DefaultLoadoutFor(definition.Kind, definition.Seaplane, definition.AntiGround, definition.AntiShip, "cap", StrikeTargetShip, definition.TorpedoCapable)
 		fuel := MountedFuel(definition.Range, initialLoadout)
 		airCombat, antiShip := elitePilotBonus(state, carrier.Faction, definition.Kind, definition.AirCombat, definition.AntiShip)
+		// 飞行员熟练度和精英机组加成走同一条数值通道：先按国家/年份给精锐，再按部署里的熟练度修正。
+		skill := NormalizePilotSkill(deployment.Skill)
+		airCombat, antiShip = applyPilotSkill(skill, definition.Kind, airCombat, antiShip)
 		state.Aircraft[deployment.ID] = &AirUnit{
 			ID: deployment.ID, DefinitionID: definition.ID, CarrierID: carrier.ID, Faction: carrier.Faction,
-			Name: definition.Name, Model: definition.Model, Kind: definition.Kind, Picture: definition.Picture, PictureMode: definition.PictureMode, Status: "hangar", Strength: definition.Strength,
+			Name: definition.Name, Model: definition.Model, Kind: definition.Kind, Skill: skill, Picture: definition.Picture, PictureMode: definition.PictureMode, Status: "hangar", Strength: definition.Strength,
 			BaseRange: definition.Range, Loadout: initialLoadout,
 			MaxRange: fuel.Available(), Fuel: fuel, RemainingRange: fuel.Available(), AirCombat: airCombat, AntiShip: antiShip, AntiGround: definition.AntiGround, Seaplane: definition.Seaplane, AirfieldOnly: definition.AirfieldOnly, TorpedoCapable: definition.TorpedoCapable, HighAltitudeBomber: definition.HighAltitudeBomber,
 		}
@@ -466,9 +469,12 @@ func deployAirfields(state *State, scenario ScenarioDefinition, airDefinitions a
 			initialGroundLoadout := DefaultLoadoutFor(aircraftDef.Kind, false, aircraftDef.AntiGround, aircraftDef.AntiShip, "cap", StrikeTargetShip, aircraftDef.TorpedoCapable)
 			fuel := MountedFuel(aircraftDef.Range, initialGroundLoadout)
 			groundAirCombat, groundAntiShip := elitePilotBonus(*state, airfield.Faction, aircraftDef.Kind, aircraftDef.AirCombat, aircraftDef.AntiShip)
+			// 地面航空的熟练度写在 ID 里（af-b-yap-a6m5-rookie-1）：没有舰载部署那样的结构化条目。
+			groundSkill := pilotSkillFromID(aircraftID)
+			groundAirCombat, groundAntiShip = applyPilotSkill(groundSkill, aircraftDef.Kind, groundAirCombat, groundAntiShip)
 			state.GroundAir[aircraftID] = &AirfieldAirUnit{
 				ID: aircraftID, DefinitionID: aircraftDef.ID, AirfieldID: airfield.ID, Faction: airfield.Faction,
-				Model: aircraftDef.Model, Kind: aircraftDef.Kind, Picture: aircraftDef.Picture, PictureMode: aircraftDef.PictureMode, Status: "hangar", Strength: aircraftDef.Strength,
+				Model: aircraftDef.Model, Kind: aircraftDef.Kind, Skill: groundSkill, Picture: aircraftDef.Picture, PictureMode: aircraftDef.PictureMode, Status: "hangar", Strength: aircraftDef.Strength,
 				BaseRange: aircraftDef.Range, Loadout: initialGroundLoadout,
 				MaxRange: fuel.Available(), RemainingRange: fuel.Available(),
 				AirCombat: groundAirCombat, AntiShip: groundAntiShip, AntiGround: aircraftDef.AntiGround,

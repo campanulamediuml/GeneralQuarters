@@ -111,6 +111,8 @@ type AirDeployment struct {
 	ID      string `json:"id"`
 	Unit    string `json:"unit"`
 	Carrier string `json:"carrier"`
+	// Skill 是这架舰载机的飞行员熟练度（rookie/regular/veteran/ace，留空按普通）。
+	Skill string `json:"skill"`
 }
 
 type ScenarioDefinition struct {
@@ -317,6 +319,8 @@ type AirfieldAirUnit struct {
 	Faction      string `json:"faction"`
 	Model        string `json:"model"`
 	Kind         string `json:"kind"`
+	// Skill 是飞行员熟练度，和舰载机同一套定义；机场算子的熟练度写在 ID 里（…-rookie-…）。
+	Skill string `json:"skill"`
 	// Picture 与 AirUnit.Picture 同源，来自 units/*.json 的 aircraft[].picture，
 	// 机场算子落舰/上舰转场时一起带走，前后端都用同一份配置换图。
 	Picture     string `json:"picture"`
@@ -575,6 +579,8 @@ type AirUnit struct {
 	Name         string `json:"name"`
 	Model        string `json:"model"`
 	Kind         string `json:"kind"`
+	// Skill 是飞行员熟练度（rookie/regular/veteran/ace，缺省按普通），部署时已折进对空/对舰数值。
+	Skill string `json:"skill"`
 	// Picture/PictureMode 由 aircraft[].picture/picture_mode 注入；老存档缺图时前端回退到内置剪影。
 	Picture     string `json:"picture"`
 	PictureMode string `json:"picture_mode"`

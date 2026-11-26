@@ -101,6 +101,7 @@
 {"command_id":"01J...","base_turn":1,"type":"LAUNCH_CAP","aircraft_ids":["air-b-01","air-b-02"]}
 ```
 
+- 航空算子的飞行员熟练度`skill`（`rookie`/`regular`/`veteran`/`ace`，缺省普通）在开局写死：舰载机写在`air_deployments[].skill`，陆基写在机场`aircraft`列表的 ID 段里（如`af-b-yap-a6m5-rookie-1`）。熟练度在建局时已经折进`air_combat`/`anti_ship`，快照里只作展示，不会随任务变化。
 - 航空命令可使用`aircraft_ids`提交1至20个算子，旧`aircraft_id`单算子格式继续兼容。CAP和侦察必须同母舰、同机型、同阶段；攻击编队可混合攻击机型并跨同一舰队的多艘母舰。所有设施、容量与任务状态均由服务端一次校验和结算。
 - `PREPARE_AIR`：已废弃并返回400。整备、提升、放飞必须绑定任务，客户端不能脱离任务直接切换算子阶段。
 - `RETURN_TO_HANGAR`：取消任务、优先级和任务参数。`service`立即重置为`hangar`；`deck/ready`转为`recovery`，等待本舰升降机下降后才进入`hangar`。`elevator`中的算子不能中途撤回。

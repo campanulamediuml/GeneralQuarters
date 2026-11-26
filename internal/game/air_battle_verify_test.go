@@ -127,7 +127,7 @@ func TestDogfightChanceStatistics(t *testing.T) {
 			// hitUnits 是"命中判定成功"的唯一可靠信号：
 			// report.AttackerHits 只在航空损伤表打出撤退/损伤/摧毁时才记录，"无效果"不记录。
 			hitUnits := map[string]bool{}
-			performAirAttack(state, att, []*AirUnit{def}, 0, hitUnits, report, true)
+			performAirAttack(state, att, []*AirUnit{def}, 0, nil, hitUnits, report, true)
 			if hitUnits[def.ID] {
 				hit++
 			}

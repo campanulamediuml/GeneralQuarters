@@ -51,6 +51,9 @@ type FactionRules struct {
 	ElitePilotBonus int
 	// EarlyWarReconBonus：同一批精锐机组在侦察上的发现率加成（%）。
 	EarlyWarReconBonus float64
+	// ReconBaseBonus：侦查看家的基础发现率加成（%）。美军无线电/雷达与情报体系更好，
+	// 规则书给侦察基础值 +10%；日军为 0。
+	ReconBaseBonus float64
 	// AirRadarReconDetectBonus：本方对空雷达让敌方侦察机更容易被发现的加成（%）。
 	AirRadarReconDetectBonus float64
 	// ReconInCAPBonus：本方侦察机被敌方 CAP 盯上时的额外暴露概率（%）。
@@ -143,6 +146,8 @@ func rulesForDoctrine(doctrine string, year int, night bool) FactionRules {
 		rules.AmmunitionBands = [3]float64{4, 2, 0.5}
 		rules.AirRadarReconDetectBonus = 20
 		rules.ReconInCAPBonus = 20
+		// 美军侦察基础值 +10%：舰载机、陆基侦察机、水面舰队瞭望三个入口共用这一个字段。
+		rules.ReconBaseBonus = 10
 		rules.DeckDestroyChance = 1
 		rules.FleetLightAAMerge = true
 		rules.SurpriseRadarBonus = 1

@@ -57,7 +57,7 @@ func TestAirCombatChanceTableStatistics(t *testing.T) {
 			state.Aircraft["d"] = &AirUnit{ID: "d", Faction: "B", Kind: "fighter", AirCombat: target.AirCombat}
 			state.Aircraft["a"] = &AirUnit{ID: "a", Faction: "A", Kind: "fighter", AirCombat: 5}
 			report := &AirCombatReport{}
-			events := performAirAttack(&state, state.Aircraft["a"], []*AirUnit{state.Aircraft["d"]}, 0, map[string]bool{}, report, true)
+			events := performAirAttack(&state, state.Aircraft["a"], []*AirUnit{state.Aircraft["d"]}, 0, nil, map[string]bool{}, report, true)
 			if len(events) > 0 {
 				hit++
 			}

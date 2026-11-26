@@ -2217,7 +2217,7 @@ func landAtAirfield(state *State, aircraft *AirUnit, airfield *Airfield) []Engin
 	}
 	state.GroundAir[aircraft.ID] = &AirfieldAirUnit{
 		ID: aircraft.ID, DefinitionID: aircraft.DefinitionID, AirfieldID: airfield.ID, Faction: aircraft.Faction,
-		Model: aircraft.Model, Kind: aircraft.Kind, Picture: aircraft.Picture, PictureMode: aircraft.PictureMode, Status: "recovery", Strength: aircraft.Strength,
+		Model: aircraft.Model, Kind: aircraft.Kind, Skill: aircraft.Skill, Picture: aircraft.Picture, PictureMode: aircraft.PictureMode, Status: "recovery", Strength: aircraft.Strength,
 		// 基础航程和挂载必须跟着算子一起转成机场侧的数据：
 		// 以前只抄了 MaxRange，改用机场那套"按挂载重建航程"时 base 是 0，
 		// 换一次挂载就会把航程算飞掉。
