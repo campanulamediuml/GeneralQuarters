@@ -49,26 +49,9 @@ const timers: ReturnType<typeof setTimeout>[] = []
 // 每个算子当前"打中并下沉"的舰船，用于逐次投弹的视觉反馈
 const flashes = reactive<Record<string, number>>({})
 
-let advanceTimer: ReturnType<typeof setTimeout> | undefined
-
-// 播放完自动收尾：后面还排着战报就翻下一份（一次结算的"拦截 + 空袭"通常两份），
-// 没有下一份就直接结束、回大地图，不要求玩家再点一次"返回大地图"。
-// 队列是在播放过程中才变长的（第二份报告晚一帧推过来），所以不能只在挂载时判断一次。
-function scheduleAdvance() {
-  if (advanceTimer) return
-  advanceTimer = setTimeout(() => {
-    advanceTimer = undefined
-    emit('close')
-  }, props.hasNext ? 900 : 1400)
-}
-
 function run() {
   timers.forEach(clearTimeout)
   timers.length = 0
-  if (advanceTimer) {
-    clearTimeout(advanceTimer)
-    advanceTimer = undefined
-  }
   // 同一批命中闪烁不能跨战报串味：组件不一定重建（同一 tick 里换 report 对象时不会卸载），
   // 不清空的话上一份的命中数会挂到这一份的舰船上。
   for (const key of Object.keys(flashes)) delete flashes[key]
@@ -88,16 +71,7 @@ function run() {
 }
 
 watch(() => props.report.id, run, { immediate: true })
-watch(phase, (value) => {
-  if (value === 'resolved') scheduleAdvance()
-})
-watch(() => props.hasNext, (hasNext) => {
-  if (hasNext && phase.value === 'resolved') scheduleAdvance()
-})
-onUnmounted(() => {
-  timers.forEach(clearTimeout)
-  if (advanceTimer) clearTimeout(advanceTimer)
-})
+onUnmounted(() => timers.forEach(clearTimeout))
 
 const targetKind = computed<'ship' | 'group' | 'airfield'>(() => (props.report.target === 'airfield' ? 'airfield' : props.report.target === 'ship' ? 'ship' : 'group'))
 const isGround = computed(() => targetKind.value === 'airfield')
@@ -282,7 +256,9 @@ function bomberLane(index: number) {
         </div>
         <div v-if="isGround && report.ground_losses"><span>地面飞机损失</span><strong>{{ report.ground_losses }}</strong></div>
       </div>
-      <button class="apply-button" @click="emit('close')">返回大地图</button>
+      <!-- 播完停在结算结果，不自动关：玩家自己决定什么时候回地图。
+           后面还排着战报时按钮改成"下一份"，点一下接着播，最后一份才真正回地图。 -->
+      <button class="apply-button" @click="emit('close')">{{ hasNext ? '查看下一份战报' : '返回大地图' }}</button>
     </section>
   </section>
 </template>
