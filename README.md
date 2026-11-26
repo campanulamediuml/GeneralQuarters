@@ -18,6 +18,10 @@ go run ./cmd/server -config ./generalquarters.json
 数据目录里会有 `generalquarters.db`、启动快照备份 `backups/`（只保留最近 `backup_keep` 份，设为 `0` 就不备份）
 和从内嵌资源同步出来的 `content/`。这个目录可以直接挂到卷上。
 
+临时文件（验证脚本、抓图、cookie jar、Chrome profile、临时数据目录）一律放仓库里的 `.gq/tmp/`，
+不要写到 `/tmp`。`.gq/` 已经在 `.gitignore` 里：它同时放着本地配置、二进制和会话 cookie，本身就不进库，
+所以临时产物随手丢进去即可，用完也不用担心污染提交。
+
 ## Docker
 
 ```bash
