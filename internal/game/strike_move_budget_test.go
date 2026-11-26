@@ -16,11 +16,11 @@ func TestFailedEngageSearchDoesNotExceedTwoHexes(t *testing.T) {
 	// 找一条两格的水域航线：start → mid → target。
 	mid, target := "", ""
 	for _, first := range Neighbors(start) {
-		if terrainAt(state.Map, first) != "water" {
+		if terrainAt(state.Map, first) != TerrainWater {
 			continue
 		}
 		for _, second := range Neighbors(first) {
-			if second == start || terrainAt(state.Map, second) != "water" {
+			if second == start || terrainAt(state.Map, second) != TerrainWater {
 				continue
 			}
 			mid, target = first, second

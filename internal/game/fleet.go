@@ -229,7 +229,7 @@ func neighborToward(gameMap MapDefinition, coord string, direction sectorPoint, 
 		if err != nil || row > gameMap.Rows || col > gameMap.Cols {
 			continue
 		}
-		if terrainAt(gameMap, candidate) == "reef" {
+		if terrainAt(gameMap, candidate) == TerrainReef {
 			continue
 		}
 		if allowed != nil && !allowed(candidate) {

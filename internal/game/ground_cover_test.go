@@ -55,7 +55,7 @@ func TestGroundCAPJoinsFleetDefense(t *testing.T) {
 		landNext := ""
 		for _, cell := range state.Map.Cells {
 			for _, coord := range Neighbors(cell.Coord) {
-				if terrainAt(state.Map, coord) == "water" {
+				if terrainAt(state.Map, coord) == TerrainWater {
 					sea, landNext = coord, cell.Coord
 					break
 				}

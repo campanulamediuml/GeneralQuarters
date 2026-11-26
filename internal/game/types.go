@@ -20,6 +20,9 @@ type MapDefinition struct {
 	Rows    int       `json:"rows"`
 	Cols    int       `json:"cols"`
 	Cells   []MapCell `json:"cells"`
+	// board 是载入时编译出来的地形表（见 board.go）：运行期查地形不再扫 Cells。
+	// 不进 JSON——UnmarshalJSON 解完会重新编译，所以从库里读出来也是就绪的。
+	board *board
 }
 
 type Deployment struct {

@@ -380,11 +380,11 @@ func deployAirfields(state *State, scenario ScenarioDefinition, airDefinitions a
 		// 常规机场必须在陆地（岛/浅滩）上；水上飞机基地本来就锚泊在海上，允许建在水面。
 		if definition.Type != AirfieldSeaplane {
 			switch terrainAt(gameMap, definition.Coord) {
-			case "island", "shoal":
+			case TerrainIsland, TerrainShoal:
 			default:
 				return fmt.Errorf("机场%s必须部署在陆地hex上", definition.ID)
 			}
-		} else if terrainAt(gameMap, definition.Coord) == "reef" {
+		} else if terrainAt(gameMap, definition.Coord) == TerrainReef {
 			return fmt.Errorf("水上飞机基地%s不能设在暗礁上", definition.ID)
 		}
 		if definition.Runways < 1 || definition.Runways > 9 {
@@ -554,17 +554,17 @@ func CarrierEquivalentType(unitType string) string {
 }
 
 func inBounds(gameMap MapDefinition, coord string) bool {
-	row, col, err := ParseCoord(coord)
-	return err == nil && row <= gameMap.Rows && col <= gameMap.Cols
+	hex, ok := HexOf(coord)
+	return ok && hex.Row() <= gameMap.Rows && hex.Col() <= gameMap.Cols
 }
 
-func terrainAt(gameMap MapDefinition, coord string) string {
-	for _, cell := range gameMap.Cells {
-		if cell.Coord == coord {
-			return cell.Terrain
-		}
+// terrainAt 查一格的地形。坐标非法就是水面——和以前"扫不到这个坐标就当 water"一致。
+func terrainAt(gameMap MapDefinition, coord string) Terrain {
+	hex, ok := HexOf(coord)
+	if !ok {
+		return TerrainWater
 	}
-	return "water"
+	return gameMap.terrain(hex)
 }
 
 // MovementBlocked 判断舰队本回合是否还能移动。
@@ -620,7 +620,7 @@ func fleetTerrainAllowsEntry(gameMap MapDefinition, coord string, carrierFleet, 
 		return false
 	}
 	terrain := terrainAt(gameMap, coord)
-	if terrain == "reef" {
+	if terrain == TerrainReef {
 		return false
 	}
 	if airfieldHex {
@@ -628,16 +628,16 @@ func fleetTerrainAllowsEntry(gameMap MapDefinition, coord string, carrierFleet, 
 			return false
 		}
 		for _, neighbor := range Neighbors(coord) {
-			if inBounds(gameMap, neighbor) && terrainAt(gameMap, neighbor) == "water" {
+			if inBounds(gameMap, neighbor) && terrainAt(gameMap, neighbor) == TerrainWater {
 				return true
 			}
 		}
 		return false
 	}
-	if terrain == "island" {
+	if terrain == TerrainIsland {
 		return false
 	}
-	return !carrierFleet || terrain != "shoal"
+	return !carrierFleet || terrain != TerrainShoal
 }
 
 func FleetKey(unit *Unit) string {
@@ -688,7 +688,7 @@ func nearFleetCoord(gameMap MapDefinition, near *DeploymentNear, anchor string, 
 		for col := 1; col <= gameMap.Cols; col++ {
 			coord := Coord(row, col)
 			terrain := terrainAt(gameMap, coord)
-			if !fleetTerrainAllowsEntry(gameMap, coord, carrier, airfieldCoords[coord]) || terrain == "reef" {
+			if !fleetTerrainAllowsEntry(gameMap, coord, carrier, airfieldCoords[coord]) || terrain == TerrainReef {
 				continue
 			}
 			distance := Distance(anchor, coord)
