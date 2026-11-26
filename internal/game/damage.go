@@ -204,6 +204,11 @@ func severeDamageTable(cause HitCause, unit *Unit) []string {
 		table = append(table, "oil_leak")
 	}
 	table = append(table, "severe_flooding", "hull_damage", "aa_loss")
+	// 漏油的船到处是燃油：任何一次损伤判定都更容易点着，
+	// 所以火灾条目各多一份（小型火灾、起火燃烧各 +1）。
+	if unit.Damage != nil && unit.Damage.OilLeak {
+		table = append(table, "small_fire", "burning")
+	}
 	if IsCarrier(unit) {
 		table = append(table, "deck_damage", "deck_destroyed", "elevator_damage", "avgas_explosion", "tilt", "hangar_damage")
 	}

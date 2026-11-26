@@ -22,6 +22,26 @@ func TestSevereDamageTableBySource(t *testing.T) {
 			t.Fatalf("%s 命中必须能抽到漏油：%v", cause, table)
 		}
 	}
+	// 漏油会让火灾条目各多一份。
+	leaking := &Unit{ID: "dd2", Type: "DD", Card: destroyer.Card, Damage: &ShipDamage{OilLeak: true}}
+	dry := severeDamageTable(HitShell, destroyer)
+	wet := severeDamageTable(HitShell, leaking)
+	if len(wet) != len(dry)+2 {
+		t.Fatalf("漏油应让表多两条火灾条目：dry=%d wet=%d", len(dry), len(wet))
+	}
+	countFire := func(table []string) int {
+		count := 0
+		for _, item := range table {
+			if item == "small_fire" || item == "burning" {
+				count++
+			}
+		}
+		return count
+	}
+	if got := countFire(wet); got != countFire(dry)+2 {
+		t.Fatalf("火灾条目应各多一份：dry=%d wet=%d", countFire(dry), got)
+	}
+
 	// 额外表仍然按船型和装备拼。
 	if table := severeDamageTable(HitBomb, carrier); !containsDamage(table, "hangar_damage") || !containsDamage(table, "deck_destroyed") {
 		t.Fatalf("航母额外表缺失：%v", table)
