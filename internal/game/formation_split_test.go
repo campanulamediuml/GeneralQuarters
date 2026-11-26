@@ -336,3 +336,30 @@ func TestGroundStrikeJoinRejectedAfterDeparture(t *testing.T) {
 		t.Fatalf("拒绝原因应说明编队已离场：%v", err)
 	}
 }
+
+// 等集结的飞机也会烧油：剩的航程只够回家就自己脱队返航，不能烧到油尽坠毁。
+func TestHoldingAttackersDetachWhenFuelLow(t *testing.T) {
+	state := sandboxState(t)
+	aircraft := state.Aircraft["b-cv-01-dive_bomber-x1"]
+	carrier := state.Units[aircraft.CarrierID]
+	aircraft.Status = "attack_holding"
+	aircraft.Launched = true
+	aircraft.TaskID = "task-fuel"
+	aircraft.TaskKind = "attack"
+	aircraft.TargetCoord = "0202"
+	aircraft.Coord = Neighbors(carrier.Coord)[0]
+	aircraft.SetRange(1)
+	events := AdvanceAviation(&state)
+	if !aircraft.Returning {
+		t.Fatalf("剩油只够回家时应脱队返航：%+v", aircraft)
+	}
+	found := false
+	for _, event := range events {
+		if event.Type == "attack_rtb" && strings.Contains(event.Text, "脱离攻击编队") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("脱队返航应有战报")
+	}
+}

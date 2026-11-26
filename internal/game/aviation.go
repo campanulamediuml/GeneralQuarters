@@ -1682,6 +1682,13 @@ func AdvanceAviation(state *State) []EngineEvent {
 				events = append(events, advanceAircraftReturn(state, aircraft)...)
 				continue
 			}
+			// 等集结也烧油：剩的航程只够回家了就自己脱队返航（规则书 618 行），
+			// 不能让一架等编队的飞机在母舰上空烧到油尽坠毁。
+			if shouldRTB(*state, aircraft) {
+				aircraft.Returning = true
+				events = append(events, EngineEvent{Type: "attack_rtb", Audience: aircraft.Faction, Text: fmt.Sprintf("%s剩余航程%d不足以往返，脱离攻击编队返航", aircraft.Model, aircraft.Range())})
+				continue
+			}
 			aircraft.Spend(1)
 		case "attack":
 			if aircraft.Returning || state.Units[aircraft.CarrierID] == nil {
