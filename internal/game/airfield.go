@@ -1413,6 +1413,12 @@ func AdvanceGroundAir(state *State) []EngineEvent {
 		case "recon":
 			events = append(events, advanceGroundRecon(state, aircraft)...)
 		case "attack_holding":
+			// 被召回的等待编队要立刻往回飞：以前这里不看 Returning，召回后还在原地持
+			// 续扣油，直到燃油耗尽——和舰载机那边修过的"卡在空中"是同一个形状。
+			if aircraft.Returning {
+				events = append(events, advanceGroundAirReturn(state, aircraft)...)
+				continue
+			}
 			// 机场编队同样要等全部算子升空、目标已定才离场；
 			// 之前这里只扣航程不做状态切换，导致对地编队永远停在机场上空。
 			if groupReady := groundTaskReadyToDepart(*state, aircraft.TaskID); groupReady {
@@ -1431,27 +1437,23 @@ func AdvanceGroundAir(state *State) []EngineEvent {
 				processedAttack[aircraft.TaskID] = true
 			}
 		case "cover":
-			// 被召回（入夜前返航、玩家主动召回）的掩护编队必须真的往回飞：
-			// 以前这里不看 Returning，advanceGroundPatrol 又会跳过 Returning 的成员，
-			// 于是"强制返航"的日志发出去了，飞机却钉在掩护空域一格不动、也不烧油，
-			// 天黑之后还在天上——和转场那个 bug 是同一个形状。
-			if !processedAttack[aircraft.TaskID] {
-				if aircraft.Returning {
-					events = append(events, advanceGroundAirReturn(state, aircraft)...)
-				} else {
-					events = append(events, advanceGroundPatrol(state, aircraft, "cover")...)
-				}
+			// 返航的掩护机必须逐架处理：advanceGroundAirReturn 只飞传进去的那一架，
+			// 以前它被 processedAttack 整队挡在门外，一个 3 机掩护队每回合只有排第一的那架
+			// 往回飞，另外两架原地等着——入夜前根本回不了家（表现就是"掩护不自动返航"）。
+			// 还在值班的才需要整队一次（advanceGroundPatrol 自己会遍历成员）。
+			if aircraft.Returning {
+				events = append(events, advanceGroundAirReturn(state, aircraft)...)
+			} else if !processedAttack[aircraft.TaskID] {
+				events = append(events, advanceGroundPatrol(state, aircraft, "cover")...)
 				processedAttack[aircraft.TaskID] = true
 			}
 		case "transfer":
-			// 被召回/中止的转场要真的往回飞：以前这里不看 Returning，一直走 advanceGroundTransfer，
+			// 转场同理：逐架往各自机场飞。以前这里不看 Returning，一直走 advanceGroundTransfer，
 			// 目的地被清空后每回合都判一次"目的地不再是我方机场"，目标在原点和其他机场之间来回跳。
-			if !processedAttack[aircraft.TaskID] {
-				if aircraft.Returning {
-					events = append(events, advanceGroundAirReturn(state, aircraft)...)
-				} else {
-					events = append(events, advanceGroundTransfer(state, aircraft)...)
-				}
+			if aircraft.Returning {
+				events = append(events, advanceGroundAirReturn(state, aircraft)...)
+			} else if !processedAttack[aircraft.TaskID] {
+				events = append(events, advanceGroundTransfer(state, aircraft)...)
 				processedAttack[aircraft.TaskID] = true
 			}
 		}
