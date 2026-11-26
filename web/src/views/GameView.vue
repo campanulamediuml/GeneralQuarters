@@ -893,7 +893,8 @@ onUnmounted(() => {
           <section class="map-panel">
             <div class="map-toolbar"><div><span class="section-kicker">OPERATIONAL MAP</span><h1>{{ state.map.name }}</h1></div>
               <div v-if="state.wind" class="wind-indicator" :data-wind="state.wind.wind">
-                <span>风向 <b>{{ state.wind.wind }}</b></span>
+                <span>盛行风 <b>{{ state.wind.wind }}</b></span>
+                <span v-if="selectedFleetWind && selectedFleetWind.direction">本格 <b>{{ selectedFleetWind.direction }}</b></span>
                 <template v-if="selectedFleetWind">
                   <i>朝向 {{ selectedFleetWind.heading }}</i>
                   <!-- 风力只影响航母甲板：没有航母的舰队（巡洋舰水侦、驱逐舰）只显示风从哪来。 -->
@@ -903,9 +904,9 @@ onUnmounted(() => {
                     <button v-for="h in headingChoices" :key="h" :disabled="selectedFleetWind.changed || actionBusy || locked" :title="locked ? '本回合已就绪，操作已锁定' : `转向${h}`" @click.stop="setFleetHeading(h)">{{ h }}</button>
                   </span>
                 </template>
-              </div><div v-if="strikeTargetTaskID" class="strike-map-target"><span>{{ strikeTargetSelection.verb }}：{{ strikeTargetLabel }} · {{ strikeTargetSelection.hint }}</span><button @click="cancelStrikeTarget">取消</button></div><div class="map-legend"><span><i class="legend-a"></i>A 阵营</span><span><i class="legend-b"></i>B 阵营</span><span><i class="legend-move"></i>可移动</span></div></div>
+              </div><div v-if="strikeTargetTaskID" class="strike-map-target"><span>{{ strikeTargetSelection.verb }}：{{ strikeTargetLabel }} · {{ strikeTargetSelection.hint }}</span><button @click="cancelStrikeTarget">取消</button></div><div class="map-legend"><span><i class="legend-a"></i>A 阵营</span><span><i class="legend-b"></i>B 阵营</span><span><i class="legend-move"></i>可移动</span><span><i class="legend-wind"></i>格底箭头=风吹向</span></div></div>
             <div class="map-canvas">
-              <HexMap :map="state.map" :fleets="fleets" :player-faction="state.you.faction" :selected-unit="selectedUnit" :orders="state.orders" :recon-tasks="[...state.aviation.tasks, ...(state.ground_tasks || [])].filter((task) => task.kind === 'recon')" :air-tasks="state.aviation.tasks" :airfields="airfields" :ground-aircraft="groundAircraft" :ground-tasks="groundTasks" :enemy-air="state.enemy_air || []" :distance-reference="distanceReference" :distance-origin="distanceOrigin" :selected-air-task-id="mapAirTaskID" :locked="locked" :strike-targeting="Boolean(strikeTargetTaskID)" :nav-targeting="navTargeting" @select-airfield="selectAirfield" @inspect-airfield="inspectAirfield" @select-unit="selectMapUnit" @select-hex="selectHex" @manage-hex="openFleetChoices" @move="move" @notice="mapNotice" @select-air-task="selectMapAirTask" />
+              <HexMap :map="state.map" :fleets="fleets" :player-faction="state.you.faction" :selected-unit="selectedUnit" :orders="state.orders" :recon-tasks="[...state.aviation.tasks, ...(state.ground_tasks || [])].filter((task) => task.kind === 'recon')" :air-tasks="state.aviation.tasks" :airfields="airfields" :ground-aircraft="groundAircraft" :ground-tasks="groundTasks" :enemy-air="state.enemy_air || []" :distance-reference="distanceReference" :distance-origin="distanceOrigin" :selected-air-task-id="mapAirTaskID" :locked="locked" :strike-targeting="Boolean(strikeTargetTaskID)" :nav-targeting="navTargeting" :wind-cells="state.wind?.cells || ''" @select-airfield="selectAirfield" @inspect-airfield="inspectAirfield" @select-unit="selectMapUnit" @select-hex="selectHex" @manage-hex="openFleetChoices" @move="move" @notice="mapNotice" @select-air-task="selectMapAirTask" />
               <!-- 编队牌：整编栏里出发后就撤走的打击/转场编队，详情与无线电操作在这里 -->
               <section v-if="mapAirTask" class="air-task-workbench map-air-workbench" :data-air-task-id="mapAirTask.id">
                 <header>

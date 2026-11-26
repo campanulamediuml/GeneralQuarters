@@ -28,12 +28,12 @@ func windHeadingAngle(heading string) (float64, bool) {
 // 120°/240° 侧逆风（meta）、180° 逆风（para）。
 func windRelation(wind, heading string) string {
 	windAngle, okWind := windHeadingAngle(wind)
-	headingAngle, okHeading := windHeadingAngle(heading)
 	// 无风（剧本没设 wind）不该被当成"侧向顺风 +1"：以前这里一律回落到 ortho，
 	// 导致"没写风向"的剧本反而给所有航母白加一格甲板。没有风就没有修正。
 	if !okWind {
 		return "none"
 	}
+	headingAngle, okHeading := windHeadingAngle(heading)
 	if !okHeading {
 		return "ortho"
 	}
@@ -94,7 +94,15 @@ func deckLengthFor(state State, unit *Unit) int {
 	if heading == "" {
 		heading = "NE"
 	}
-	length := base + windDeckModifier(state.Wind, heading)
+	// 风向按船所在的 hex 取：同一支舰队在同一个格，但不同海区的风不一样。
+	direction, hasWind := state.WindDirectionAt(unit.Coord)
+	if !hasWind {
+		if base < 0 {
+			return 0
+		}
+		return base
+	}
+	length := base + windDeckModifier(direction, heading)
 	if length < 0 {
 		return 0
 	}
@@ -140,13 +148,20 @@ func SetFleetHeading(state *State, fleetID, heading string) []EngineEvent {
 	}
 	RefreshDeckLengths(state)
 	faction := ""
+	fleetCoord := ""
 	for _, id := range sortedUnitIDs(state.Units) {
 		if FleetKey(state.Units[id]) == fleetID {
 			faction = state.Units[id].Faction
+			fleetCoord = state.Units[id].Coord
 			break
 		}
 	}
-	relation := windRelation(state.Wind, heading)
+	// 风向按这支舰队所在的 hex 取，不再用全局值。
+	direction, hasWind := state.WindDirectionAt(fleetCoord)
+	relation := "none"
+	if hasWind {
+		relation = windRelation(direction, heading)
+	}
 	// 没有航母的舰队（巡洋舰水侦、驱逐舰）不受风力影响，事件里别提"甲板修正"，
 	// 否则玩家会以为转个向能改变起飞能力。
 	hasCarrier := false
@@ -157,12 +172,16 @@ func SetFleetHeading(state *State, fleetID, heading string) []EngineEvent {
 		}
 	}
 	note := windRelationName(relation)
-	if hasCarrier {
-		note = fmt.Sprintf("%s，甲板长度修正%+d", note, windDeckModifier(state.Wind, heading))
+	if hasCarrier && hasWind {
+		note = fmt.Sprintf("%s，甲板长度修正%+d", note, windDeckModifier(direction, heading))
+	}
+	windLabel := "无风"
+	if hasWind {
+		windLabel = direction
 	}
 	return []EngineEvent{{
 		Type: "fleet_heading", Audience: faction,
-		Text: fmt.Sprintf("%s调整朝向为%s（风向%s，%s）", names[0], heading, state.Wind, note),
+		Text: fmt.Sprintf("%s调整朝向为%s（本地风向%s，%s）", names[0], heading, windLabel, note),
 	}}
 }
 
@@ -199,7 +218,11 @@ func validateHeadingOrder(state State, faction string, order Order) error {
 
 // VisibleWind 把风向和每个己方舰队的风向关系告诉前端。
 func VisibleWind(state State, faction string) WindView {
-	view := WindView{Wind: state.Wind, Fleets: []FleetWind{}}
+	prevailing := state.Wind
+	if state.WindField != nil {
+		prevailing = windDirectionName(state.WindField.BaseDeg)
+	}
+	view := WindView{Wind: prevailing, Cells: WindCells(state), Fleets: []FleetWind{}}
 	fleetIDs := map[string]bool{}
 	for _, unit := range state.Units {
 		if unit.Faction == faction {
@@ -236,12 +259,17 @@ func VisibleWind(state State, faction string) WindView {
 				break
 			}
 		}
+		direction, hasWind := state.WindDirectionAt(leader.Coord)
+		relation := "none"
 		deckModifier := 0
-		if hasCarrier {
-			deckModifier = windDeckModifier(state.Wind, heading)
+		if hasWind {
+			relation = windRelation(direction, heading)
+			if hasCarrier {
+				deckModifier = windDeckModifier(direction, heading)
+			}
 		}
 		view.Fleets = append(view.Fleets, FleetWind{
-			FleetID: fleetID, Heading: heading, Relation: windRelation(state.Wind, heading),
+			FleetID: fleetID, Heading: heading, Relation: relation, Direction: direction,
 			DeckModifier: deckModifier, HasCarrier: hasCarrier, Changed: state.HeadingChanged[fleetID],
 		})
 	}
@@ -250,7 +278,11 @@ func VisibleWind(state State, faction string) WindView {
 
 // WindView 是前端用的风向投影。
 type WindView struct {
-	Wind   string      `json:"wind"`
+	// Wind 是盛行风（六方位之一）；每格的实际风向见 Cells。
+	Wind string `json:"wind"`
+	// Cells 是逐格风向：行优先、每格一个字符，'0'..'5' 对应 NE/E/SE/SW/W/NW。
+	// 没有风场（老存档、剧本没设风向）时为空串。
+	Cells  string      `json:"cells"`
 	Fleets []FleetWind `json:"fleets"`
 }
 
@@ -259,6 +291,8 @@ type FleetWind struct {
 	FleetID  string `json:"fleet_id"`
 	Heading  string `json:"heading"`
 	Relation string `json:"relation"`
+	// Direction 是这支舰队所在 hex 的风向（六方位）；无风时为空。
+	Direction string `json:"direction"`
 	// HasCarrier：这支舰队里有没有航母。风力只修正航母甲板，
 	// 没有航母时 DeckModifier 恒为 0，前端只显示风向关系。
 	HasCarrier   bool `json:"has_carrier"`

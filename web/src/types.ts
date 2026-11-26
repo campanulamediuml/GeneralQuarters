@@ -483,7 +483,12 @@ export interface GameView {
   shore_supplies?: Record<string, number>
   /** 敌方卸在己方机场上的滩头物资：坐标 → 数量 */
   enemy_shore_supplies?: Record<string, number>
-  wind?: { wind: string; fleets: { fleet_id: string; heading: string; relation: string; has_carrier: boolean; deck_modifier: number; changed: boolean }[] }
+  wind?: {
+    wind: string
+    /** 逐格风向：行优先、每格一个字符，'0'..'5' 对应 NE/E/SE/SW/W/NW */
+    cells?: string
+    fleets: { fleet_id: string; heading: string; relation: string; direction?: string; has_carrier: boolean; deck_modifier: number; changed: boolean }[]
+  }
   radio_used?: string[]
   /** 剧本时间线快照；没配 DayHours/TurnsPerDay 的剧本为 null */
   clock?: GameClock | null

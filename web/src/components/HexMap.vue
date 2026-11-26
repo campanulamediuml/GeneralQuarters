@@ -32,6 +32,8 @@ const props = defineProps<{
   strikeTargeting?: boolean
   /** 正在选自动航行目的地：点敌方机场要设目的地 */
   navTargeting?: boolean
+  /** 逐格风向：行优先、每格一个字符，'0'..'5' 对应 NE/E/SE/SW/W/NW；空串=单一风向 */
+  windCells?: string
 }>()
 
 const emit = defineEmits<{
@@ -420,6 +422,29 @@ function points(x: number, y: number) {
   }).join(' ')
 }
 
+// 逐格风向箭头：服务端把整张图压成一行字符（行优先），'0'..'5' 是六方位。
+// 箭头画在 hex 底部，指向"风吹向"的方向（风向按来向记：NE 的风吹向 SW）。
+// SVG 的 0° 是 +x（向右），罗盘的 0° 是正北，所以旋转角 = 吹向方位 - 90°。
+const windArrowOffsetY = 32
+function windIndexAt(coord: string): number {
+  const cells = props.windCells
+  if (!cells || cells.length === 0) return -1
+  const row = Number(coord.slice(0, 2))
+  const col = Number(coord.slice(2))
+  const cols = props.map.cols
+  const index = (row - 1) * cols + (col - 1)
+  if (index < 0 || index >= cells.length) return -1
+  const code = cells.charCodeAt(index) - 48
+  return code >= 0 && code <= 5 ? code : -1
+}
+function windRotation(coord: string): number | undefined {
+  const index = windIndexAt(coord)
+  if (index < 0) return undefined
+  // 六方位：0=NE(30°)、1=E(90°)… 吹向 = 来向 + 180°
+  const blowingTo = 30 + 60 * index + 180
+  return (blowingTo - 90 + 360) % 360
+}
+
 // 从其他地方规划过来的舰队：在目标 hex 上打一个"预定航向"标记，方便看清本回合的航线。
 function plannedFleetsAt(coord: string) {
   return plannedByCoord.value.get(coord) || []
@@ -579,8 +604,10 @@ const hexSigs = computed(() => {
   const recon = reconCells.value
   const reconCurrent = reconCurrentCells.value
   const empty = 'g' + hexGeneration
+  const windCells = props.windCells || ''
   for (let index = 0; index < list.length; index++) {
     const hex = list[index]
+    const windChar = windCells ? windCells[index] || '' : ''
     const planned = plannedFleetsAt(hex.coord)
     const navDest = navDestinationAt(hex.coord)
     const reconAir = reconCurrentAircraftAt(hex.coord)
@@ -590,12 +617,12 @@ const hexSigs = computed(() => {
     const inRecon = recon.has(hex.coord)
     const inCurrent = reconCurrent.has(hex.coord)
     const hovered = dropHover.value === hex.coord
-    if (!planned.length && !navDest.length && !reconAir && !airfieldHere && distance < 0 && !isLegal && !inRecon && !inCurrent && !hovered) {
+    if (!planned.length && !navDest.length && !reconAir && !airfieldHere && distance < 0 && !isLegal && !inRecon && !inCurrent && !hovered && !windChar) {
       sigs[index] = empty
       continue
     }
     sigs[index] = [
-      hex.terrain, hex.name,
+      hex.terrain, hex.name, windChar,
       Number(isLegal), Number(hovered), Number(inRecon), Number(inCurrent),
       distance, reconAir, Number(airfieldHere),
       planned.join(','),
@@ -820,7 +847,9 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
       <polygon v-if="reconCurrentCells.has(hex.coord)" class="recon-current-tint" :points="points(hex.x, hex.y)" />
       <text class="coord-label" :x="hex.x" :y="hex.y - 23">{{ hex.coord }}</text>
       <!-- 机场格的地名由机场算子自己写，地形标签再写一遍会变成上下两个"拉包尔"。 -->
-      <text v-if="hex.name && !airfieldsAt(hex.coord).length" class="terrain-label" :x="hex.x" :y="hex.y + 27">{{ hex.name }}</text>
+      <text v-if="hex.name && !airfieldsAt(hex.coord).length" class="terrain-label" :x="hex.x" :y="hex.y + 18">{{ hex.name }}</text>
+      <!-- 每格底部的风向小箭头：指向"风吹向"的方向，替代原来只有一个全局风向 -->
+      <path v-if="windRotation(hex.coord) !== undefined" class="hex-wind" :transform="'translate(' + hex.x + ' ' + (hex.y + windArrowOffsetY) + ') rotate(' + windRotation(hex.coord) + ')'" d="M-5 0H3M0.5 -3L3.5 0L0.5 3" />
       <circle v-if="selectedMoves.has(hex.coord)" class="legal-dot" :cx="hex.x" :cy="hex.y" r="5" />
       <g v-if="plannedFleetsAt(hex.coord).length" class="planned-here" :data-planned-here="plannedFleetsAt(hex.coord).join(',')">
         <circle :cx="hex.x + 24" :cy="hex.y - 20" r="7.5" />

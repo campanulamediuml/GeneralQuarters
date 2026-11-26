@@ -284,6 +284,7 @@ func (s *Store) Room(ctx context.Context, roomID string) (Room, error) {
 	game.EnsureAviation(&room.State)
 	game.NormalizeFleetNames(&room.State)
 	game.NormalizeAirfieldHangar(&room.State)
+	game.EnsureWindField(&room.State)
 	return room, nil
 }
 
@@ -314,6 +315,7 @@ func (s *Store) StalledReadyRooms(ctx context.Context, olderThan time.Duration) 
 		game.EnsureAviation(&room.State)
 		game.NormalizeFleetNames(&room.State)
 		game.NormalizeAirfieldHangar(&room.State)
+		game.EnsureWindField(&room.State)
 		rooms = append(rooms, room)
 	}
 	return rooms, rows.Err()

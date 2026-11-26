@@ -885,8 +885,14 @@ type State struct {
 	RadioUsed map[string]string `json:"radio_used"`
 	// DeferCooldown 表示本回合已经用"立即移动"下达过规划航线，结算时不再额外递减冷却
 	DeferCooldown bool `json:"defer_cooldown"`
-	// Wind 是剧本给定的风向（NE/E/SE/SW/W/NW），决定甲板长度修正（规则书 815–825 行）
+	// Wind 是剧本给定的盛行风向（NE/E/SE/SW/W/NW），决定甲板长度修正（规则书 815–825 行）
 	Wind string `json:"wind"`
+	// WindField 是每 hex 的风向场（windfield.go）：盛行风 + 三层长波谐波。
+	// 有它就用坐标查风，没有（老存档 / 没设风向的剧本）就退回 Wind 的单一风向。
+	WindField *WindField `json:"wind_field"`
+	// WindNextTurn 是下一次风向场推进的回合号：每 6–12 回合缓慢挪一次，
+	// 不是每回合都动（甲板修正每回合抖一下只会让玩家莫名其妙）。
+	WindNextTurn int `json:"wind_next_turn"`
 	// HeadingChanged 记录本回合已经调整过朝向的舰队（每回合每队一次）
 	HeadingChanged map[string]bool `json:"heading_changed"`
 	// IntelFresh 记录本回合是否获得过某舰队的新情报（键为 "观察者|舰队"），用于情报过时判定

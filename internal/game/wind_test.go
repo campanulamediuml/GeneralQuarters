@@ -30,6 +30,9 @@ func TestWindRelationAndDeckModifier(t *testing.T) {
 // 卡面 DeckCapacity 是印刷的基础值，风向只改本回合可用长度 Deck.Length。
 func TestWindKeepsPrintedDeckCapacity(t *testing.T) {
 	state := sandboxState(t)
+	// 这两条用例测的是"没有风场时退回剧本单一风向"的老路径；
+	// 每 hex 风场由 windfield_test.go 单独覆盖。
+	state.WindField = nil
 	state.Wind = "NE"
 	carrier := state.Units["a2-cv-01"]
 	carrier.Card.DeckCapacity = 8
@@ -47,6 +50,7 @@ func TestWindKeepsPrintedDeckCapacity(t *testing.T) {
 // 修正后的甲板长度最低为 0（规则书 824 行）。
 func TestDeckLengthClampedToZero(t *testing.T) {
 	state := sandboxState(t)
+	state.WindField = nil
 	state.Wind = "NE"
 	carrier := state.Units["a2-cv-01"]
 	// 风向 NE（风从东北来）：舰艏朝 NE 是逆风 +2，朝 SW 才是顺风 -2。

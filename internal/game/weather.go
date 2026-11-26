@@ -94,8 +94,9 @@ func StepWeather(state *State) []EngineEvent {
 	if changed > 0 {
 		events = append(events, EngineEvent{Type: "weather_changed", Audience: "all", Text: fmt.Sprintf("%d格天气发生变化", changed)})
 	}
-	// 3) 风向：按剧本给的概率换向（默认 1/6，等概率吹向任意方位）。
-	if len(windDirections) > 0 && probabilityRoll(&state.RNGState) < 16.67 {
+	// 3) 风向：有风场时由 StepWind 按自己的节奏推进（见 windfield.go），这里只保留
+	// 老存档（没有风场）的旧逻辑，免得测试和沙盒剧本行为突变。
+	if state.WindField == nil && len(windDirections) > 0 && probabilityRoll(&state.RNGState) < 16.67 {
 		current := state.Wind
 		order := windDirections
 		pick := order[nextUint64(&state.RNGState)%uint64(len(order))]

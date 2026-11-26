@@ -96,7 +96,10 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 	state := State{
 		ScenarioID: scenario.ID, ScenarioName: scenario.Name, Description: scenario.Description,
 		Year: scenario.Year, Night: scenario.Night, Wind: scenario.Wind, Doctrines: scenario.Doctrines,
-		Map: gameMap, Units: map[string]*Unit{}, Aircraft: map[string]*AirUnit{}, Contacts: map[string]map[string]*FleetContact{}, RNGState: seed,
+		// 每 hex 风向场：用剧本盛行风做基准，种子只错开三层相位（不消耗 RNGState）。
+		WindField:    newWindField(scenario.Wind, seed),
+		WindNextTurn: 1 + 6 + int(seed%7), // 每 6–12 回合缓慢变化一次
+		Map:          gameMap, Units: map[string]*Unit{}, Aircraft: map[string]*AirUnit{}, Contacts: map[string]map[string]*FleetContact{}, RNGState: seed,
 		Definitions: map[string]string{"scenario": fmt.Sprint(scenario.Version), "map": fmt.Sprint(gameMap.Version), "units": fmt.Sprint(catalog.Version)},
 		Objectives:  scenario.Objectives, MaxTurns: scenario.MaxTurns, Turn: 1, Timeline: scenario.Timeline,
 		// 昼夜循环靠这两个字段推进：此前只写了 Timeline 却没把开局时刻/每天回合数带进状态，
@@ -1234,7 +1237,9 @@ func advanceTurnStartWithEvents(state *State) []EngineEvent {
 	// 回合开始状态处理：按剧本的昼夜循环刷新白天/夜间（规则书 199、587–593 行）。
 	events := UpdateDayNight(state)
 	// 动态天气（规则书 313–314、815 行）：剧本开启天气系统时按间隔刷新。
-	return append(events, StepWeather(state)...)
+	events = append(events, StepWeather(state)...)
+	// 风向场单独一条节奏：每 6–12 回合缓慢挪一次，不受天气格刷新间隔约束。
+	return append(events, StepWind(state)...)
 }
 
 // AdvanceTurnStart 是服务端可见的回合开始钩子：刷新昼夜等回合级状态并返回事件。
