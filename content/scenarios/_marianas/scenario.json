@@ -22,7 +22,7 @@
   "launch_start": "05:30",
   "recover_by": "19:40"
  },
- "description": "架空历史：1944 年 6 月，美军第 58 特混舰队以 8 艘埃塞克斯级航母（两个特混大队）、4 艘独立级轻航母（第 58.3 特混大队）、4 个护航航母群（每群 4 艘 CVE + 4 艘驱逐舰）杀入马里亚纳，另有第 52 特混舰队的 8 艘老式战列舰（田纳西、加利福尼亚、马里兰、科罗拉多、新墨西哥、爱达荷、密西西比、宾夕法尼亚）担任火力支援；日军以小泽的三个机动部队（甲/乙/丙，各 3 艘航母）迎战，另在马里亚纳与帕劳诸岛布署岸基航空兵和水上飞机基地。地图 99×99（25 海里/hex），岛礁散布，适合跑大编队的甲板/升降机/CAP 循环压力测试。",
+ "description": "架空历史：1944 年 6 月，美军第 58 特混舰队以 8 艘舰队航母（7 艘埃塞克斯级 + 企业号，分属两个特混大队）、4 艘独立级轻航母（第 58.3 特混大队）、4 个护航航母群（每群 4 艘 CVE + 4 艘驱逐舰）杀入马里亚纳，另有第 52 特混舰队的 8 艘老式战列舰（田纳西、加利福尼亚、马里兰、科罗拉多、新墨西哥、爱达荷、密西西比、宾夕法尼亚）担任火力支援；日军以小泽的三个机动部队（甲/乙/丙，各 3 艘航母）迎战，另在马里亚纳与帕劳诸岛布署岸基航空兵和水上飞机基地。地图 99×99（25 海里/hex），岛礁散布，适合跑大编队的甲板/升降机/CAP 循环压力测试。另有三个登陆运输队（每队 12 艘大型慢速运输船 + 12 艘弗莱彻级护航），任务是分别在塞班、天宁、关岛投送至少 40 点物资——运输队要在敌方机场格停留满 3 回合才能开始卸货，每艘船每回合卸 1 点，卸下的物资会直接瘫痪机场跑道。",
  "deploy_zones": [
   {
    "faction": "A",
@@ -191,7 +191,7 @@
   {
    "id": "us-cv-07",
    "faction": "A",
-   "name": "提康德罗加",
+   "name": "企业",
    "fleet_id": "TF58.2",
    "fleet_name": "第58.2特混大队",
    "ship": "us-cv-07"
@@ -1435,6 +1435,582 @@
    "fleet_id": "CVE4",
    "fleet_name": "护航航母群4",
    "ship": "us-de-16"
+  },
+  {
+   "id": "us-trs-01",
+   "faction": "A",
+   "name": "大型运输船01",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-trs-01"
+  },
+  {
+   "id": "us-dd-57",
+   "faction": "A",
+   "name": "弗莱彻号57",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-dd-57"
+  },
+  {
+   "id": "us-trs-02",
+   "faction": "A",
+   "name": "大型运输船02",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-trs-02"
+  },
+  {
+   "id": "us-dd-58",
+   "faction": "A",
+   "name": "弗莱彻号58",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-dd-58"
+  },
+  {
+   "id": "us-trs-03",
+   "faction": "A",
+   "name": "大型运输船03",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-trs-03"
+  },
+  {
+   "id": "us-dd-59",
+   "faction": "A",
+   "name": "弗莱彻号59",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-dd-59"
+  },
+  {
+   "id": "us-trs-04",
+   "faction": "A",
+   "name": "大型运输船04",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-trs-04"
+  },
+  {
+   "id": "us-dd-60",
+   "faction": "A",
+   "name": "弗莱彻号60",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-dd-60"
+  },
+  {
+   "id": "us-trs-05",
+   "faction": "A",
+   "name": "大型运输船05",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-trs-05"
+  },
+  {
+   "id": "us-dd-61",
+   "faction": "A",
+   "name": "弗莱彻号61",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-dd-61"
+  },
+  {
+   "id": "us-trs-06",
+   "faction": "A",
+   "name": "大型运输船06",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-trs-06"
+  },
+  {
+   "id": "us-dd-62",
+   "faction": "A",
+   "name": "弗莱彻号62",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-dd-62"
+  },
+  {
+   "id": "us-trs-07",
+   "faction": "A",
+   "name": "大型运输船07",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-trs-07"
+  },
+  {
+   "id": "us-dd-63",
+   "faction": "A",
+   "name": "弗莱彻号63",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-dd-63"
+  },
+  {
+   "id": "us-trs-08",
+   "faction": "A",
+   "name": "大型运输船08",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-trs-08"
+  },
+  {
+   "id": "us-dd-64",
+   "faction": "A",
+   "name": "弗莱彻号64",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-dd-64"
+  },
+  {
+   "id": "us-trs-09",
+   "faction": "A",
+   "name": "大型运输船09",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-trs-09"
+  },
+  {
+   "id": "us-dd-65",
+   "faction": "A",
+   "name": "弗莱彻号65",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-dd-65"
+  },
+  {
+   "id": "us-trs-10",
+   "faction": "A",
+   "name": "大型运输船10",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-trs-10"
+  },
+  {
+   "id": "us-dd-66",
+   "faction": "A",
+   "name": "弗莱彻号66",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-dd-66"
+  },
+  {
+   "id": "us-trs-11",
+   "faction": "A",
+   "name": "大型运输船11",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-trs-11"
+  },
+  {
+   "id": "us-dd-67",
+   "faction": "A",
+   "name": "弗莱彻号67",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-dd-67"
+  },
+  {
+   "id": "us-trs-12",
+   "faction": "A",
+   "name": "大型运输船12",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-trs-12"
+  },
+  {
+   "id": "us-dd-68",
+   "faction": "A",
+   "name": "弗莱彻号68",
+   "fleet_id": "TRN1",
+   "fleet_name": "第1登陆运输队",
+   "ship": "us-dd-68"
+  },
+  {
+   "id": "us-trs-13",
+   "faction": "A",
+   "name": "大型运输船13",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-trs-13"
+  },
+  {
+   "id": "us-dd-69",
+   "faction": "A",
+   "name": "弗莱彻号69",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-dd-69"
+  },
+  {
+   "id": "us-trs-14",
+   "faction": "A",
+   "name": "大型运输船14",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-trs-14"
+  },
+  {
+   "id": "us-dd-70",
+   "faction": "A",
+   "name": "弗莱彻号70",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-dd-70"
+  },
+  {
+   "id": "us-trs-15",
+   "faction": "A",
+   "name": "大型运输船15",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-trs-15"
+  },
+  {
+   "id": "us-dd-71",
+   "faction": "A",
+   "name": "弗莱彻号71",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-dd-71"
+  },
+  {
+   "id": "us-trs-16",
+   "faction": "A",
+   "name": "大型运输船16",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-trs-16"
+  },
+  {
+   "id": "us-dd-72",
+   "faction": "A",
+   "name": "弗莱彻号72",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-dd-72"
+  },
+  {
+   "id": "us-trs-17",
+   "faction": "A",
+   "name": "大型运输船17",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-trs-17"
+  },
+  {
+   "id": "us-dd-73",
+   "faction": "A",
+   "name": "弗莱彻号73",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-dd-73"
+  },
+  {
+   "id": "us-trs-18",
+   "faction": "A",
+   "name": "大型运输船18",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-trs-18"
+  },
+  {
+   "id": "us-dd-74",
+   "faction": "A",
+   "name": "弗莱彻号74",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-dd-74"
+  },
+  {
+   "id": "us-trs-19",
+   "faction": "A",
+   "name": "大型运输船19",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-trs-19"
+  },
+  {
+   "id": "us-dd-75",
+   "faction": "A",
+   "name": "弗莱彻号75",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-dd-75"
+  },
+  {
+   "id": "us-trs-20",
+   "faction": "A",
+   "name": "大型运输船20",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-trs-20"
+  },
+  {
+   "id": "us-dd-76",
+   "faction": "A",
+   "name": "弗莱彻号76",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-dd-76"
+  },
+  {
+   "id": "us-trs-21",
+   "faction": "A",
+   "name": "大型运输船21",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-trs-21"
+  },
+  {
+   "id": "us-dd-77",
+   "faction": "A",
+   "name": "弗莱彻号77",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-dd-77"
+  },
+  {
+   "id": "us-trs-22",
+   "faction": "A",
+   "name": "大型运输船22",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-trs-22"
+  },
+  {
+   "id": "us-dd-78",
+   "faction": "A",
+   "name": "弗莱彻号78",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-dd-78"
+  },
+  {
+   "id": "us-trs-23",
+   "faction": "A",
+   "name": "大型运输船23",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-trs-23"
+  },
+  {
+   "id": "us-dd-79",
+   "faction": "A",
+   "name": "弗莱彻号79",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-dd-79"
+  },
+  {
+   "id": "us-trs-24",
+   "faction": "A",
+   "name": "大型运输船24",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-trs-24"
+  },
+  {
+   "id": "us-dd-80",
+   "faction": "A",
+   "name": "弗莱彻号80",
+   "fleet_id": "TRN2",
+   "fleet_name": "第2登陆运输队",
+   "ship": "us-dd-80"
+  },
+  {
+   "id": "us-trs-25",
+   "faction": "A",
+   "name": "大型运输船25",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-trs-25"
+  },
+  {
+   "id": "us-dd-81",
+   "faction": "A",
+   "name": "弗莱彻号81",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-dd-81"
+  },
+  {
+   "id": "us-trs-26",
+   "faction": "A",
+   "name": "大型运输船26",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-trs-26"
+  },
+  {
+   "id": "us-dd-82",
+   "faction": "A",
+   "name": "弗莱彻号82",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-dd-82"
+  },
+  {
+   "id": "us-trs-27",
+   "faction": "A",
+   "name": "大型运输船27",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-trs-27"
+  },
+  {
+   "id": "us-dd-83",
+   "faction": "A",
+   "name": "弗莱彻号83",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-dd-83"
+  },
+  {
+   "id": "us-trs-28",
+   "faction": "A",
+   "name": "大型运输船28",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-trs-28"
+  },
+  {
+   "id": "us-dd-84",
+   "faction": "A",
+   "name": "弗莱彻号84",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-dd-84"
+  },
+  {
+   "id": "us-trs-29",
+   "faction": "A",
+   "name": "大型运输船29",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-trs-29"
+  },
+  {
+   "id": "us-dd-85",
+   "faction": "A",
+   "name": "弗莱彻号85",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-dd-85"
+  },
+  {
+   "id": "us-trs-30",
+   "faction": "A",
+   "name": "大型运输船30",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-trs-30"
+  },
+  {
+   "id": "us-dd-86",
+   "faction": "A",
+   "name": "弗莱彻号86",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-dd-86"
+  },
+  {
+   "id": "us-trs-31",
+   "faction": "A",
+   "name": "大型运输船31",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-trs-31"
+  },
+  {
+   "id": "us-dd-87",
+   "faction": "A",
+   "name": "弗莱彻号87",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-dd-87"
+  },
+  {
+   "id": "us-trs-32",
+   "faction": "A",
+   "name": "大型运输船32",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-trs-32"
+  },
+  {
+   "id": "us-dd-88",
+   "faction": "A",
+   "name": "弗莱彻号88",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-dd-88"
+  },
+  {
+   "id": "us-trs-33",
+   "faction": "A",
+   "name": "大型运输船33",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-trs-33"
+  },
+  {
+   "id": "us-dd-89",
+   "faction": "A",
+   "name": "弗莱彻号89",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-dd-89"
+  },
+  {
+   "id": "us-trs-34",
+   "faction": "A",
+   "name": "大型运输船34",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-trs-34"
+  },
+  {
+   "id": "us-dd-90",
+   "faction": "A",
+   "name": "弗莱彻号90",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-dd-90"
+  },
+  {
+   "id": "us-trs-35",
+   "faction": "A",
+   "name": "大型运输船35",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-trs-35"
+  },
+  {
+   "id": "us-dd-91",
+   "faction": "A",
+   "name": "弗莱彻号91",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-dd-91"
+  },
+  {
+   "id": "us-trs-36",
+   "faction": "A",
+   "name": "大型运输船36",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-trs-36"
+  },
+  {
+   "id": "us-dd-92",
+   "faction": "A",
+   "name": "弗莱彻号92",
+   "fleet_id": "TRN3",
+   "fleet_name": "第3登陆运输队",
+   "ship": "us-dd-92"
   }
  ],
  "air_deployments": [
@@ -1482,6 +2058,18 @@
   },
   {
    "id": "us-cv-01-f6f-x8",
+   "unit": "f6f",
+   "carrier": "us-cv-01",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cv-01-f6f-x9",
+   "unit": "f6f",
+   "carrier": "us-cv-01",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cv-01-f6f-x10",
    "unit": "f6f",
    "carrier": "us-cv-01",
    "skill": "veteran"
@@ -1571,18 +2159,6 @@
    "skill": "veteran"
   },
   {
-   "id": "us-cv-01-tbf-x7",
-   "unit": "tbf",
-   "carrier": "us-cv-01",
-   "skill": "veteran"
-  },
-  {
-   "id": "us-cv-01-tbf-x8",
-   "unit": "tbf",
-   "carrier": "us-cv-01",
-   "skill": "veteran"
-  },
-  {
    "id": "us-cv-02-f6f-x1",
    "unit": "f6f",
    "carrier": "us-cv-02",
@@ -1626,6 +2202,18 @@
   },
   {
    "id": "us-cv-02-f6f-x8",
+   "unit": "f6f",
+   "carrier": "us-cv-02",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cv-02-f6f-x9",
+   "unit": "f6f",
+   "carrier": "us-cv-02",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cv-02-f6f-x10",
    "unit": "f6f",
    "carrier": "us-cv-02",
    "skill": "veteran"
@@ -1715,18 +2303,6 @@
    "skill": "veteran"
   },
   {
-   "id": "us-cv-02-tbf-x7",
-   "unit": "tbf",
-   "carrier": "us-cv-02",
-   "skill": "veteran"
-  },
-  {
-   "id": "us-cv-02-tbf-x8",
-   "unit": "tbf",
-   "carrier": "us-cv-02",
-   "skill": "veteran"
-  },
-  {
    "id": "us-cv-03-f6f-x1",
    "unit": "f6f",
    "carrier": "us-cv-03",
@@ -1770,6 +2346,18 @@
   },
   {
    "id": "us-cv-03-f6f-x8",
+   "unit": "f6f",
+   "carrier": "us-cv-03",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cv-03-f6f-x9",
+   "unit": "f6f",
+   "carrier": "us-cv-03",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cv-03-f6f-x10",
    "unit": "f6f",
    "carrier": "us-cv-03",
    "skill": "veteran"
@@ -1859,18 +2447,6 @@
    "skill": "veteran"
   },
   {
-   "id": "us-cv-03-tbf-x7",
-   "unit": "tbf",
-   "carrier": "us-cv-03",
-   "skill": "veteran"
-  },
-  {
-   "id": "us-cv-03-tbf-x8",
-   "unit": "tbf",
-   "carrier": "us-cv-03",
-   "skill": "veteran"
-  },
-  {
    "id": "us-cv-04-f6f-x1",
    "unit": "f6f",
    "carrier": "us-cv-04",
@@ -1914,6 +2490,18 @@
   },
   {
    "id": "us-cv-04-f6f-x8",
+   "unit": "f6f",
+   "carrier": "us-cv-04",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cv-04-f6f-x9",
+   "unit": "f6f",
+   "carrier": "us-cv-04",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cv-04-f6f-x10",
    "unit": "f6f",
    "carrier": "us-cv-04",
    "skill": "veteran"
@@ -2003,18 +2591,6 @@
    "skill": "veteran"
   },
   {
-   "id": "us-cv-04-tbf-x7",
-   "unit": "tbf",
-   "carrier": "us-cv-04",
-   "skill": "veteran"
-  },
-  {
-   "id": "us-cv-04-tbf-x8",
-   "unit": "tbf",
-   "carrier": "us-cv-04",
-   "skill": "veteran"
-  },
-  {
    "id": "us-cv-05-f6f-x1",
    "unit": "f6f",
    "carrier": "us-cv-05",
@@ -2058,6 +2634,18 @@
   },
   {
    "id": "us-cv-05-f6f-x8",
+   "unit": "f6f",
+   "carrier": "us-cv-05",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cv-05-f6f-x9",
+   "unit": "f6f",
+   "carrier": "us-cv-05",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cv-05-f6f-x10",
    "unit": "f6f",
    "carrier": "us-cv-05",
    "skill": "veteran"
@@ -2147,18 +2735,6 @@
    "skill": "veteran"
   },
   {
-   "id": "us-cv-05-tbf-x7",
-   "unit": "tbf",
-   "carrier": "us-cv-05",
-   "skill": "veteran"
-  },
-  {
-   "id": "us-cv-05-tbf-x8",
-   "unit": "tbf",
-   "carrier": "us-cv-05",
-   "skill": "veteran"
-  },
-  {
    "id": "us-cv-06-f6f-x1",
    "unit": "f6f",
    "carrier": "us-cv-06",
@@ -2202,6 +2778,18 @@
   },
   {
    "id": "us-cv-06-f6f-x8",
+   "unit": "f6f",
+   "carrier": "us-cv-06",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cv-06-f6f-x9",
+   "unit": "f6f",
+   "carrier": "us-cv-06",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cv-06-f6f-x10",
    "unit": "f6f",
    "carrier": "us-cv-06",
    "skill": "veteran"
@@ -2291,18 +2879,6 @@
    "skill": "veteran"
   },
   {
-   "id": "us-cv-06-tbf-x7",
-   "unit": "tbf",
-   "carrier": "us-cv-06",
-   "skill": "veteran"
-  },
-  {
-   "id": "us-cv-06-tbf-x8",
-   "unit": "tbf",
-   "carrier": "us-cv-06",
-   "skill": "veteran"
-  },
-  {
    "id": "us-cv-07-f6f-x1",
    "unit": "f6f",
    "carrier": "us-cv-07",
@@ -2346,6 +2922,18 @@
   },
   {
    "id": "us-cv-07-f6f-x8",
+   "unit": "f6f",
+   "carrier": "us-cv-07",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cv-07-f6f-x9",
+   "unit": "f6f",
+   "carrier": "us-cv-07",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cv-07-f6f-x10",
    "unit": "f6f",
    "carrier": "us-cv-07",
    "skill": "veteran"
@@ -2435,18 +3023,6 @@
    "skill": "veteran"
   },
   {
-   "id": "us-cv-07-tbf-x7",
-   "unit": "tbf",
-   "carrier": "us-cv-07",
-   "skill": "veteran"
-  },
-  {
-   "id": "us-cv-07-tbf-x8",
-   "unit": "tbf",
-   "carrier": "us-cv-07",
-   "skill": "veteran"
-  },
-  {
    "id": "us-cv-08-f6f-x1",
    "unit": "f6f",
    "carrier": "us-cv-08",
@@ -2490,6 +3066,18 @@
   },
   {
    "id": "us-cv-08-f6f-x8",
+   "unit": "f6f",
+   "carrier": "us-cv-08",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cv-08-f6f-x9",
+   "unit": "f6f",
+   "carrier": "us-cv-08",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cv-08-f6f-x10",
    "unit": "f6f",
    "carrier": "us-cv-08",
    "skill": "veteran"
@@ -2574,18 +3162,6 @@
   },
   {
    "id": "us-cv-08-tbf-x6",
-   "unit": "tbf",
-   "carrier": "us-cv-08",
-   "skill": "veteran"
-  },
-  {
-   "id": "us-cv-08-tbf-x7",
-   "unit": "tbf",
-   "carrier": "us-cv-08",
-   "skill": "veteran"
-  },
-  {
-   "id": "us-cv-08-tbf-x8",
    "unit": "tbf",
    "carrier": "us-cv-08",
    "skill": "veteran"
@@ -4660,6 +5236,36 @@
    "id": "attrition",
    "text": "每摧毁一个航空算子计 0.25 VP",
    "kind": "score"
+  },
+  {
+   "id": "landing-saipan",
+   "text": "在塞班投送至少 40 点物资",
+   "kind": "supplies",
+   "coord": "1844",
+   "faction": "A",
+   "value": 40,
+   "points": 0,
+   "decisive": false
+  },
+  {
+   "id": "landing-tinian",
+   "text": "在天宁投送至少 40 点物资",
+   "kind": "supplies",
+   "coord": "2043",
+   "faction": "A",
+   "value": 40,
+   "points": 0,
+   "decisive": false
+  },
+  {
+   "id": "landing-guam",
+   "text": "在关岛投送至少 40 点物资",
+   "kind": "supplies",
+   "coord": "2544",
+   "faction": "A",
+   "value": 40,
+   "points": 0,
+   "decisive": false
   }
  ]
 }

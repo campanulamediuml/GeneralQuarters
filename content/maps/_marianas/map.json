@@ -66,11 +66,6 @@
    "name": ""
   },
   {
-   "coord": "1744",
-   "terrain": "shoal",
-   "name": ""
-  },
-  {
    "coord": "1745",
    "terrain": "shoal",
    "name": ""
@@ -146,11 +141,6 @@
    "name": "天宁岛"
   },
   {
-   "coord": "2044",
-   "terrain": "shoal",
-   "name": ""
-  },
-  {
    "coord": "2045",
    "terrain": "shoal",
    "name": ""
@@ -217,11 +207,6 @@
   },
   {
    "coord": "2443",
-   "terrain": "shoal",
-   "name": ""
-  },
-  {
-   "coord": "2444",
    "terrain": "shoal",
    "name": ""
   },
