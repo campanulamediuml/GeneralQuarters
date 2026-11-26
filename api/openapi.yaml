@@ -148,10 +148,10 @@ paths:
                 ready: {type: boolean, example: true}
       responses:
         '200':
-          description: 最新私有快照
+          description: 回执；最新状态走 WebSocket 推送
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/GameView'}
+              schema: {$ref: '#/components/schemas/ReadyResponse'}
         '409': {$ref: '#/components/responses/Conflict'}
 components:
   parameters:
@@ -187,6 +187,13 @@ components:
       required: [error]
       properties:
         error: {type: string, example: 目标必须与当前hex相邻且可通行}
+    ReadyResponse:
+      type: object
+      required: [accepted, turn]
+      properties:
+        accepted: {type: boolean}
+        turn: {type: integer, description: 回执里的当前回合号}
+        phase: {type: string, enum: [deploy, battle], description: 只在"双方都部署完毕、这一刻切进 battle"的回执里出现；部署不算回合，turn 仍是 1}
     RoomResponse:
       type: object
       properties:
@@ -208,7 +215,7 @@ components:
         coord: {type: string, description: SET_MOVE和REORGANIZE_HEX必填；SET_AUTO_NAV作为目的地；新建LAUNCH_STRIKE时作为已侦测敌方目标hex必填，加入已有编队时继承, example: '0203'}
         engagement: {type: string, enum: [aggressive, advantage, avoid], description: SET_AUTO_NAV和SET_ENGAGEMENT使用；aggressive=逢敌必战，advantage=优势交战，avoid=避免近战}
         target_fleet_id: {type: string, description: SET_STRIKE_TARGET/LAUNCH_STRIKE可显式指定敌方舰队；目标hex同时有敌方机场和舰队时用它选择打舰队，省略则维持机场优先, example: TF44}
-        loadout: {type: string, description: SET_LOADOUT必填，例如 bomb、torpedo、bomb+tank、torpedo+tank},
+        loadout: {type: string, description: SET_LOADOUT必填，例如 bomb、torpedo、bomb+tank、torpedo+tank}
         heading: {type: string, enum: [E, SE, SW, W, NW, NE], description: LAUNCH_RECON必填，搜索航线中轴；舰载机限侦察机/TBF/SB2C，陆基机场除战斗机外均可执行（含B-17/B-25/B-26）, example: W}
         sector_width: {type: integer, enum: [60, 120], description: LAUNCH_RECON必填；120度最终发现率减半, example: 60}
         recon_radius: {type: integer, minimum: 0, description: 可选；省略或为0时使用recon_radius_limit，手动值不能超过该上限, example: 6}
@@ -464,12 +471,32 @@ components:
         strike_hits: {type: integer}
         winner: {type: string, enum: [A, B, draw]}
         summary: {type: string}
+    DeployZone:
+      type: object
+      description: 开局部署区。剧本没写 deploy_zones 时不会出现
+      properties:
+        anchor: {type: string, example: '3250', description: 部署区锚点 hex}
+        radius: {type: integer, example: 8, description: 锚点半径（六边形距离）}
+        cells: {type: string, description: 行优先的 '0'/'1' 串，标出半径内可以摆船的格位；前端改用 legal_moves 高亮，该字段留给脚本}
     GameView:
       type: object
       properties:
         room_id: {type: string}
         status: {type: string}
         turn: {type: integer}
+        phase: {type: string, enum: [deploy, battle], description: 开局部署阶段；剧本没有部署区时直接是 battle}
+        deploy_zone: {$ref: '#/components/schemas/DeployZone'}
+        weather_cells: {type: string, description: 行优先、每格一个字符 '0'..'3'（晴/多云/降雨/风暴）。服务端按云层数记账，4 层以上同样显示 3}
+        wind_cells: {type: string, description: 行优先、每格一个数字 0–5，依次对应 NE/E/SE/SW/W/NW（记来向）}
+        wind:
+          type: object
+          description: 盛行风与各己方舰队所在格的朝向关系
+          properties:
+            wind: {type: string}
+            cells: {type: string}
+            fleets: {type: array, items: {type: object}}
+        night: {type: boolean}
+        clock: {type: object, description: 剧本时间线快照；没有昼夜循环时为 null}
         scenario:
           type: object
           properties:

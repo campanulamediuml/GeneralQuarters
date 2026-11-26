@@ -1,5 +1,44 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>General Quarters API</title><style>body{max-width:1040px;margin:0 auto;padding:40px 24px;background:#0b1519;color:#d9e3df;font:15px/1.75 system-ui}h1,h2{color:#e6c98a}code,pre{background:#13252b;color:#a9d8ce;border-radius:5px}code{padding:2px 5px}pre{padding:16px;overflow:auto}a{color:#8fc8bb}table{width:100%;border-collapse:collapse}td,th{padding:10px;border-bottom:1px solid #294047;text-align:left}.pill{color:#8fc8bb}</style></head><body><h1>General Quarters API</h1><p>版本0.1.0 · <a href="/api/v1/openapi.yaml">下载OpenAPI 3.0文档</a> · <a href="/">返回游戏</a></p><h2>约定</h2><p>会话由创建或加入接口写入HttpOnly Cookie。所有错误均为<code>{"error":"说明"}</code>。hex使用ABCD坐标，AB为行、CD为列。客户端提交操作意图，服务器完成全部判定。</p><h2>房间</h2><table><tr><th>方法</th><th>路径</th><th>用途</th></tr><tr><td>POST</td><td>/api/v1/rooms</td><td>创建房间，body可包含name、scenario_id</td></tr><tr><td>POST</td><td>/api/v1/rooms/join</td><td>凭token加入，body包含token、name</td></tr><tr><td>GET</td><td>/api/v1/rooms/{id}/state</td><td>获取当前玩家私有快照</td></tr><tr><td>GET</td><td>/api/v1/rooms/{id}/events</td><td>最近100条可见事件</td></tr></table><h2>命令与回合</h2><pre>POST /api/v1/rooms/{id}/commands
-{"command_id":"唯一ID","base_version":1,"type":"SET_MOVE","unit_id":"a-flag","coord":"0203"}
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>General Quarters API</title><style>body{max-width:1040px;margin:0 auto;padding:40px 24px;background:#0b1519;color:#d9e3df;font:15px/1.75 system-ui}h1,h2{color:#e6c98a}code,pre{background:#13252b;color:#a9d8ce;border-radius:5px}code{padding:2px 5px}pre{padding:16px;overflow:auto}a{color:#8fc8bb}table{width:100%;border-collapse:collapse}td,th{padding:10px;border-bottom:1px solid #294047;text-align:left}.pill{color:#8fc8bb}</style></head><body>
+<h1>General Quarters API</h1>
+<p>版本0.1.0 · <a href="/api/v1/openapi.yaml">下载OpenAPI文档</a> · <a href="/">返回游戏</a> · 完整字段与语义见仓库根目录的<code>API.md</code>（本页只是速查表）</p>
+
+<h2>约定</h2>
+<ul>
+<li>会话由创建/加入接口写入HttpOnly Cookie<code>gq_session</code>；除健康检查与文档外都要带。</li>
+<li>错误一律是<code>{"error":"人类可读说明"}</code>；成功是JSON。</li>
+<li>hex坐标为<code>ABCD</code>：AB行、CD列，例如<code>0203</code>。</li>
+<li><code>base_turn</code>可选：提交时看到的回合号，只有"回合已结算"的过期提交会被409拒绝，不比对版本号。</li>
+<li><code>command_id</code>由客户端生成、玩家范围内唯一；断线重试必须沿用原ID。</li>
+<li>房间闲置12小时且无人在线时只释放内存，库里的房间、事件与回合快照全部保留，下次访问自动重载。</li>
+</ul>
+
+<h2>HTTP（大厅 + 脚本兜底）</h2>
+<table>
+<tr><th>方法</th><th>路径</th><th>用途</th></tr>
+<tr><td>POST</td><td>/api/v1/rooms</td><td>创建房间，body可含<code>name</code>、<code>scenario_id</code>、<code>solo</code>、<code>faction</code></td></tr>
+<tr><td>POST</td><td>/api/v1/rooms/join</td><td>凭<code>token</code>加入，body含<code>token</code>、<code>name</code></td></tr>
+<tr><td>GET</td><td>/api/v1/rooms/{id}/state</td><td>当前玩家私有快照（含<code>phase</code>、<code>weather_cells</code>等）</td></tr>
+<tr><td>GET</td><td>/api/v1/rooms/{id}/events</td><td>最近100条可见事件</td></tr>
+<tr><td>POST</td><td>/api/v1/rooms/{id}/commands</td><td>提交一条命令（进房后网页改走WebSocket）</td></tr>
+<tr><td>POST</td><td>/api/v1/rooms/{id}/ready</td><td>就绪；回执<code>{accepted,turn}</code></td></tr>
+</table>
+
+<h2>命令与回合</h2>
+<pre>POST /api/v1/rooms/{id}/commands
+{"command_id":"唯一ID","base_turn":3,"type":"SET_MOVE","unit_id":"a-flag","coord":"0203"}
 
 POST /api/v1/rooms/{id}/ready
-{"base_version":1,"ready":true}</pre><p><code>CLEAR_MOVE</code>使用相同结构但无需coord。所有当前玩家ready后统一结算。version变化后必须重新获取状态。</p><h2>WebSocket</h2><p>连接<code>GET /ws</code>，使用同一会话Cookie。消息仅用于通知客户端重新同步：</p><pre>{"type":"player_joined|orders_updated|ready_changed|turn_resolved|presence_changed","version":2,"time":"..."}</pre><h2>AI扩展边界</h2><p>后续DeepSeek适配器在服务器内运行。模型只接收当前阵营私有视图和对话，输出候选结构化命令；候选命令仍调用上述同一校验与回合引擎。API密钥不进入浏览器，自然语言不能直接改变游戏状态。</p></body></html>
+{"base_turn":3,"ready":true}</pre>
+<p><code>CLEAR_MOVE</code>等撤回类命令结构相同但不需要<code>coord</code>。<code>state.phase == "deploy"</code>时是开局部署：<code>SET_MOVE</code>只受部署区限制、立即生效且没有冷却；双方都ready才开战（<code>phase</code>变<code>battle</code>，回合号仍是1）；部署阶段允许<code>ready:false</code>撤回，任何部署动作也会自动撤回ready。开战后ready不可撤销，所有玩家ready即同步结算并提升<code>turn</code>。</p>
+
+<h2>WebSocket</h2>
+<p>连接<code>GET /ws</code>，用同一会话Cookie；观战用<code>?mode=spectator</code>，连上后10秒内发订阅帧<code>{"type":"subscribe","room_id":"…","token":"…"}</code>。进房后的状态读取、命令、ready都走这条连接，不再轮询。</p>
+<pre>请求  {"type":"rpc_request","id":"1","method":"POST","path":"/api/v1/rooms/{id}/commands","body":{…}}
+应答  {"type":"rpc_response","id":"1","status":200,"body":{…}}
+推送  {"type":"state","patch":{…}}      // 增量，按字段合并
+      {"type":"snapshot","view":{…}}    // 全量底座（首帧/重连/观战）</pre>
+<p>服务端每30秒ping一次，90秒没有pong即断开；单帧上限1MB。补丁只带变化的节点，实体列表按<code>id</code>合并，客户端不能把补丁整块赋值给数组。</p>
+
+<h2>AI扩展边界</h2>
+<p>DeepSeek适配器在服务器内运行：模型只接收当前阵营的私有视图和对话，输出候选结构化命令；候选命令仍走同一套校验与回合引擎。API密钥不进入浏览器，自然语言不能直接改变游戏状态。</p>
+</body></html>
