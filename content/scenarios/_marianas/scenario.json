@@ -1,0 +1,2696 @@
+{
+ "id": "_marianas",
+ "version": 1,
+ "name": "马里亚纳 · 1944年6月（架空：8 埃塞克斯 vs 三支机动部队）",
+ "map": "_marianas",
+ "units": "marianas",
+ "year": 1944,
+ "night": false,
+ "day_hours": 4.0,
+ "turns_per_day": 72,
+ "weather_turns": 6,
+ "max_turns": 360,
+ "wind": "E",
+ "doctrines": {
+  "A": "us",
+  "B": "japan"
+ },
+ "timeline": {
+  "turn_minutes": 20,
+  "service_start": "04:00",
+  "launch_start": "05:30",
+  "recover_by": "19:40"
+ },
+ "description": "架空历史：1944 年 6 月，美军第 58 特混舰队以 8 艘埃塞克斯级航母（两个特混大队）杀入马里亚纳，日军以小泽的三个机动部队（甲/乙/丙，各 3 艘航母）迎战，另在马里亚纳与帕劳诸岛布署岸基航空兵和水上飞机基地。地图 99×99（25 海里/hex），岛礁散布，适合跑大编队的甲板/升降机/CAP 循环压力测试。",
+ "deploy_zones": [
+  {
+   "faction": "A",
+   "anchor": "3450",
+   "radius": 8
+  },
+  {
+   "faction": "B",
+   "anchor": "2424",
+   "radius": 8
+  }
+ ],
+ "deployments": [
+  {
+   "id": "us-cv-01",
+   "faction": "A",
+   "name": "us-cv-01",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-cv-01"
+  },
+  {
+   "id": "us-cv-02",
+   "faction": "A",
+   "name": "us-cv-02",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-cv-02"
+  },
+  {
+   "id": "us-cv-03",
+   "faction": "A",
+   "name": "us-cv-03",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-cv-03"
+  },
+  {
+   "id": "us-cv-04",
+   "faction": "A",
+   "name": "us-cv-04",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-cv-04"
+  },
+  {
+   "id": "us-bb-01",
+   "faction": "A",
+   "name": "us-bb-01",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-bb-01"
+  },
+  {
+   "id": "us-bb-02",
+   "faction": "A",
+   "name": "us-bb-02",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-bb-02"
+  },
+  {
+   "id": "us-ca-01",
+   "faction": "A",
+   "name": "us-ca-01",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-ca-01"
+  },
+  {
+   "id": "us-ca-02",
+   "faction": "A",
+   "name": "us-ca-02",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-ca-02"
+  },
+  {
+   "id": "us-cl-01",
+   "faction": "A",
+   "name": "us-cl-01",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-cl-01"
+  },
+  {
+   "id": "us-cl-02",
+   "faction": "A",
+   "name": "us-cl-02",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-cl-02"
+  },
+  {
+   "id": "us-cl-03",
+   "faction": "A",
+   "name": "us-cl-03",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-cl-03"
+  },
+  {
+   "id": "us-dd-01",
+   "faction": "A",
+   "name": "us-dd-01",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-dd-01"
+  },
+  {
+   "id": "us-dd-02",
+   "faction": "A",
+   "name": "us-dd-02",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-dd-02"
+  },
+  {
+   "id": "us-dd-03",
+   "faction": "A",
+   "name": "us-dd-03",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-dd-03"
+  },
+  {
+   "id": "us-dd-04",
+   "faction": "A",
+   "name": "us-dd-04",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-dd-04"
+  },
+  {
+   "id": "us-dd-05",
+   "faction": "A",
+   "name": "us-dd-05",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-dd-05"
+  },
+  {
+   "id": "us-dd-06",
+   "faction": "A",
+   "name": "us-dd-06",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-dd-06"
+  },
+  {
+   "id": "us-dd-07",
+   "faction": "A",
+   "name": "us-dd-07",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-dd-07"
+  },
+  {
+   "id": "us-dd-08",
+   "faction": "A",
+   "name": "us-dd-08",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-dd-08"
+  },
+  {
+   "id": "us-cv-05",
+   "faction": "A",
+   "name": "us-cv-05",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-cv-05"
+  },
+  {
+   "id": "us-cv-06",
+   "faction": "A",
+   "name": "us-cv-06",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-cv-06"
+  },
+  {
+   "id": "us-cv-07",
+   "faction": "A",
+   "name": "us-cv-07",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-cv-07"
+  },
+  {
+   "id": "us-cv-08",
+   "faction": "A",
+   "name": "us-cv-08",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-cv-08"
+  },
+  {
+   "id": "us-bb-03",
+   "faction": "A",
+   "name": "us-bb-03",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-bb-03"
+  },
+  {
+   "id": "us-bb-04",
+   "faction": "A",
+   "name": "us-bb-04",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-bb-04"
+  },
+  {
+   "id": "us-ca-03",
+   "faction": "A",
+   "name": "us-ca-03",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-ca-03"
+  },
+  {
+   "id": "us-ca-04",
+   "faction": "A",
+   "name": "us-ca-04",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-ca-04"
+  },
+  {
+   "id": "us-cl-04",
+   "faction": "A",
+   "name": "us-cl-04",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-cl-04"
+  },
+  {
+   "id": "us-cl-05",
+   "faction": "A",
+   "name": "us-cl-05",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-cl-05"
+  },
+  {
+   "id": "us-cl-06",
+   "faction": "A",
+   "name": "us-cl-06",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-cl-06"
+  },
+  {
+   "id": "us-dd-09",
+   "faction": "A",
+   "name": "us-dd-09",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-dd-09"
+  },
+  {
+   "id": "us-dd-10",
+   "faction": "A",
+   "name": "us-dd-10",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-dd-10"
+  },
+  {
+   "id": "us-dd-11",
+   "faction": "A",
+   "name": "us-dd-11",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-dd-11"
+  },
+  {
+   "id": "us-dd-12",
+   "faction": "A",
+   "name": "us-dd-12",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-dd-12"
+  },
+  {
+   "id": "us-dd-13",
+   "faction": "A",
+   "name": "us-dd-13",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-dd-13"
+  },
+  {
+   "id": "us-dd-14",
+   "faction": "A",
+   "name": "us-dd-14",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-dd-14"
+  },
+  {
+   "id": "us-dd-15",
+   "faction": "A",
+   "name": "us-dd-15",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-dd-15"
+  },
+  {
+   "id": "us-dd-16",
+   "faction": "A",
+   "name": "us-dd-16",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-dd-16"
+  },
+  {
+   "id": "jp-cv-01",
+   "faction": "B",
+   "name": "jp-cv-01",
+   "fleet_id": "TG1",
+   "fleet_name": "甲部队",
+   "ship": "jp-cv-01"
+  },
+  {
+   "id": "jp-cv-02",
+   "faction": "B",
+   "name": "jp-cv-02",
+   "fleet_id": "TG1",
+   "fleet_name": "甲部队",
+   "ship": "jp-cv-02"
+  },
+  {
+   "id": "jp-cv-03",
+   "faction": "B",
+   "name": "jp-cv-03",
+   "fleet_id": "TG1",
+   "fleet_name": "甲部队",
+   "ship": "jp-cv-03"
+  },
+  {
+   "id": "jp-bb-01",
+   "faction": "B",
+   "name": "jp-bb-01",
+   "fleet_id": "TG1",
+   "fleet_name": "甲部队",
+   "ship": "jp-bb-01"
+  },
+  {
+   "id": "jp-bb-02",
+   "faction": "B",
+   "name": "jp-bb-02",
+   "fleet_id": "TG1",
+   "fleet_name": "甲部队",
+   "ship": "jp-bb-02"
+  },
+  {
+   "id": "jp-ca-01",
+   "faction": "B",
+   "name": "jp-ca-01",
+   "fleet_id": "TG1",
+   "fleet_name": "甲部队",
+   "ship": "jp-ca-01"
+  },
+  {
+   "id": "jp-ca-02",
+   "faction": "B",
+   "name": "jp-ca-02",
+   "fleet_id": "TG1",
+   "fleet_name": "甲部队",
+   "ship": "jp-ca-02"
+  },
+  {
+   "id": "jp-cl-01",
+   "faction": "B",
+   "name": "jp-cl-01",
+   "fleet_id": "TG1",
+   "fleet_name": "甲部队",
+   "ship": "jp-cl-01"
+  },
+  {
+   "id": "jp-dd-01",
+   "faction": "B",
+   "name": "jp-dd-01",
+   "fleet_id": "TG1",
+   "fleet_name": "甲部队",
+   "ship": "jp-dd-01"
+  },
+  {
+   "id": "jp-dd-02",
+   "faction": "B",
+   "name": "jp-dd-02",
+   "fleet_id": "TG1",
+   "fleet_name": "甲部队",
+   "ship": "jp-dd-02"
+  },
+  {
+   "id": "jp-dd-03",
+   "faction": "B",
+   "name": "jp-dd-03",
+   "fleet_id": "TG1",
+   "fleet_name": "甲部队",
+   "ship": "jp-dd-03"
+  },
+  {
+   "id": "jp-dd-04",
+   "faction": "B",
+   "name": "jp-dd-04",
+   "fleet_id": "TG1",
+   "fleet_name": "甲部队",
+   "ship": "jp-dd-04"
+  },
+  {
+   "id": "jp-dd-05",
+   "faction": "B",
+   "name": "jp-dd-05",
+   "fleet_id": "TG1",
+   "fleet_name": "甲部队",
+   "ship": "jp-dd-05"
+  },
+  {
+   "id": "jp-dd-06",
+   "faction": "B",
+   "name": "jp-dd-06",
+   "fleet_id": "TG1",
+   "fleet_name": "甲部队",
+   "ship": "jp-dd-06"
+  },
+  {
+   "id": "jp-cv-04",
+   "faction": "B",
+   "name": "jp-cv-04",
+   "fleet_id": "TG2",
+   "fleet_name": "乙部队",
+   "ship": "jp-cv-04"
+  },
+  {
+   "id": "jp-cv-05",
+   "faction": "B",
+   "name": "jp-cv-05",
+   "fleet_id": "TG2",
+   "fleet_name": "乙部队",
+   "ship": "jp-cv-05"
+  },
+  {
+   "id": "jp-cv-06",
+   "faction": "B",
+   "name": "jp-cv-06",
+   "fleet_id": "TG2",
+   "fleet_name": "乙部队",
+   "ship": "jp-cv-06"
+  },
+  {
+   "id": "jp-bb-03",
+   "faction": "B",
+   "name": "jp-bb-03",
+   "fleet_id": "TG2",
+   "fleet_name": "乙部队",
+   "ship": "jp-bb-03"
+  },
+  {
+   "id": "jp-ca-03",
+   "faction": "B",
+   "name": "jp-ca-03",
+   "fleet_id": "TG2",
+   "fleet_name": "乙部队",
+   "ship": "jp-ca-03"
+  },
+  {
+   "id": "jp-ca-04",
+   "faction": "B",
+   "name": "jp-ca-04",
+   "fleet_id": "TG2",
+   "fleet_name": "乙部队",
+   "ship": "jp-ca-04"
+  },
+  {
+   "id": "jp-cl-02",
+   "faction": "B",
+   "name": "jp-cl-02",
+   "fleet_id": "TG2",
+   "fleet_name": "乙部队",
+   "ship": "jp-cl-02"
+  },
+  {
+   "id": "jp-dd-07",
+   "faction": "B",
+   "name": "jp-dd-07",
+   "fleet_id": "TG2",
+   "fleet_name": "乙部队",
+   "ship": "jp-dd-07"
+  },
+  {
+   "id": "jp-dd-08",
+   "faction": "B",
+   "name": "jp-dd-08",
+   "fleet_id": "TG2",
+   "fleet_name": "乙部队",
+   "ship": "jp-dd-08"
+  },
+  {
+   "id": "jp-dd-09",
+   "faction": "B",
+   "name": "jp-dd-09",
+   "fleet_id": "TG2",
+   "fleet_name": "乙部队",
+   "ship": "jp-dd-09"
+  },
+  {
+   "id": "jp-dd-10",
+   "faction": "B",
+   "name": "jp-dd-10",
+   "fleet_id": "TG2",
+   "fleet_name": "乙部队",
+   "ship": "jp-dd-10"
+  },
+  {
+   "id": "jp-dd-11",
+   "faction": "B",
+   "name": "jp-dd-11",
+   "fleet_id": "TG2",
+   "fleet_name": "乙部队",
+   "ship": "jp-dd-11"
+  },
+  {
+   "id": "jp-dd-12",
+   "faction": "B",
+   "name": "jp-dd-12",
+   "fleet_id": "TG2",
+   "fleet_name": "乙部队",
+   "ship": "jp-dd-12"
+  },
+  {
+   "id": "jp-cv-07",
+   "faction": "B",
+   "name": "jp-cv-07",
+   "fleet_id": "TG3",
+   "fleet_name": "丙部队",
+   "ship": "jp-cv-07"
+  },
+  {
+   "id": "jp-cv-08",
+   "faction": "B",
+   "name": "jp-cv-08",
+   "fleet_id": "TG3",
+   "fleet_name": "丙部队",
+   "ship": "jp-cv-08"
+  },
+  {
+   "id": "jp-cv-09",
+   "faction": "B",
+   "name": "jp-cv-09",
+   "fleet_id": "TG3",
+   "fleet_name": "丙部队",
+   "ship": "jp-cv-09"
+  },
+  {
+   "id": "jp-bb-04",
+   "faction": "B",
+   "name": "jp-bb-04",
+   "fleet_id": "TG3",
+   "fleet_name": "丙部队",
+   "ship": "jp-bb-04"
+  },
+  {
+   "id": "jp-bb-05",
+   "faction": "B",
+   "name": "jp-bb-05",
+   "fleet_id": "TG3",
+   "fleet_name": "丙部队",
+   "ship": "jp-bb-05"
+  },
+  {
+   "id": "jp-ca-05",
+   "faction": "B",
+   "name": "jp-ca-05",
+   "fleet_id": "TG3",
+   "fleet_name": "丙部队",
+   "ship": "jp-ca-05"
+  },
+  {
+   "id": "jp-ca-06",
+   "faction": "B",
+   "name": "jp-ca-06",
+   "fleet_id": "TG3",
+   "fleet_name": "丙部队",
+   "ship": "jp-ca-06"
+  },
+  {
+   "id": "jp-cl-03",
+   "faction": "B",
+   "name": "jp-cl-03",
+   "fleet_id": "TG3",
+   "fleet_name": "丙部队",
+   "ship": "jp-cl-03"
+  },
+  {
+   "id": "jp-dd-13",
+   "faction": "B",
+   "name": "jp-dd-13",
+   "fleet_id": "TG3",
+   "fleet_name": "丙部队",
+   "ship": "jp-dd-13"
+  },
+  {
+   "id": "jp-dd-14",
+   "faction": "B",
+   "name": "jp-dd-14",
+   "fleet_id": "TG3",
+   "fleet_name": "丙部队",
+   "ship": "jp-dd-14"
+  },
+  {
+   "id": "jp-dd-15",
+   "faction": "B",
+   "name": "jp-dd-15",
+   "fleet_id": "TG3",
+   "fleet_name": "丙部队",
+   "ship": "jp-dd-15"
+  },
+  {
+   "id": "jp-dd-16",
+   "faction": "B",
+   "name": "jp-dd-16",
+   "fleet_id": "TG3",
+   "fleet_name": "丙部队",
+   "ship": "jp-dd-16"
+  },
+  {
+   "id": "jp-dd-17",
+   "faction": "B",
+   "name": "jp-dd-17",
+   "fleet_id": "TG3",
+   "fleet_name": "丙部队",
+   "ship": "jp-dd-17"
+  },
+  {
+   "id": "jp-dd-18",
+   "faction": "B",
+   "name": "jp-dd-18",
+   "fleet_id": "TG3",
+   "fleet_name": "丙部队",
+   "ship": "jp-dd-18"
+  }
+ ],
+ "air_deployments": [
+  {
+   "id": "us-cv-01-f6f-x1",
+   "unit": "f6f",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-01-f6f-x2",
+   "unit": "f6f",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-01-f6f-x3",
+   "unit": "f6f",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-01-f6f-x4",
+   "unit": "f6f",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-01-f6f-x5",
+   "unit": "f6f",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-01-f6f-x6",
+   "unit": "f6f",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-01-f6f-x7",
+   "unit": "f6f",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-01-f6f-x8",
+   "unit": "f6f",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-01-sb2c-x1",
+   "unit": "sb2c",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-01-sb2c-x2",
+   "unit": "sb2c",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-01-sb2c-x3",
+   "unit": "sb2c",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-01-sb2c-x4",
+   "unit": "sb2c",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-01-sb2c-x5",
+   "unit": "sb2c",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-01-sb2c-x6",
+   "unit": "sb2c",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-01-sb2c-x7",
+   "unit": "sb2c",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-01-sb2c-x8",
+   "unit": "sb2c",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-01-tbm-x1",
+   "unit": "tbm",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-01-tbm-x2",
+   "unit": "tbm",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-01-tbm-x3",
+   "unit": "tbm",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-01-tbm-x4",
+   "unit": "tbm",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-01-tbm-x5",
+   "unit": "tbm",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-01-tbm-x6",
+   "unit": "tbm",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-01-tbm-x7",
+   "unit": "tbm",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-01-tbm-x8",
+   "unit": "tbm",
+   "carrier": "us-cv-01"
+  },
+  {
+   "id": "us-cv-02-f6f-x1",
+   "unit": "f6f",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-02-f6f-x2",
+   "unit": "f6f",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-02-f6f-x3",
+   "unit": "f6f",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-02-f6f-x4",
+   "unit": "f6f",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-02-f6f-x5",
+   "unit": "f6f",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-02-f6f-x6",
+   "unit": "f6f",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-02-f6f-x7",
+   "unit": "f6f",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-02-f6f-x8",
+   "unit": "f6f",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-02-sb2c-x1",
+   "unit": "sb2c",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-02-sb2c-x2",
+   "unit": "sb2c",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-02-sb2c-x3",
+   "unit": "sb2c",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-02-sb2c-x4",
+   "unit": "sb2c",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-02-sb2c-x5",
+   "unit": "sb2c",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-02-sb2c-x6",
+   "unit": "sb2c",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-02-sb2c-x7",
+   "unit": "sb2c",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-02-sb2c-x8",
+   "unit": "sb2c",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-02-tbm-x1",
+   "unit": "tbm",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-02-tbm-x2",
+   "unit": "tbm",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-02-tbm-x3",
+   "unit": "tbm",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-02-tbm-x4",
+   "unit": "tbm",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-02-tbm-x5",
+   "unit": "tbm",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-02-tbm-x6",
+   "unit": "tbm",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-02-tbm-x7",
+   "unit": "tbm",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-02-tbm-x8",
+   "unit": "tbm",
+   "carrier": "us-cv-02"
+  },
+  {
+   "id": "us-cv-03-f6f-x1",
+   "unit": "f6f",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-03-f6f-x2",
+   "unit": "f6f",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-03-f6f-x3",
+   "unit": "f6f",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-03-f6f-x4",
+   "unit": "f6f",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-03-f6f-x5",
+   "unit": "f6f",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-03-f6f-x6",
+   "unit": "f6f",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-03-f6f-x7",
+   "unit": "f6f",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-03-f6f-x8",
+   "unit": "f6f",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-03-sb2c-x1",
+   "unit": "sb2c",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-03-sb2c-x2",
+   "unit": "sb2c",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-03-sb2c-x3",
+   "unit": "sb2c",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-03-sb2c-x4",
+   "unit": "sb2c",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-03-sb2c-x5",
+   "unit": "sb2c",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-03-sb2c-x6",
+   "unit": "sb2c",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-03-sb2c-x7",
+   "unit": "sb2c",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-03-sb2c-x8",
+   "unit": "sb2c",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-03-tbm-x1",
+   "unit": "tbm",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-03-tbm-x2",
+   "unit": "tbm",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-03-tbm-x3",
+   "unit": "tbm",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-03-tbm-x4",
+   "unit": "tbm",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-03-tbm-x5",
+   "unit": "tbm",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-03-tbm-x6",
+   "unit": "tbm",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-03-tbm-x7",
+   "unit": "tbm",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-03-tbm-x8",
+   "unit": "tbm",
+   "carrier": "us-cv-03"
+  },
+  {
+   "id": "us-cv-04-f6f-x1",
+   "unit": "f6f",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-04-f6f-x2",
+   "unit": "f6f",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-04-f6f-x3",
+   "unit": "f6f",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-04-f6f-x4",
+   "unit": "f6f",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-04-f6f-x5",
+   "unit": "f6f",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-04-f6f-x6",
+   "unit": "f6f",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-04-f6f-x7",
+   "unit": "f6f",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-04-f6f-x8",
+   "unit": "f6f",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-04-sb2c-x1",
+   "unit": "sb2c",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-04-sb2c-x2",
+   "unit": "sb2c",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-04-sb2c-x3",
+   "unit": "sb2c",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-04-sb2c-x4",
+   "unit": "sb2c",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-04-sb2c-x5",
+   "unit": "sb2c",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-04-sb2c-x6",
+   "unit": "sb2c",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-04-sb2c-x7",
+   "unit": "sb2c",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-04-sb2c-x8",
+   "unit": "sb2c",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-04-tbm-x1",
+   "unit": "tbm",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-04-tbm-x2",
+   "unit": "tbm",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-04-tbm-x3",
+   "unit": "tbm",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-04-tbm-x4",
+   "unit": "tbm",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-04-tbm-x5",
+   "unit": "tbm",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-04-tbm-x6",
+   "unit": "tbm",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-04-tbm-x7",
+   "unit": "tbm",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-04-tbm-x8",
+   "unit": "tbm",
+   "carrier": "us-cv-04"
+  },
+  {
+   "id": "us-cv-05-f6f-x1",
+   "unit": "f6f",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-05-f6f-x2",
+   "unit": "f6f",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-05-f6f-x3",
+   "unit": "f6f",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-05-f6f-x4",
+   "unit": "f6f",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-05-f6f-x5",
+   "unit": "f6f",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-05-f6f-x6",
+   "unit": "f6f",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-05-f6f-x7",
+   "unit": "f6f",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-05-f6f-x8",
+   "unit": "f6f",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-05-sb2c-x1",
+   "unit": "sb2c",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-05-sb2c-x2",
+   "unit": "sb2c",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-05-sb2c-x3",
+   "unit": "sb2c",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-05-sb2c-x4",
+   "unit": "sb2c",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-05-sb2c-x5",
+   "unit": "sb2c",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-05-sb2c-x6",
+   "unit": "sb2c",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-05-sb2c-x7",
+   "unit": "sb2c",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-05-sb2c-x8",
+   "unit": "sb2c",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-05-tbm-x1",
+   "unit": "tbm",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-05-tbm-x2",
+   "unit": "tbm",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-05-tbm-x3",
+   "unit": "tbm",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-05-tbm-x4",
+   "unit": "tbm",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-05-tbm-x5",
+   "unit": "tbm",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-05-tbm-x6",
+   "unit": "tbm",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-05-tbm-x7",
+   "unit": "tbm",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-05-tbm-x8",
+   "unit": "tbm",
+   "carrier": "us-cv-05"
+  },
+  {
+   "id": "us-cv-06-f6f-x1",
+   "unit": "f6f",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-06-f6f-x2",
+   "unit": "f6f",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-06-f6f-x3",
+   "unit": "f6f",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-06-f6f-x4",
+   "unit": "f6f",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-06-f6f-x5",
+   "unit": "f6f",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-06-f6f-x6",
+   "unit": "f6f",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-06-f6f-x7",
+   "unit": "f6f",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-06-f6f-x8",
+   "unit": "f6f",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-06-sb2c-x1",
+   "unit": "sb2c",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-06-sb2c-x2",
+   "unit": "sb2c",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-06-sb2c-x3",
+   "unit": "sb2c",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-06-sb2c-x4",
+   "unit": "sb2c",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-06-sb2c-x5",
+   "unit": "sb2c",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-06-sb2c-x6",
+   "unit": "sb2c",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-06-sb2c-x7",
+   "unit": "sb2c",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-06-sb2c-x8",
+   "unit": "sb2c",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-06-tbm-x1",
+   "unit": "tbm",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-06-tbm-x2",
+   "unit": "tbm",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-06-tbm-x3",
+   "unit": "tbm",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-06-tbm-x4",
+   "unit": "tbm",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-06-tbm-x5",
+   "unit": "tbm",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-06-tbm-x6",
+   "unit": "tbm",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-06-tbm-x7",
+   "unit": "tbm",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-06-tbm-x8",
+   "unit": "tbm",
+   "carrier": "us-cv-06"
+  },
+  {
+   "id": "us-cv-07-f6f-x1",
+   "unit": "f6f",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-07-f6f-x2",
+   "unit": "f6f",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-07-f6f-x3",
+   "unit": "f6f",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-07-f6f-x4",
+   "unit": "f6f",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-07-f6f-x5",
+   "unit": "f6f",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-07-f6f-x6",
+   "unit": "f6f",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-07-f6f-x7",
+   "unit": "f6f",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-07-f6f-x8",
+   "unit": "f6f",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-07-sb2c-x1",
+   "unit": "sb2c",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-07-sb2c-x2",
+   "unit": "sb2c",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-07-sb2c-x3",
+   "unit": "sb2c",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-07-sb2c-x4",
+   "unit": "sb2c",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-07-sb2c-x5",
+   "unit": "sb2c",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-07-sb2c-x6",
+   "unit": "sb2c",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-07-sb2c-x7",
+   "unit": "sb2c",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-07-sb2c-x8",
+   "unit": "sb2c",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-07-tbm-x1",
+   "unit": "tbm",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-07-tbm-x2",
+   "unit": "tbm",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-07-tbm-x3",
+   "unit": "tbm",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-07-tbm-x4",
+   "unit": "tbm",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-07-tbm-x5",
+   "unit": "tbm",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-07-tbm-x6",
+   "unit": "tbm",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-07-tbm-x7",
+   "unit": "tbm",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-07-tbm-x8",
+   "unit": "tbm",
+   "carrier": "us-cv-07"
+  },
+  {
+   "id": "us-cv-08-f6f-x1",
+   "unit": "f6f",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-cv-08-f6f-x2",
+   "unit": "f6f",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-cv-08-f6f-x3",
+   "unit": "f6f",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-cv-08-f6f-x4",
+   "unit": "f6f",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-cv-08-f6f-x5",
+   "unit": "f6f",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-cv-08-f6f-x6",
+   "unit": "f6f",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-cv-08-f6f-x7",
+   "unit": "f6f",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-cv-08-f6f-x8",
+   "unit": "f6f",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-cv-08-sb2c-x1",
+   "unit": "sb2c",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-cv-08-sb2c-x2",
+   "unit": "sb2c",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-cv-08-sb2c-x3",
+   "unit": "sb2c",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-cv-08-sb2c-x4",
+   "unit": "sb2c",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-cv-08-sb2c-x5",
+   "unit": "sb2c",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-cv-08-sb2c-x6",
+   "unit": "sb2c",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-cv-08-sb2c-x7",
+   "unit": "sb2c",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-cv-08-sb2c-x8",
+   "unit": "sb2c",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-cv-08-tbm-x1",
+   "unit": "tbm",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-cv-08-tbm-x2",
+   "unit": "tbm",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-cv-08-tbm-x3",
+   "unit": "tbm",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-cv-08-tbm-x4",
+   "unit": "tbm",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-cv-08-tbm-x5",
+   "unit": "tbm",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-cv-08-tbm-x6",
+   "unit": "tbm",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-cv-08-tbm-x7",
+   "unit": "tbm",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-cv-08-tbm-x8",
+   "unit": "tbm",
+   "carrier": "us-cv-08"
+  },
+  {
+   "id": "us-bb-01-soc-x1",
+   "unit": "soc",
+   "carrier": "us-bb-01"
+  },
+  {
+   "id": "us-bb-01-soc-x2",
+   "unit": "soc",
+   "carrier": "us-bb-01"
+  },
+  {
+   "id": "us-bb-02-soc-x1",
+   "unit": "soc",
+   "carrier": "us-bb-02"
+  },
+  {
+   "id": "us-bb-02-soc-x2",
+   "unit": "soc",
+   "carrier": "us-bb-02"
+  },
+  {
+   "id": "us-bb-03-soc-x1",
+   "unit": "soc",
+   "carrier": "us-bb-03"
+  },
+  {
+   "id": "us-bb-03-soc-x2",
+   "unit": "soc",
+   "carrier": "us-bb-03"
+  },
+  {
+   "id": "us-bb-04-soc-x1",
+   "unit": "soc",
+   "carrier": "us-bb-04"
+  },
+  {
+   "id": "us-bb-04-soc-x2",
+   "unit": "soc",
+   "carrier": "us-bb-04"
+  },
+  {
+   "id": "us-ca-01-soc-x1",
+   "unit": "soc",
+   "carrier": "us-ca-01"
+  },
+  {
+   "id": "us-ca-01-soc-x2",
+   "unit": "soc",
+   "carrier": "us-ca-01"
+  },
+  {
+   "id": "us-ca-02-soc-x1",
+   "unit": "soc",
+   "carrier": "us-ca-02"
+  },
+  {
+   "id": "us-ca-02-soc-x2",
+   "unit": "soc",
+   "carrier": "us-ca-02"
+  },
+  {
+   "id": "us-ca-03-soc-x1",
+   "unit": "soc",
+   "carrier": "us-ca-03"
+  },
+  {
+   "id": "us-ca-03-soc-x2",
+   "unit": "soc",
+   "carrier": "us-ca-03"
+  },
+  {
+   "id": "us-ca-04-soc-x1",
+   "unit": "soc",
+   "carrier": "us-ca-04"
+  },
+  {
+   "id": "us-ca-04-soc-x2",
+   "unit": "soc",
+   "carrier": "us-ca-04"
+  },
+  {
+   "id": "jp-cv-01-a6m5-x1",
+   "unit": "a6m5",
+   "carrier": "jp-cv-01"
+  },
+  {
+   "id": "jp-cv-01-a6m5-x2",
+   "unit": "a6m5",
+   "carrier": "jp-cv-01"
+  },
+  {
+   "id": "jp-cv-01-a6m5-x3",
+   "unit": "a6m5",
+   "carrier": "jp-cv-01"
+  },
+  {
+   "id": "jp-cv-01-a6m5-x4",
+   "unit": "a6m5",
+   "carrier": "jp-cv-01"
+  },
+  {
+   "id": "jp-cv-01-a6m5-x5",
+   "unit": "a6m5",
+   "carrier": "jp-cv-01"
+  },
+  {
+   "id": "jp-cv-01-a6m5-x6",
+   "unit": "a6m5",
+   "carrier": "jp-cv-01"
+  },
+  {
+   "id": "jp-cv-01-a6m5-x7",
+   "unit": "a6m5",
+   "carrier": "jp-cv-01"
+  },
+  {
+   "id": "jp-cv-01-a6m5-x8",
+   "unit": "a6m5",
+   "carrier": "jp-cv-01"
+  },
+  {
+   "id": "jp-cv-01-d4y-x1",
+   "unit": "d4y",
+   "carrier": "jp-cv-01"
+  },
+  {
+   "id": "jp-cv-01-d4y-x2",
+   "unit": "d4y",
+   "carrier": "jp-cv-01"
+  },
+  {
+   "id": "jp-cv-01-d4y-x3",
+   "unit": "d4y",
+   "carrier": "jp-cv-01"
+  },
+  {
+   "id": "jp-cv-01-d4y-x4",
+   "unit": "d4y",
+   "carrier": "jp-cv-01"
+  },
+  {
+   "id": "jp-cv-01-d4y-x5",
+   "unit": "d4y",
+   "carrier": "jp-cv-01"
+  },
+  {
+   "id": "jp-cv-01-d4y-x6",
+   "unit": "d4y",
+   "carrier": "jp-cv-01"
+  },
+  {
+   "id": "jp-cv-01-b6n-x1",
+   "unit": "b6n",
+   "carrier": "jp-cv-01"
+  },
+  {
+   "id": "jp-cv-01-b6n-x2",
+   "unit": "b6n",
+   "carrier": "jp-cv-01"
+  },
+  {
+   "id": "jp-cv-01-b6n-x3",
+   "unit": "b6n",
+   "carrier": "jp-cv-01"
+  },
+  {
+   "id": "jp-cv-01-b6n-x4",
+   "unit": "b6n",
+   "carrier": "jp-cv-01"
+  },
+  {
+   "id": "jp-cv-01-b6n-x5",
+   "unit": "b6n",
+   "carrier": "jp-cv-01"
+  },
+  {
+   "id": "jp-cv-01-b6n-x6",
+   "unit": "b6n",
+   "carrier": "jp-cv-01"
+  },
+  {
+   "id": "jp-cv-02-a6m5-x1",
+   "unit": "a6m5",
+   "carrier": "jp-cv-02"
+  },
+  {
+   "id": "jp-cv-02-a6m5-x2",
+   "unit": "a6m5",
+   "carrier": "jp-cv-02"
+  },
+  {
+   "id": "jp-cv-02-a6m5-x3",
+   "unit": "a6m5",
+   "carrier": "jp-cv-02"
+  },
+  {
+   "id": "jp-cv-02-a6m5-x4",
+   "unit": "a6m5",
+   "carrier": "jp-cv-02"
+  },
+  {
+   "id": "jp-cv-02-a6m5-x5",
+   "unit": "a6m5",
+   "carrier": "jp-cv-02"
+  },
+  {
+   "id": "jp-cv-02-a6m5-x6",
+   "unit": "a6m5",
+   "carrier": "jp-cv-02"
+  },
+  {
+   "id": "jp-cv-02-a6m5-x7",
+   "unit": "a6m5",
+   "carrier": "jp-cv-02"
+  },
+  {
+   "id": "jp-cv-02-d4y-x1",
+   "unit": "d4y",
+   "carrier": "jp-cv-02"
+  },
+  {
+   "id": "jp-cv-02-d4y-x2",
+   "unit": "d4y",
+   "carrier": "jp-cv-02"
+  },
+  {
+   "id": "jp-cv-02-d4y-x3",
+   "unit": "d4y",
+   "carrier": "jp-cv-02"
+  },
+  {
+   "id": "jp-cv-02-d4y-x4",
+   "unit": "d4y",
+   "carrier": "jp-cv-02"
+  },
+  {
+   "id": "jp-cv-02-d4y-x5",
+   "unit": "d4y",
+   "carrier": "jp-cv-02"
+  },
+  {
+   "id": "jp-cv-02-d4y-x6",
+   "unit": "d4y",
+   "carrier": "jp-cv-02"
+  },
+  {
+   "id": "jp-cv-02-b6n-x1",
+   "unit": "b6n",
+   "carrier": "jp-cv-02"
+  },
+  {
+   "id": "jp-cv-02-b6n-x2",
+   "unit": "b6n",
+   "carrier": "jp-cv-02"
+  },
+  {
+   "id": "jp-cv-02-b6n-x3",
+   "unit": "b6n",
+   "carrier": "jp-cv-02"
+  },
+  {
+   "id": "jp-cv-02-b6n-x4",
+   "unit": "b6n",
+   "carrier": "jp-cv-02"
+  },
+  {
+   "id": "jp-cv-02-b6n-x5",
+   "unit": "b6n",
+   "carrier": "jp-cv-02"
+  },
+  {
+   "id": "jp-cv-03-a6m5-x1",
+   "unit": "a6m5",
+   "carrier": "jp-cv-03"
+  },
+  {
+   "id": "jp-cv-03-a6m5-x2",
+   "unit": "a6m5",
+   "carrier": "jp-cv-03"
+  },
+  {
+   "id": "jp-cv-03-a6m5-x3",
+   "unit": "a6m5",
+   "carrier": "jp-cv-03"
+  },
+  {
+   "id": "jp-cv-03-a6m5-x4",
+   "unit": "a6m5",
+   "carrier": "jp-cv-03"
+  },
+  {
+   "id": "jp-cv-03-a6m5-x5",
+   "unit": "a6m5",
+   "carrier": "jp-cv-03"
+  },
+  {
+   "id": "jp-cv-03-a6m5-x6",
+   "unit": "a6m5",
+   "carrier": "jp-cv-03"
+  },
+  {
+   "id": "jp-cv-03-a6m5-x7",
+   "unit": "a6m5",
+   "carrier": "jp-cv-03"
+  },
+  {
+   "id": "jp-cv-03-d4y-x1",
+   "unit": "d4y",
+   "carrier": "jp-cv-03"
+  },
+  {
+   "id": "jp-cv-03-d4y-x2",
+   "unit": "d4y",
+   "carrier": "jp-cv-03"
+  },
+  {
+   "id": "jp-cv-03-d4y-x3",
+   "unit": "d4y",
+   "carrier": "jp-cv-03"
+  },
+  {
+   "id": "jp-cv-03-d4y-x4",
+   "unit": "d4y",
+   "carrier": "jp-cv-03"
+  },
+  {
+   "id": "jp-cv-03-d4y-x5",
+   "unit": "d4y",
+   "carrier": "jp-cv-03"
+  },
+  {
+   "id": "jp-cv-03-d4y-x6",
+   "unit": "d4y",
+   "carrier": "jp-cv-03"
+  },
+  {
+   "id": "jp-cv-03-b6n-x1",
+   "unit": "b6n",
+   "carrier": "jp-cv-03"
+  },
+  {
+   "id": "jp-cv-03-b6n-x2",
+   "unit": "b6n",
+   "carrier": "jp-cv-03"
+  },
+  {
+   "id": "jp-cv-03-b6n-x3",
+   "unit": "b6n",
+   "carrier": "jp-cv-03"
+  },
+  {
+   "id": "jp-cv-03-b6n-x4",
+   "unit": "b6n",
+   "carrier": "jp-cv-03"
+  },
+  {
+   "id": "jp-cv-03-b6n-x5",
+   "unit": "b6n",
+   "carrier": "jp-cv-03"
+  },
+  {
+   "id": "jp-cv-04-a6m5-x1",
+   "unit": "a6m5",
+   "carrier": "jp-cv-04"
+  },
+  {
+   "id": "jp-cv-04-a6m5-x2",
+   "unit": "a6m5",
+   "carrier": "jp-cv-04"
+  },
+  {
+   "id": "jp-cv-04-a6m5-x3",
+   "unit": "a6m5",
+   "carrier": "jp-cv-04"
+  },
+  {
+   "id": "jp-cv-04-a6m5-x4",
+   "unit": "a6m5",
+   "carrier": "jp-cv-04"
+  },
+  {
+   "id": "jp-cv-04-a6m5-x5",
+   "unit": "a6m5",
+   "carrier": "jp-cv-04"
+  },
+  {
+   "id": "jp-cv-04-d4y-x1",
+   "unit": "d4y",
+   "carrier": "jp-cv-04"
+  },
+  {
+   "id": "jp-cv-04-d4y-x2",
+   "unit": "d4y",
+   "carrier": "jp-cv-04"
+  },
+  {
+   "id": "jp-cv-04-d4y-x3",
+   "unit": "d4y",
+   "carrier": "jp-cv-04"
+  },
+  {
+   "id": "jp-cv-04-d4y-x4",
+   "unit": "d4y",
+   "carrier": "jp-cv-04"
+  },
+  {
+   "id": "jp-cv-04-b6n-x1",
+   "unit": "b6n",
+   "carrier": "jp-cv-04"
+  },
+  {
+   "id": "jp-cv-04-b6n-x2",
+   "unit": "b6n",
+   "carrier": "jp-cv-04"
+  },
+  {
+   "id": "jp-cv-04-b6n-x3",
+   "unit": "b6n",
+   "carrier": "jp-cv-04"
+  },
+  {
+   "id": "jp-cv-05-a6m5-x1",
+   "unit": "a6m5",
+   "carrier": "jp-cv-05"
+  },
+  {
+   "id": "jp-cv-05-a6m5-x2",
+   "unit": "a6m5",
+   "carrier": "jp-cv-05"
+  },
+  {
+   "id": "jp-cv-05-a6m5-x3",
+   "unit": "a6m5",
+   "carrier": "jp-cv-05"
+  },
+  {
+   "id": "jp-cv-05-a6m5-x4",
+   "unit": "a6m5",
+   "carrier": "jp-cv-05"
+  },
+  {
+   "id": "jp-cv-05-a6m5-x5",
+   "unit": "a6m5",
+   "carrier": "jp-cv-05"
+  },
+  {
+   "id": "jp-cv-05-d4y-x1",
+   "unit": "d4y",
+   "carrier": "jp-cv-05"
+  },
+  {
+   "id": "jp-cv-05-d4y-x2",
+   "unit": "d4y",
+   "carrier": "jp-cv-05"
+  },
+  {
+   "id": "jp-cv-05-d4y-x3",
+   "unit": "d4y",
+   "carrier": "jp-cv-05"
+  },
+  {
+   "id": "jp-cv-05-d4y-x4",
+   "unit": "d4y",
+   "carrier": "jp-cv-05"
+  },
+  {
+   "id": "jp-cv-05-b6n-x1",
+   "unit": "b6n",
+   "carrier": "jp-cv-05"
+  },
+  {
+   "id": "jp-cv-05-b6n-x2",
+   "unit": "b6n",
+   "carrier": "jp-cv-05"
+  },
+  {
+   "id": "jp-cv-05-b6n-x3",
+   "unit": "b6n",
+   "carrier": "jp-cv-05"
+  },
+  {
+   "id": "jp-cv-06-a6m5-x1",
+   "unit": "a6m5",
+   "carrier": "jp-cv-06"
+  },
+  {
+   "id": "jp-cv-06-a6m5-x2",
+   "unit": "a6m5",
+   "carrier": "jp-cv-06"
+  },
+  {
+   "id": "jp-cv-06-a6m5-x3",
+   "unit": "a6m5",
+   "carrier": "jp-cv-06"
+  },
+  {
+   "id": "jp-cv-06-d4y-x1",
+   "unit": "d4y",
+   "carrier": "jp-cv-06"
+  },
+  {
+   "id": "jp-cv-06-d4y-x2",
+   "unit": "d4y",
+   "carrier": "jp-cv-06"
+  },
+  {
+   "id": "jp-cv-06-d4y-x3",
+   "unit": "d4y",
+   "carrier": "jp-cv-06"
+  },
+  {
+   "id": "jp-cv-06-b6n-x1",
+   "unit": "b6n",
+   "carrier": "jp-cv-06"
+  },
+  {
+   "id": "jp-cv-06-b6n-x2",
+   "unit": "b6n",
+   "carrier": "jp-cv-06"
+  },
+  {
+   "id": "jp-cv-07-a6m5-x1",
+   "unit": "a6m5",
+   "carrier": "jp-cv-07"
+  },
+  {
+   "id": "jp-cv-07-a6m5-x2",
+   "unit": "a6m5",
+   "carrier": "jp-cv-07"
+  },
+  {
+   "id": "jp-cv-07-a6m5-x3",
+   "unit": "a6m5",
+   "carrier": "jp-cv-07"
+  },
+  {
+   "id": "jp-cv-07-a6m5-x4",
+   "unit": "a6m5",
+   "carrier": "jp-cv-07"
+  },
+  {
+   "id": "jp-cv-07-a6m5-x5",
+   "unit": "a6m5",
+   "carrier": "jp-cv-07"
+  },
+  {
+   "id": "jp-cv-07-a6m5-x6",
+   "unit": "a6m5",
+   "carrier": "jp-cv-07"
+  },
+  {
+   "id": "jp-cv-07-d4y-x1",
+   "unit": "d4y",
+   "carrier": "jp-cv-07"
+  },
+  {
+   "id": "jp-cv-07-d4y-x2",
+   "unit": "d4y",
+   "carrier": "jp-cv-07"
+  },
+  {
+   "id": "jp-cv-07-d4y-x3",
+   "unit": "d4y",
+   "carrier": "jp-cv-07"
+  },
+  {
+   "id": "jp-cv-07-d4y-x4",
+   "unit": "d4y",
+   "carrier": "jp-cv-07"
+  },
+  {
+   "id": "jp-cv-07-b6n-x1",
+   "unit": "b6n",
+   "carrier": "jp-cv-07"
+  },
+  {
+   "id": "jp-cv-07-b6n-x2",
+   "unit": "b6n",
+   "carrier": "jp-cv-07"
+  },
+  {
+   "id": "jp-cv-07-b6n-x3",
+   "unit": "b6n",
+   "carrier": "jp-cv-07"
+  },
+  {
+   "id": "jp-cv-07-b6n-x4",
+   "unit": "b6n",
+   "carrier": "jp-cv-07"
+  },
+  {
+   "id": "jp-cv-08-a6m5-x1",
+   "unit": "a6m5",
+   "carrier": "jp-cv-08"
+  },
+  {
+   "id": "jp-cv-08-a6m5-x2",
+   "unit": "a6m5",
+   "carrier": "jp-cv-08"
+  },
+  {
+   "id": "jp-cv-08-a6m5-x3",
+   "unit": "a6m5",
+   "carrier": "jp-cv-08"
+  },
+  {
+   "id": "jp-cv-08-a6m5-x4",
+   "unit": "a6m5",
+   "carrier": "jp-cv-08"
+  },
+  {
+   "id": "jp-cv-08-a6m5-x5",
+   "unit": "a6m5",
+   "carrier": "jp-cv-08"
+  },
+  {
+   "id": "jp-cv-08-a6m5-x6",
+   "unit": "a6m5",
+   "carrier": "jp-cv-08"
+  },
+  {
+   "id": "jp-cv-08-d4y-x1",
+   "unit": "d4y",
+   "carrier": "jp-cv-08"
+  },
+  {
+   "id": "jp-cv-08-d4y-x2",
+   "unit": "d4y",
+   "carrier": "jp-cv-08"
+  },
+  {
+   "id": "jp-cv-08-d4y-x3",
+   "unit": "d4y",
+   "carrier": "jp-cv-08"
+  },
+  {
+   "id": "jp-cv-08-d4y-x4",
+   "unit": "d4y",
+   "carrier": "jp-cv-08"
+  },
+  {
+   "id": "jp-cv-08-b6n-x1",
+   "unit": "b6n",
+   "carrier": "jp-cv-08"
+  },
+  {
+   "id": "jp-cv-08-b6n-x2",
+   "unit": "b6n",
+   "carrier": "jp-cv-08"
+  },
+  {
+   "id": "jp-cv-08-b6n-x3",
+   "unit": "b6n",
+   "carrier": "jp-cv-08"
+  },
+  {
+   "id": "jp-cv-08-b6n-x4",
+   "unit": "b6n",
+   "carrier": "jp-cv-08"
+  },
+  {
+   "id": "jp-cv-09-a6m5-x1",
+   "unit": "a6m5",
+   "carrier": "jp-cv-09"
+  },
+  {
+   "id": "jp-cv-09-a6m5-x2",
+   "unit": "a6m5",
+   "carrier": "jp-cv-09"
+  },
+  {
+   "id": "jp-cv-09-a6m5-x3",
+   "unit": "a6m5",
+   "carrier": "jp-cv-09"
+  },
+  {
+   "id": "jp-cv-09-a6m5-x4",
+   "unit": "a6m5",
+   "carrier": "jp-cv-09"
+  },
+  {
+   "id": "jp-cv-09-a6m5-x5",
+   "unit": "a6m5",
+   "carrier": "jp-cv-09"
+  },
+  {
+   "id": "jp-cv-09-a6m5-x6",
+   "unit": "a6m5",
+   "carrier": "jp-cv-09"
+  },
+  {
+   "id": "jp-cv-09-d4y-x1",
+   "unit": "d4y",
+   "carrier": "jp-cv-09"
+  },
+  {
+   "id": "jp-cv-09-d4y-x2",
+   "unit": "d4y",
+   "carrier": "jp-cv-09"
+  },
+  {
+   "id": "jp-cv-09-d4y-x3",
+   "unit": "d4y",
+   "carrier": "jp-cv-09"
+  },
+  {
+   "id": "jp-cv-09-d4y-x4",
+   "unit": "d4y",
+   "carrier": "jp-cv-09"
+  },
+  {
+   "id": "jp-cv-09-b6n-x1",
+   "unit": "b6n",
+   "carrier": "jp-cv-09"
+  },
+  {
+   "id": "jp-cv-09-b6n-x2",
+   "unit": "b6n",
+   "carrier": "jp-cv-09"
+  },
+  {
+   "id": "jp-cv-09-b6n-x3",
+   "unit": "b6n",
+   "carrier": "jp-cv-09"
+  },
+  {
+   "id": "jp-cv-09-b6n-x4",
+   "unit": "b6n",
+   "carrier": "jp-cv-09"
+  },
+  {
+   "id": "jp-bb-01-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-bb-01"
+  },
+  {
+   "id": "jp-bb-01-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-bb-01"
+  },
+  {
+   "id": "jp-bb-02-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-bb-02"
+  },
+  {
+   "id": "jp-bb-02-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-bb-02"
+  },
+  {
+   "id": "jp-bb-03-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-bb-03"
+  },
+  {
+   "id": "jp-bb-03-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-bb-03"
+  },
+  {
+   "id": "jp-bb-04-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-bb-04"
+  },
+  {
+   "id": "jp-bb-04-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-bb-04"
+  },
+  {
+   "id": "jp-bb-05-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-bb-05"
+  },
+  {
+   "id": "jp-bb-05-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-bb-05"
+  },
+  {
+   "id": "jp-ca-01-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-ca-01"
+  },
+  {
+   "id": "jp-ca-01-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-ca-01"
+  },
+  {
+   "id": "jp-ca-02-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-ca-02"
+  },
+  {
+   "id": "jp-ca-02-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-ca-02"
+  },
+  {
+   "id": "jp-ca-03-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-ca-03"
+  },
+  {
+   "id": "jp-ca-03-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-ca-03"
+  },
+  {
+   "id": "jp-ca-04-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-ca-04"
+  },
+  {
+   "id": "jp-ca-04-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-ca-04"
+  },
+  {
+   "id": "jp-ca-05-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-ca-05"
+  },
+  {
+   "id": "jp-ca-05-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-ca-05"
+  },
+  {
+   "id": "jp-ca-06-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-ca-06"
+  },
+  {
+   "id": "jp-ca-06-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-ca-06"
+  }
+ ],
+ "airfields": [
+  {
+   "id": "af-b-saipan",
+   "faction": "B",
+   "name": "塞班机场",
+   "coord": "1844",
+   "type": "large",
+   "runways": 4,
+   "radar": true,
+   "heavy_aa": 8.0,
+   "light_aa": 12.0,
+   "coastal": 0,
+   "aircraft": [
+    "af-b-saipan-a6m5-1",
+    "af-b-saipan-a6m5-2",
+    "af-b-saipan-a6m5-3",
+    "af-b-saipan-a6m5-4",
+    "af-b-saipan-a6m5-5",
+    "af-b-saipan-a6m5-6",
+    "af-b-saipan-g4m2-1",
+    "af-b-saipan-g4m2-2",
+    "af-b-saipan-g4m2-3",
+    "af-b-saipan-g4m2-4",
+    "af-b-saipan-g4m2-5",
+    "af-b-saipan-g4m2-6",
+    "af-b-saipan-p1y-1",
+    "af-b-saipan-p1y-2",
+    "af-b-saipan-p1y-3",
+    "af-b-saipan-p1y-4"
+   ]
+  },
+  {
+   "id": "af-b-tinian",
+   "faction": "B",
+   "name": "天宁机场",
+   "coord": "2043",
+   "type": "large",
+   "runways": 4,
+   "radar": false,
+   "heavy_aa": 6.0,
+   "light_aa": 10.0,
+   "coastal": 0,
+   "aircraft": [
+    "af-b-tinian-a6m5-1",
+    "af-b-tinian-a6m5-2",
+    "af-b-tinian-a6m5-3",
+    "af-b-tinian-a6m5-4",
+    "af-b-tinian-g4m2-1",
+    "af-b-tinian-g4m2-2",
+    "af-b-tinian-g4m2-3",
+    "af-b-tinian-g4m2-4",
+    "af-b-tinian-p1y-1",
+    "af-b-tinian-p1y-2",
+    "af-b-tinian-p1y-3",
+    "af-b-tinian-p1y-4",
+    "af-b-tinian-p1y-5",
+    "af-b-tinian-p1y-6"
+   ]
+  },
+  {
+   "id": "af-b-guam",
+   "faction": "B",
+   "name": "关岛机场",
+   "coord": "2544",
+   "type": "large",
+   "runways": 4,
+   "radar": true,
+   "heavy_aa": 8.0,
+   "light_aa": 14.0,
+   "coastal": 0,
+   "aircraft": [
+    "af-b-guam-a6m5-1",
+    "af-b-guam-a6m5-2",
+    "af-b-guam-a6m5-3",
+    "af-b-guam-a6m5-4",
+    "af-b-guam-a6m5-5",
+    "af-b-guam-a6m5-6",
+    "af-b-guam-g4m2-1",
+    "af-b-guam-g4m2-2",
+    "af-b-guam-g4m2-3",
+    "af-b-guam-g4m2-4",
+    "af-b-guam-g4m2-5",
+    "af-b-guam-g4m2-6"
+   ]
+  },
+  {
+   "id": "af-b-rota",
+   "faction": "B",
+   "name": "罗塔机场",
+   "coord": "2342",
+   "type": "small",
+   "runways": 2,
+   "radar": false,
+   "heavy_aa": 2.0,
+   "light_aa": 4.0,
+   "coastal": 0,
+   "aircraft": [
+    "af-b-rota-a6m5-1",
+    "af-b-rota-a6m5-2",
+    "af-b-rota-a6m5-3",
+    "af-b-rota-a6m5-4",
+    "af-b-rota-a6m5-5",
+    "af-b-rota-a6m5-6"
+   ]
+  },
+  {
+   "id": "af-b-yap",
+   "faction": "B",
+   "name": "雅浦机场",
+   "coord": "4526",
+   "type": "medium",
+   "runways": 3,
+   "radar": false,
+   "heavy_aa": 4.0,
+   "light_aa": 6.0,
+   "coastal": 0,
+   "aircraft": [
+    "af-b-yap-a6m5-1",
+    "af-b-yap-a6m5-2",
+    "af-b-yap-a6m5-3",
+    "af-b-yap-a6m5-4",
+    "af-b-yap-g4m2-1",
+    "af-b-yap-g4m2-2",
+    "af-b-yap-g4m2-3",
+    "af-b-yap-g4m2-4",
+    "af-b-yap-p1y-1",
+    "af-b-yap-p1y-2"
+   ]
+  },
+  {
+   "id": "af-b-palau",
+   "faction": "B",
+   "name": "帕劳机场",
+   "coord": "6214",
+   "type": "medium",
+   "runways": 3,
+   "radar": false,
+   "heavy_aa": 4.0,
+   "light_aa": 8.0,
+   "coastal": 0,
+   "aircraft": [
+    "af-b-palau-a6m5-1",
+    "af-b-palau-a6m5-2",
+    "af-b-palau-a6m5-3",
+    "af-b-palau-a6m5-4",
+    "af-b-palau-p1y-1",
+    "af-b-palau-p1y-2",
+    "af-b-palau-p1y-3",
+    "af-b-palau-p1y-4"
+   ]
+  },
+  {
+   "id": "af-b-saipan-sea",
+   "faction": "B",
+   "name": "塞班水上飞机基地",
+   "coord": "2047",
+   "type": "seaplane",
+   "runways": 3,
+   "radar": false,
+   "heavy_aa": 0.0,
+   "light_aa": 2.0,
+   "coastal": 0,
+   "aircraft": [
+    "af-b-saipan-sea-h8k-1",
+    "af-b-saipan-sea-h8k-2",
+    "af-b-saipan-sea-h8k-3",
+    "af-b-saipan-sea-e13a-1",
+    "af-b-saipan-sea-e13a-2",
+    "af-b-saipan-sea-e13a-3",
+    "af-b-saipan-sea-e13a-4"
+   ]
+  },
+  {
+   "id": "af-b-guam-sea",
+   "faction": "B",
+   "name": "阿普拉水上飞机基地",
+   "coord": "2746",
+   "type": "seaplane",
+   "runways": 3,
+   "radar": false,
+   "heavy_aa": 0.0,
+   "light_aa": 2.0,
+   "coastal": 0,
+   "aircraft": [
+    "af-b-guam-sea-h8k-1",
+    "af-b-guam-sea-h8k-2",
+    "af-b-guam-sea-h8k-3",
+    "af-b-guam-sea-e13a-1",
+    "af-b-guam-sea-e13a-2",
+    "af-b-guam-sea-e13a-3"
+   ]
+  },
+  {
+   "id": "af-b-palau-sea",
+   "faction": "B",
+   "name": "帕劳水上飞机基地",
+   "coord": "6416",
+   "type": "seaplane",
+   "runways": 3,
+   "radar": false,
+   "heavy_aa": 0.0,
+   "light_aa": 2.0,
+   "coastal": 0,
+   "aircraft": [
+    "af-b-palau-sea-h8k-1",
+    "af-b-palau-sea-h8k-2",
+    "af-b-palau-sea-e13a-1",
+    "af-b-palau-sea-e13a-2"
+   ]
+  }
+ ],
+ "objectives": [
+  {
+   "id": "carrier-war",
+   "text": "击沉敌航母（按机库容量计入 VP），最终胜负由 VP 比值决定",
+   "kind": "score"
+  },
+  {
+   "id": "attrition",
+   "text": "每摧毁一个航空算子计 0.25 VP",
+   "kind": "score"
+  }
+ ]
+}

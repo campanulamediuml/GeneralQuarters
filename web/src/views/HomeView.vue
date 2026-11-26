@@ -8,6 +8,7 @@ const name = ref(localStorage.getItem('gq_name') || '')
 const scenarioID = ref('_coral_real')
 const scenarios = [
   { id: '_coral_real', name: '珊瑚海 · 1942年5月（25海里/hex）' },
+  { id: '_marianas', name: '马里亚纳 · 1944年6月（架空，99×99）' },
 ]
 // 阵营：房主坐哪一边。以前只能坐 A，想当日军只能等别人建房，太别扭。
 const faction = ref<'A' | 'B'>('A')

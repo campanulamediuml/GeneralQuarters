@@ -1,0 +1,679 @@
+{
+ "id": "_marianas",
+ "version": 1,
+ "name": "马里亚纳 · 1944（架空，99×99，25海里/hex）",
+ "rows": 99,
+ "cols": 99,
+ "cells": [
+  {
+   "coord": "0666",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "0892",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "0909",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "1058",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "1061",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "1230",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "1286",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "1331",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "1432",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "1533",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "1634",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "1743",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "1744",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "1745",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "1746",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "1827",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "1843",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "1844",
+   "terrain": "island",
+   "name": "塞班岛"
+  },
+  {
+   "coord": "1845",
+   "terrain": "island",
+   "name": "塞班岛"
+  },
+  {
+   "coord": "1846",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "1880",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "1942",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "1943",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "1944",
+   "terrain": "island",
+   "name": "塞班岛"
+  },
+  {
+   "coord": "1945",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "1946",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2042",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2043",
+   "terrain": "island",
+   "name": "天宁岛"
+  },
+  {
+   "coord": "2044",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2045",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2142",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2143",
+   "terrain": "island",
+   "name": "天宁岛"
+  },
+  {
+   "coord": "2144",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2241",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2242",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2243",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2244",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2341",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2342",
+   "terrain": "island",
+   "name": "罗塔岛"
+  },
+  {
+   "coord": "2343",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2441",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2442",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2443",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2444",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2445",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2446",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2543",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2544",
+   "terrain": "island",
+   "name": "关岛"
+  },
+  {
+   "coord": "2545",
+   "terrain": "island",
+   "name": "关岛"
+  },
+  {
+   "coord": "2546",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2562",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "2643",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2644",
+   "terrain": "island",
+   "name": "关岛"
+  },
+  {
+   "coord": "2645",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2646",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2743",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2744",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2745",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "2807",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "2980",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "3058",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "3059",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "3132",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "3307",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "3360",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "3361",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "3422",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "3662",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "3663",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "3922",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "3964",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "3965",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "4063",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "4068",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "4266",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "4267",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "4288",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "4425",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "4426",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "4427",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "4428",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "4525",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "4526",
+   "terrain": "island",
+   "name": "雅浦岛"
+  },
+  {
+   "coord": "4527",
+   "terrain": "island",
+   "name": "雅浦岛"
+  },
+  {
+   "coord": "4528",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "4625",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "4626",
+   "terrain": "island",
+   "name": "雅浦岛"
+  },
+  {
+   "coord": "4627",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "4628",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "4642",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "4725",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "4726",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "4727",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "5013",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "5120",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "5220",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "5321",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "5335",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "5421",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "5522",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "5592",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "5622",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "5723",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "5756",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "5823",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "6113",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "6114",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "6115",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "6116",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "6213",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "6214",
+   "terrain": "island",
+   "name": "帕劳群岛"
+  },
+  {
+   "coord": "6215",
+   "terrain": "island",
+   "name": "帕劳群岛"
+  },
+  {
+   "coord": "6216",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "6258",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "6313",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "6314",
+   "terrain": "island",
+   "name": "帕劳群岛"
+  },
+  {
+   "coord": "6315",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "6316",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "6413",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "6414",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "6415",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "6935",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "6987",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "7610",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "7745",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "7775",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "8022",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "8124",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "8230",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "8466",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "8469",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "8974",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "9136",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "9473",
+   "terrain": "reef",
+   "name": ""
+  }
+ ]
+}
