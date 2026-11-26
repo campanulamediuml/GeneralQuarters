@@ -33,8 +33,16 @@ B5N/TBD/G3M/H6K 是侧视图、D3A/SBD/G4M/B25 是斜视（3/4 视角），只�
 | b17.png | B17Top@2x.png（旋转 180°） | B-17 空中堡垒（陆基战略轰炸机） |
 | pby.png | PBYTop@2x.png（旋转 180°，60×60 放大到 120×120） | PBY 卡特里娜（水上侦察机） |
 | g3m.png | G3MTop@2x.png（旋转 180°） | G3M 九六陆攻 |
+| f6f.png | F6FTop@2x.png（旋转 180°） | F6F-5 地狱猫（1944 马里亚纳剧本） |
+| sb2c.png | SB2CTop@2x.png（旋转 180°） | SB2C-4 地狱俯冲者 |
+| tbf.png | TBFTop@2x.png（旋转 180°） | TBF/TBM 复仇者（TBF 与 TBM 是同一机型的两家厂产） |
+| a6m5.png | A6M3Top@2x.png（旋转 180°） | A6M5 零战52（素材包没有 A6M5，暂借 A6M3 的俯视图） |
+| d4y.png | D4YTop@2x.png（旋转 180°） | D4Y2 彗星 |
+| b6n.png | B6NTop@2x.png（旋转 180°） | B6N2 天山 |
+| p1y.png | P1YTop@2x.png（旋转 180°） | P1Y1 银河 |
+| h8k.png | H8KTop@2x.png（旋转 180°） | H8K2 二式大艇 |
 
-素材包里还有大量本作尚未建卡的机型（F6F、F4U、B-17、B-24、B-29、N1K、Ki-84、PBY、PBM……），
+素材包里还有大量本作尚未建卡的机型（F4U、B-24、B-29、N1K、Ki-84、PBM、PB4Y……），
 文件名去掉 `@2x` 就是机型代号；加机型时把对应 PNG 抄进本目录、在 `units/*.json` 的
 `aircraft` 里补一条并写上 `picture` 即可。`素材/飞机算子/俯视` 是侧视（机头朝右）版本，
 `通用标记` 是棋盘游戏里的通用/染色棋子，两者都没有被游戏引用。
