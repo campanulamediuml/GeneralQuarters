@@ -35,6 +35,12 @@ type Server struct {
 	hub        *hub
 	actors     sync.Map
 	secure     bool
+	// watchPath 非空时观战页按 mtime 从磁盘读：改 HTML 刷新浏览器就生效，不用重启进程。
+	// 这样"页面"和"服务"是分开的两份东西，联调时只动前端。
+	watchPath  string
+	watchMu    sync.Mutex
+	watchBody  []byte
+	watchMtime time.Time
 }
 
 // roomKind 是房间 worker 能受理的消息种类。

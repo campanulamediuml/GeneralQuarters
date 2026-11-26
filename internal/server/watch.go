@@ -6,7 +6,9 @@ import (
 	_ "embed"
 	"encoding/json"
 	"net/http"
+	"os"
 	"strings"
+	"time"
 
 	"generalquarters/internal/game"
 	"generalquarters/internal/store"
@@ -168,12 +170,47 @@ func spectatorGroundTasks(state game.State) []game.AirTask {
 }
 
 // watchPage 是给旁观者看的只读海图，不依赖前端构建产物，随服务端一起发布。
+// SetWatchTemplate 让观战页改成从磁盘读模板。
+//
+// 观战页是 go:embed 进二进制的，默认改一行 HTML 就得重新编译再重启——和改 Vue 页面
+// 的体验完全不一样。开发时把它指到 internal/server/watch.html 就回到"改完刷新"。
+// 空字符串表示继续用内嵌版本（发布时就是这一份，单文件部署不受影响）。
+func (s *Server) SetWatchTemplate(path string) {
+	s.watchPath = path
+	s.watchMu.Lock()
+	s.watchBody, s.watchMtime = nil, time.Time{}
+	s.watchMu.Unlock()
+}
+
+// watchDocument 返回当前观战页 HTML：没配路径就用内嵌版本，配了就读磁盘（按 mtime 缓存，
+// 每帧请求都读盘没必要）。读失败退回内嵌版本——页面挂了总比整个观战打不开好。
+func (s *Server) watchDocument() []byte {
+	if s.watchPath == "" {
+		return watchHTML
+	}
+	s.watchMu.Lock()
+	defer s.watchMu.Unlock()
+	info, err := os.Stat(s.watchPath)
+	if err != nil {
+		return watchHTML
+	}
+	if s.watchBody != nil && info.ModTime().Equal(s.watchMtime) && info.Size() == int64(len(s.watchBody)) {
+		return s.watchBody
+	}
+	data, err := os.ReadFile(s.watchPath)
+	if err != nil {
+		return watchHTML
+	}
+	s.watchBody, s.watchMtime = data, info.ModTime()
+	return data
+}
+
 func (s *Server) watchPage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Referrer-Policy", "no-referrer")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	page := watchHTML
+	page := s.watchDocument()
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(parts) == 2 && r.URL.Query().Get("token") == "" {
 		token := game.NormalizeToken(parts[1])

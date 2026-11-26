@@ -67,7 +67,7 @@ func (c *testClient) call(t *testing.T, method, path string, input, output any) 
 	return response.StatusCode
 }
 
-func setupTestServer(t *testing.T) (*testClient, string, *store.Store, func()) {
+func setupTestServer(t *testing.T, options ...func(*Server)) (*testClient, string, *store.Store, func()) {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "test.db")
 	database, err := store.Open(path)
@@ -75,6 +75,9 @@ func setupTestServer(t *testing.T) (*testClient, string, *store.Store, func()) {
 		t.Fatal(err)
 	}
 	app := New(database, testContentRoot(t), false)
+	for _, option := range options {
+		option(app)
+	}
 	mux := http.NewServeMux()
 	app.RegisterRoutes(mux)
 	httpServer := httptest.NewServer(mux)

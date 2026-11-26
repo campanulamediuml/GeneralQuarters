@@ -58,6 +58,11 @@ func main() {
 
 	mux := http.NewServeMux()
 	app := server.New(database, cfg.ContentDir(), cfg.SecureCookie)
+	// 开发时让观战页从磁盘读模板：改 HTML 刷新浏览器就生效，不用重新编译重启。
+	if cfg.WatchHTML != "" {
+		app.SetWatchTemplate(cfg.WatchHTML)
+		log.Printf("观战页模板从磁盘读：%s", cfg.WatchHTML)
+	}
 	app.RegisterRoutes(mux)
 	// 重启后双方 ready 标记还在库里、却没人再发 ready，回合结算会永远等不到触发。
 	runCtx, stopRun := context.WithCancel(context.Background())
@@ -77,7 +82,7 @@ func main() {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write(api.Docs)
 	})
-	registerSPA(mux)
+	registerSPA(mux, cfg.WebDir)
 
 	httpServer := &http.Server{Addr: cfg.Listen, Handler: securityHeaders(mux), ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 90 * time.Second}
 	go func() {
@@ -229,16 +234,31 @@ func pruneBackups(dir string, keep int) error {
 	return nil
 }
 
-func registerSPA(mux *http.ServeMux) {
+// registerSPA 把前端挂到 "/" 上：webDir 为空就用编译进二进制的那一份（发布形态），
+// 给了目录就直接读盘（开发形态）——改完前端 npm run build 之后刷新即可，不用重启服务。
+func registerSPA(mux *http.ServeMux, webDir string) {
 	dist, err := fs.Sub(webui.Dist, "dist")
 	if err != nil {
 		log.Fatal(err)
 	}
-	files := http.FileServer(http.FS(dist))
+	var source fs.FS = dist
+	dev := webDir != ""
+	if dev {
+		if info, statErr := os.Stat(webDir); statErr != nil || !info.IsDir() {
+			log.Fatalf("web_dir 不是目录：%s", webDir)
+		}
+		source = os.DirFS(webDir)
+		log.Printf("前端产物从磁盘读：%s（改完前端刷新即可，不用重启）", webDir)
+	}
+	files := http.FileServer(http.FS(source))
 	mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+		// 开发形态一律不缓存：否则改完前端刷新还是旧 JS，还得清浏览器缓存。
+		if dev {
+			w.Header().Set("Cache-Control", "no-store")
+		}
 		path := strings.TrimPrefix(r.URL.Path, "/")
 		if path != "" {
-			if _, err := fs.Stat(dist, path); err == nil {
+			if _, err := fs.Stat(source, path); err == nil {
 				if strings.HasSuffix(path, ".webmanifest") {
 					w.Header().Set("Content-Type", "application/manifest+json")
 				}
@@ -246,9 +266,11 @@ func registerSPA(mux *http.ServeMux) {
 				return
 			}
 		}
-		index, _ := fs.ReadFile(dist, "index.html")
+		index, _ := fs.ReadFile(source, "index.html")
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Header().Set("Cache-Control", "no-cache")
+		if !dev {
+			w.Header().Set("Cache-Control", "no-cache")
+		}
 		_, _ = w.Write(index)
 	})
 }

@@ -8,7 +8,7 @@ import (
 
 func TestManifestContentType(t *testing.T) {
 	mux := http.NewServeMux()
-	registerSPA(mux)
+	registerSPA(mux, "")
 	request := httptest.NewRequest(http.MethodGet, "/manifest.webmanifest", nil)
 	response := httptest.NewRecorder()
 	mux.ServeHTTP(response, request)

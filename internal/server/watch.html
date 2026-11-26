@@ -48,6 +48,8 @@
   .detail-card .detail-pic-fallback{width:56px;height:34px;display:grid;place-items:center;flex:none;border:1px solid #20343a;background:#0a181d;color:#6f8d92;font-size:9px}
   .detail-empty{padding:18px 12px;color:#718d91;font-size:11px}
   .fleet-ship,.fleet-label,.watch-air{cursor:pointer}
+  /* 牌子到舰影的归属线：细红虚线，不吃点击。 */
+  .fleet-tether{stroke:#ff6b5e;stroke-width:1;stroke-opacity:.55;stroke-dasharray:3 2;fill:none;pointer-events:none}
   @media(max-width:600px){.detail-cards{grid-template-columns:1fr}.detail-panel{top:38px}}
   .hex{fill:#102830;stroke:#34505a;stroke-width:.7}
   /* 天气图案：云朵=多云、水滴=降雨、闪电=风暴。压在最上层，但不吃点击。 */
@@ -728,6 +730,11 @@
       airfieldCoords[airfield.coord] = true;
     });
     var placedLabels = [];
+    // 牌子统一挂在舰影右侧，可它比 hex 宽得多，挨得近的两支舰队牌子会落到隔壁 hex 上，
+    // 光看位置分不清哪块牌子说的是哪条船。所以从舰影拉一条红线到牌子最近的边，把归属钉死。
+    // 线先建、后画舰队和牌子，于是它压在它们下面，不会盖住船影和字。
+    var tethers = el('g', { id: 'fleet-tethers' });
+    marks.appendChild(tethers);
     function labelOverlaps(rect) {
       return placedLabels.some(function (other) {
         return !(rect.x + rect.w < other.x || other.x + other.w < rect.x || rect.y + rect.h < other.y || other.y + other.h < rect.y);
@@ -741,7 +748,7 @@
         var color = COLOR[fleet.faction] || '#9fb2b2';
         var offset = (index - (fleets.length - 1) / 2) * 9 + (airfieldCoords[coord] ? 10 : 0);
 
-        // hex 里放舰影；牌子放到旁边，先试右、再试左/上/下，尽量避免压住别的牌子。
+        // hex 里放舰影；牌子统一挂在这条船右侧（见下面 chosen 的算法）。
         var ship = el('g', { class: 'fleet-ship', 'data-detail': 'fleet', transform: 'translate(' + point.x + ',' + (point.y + offset) + ')' });
         ship.appendChild(shipIcon(fleet, color));
         var shipTitle = el('title');
@@ -750,27 +757,42 @@
         ship.addEventListener('click', function (event) { event.stopPropagation(); selectDistance(fleet.coord); showFleetDetail(fleet); });
         marks.appendChild(ship);
 
+        // 牌子统一挂在舰队右侧（不再左右上下乱试）：这样"牌子和船"的方向固定，
+        // 再配上红线，一眼就能对上号。右边顶到地图边缘时往里收，不越界。
         var label = fleet.fleet_id || '';
         var wide = Math.max(62, label.length * 7 + 48);
-        var candidates = [
-          { x: point.x + SIZE + 7, y: point.y - 12 + index * 28 },
-          { x: point.x - SIZE - 7 - wide, y: point.y - 12 + index * 28 },
-          { x: point.x - wide / 2, y: point.y - SIZE - 20 - index * 28 },
-          { x: point.x - wide / 2, y: point.y + SIZE + 8 + index * 28 }
-        ];
-        var chosen = null;
-        for (var c = 0; c < candidates.length; c++) {
-          var cand = candidates[c];
-          if (cand.x < 0 || cand.x + wide > MAP_WIDTH || cand.y < 0 || cand.y + 24 > MAP_HEIGHT) continue;
-          if (!labelOverlaps({ x: cand.x, y: cand.y, w: wide, h: 24 })) { chosen = cand; break; }
-        }
-        if (!chosen) {
-          chosen = {
-            x: Math.min(Math.max(4, point.x + SIZE + 7), MAP_WIDTH - wide - 4),
-            y: Math.min(Math.max(4, point.y - 12 + index * 28), MAP_HEIGHT - 28)
-          };
+        var chosen = {
+          x: Math.min(point.x + SIZE + 7, MAP_WIDTH - wide - 4),
+          y: point.y - 12 + index * 28
+        };
+        if (chosen.x < 4) chosen.x = 4;
+        chosen.y = Math.min(chosen.y, MAP_HEIGHT - 28);
+        // 右边是固定列，挨着/上下相邻的舰队牌子会撞：撞了就往下一格一格挪，挪到底再从顶部接着排。
+        for (var guard = 0; guard < 80; guard++) {
+          if (!labelOverlaps({ x: chosen.x, y: chosen.y, w: wide, h: 24 })) break;
+          chosen.y += 26;
+          if (chosen.y + 24 > MAP_HEIGHT) chosen.y = 4;
         }
         placedLabels.push({ x: chosen.x, y: chosen.y, w: wide, h: 24 });
+
+        // 红线从舰影中心指到牌子最近的边：牌子在右就从左沿接，被挤到上/下就从对应边接。
+        // 起点离舰影中心留 10，免得线穿过船体；贴太近（牌子压在自己 hex 上）就不画了。
+        var shipX = point.x;
+        var shipY = point.y + offset;
+        var edgeX = Math.min(Math.max(shipX, chosen.x), chosen.x + wide);
+        var edgeY = Math.min(Math.max(shipY, chosen.y), chosen.y + 24);
+        var gapX = edgeX - shipX;
+        var gapY = edgeY - shipY;
+        var gap = Math.sqrt(gapX * gapX + gapY * gapY);
+        if (gap > 8) {
+          tethers.appendChild(el('line', {
+            class: 'fleet-tether',
+            x1: shipX + gapX / gap * 10,
+            y1: shipY + gapY / gap * 10,
+            x2: edgeX,
+            y2: edgeY
+          }));
+        }
 
         var labelGroup = el('g', { class: 'fleet-label', 'data-detail': 'fleet', transform: 'translate(' + chosen.x + ',' + chosen.y + ')' });
         labelGroup.addEventListener('click', function (event) { event.stopPropagation(); selectDistance(fleet.coord); showFleetDetail(fleet); });

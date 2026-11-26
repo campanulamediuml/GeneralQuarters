@@ -22,6 +22,24 @@ go run ./cmd/server -config ./generalquarters.json
 不要写到 `/tmp`。`.gq/` 已经在 `.gitignore` 里：它同时放着本地配置、二进制和会话 cookie，本身就不进库，
 所以临时产物随手丢进去即可，用完也不用担心污染提交。
 
+### 前端和服务分开跑（改页面不用重启后端）
+
+默认形态是"单文件"：`web/dist` 用 `go:embed` 编进二进制，部署只要一个文件。改页面就得重新编译，
+联调很烦。开发时拆成两个进程，各改各的：
+
+```bash
+# 后端：只出 API / WebSocket / 观战页，监听 :8100
+./.gq/gq-server -config .gq/config.json     # 配置里 listen = ":8100"
+
+# 前端：vite dev server 占 :8099，热更新，把 /api /ws /watch /content 代理给 :8100
+cd web && npm run dev                        # 后端不在 8100 就 GQ_API=http://127.0.0.1:9000 npm run dev
+```
+
+浏览器打开 `http://127.0.0.1:8099`：`.vue` 改一行立刻热更新，不用编译、不用重启 Go。
+观战页（`internal/server/watch.html`）是独立的静态页，由 Go 直接发——配置文件里给它一个
+`watch_html` 路径，服务端就按 mtime 读盘，改完刷新浏览器就生效；`web_dir` 同理，指到
+`web/dist` 后 `npm run build` 的产物直接生效，也不用重启。两项留空就回到内嵌版本（发布形态）。
+
 ## Docker
 
 ```bash

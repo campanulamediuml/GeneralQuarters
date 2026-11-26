@@ -29,6 +29,12 @@ type Config struct {
 	SecureCookie bool `json:"secure_cookie"`
 	// BackupKeep 是启动备份保留份数。
 	BackupKeep int `json:"backup_keep"`
+	// WebDir 指到前端产物目录（例如 web/dist）：给了就直接从磁盘读，改完前端刷新即可，
+	// 不用重新编译、也不用重启服务。不填就用编译进二进制的那一份（单文件发布用）。
+	WebDir string `json:"web_dir"`
+	// WatchHTML 指到观战页模板（internal/server/watch.html）：给了就按 mtime 从磁盘读，
+	// 改完 HTML 刷新浏览器就生效。不填就用内嵌版本。
+	WatchHTML string `json:"watch_html"`
 	// Source 记录实际读到的配置文件路径（空表示只用默认值 + 环境变量），仅用于启动日志。
 	Source string `json:"-"`
 }
@@ -107,5 +113,12 @@ func applyEnv(cfg *Config) {
 		if number, err := strconv.Atoi(value); err == nil {
 			cfg.BackupKeep = number
 		}
+	}
+	// 开发时用环境变量开"前端从磁盘读"，不用把 web_dir 写进配置文件、免得误提交。
+	if value := os.Getenv("GQ_WEB_DIR"); value != "" {
+		cfg.WebDir = value
+	}
+	if value := os.Getenv("GQ_WATCH_HTML"); value != "" {
+		cfg.WatchHTML = value
 	}
 }
