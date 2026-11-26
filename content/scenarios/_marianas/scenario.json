@@ -5709,5 +5709,9 @@
    "points": 0,
    "decisive": false
   }
- ]
+ ],
+ "withdraw_directions": {
+  "A": "E",
+  "B": "W"
+ }
 }

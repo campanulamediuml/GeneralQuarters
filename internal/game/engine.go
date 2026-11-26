@@ -103,7 +103,8 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		Definitions: map[string]string{"scenario": fmt.Sprint(scenario.Version), "map": fmt.Sprint(gameMap.Version), "units": fmt.Sprint(catalog.Version)},
 		Objectives:  scenario.Objectives, MaxTurns: scenario.MaxTurns, Turn: 1, Timeline: scenario.Timeline,
 		// 舰队规模上限跟剧本走：马里亚纳的航母特混大队开局就 29 艘，按默认 20 艘根本编不回去。
-		FleetMaxShips: scenario.FleetMaxShips,
+		FleetMaxShips:      scenario.FleetMaxShips,
+		WithdrawDirections: scenario.WithdrawDirections,
 		// 天气刷新间隔以前漏拷进状态，导致生产环境天气系统从来没跑起来（只有测试里
 		// 手动设过 WeatherTurns）。这里补上，新房间开局就能铺云。
 		WeatherTurns: scenario.WeatherTurns,

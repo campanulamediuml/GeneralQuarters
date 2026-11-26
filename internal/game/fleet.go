@@ -186,24 +186,80 @@ func atMapEdge(gameMap MapDefinition, coord string) bool {
 	return row == 1 || col == 1 || row == gameMap.Rows || col == gameMap.Cols
 }
 
-// edgeHeadingToward 返回舰队撤离时朝哪个方向走（正前 / 左前 / 右前）。
-func edgeHeadingToward(state State, unit *Unit) string {
-	angle, ok := reconHeadings[strings.ToUpper(unit.Heading)]
+// —— 撤离方向 ——
+//
+// 以前撤离方向只看舰艏朝向，再用"离地图中心最近"来挑下一格——等于把退避队往地图中间送，
+// 永远走不到边缘。现在改成剧本按阵营配方向：马里亚纳是美军往东（地图最东边是太平洋）、
+// 日军往西（回帕劳/特鲁克一侧），运输队卸空和重创脱离共用同一条撤离走廊。
+// 没配方向的剧本退回"离开地图中心"的通用逻辑，至少保证越走越远。
+
+// withdrawAxisFor 返回该阵营的撤离方向向量；剧本没配或写错时返回 false。
+func withdrawAxisFor(state State, faction string) (sectorPoint, bool) {
+	heading := strings.ToUpper(strings.TrimSpace(state.WithdrawDirections[faction]))
+	angle, ok := reconHeadings[heading]
 	if !ok {
-		angle = reconHeadings["E"]
+		return sectorPoint{}, false
 	}
-	axis := sectorPoint{x: math.Cos(angle * math.Pi / 180), y: math.Sin(angle * math.Pi / 180)}
-	options := []sectorPoint{{x: axis.x, y: axis.y}, {x: axis.x*0.5 - axis.y*0.866, y: axis.x*0.866 + axis.y*0.5}, {x: axis.x*0.5 + axis.y*0.866, y: -axis.x*0.866 + axis.y*0.5}}
-	best, bestGap := "", 999
-	for _, option := range options {
-		next := neighborToward(state.Map, unit.Coord, option, nil)
-		if next == "" {
+	return sectorPoint{x: math.Cos(angle * math.Pi / 180), y: math.Sin(angle * math.Pi / 180)}, true
+}
+
+// rotateSector 把方向向量旋转指定角度：hex 的相邻格正好是左右 60°。
+func rotateSector(point sectorPoint, degrees float64) sectorPoint {
+	radians := degrees * math.Pi / 180
+	cosine, sine := math.Cos(radians), math.Sin(radians)
+	return sectorPoint{x: point.x*cosine - point.y*sine, y: point.x*sine + point.y*cosine}
+}
+
+// sectorAlignment 返回 from→to 的位移与撤离方向的夹角余弦：1 是正对边缘，0 是横着走，负数是在往回走。
+func sectorAlignment(from, to string, axis sectorPoint) float64 {
+	fromRow, fromCol, err := ParseCoord(from)
+	if err != nil {
+		return -2
+	}
+	toRow, toCol, err := ParseCoord(to)
+	if err != nil {
+		return -2
+	}
+	fromX, fromY := hexCenter(fromRow, fromCol)
+	x, y := hexCenter(toRow, toCol)
+	dx, dy := x-fromX, y-fromY
+	length := math.Hypot(dx, dy)
+	if length == 0 {
+		return -2
+	}
+	return (dx*axis.x + dy*axis.y) / length
+}
+
+// withdrawStep 返回退避队本回合该去的相邻 hex。
+// 先沿剧本配置的撤离方向找（正前方，被岛礁/浅滩堵住就试左右前 60°）；
+// 三个方向都进不去时，退回"离地图中心最远"的可通行相邻格。
+func withdrawStep(state State, unit *Unit) string {
+	allowed := func(coord string) bool {
+		return fleetCanEnter(state, coord, FleetHasCarrier(state, FleetKey(unit)))
+	}
+	if axis, ok := withdrawAxisFor(state, unit.Faction); ok {
+		best, bestScore := "", 0.0
+		for _, direction := range []sectorPoint{axis, rotateSector(axis, 60), rotateSector(axis, -60)} {
+			next := neighborToward(state.Map, unit.Coord, direction, allowed)
+			if next == "" {
+				continue
+			}
+			if score := sectorAlignment(unit.Coord, next, axis); score > bestScore {
+				best, bestScore = next, score
+			}
+		}
+		if best != "" {
+			return best
+		}
+	}
+	best, bestGap := "", -1.0
+	for _, candidate := range Neighbors(unit.Coord) {
+		if !allowed(candidate) {
 			continue
 		}
-		gap := Distance(next, centerCoord(state.Map))
-		if gap < bestGap {
-			bestGap = gap
-			best = next
+		gap := float64(Distance(candidate, centerCoord(state.Map)))
+		if gap > bestGap {
+			bestGap, best = gap, candidate
 		}
 	}
 	return best
@@ -279,7 +335,7 @@ func advanceTowardEdge(state *State) []EngineEvent {
 			events = append(events, removeFleet(state, fleetID, members[0].Faction)...)
 			continue
 		}
-		next := edgeHeadingToward(*state, leader)
+		next := withdrawStep(*state, leader)
 		if next == "" {
 			continue
 		}

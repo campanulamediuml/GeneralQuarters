@@ -150,6 +150,9 @@ type ScenarioDefinition struct {
 	// FleetMaxShips 是整编时一支舰队允许的最大舰船数；0 表示按规则书的 20 艘。
 	// 马里亚纳这种航母特混大队开局就 29 艘，剧本里放宽到 40 才有拆编的空间。
 	FleetMaxShips int `json:"fleet_max_ships"`
+	// WithdrawDirections 是各阵营的撤离方向（E/W/NE/…）：舰船重创脱离、运输队卸空后，
+	// 都朝这个方向驶向地图边缘。没配的阵营退回"离开地图中心"的通用逻辑。
+	WithdrawDirections map[string]string `json:"withdraw_directions"`
 }
 
 type UnitDefinition struct {
@@ -926,7 +929,9 @@ type State struct {
 	// WeatherTurns 是天气刷新间隔（0 = 静态天气）。
 	WeatherTurns     int                                    `json:"weather_turns"`
 	Doctrines        map[string]string                      `json:"doctrines"`
-	Map              MapDefinition                          `json:"map"`
+	// WithdrawDirections 是剧本给的撤离方向；退避队每回合朝它走一格（马里亚纳：美军 E、日军 W）。
+	WithdrawDirections map[string]string `json:"withdraw_directions"`
+	Map                MapDefinition     `json:"map"`
 	Units            map[string]*Unit                       `json:"units"`
 	Aircraft         map[string]*AirUnit                    `json:"aircraft"`
 	Airfields        map[string]*Airfield                   `json:"airfields"`

@@ -150,6 +150,7 @@
 - `scenario`、`map`、`turn`、`status`；`map.clouds` 一律为空字符串——逐格天气只在`weather_cells`里给；
 - `phase`：`deploy`（开局部署）或 `battle`（正常对局）。剧本没写`deploy_zones`时直接是`battle`；
 - `fleet_max_ships`：本局一支舰队的舰船上限（整编与合并都按它校验）。剧本没写时默认 20；马里亚纳是 45；
+- `withdraw_directions`：各阵营的撤离方向（`E/W/NE/…`），重创脱离和运输队卸空后的退避队每回合朝它走一格。马里亚纳是 `{"A":"E","B":"W"}`；没配时退回"离开地图中心"的通用方向；
 - `deploy_zone`：己方部署区，`{anchor,radius,cells}`。`cells` 是行优先的 `'0'/'1'` 串，标出可以摆船的格位；前端已经改用`legal_moves`的绿色高亮来画可放区域，这个字段留给脚本/第三方客户端。剧本可以给同一阵营划多个部署区（剧本里 `deploy_zones[].fleets` 指定哪几支舰队用哪个区）：此时 `anchor/radius` 是第一个区，`cells` 是所有区的并集，每支舰队的实际可落点看它自己的 `legal_moves`；
 - `airfields`：当前可见的机场，包含 `coord`、`type`（small/medium/large/seaplane）、`runways`、`strength`、`heavy_aa/light_aa/coastal`（`coastal` 是岸炮点数，舰队岸轰时先开火，每点 30% 命中随机舰船，被舰炮命中一次 -1）、`enemy_supplies`（敌方卸在这里的滩头物资，有货时跑道瘫痪）等；
 - `weather_cells`：行优先、每格一个字符 `'0'..'3'`（晴/多云/降雨/风暴）。服务端内部是按"压了几层云"记账的（3 层以上就是风暴），**4 层以上到前端同样显示 3**；
