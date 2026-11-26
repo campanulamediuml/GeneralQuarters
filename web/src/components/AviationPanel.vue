@@ -372,8 +372,9 @@ function taskPhase(task: AirTask) {
   if (task.phase === 'launching') return task.kind === 'attack' ? '编队离场' : '已升空'
   if (task.phase === 'assembling') return '舰队上空等待编队'
   if (task.phase === 'recovering') return `回收中 · ${task.airborne_count}/${task.aircraft_ids.length} 仍在空中`
-  if (task.kind === 'cap' || task.kind === 'recon') return '已升空'
-  return '任务执行中'
+  // 编队已经掉头就往"返航中"说：任务阶段还是 active，但玩家关心的是它在回还是在去。
+  if (task.returning) return task.cannot_land ? '返航中 · 目标机库已满' : '返航中'
+  return '出击中'
 }
 
 function taskTitle(task: AirTask) {
@@ -504,8 +505,12 @@ function counterHint(aircraft: AirUnit) {
   if (aircraft.status === 'recovery') return '已着舰 · 等待升降机下降'
   if (aircraft.status === 'deck' || aircraft.status === 'ready') return aircraft.task_id ? '甲板待飞 · 可拖回排队下降' : '可拖入任务立即放飞'
   const loadout = loadoutName(aircraft.loadout, aircraft.tank_dropped)
-  if (aircraft.status === 'attack_holding') return `已升空 · 等待编队 · 剩余航程 ${aircraft.remaining_range}${loadout}`
-  if (['cap', 'recon', 'attack'].includes(aircraft.status)) return `已升空 · 剩余航程 ${aircraft.remaining_range}${loadout}`
+  // 在空中的算子要能分出"出击中"和"返航中"：单看 status 分不出来，
+  // 往目标飞和往回飞都是 attack，只有 returning 这个标记能回答"它现在是在去还是回"。
+  const airborne = ['cap', 'recon', 'attack', 'attack_holding', 'cover', 'transfer'].includes(aircraft.status)
+  if (airborne && aircraft.returning) return `返航中 · 剩余航程 ${aircraft.remaining_range}${loadout}`
+  if (aircraft.status === 'attack_holding') return `出击中 · 等待编队 · 剩余航程 ${aircraft.remaining_range}${loadout}`
+  if (airborne) return `出击中 · 剩余航程 ${aircraft.remaining_range}${loadout}`
   return '拖至任务栏开始整备'
 }
 

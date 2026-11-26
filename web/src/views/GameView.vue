@@ -205,9 +205,9 @@ const mapAirTaskPhase = computed(() => {
   // 但玩家最需要知道的是它已经在往回飞了。
   if (task.returning) return task.cannot_land ? '返航中 · 目标机库已满' : '任务完成，返航中'
   if (task.phase === 'assembling') return '舰队上空等待编队'
-  if (task.phase === 'launching') return '编队已离场'
+  if (task.phase === 'launching') return '编队离场 · 出击中'
   if (task.cannot_land) return '目标机库已满，无法降落'
-  return '任务执行中'
+  return '出击中'
 })
 const mapAirTaskTarget = computed(() => {
   const task = mapAirTask.value

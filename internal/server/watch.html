@@ -517,7 +517,15 @@
   }
 
   var MISSION_LABEL = { cap: 'CAP', recon: '侦察', attack: '攻击', attack_holding: '攻击', cover: '掩护', transfer: '转场' };
-  var AIR_STATUS_LABEL = { hangar: '机库', deck: '甲板', ready: '待命', cap: 'CAP', attack: '攻击', attack_holding: '攻击待机', recon: '侦察', cover: '掩护', transfer: '转场', service: '整备' };
+  var AIR_STATUS_LABEL = { hangar: '机库', deck: '甲板', ready: '待命', cap: 'CAP', attack: '攻击', attack_holding: '攻击待机', recon: '侦察', cover: '掩护', transfer: '转场', service: '整备', recovery: '回收中', elevator: '升降机' };
+  // 在空中的算子再分"出击中/返航中"：光看 status 分不出来，往目标飞和往回飞都是 attack。
+  function flightStateLabel(aircraft) {
+    if (!aircraft) return '未知';
+    var status = String(aircraft.status || '').toLowerCase();
+    if (aircraft.returning) return AIRBORNE[status] ? '返航中' : statusLabel(status);
+    if (AIRBORNE[status]) return '出击中';
+    return statusLabel(status);
+  }
   var ENGAGEMENT_LABEL = { aggressive: '逢敌必战', advantage: '优势交战', avoid: '避免近战' };
   function missionLabel(value) {
     return MISSION_LABEL[String(value || '').toLowerCase()] || value || '空中';
@@ -659,10 +667,12 @@
     (group.aircraft || []).forEach(function (aircraft) {
       var model = aircraft.model || '未知机型';
       var range = aircraft.remaining_range == null ? null : aircraft.remaining_range;
-      var key = [model, aircraft.status || '', aircraft.loadout || '', range == null ? '' : range].join('|');
+      // 返航中/出击中也要进分组键：同一队里先返航的那批和还在往目标飞的不能并成一行。
+      var state = aircraft.returning ? 'returning' : '';
+      var key = [model, aircraft.status || '', aircraft.loadout || '', range == null ? '' : range, state].join('|');
       if (!rowIndex[key]) {
         rowIndex[key] = {
-          model: model, picture: aircraft.picture, status: aircraft.status,
+          model: model, picture: aircraft.picture, status: aircraft.status, returning: Boolean(aircraft.returning),
           loadout: aircraft.loadout, range: range, max: aircraft.max_range, count: 0
         };
         rows.push(rowIndex[key]);
@@ -684,7 +694,7 @@
       byModel[row.model] += row.count;
     });
     var cards = rows.map(function (row) {
-      var details = ['状态 ' + statusLabel(row.status), '数量 ' + row.count + ' 架'];
+      var details = ['状态 ' + flightStateLabel(row), '数量 ' + row.count + ' 架'];
       if (row.range != null) details.push('航程 ' + row.range + (row.max ? '/' + row.max : ''));
       return '<div class="detail-card">' + pictureBlock(row.picture, '机') +
         '<div class="detail-copy"><b>' + escapeHTML(row.model) + '</b>' +
@@ -699,7 +709,10 @@
       '<span>目标 <b>' + escapeHTML(group.target || '未设置') + '</b></span>' +
       '<span>起飞 <b>' + escapeHTML(group.origin || '—') + '</b></span>' +
       '<span>阵营 <b>' + (group.faction === 'A' ? '美军' : '日军') + '</b></span>';
-    openDetail('AIR GROUP · ' + (group.faction === 'A' ? '美军' : '日军'), (group.mission || '空中编队') + ' · ' + (group.count || 0) + ' 架', meta, cards);
+    // 整队都在返航时标题直接写出来，不用逐行看。
+    var allReturning = total > 0 && group.returning >= total;
+    var heading = (group.mission || '空中编队') + ' · ' + total + ' 架' + (allReturning ? ' · 返航中' : (group.returning > 0 ? ' · ' + group.returning + ' 架返航中' : ''));
+    openDetail('AIR GROUP · ' + (group.faction === 'A' ? '美军' : '日军'), heading, meta, cards);
   }
 
   // 侦察机不画机体：画完整搜索扇面，当前距离带用高亮格表示“扫到哪条线”。
@@ -914,10 +927,13 @@
           // 起飞顶点和任务目标：详情卡上要写清"这队飞机从哪儿起飞、要去哪儿"。
           origin: '',
           target: '',
+          // 返航中的架数：整队都在往回飞时，标题和地图牌上都标出来。
+          returning: 0,
           heading: String(aircraft.heading || aircraft.search_heading || '').toUpperCase()
         };
       }
       airGroups[key].count++;
+      if (aircraft.returning) airGroups[key].returning++;
       // 逐机的坐标可能缺（老快照、或者 CAP 的值班空域只记在任务上），任务上的值兜底。
       var info = taskInfo[aircraft.task_id] || {};
       var origin = aircraft.origin_coord || info.origin || (task && task.origin_coord) || '';
@@ -952,7 +968,9 @@
         marker.appendChild(el('circle', { r: 8, fill: color, 'fill-opacity': 0.92, stroke: '#071417', 'stroke-width': 1 }));
         marker.appendChild(text(0, 3, group.count, '#071417', 9, 700, 'middle'));
         var labelRight = point.x < MAP_WIDTH - 78;
-        var label = text(labelRight ? 11 : -11, 3, group.mission, color, 9, 700, labelRight ? 'start' : 'end');
+        // 整队都在往回飞时牌子上标个"返"，不用点开详情也知道这波已经撤了。
+        var missionText = group.mission + (group.count > 0 && group.returning >= group.count ? ' · 返' : '');
+        var label = text(labelRight ? 11 : -11, 3, missionText, color, 9, 700, labelRight ? 'start' : 'end');
         label.setAttribute('stroke', '#071417');
         label.setAttribute('stroke-width', '2.6');
         label.setAttribute('stroke-linejoin', 'round');
