@@ -9,8 +9,11 @@ services:
     user: "1000:1000"
     ports:
       - "18085:8080"
+    # 配置走文件：数据目录、监听地址、备份保留份数都在 generalquarters.docker.json 里，
+    # 换挂载点只改那个文件，不用把一堆 GQ_* 环境变量写进 compose。
+    # 环境变量仍然优先（GQ_DATA_DIR / PORT 等），临时覆盖不必改文件。
     environment:
-      GQ_DATA_DIR: /data
-      GQ_DB_PATH: /data/generalquarters.db
+      GQ_CONFIG: /etc/gq/config.json
     volumes:
       - ${HOME}/GeneralQuarterData:/data
+      - ./generalquarters.docker.json:/etc/gq/config.json:ro

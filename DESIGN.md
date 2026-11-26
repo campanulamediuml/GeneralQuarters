@@ -8,7 +8,7 @@
 - 后端：Go模块化单体，唯一权威状态与随机判定来源。
 - 联机：创建/加入房间使用HTTP；进入房间后玩家状态、命令与ready经WebSocket RPC，变更事件触发私有快照同步。观战也使用WebSocket订阅完整视图。房间内不做HTTP轮询，断线由前端指数退避重连。
 - 持久化：SQLite与可编辑内容包均位于服务器`~/GeneralQuarterData`。
-- 部署：单个容器提供前端、API和WebSocket，现有Compose仅追加独立服务。
+- 部署：单个容器提供前端、API和WebSocket，现有Compose仅追加独立服务。运行配置由`internal/config`统一加载，优先级是默认值 < 配置文件 < 环境变量：配置文件路径按`-config`参数、`GQ_CONFIG`、工作目录下的`generalquarters.json`依次查找，读到的字段再被`GQ_DATA_DIR`/`GQ_DB_PATH`/`GQ_LISTEN`/`PORT`/`GQ_SECURE_COOKIE`/`GQ_BACKUP_KEEP`/`GQ_TURN_COMPRESS_*`覆盖；配置文件用严格JSON解码，字段名拼错直接启动失败，不会静默跑默认值。数据目录、库文件路径、监听地址、备份保留份数、回合快照压缩的批间隔与批量都在这里配，换部署环境只改一份JSON（`generalquarters.example.json`是完整样例，`generalquarters.docker.json`给Compose用）。
 - 规模：单实例、个位数在线用户；不在第一阶段引入微服务或外部数据库。
 
 ## 总体结构

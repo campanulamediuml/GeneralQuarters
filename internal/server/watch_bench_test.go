@@ -20,7 +20,7 @@ import (
 // 之所以从副本起来，是因为基准要在库上做迁移（Open 会补列），不能对着在跑的服。
 //
 // 落盘约定：对局数据、库副本、profile、截图都放仓库外的 ../GeneralQuarterData
-//（.gitignore 里已经忽略它），用完自己清；唯一例外是 Go 构建缓存 .gq/gocache，
+// （.gitignore 里已经忽略它），用完自己清；唯一例外是 Go 构建缓存 .gq/gocache，
 // 它每次编译都在写，必须留在工作区内。不要写 /tmp——那里没人清理，
 // 一次性能测试就能留下几十 GB，而且事后根本不知道是谁的。
 func benchFixture(b *testing.B) (*store.Store, string) {

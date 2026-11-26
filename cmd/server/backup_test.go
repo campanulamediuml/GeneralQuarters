@@ -69,7 +69,7 @@ func TestBackupDatabaseSkipsUnchangedAndSnapshotsChanges(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := backupDatabase(dir, dbPath); err != nil {
+	if err := backupDatabase(dir, dbPath, 3); err != nil {
 		t.Fatal(err)
 	}
 	count := func() int {
@@ -83,7 +83,7 @@ func TestBackupDatabaseSkipsUnchangedAndSnapshotsChanges(t *testing.T) {
 		t.Fatalf("第一次备份没有生成：%d", got)
 	}
 	// 没有新写入：再来一次不应产生新备份。
-	if err := backupDatabase(dir, dbPath); err != nil {
+	if err := backupDatabase(dir, dbPath, 3); err != nil {
 		t.Fatal(err)
 	}
 	if got := count(); got != 1 {
@@ -100,7 +100,7 @@ func TestBackupDatabaseSkipsUnchangedAndSnapshotsChanges(t *testing.T) {
 	if err := db.Close(); err != nil {
 		t.Fatal(err)
 	}
-	if err := backupDatabase(dir, dbPath); err != nil {
+	if err := backupDatabase(dir, dbPath, 3); err != nil {
 		t.Fatal(err)
 	}
 	if got := count(); got != 2 {

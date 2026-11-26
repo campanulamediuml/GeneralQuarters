@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"io/fs"
@@ -15,44 +16,55 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	_ "modernc.org/sqlite"
 	"syscall"
 	"time"
 
 	"generalquarters/api"
 	"generalquarters/content"
-	_ "modernc.org/sqlite"
+	"generalquarters/internal/config"
 	"generalquarters/internal/server"
 	"generalquarters/internal/store"
 	webui "generalquarters/web"
 )
 
 func main() {
-	dataDir := env("GQ_DATA_DIR", "./data")
-	dbPath := env("GQ_DB_PATH", filepath.Join(dataDir, "generalquarters.db"))
-	if err := os.MkdirAll(dataDir, 0o750); err != nil {
+	configPath := flag.String("config", "", "配置文件路径（默认读 GQ_CONFIG，其次工作目录下的 generalquarters.json）")
+	flag.Parse()
+	cfg, err := config.Load(*configPath)
+	if err != nil {
 		log.Fatal(err)
 	}
-	if err := ensureContent(dataDir); err != nil {
+	if cfg.Source != "" {
+		log.Printf("使用配置文件 %s", cfg.Source)
+	}
+	if err := os.MkdirAll(cfg.DataDir, 0o750); err != nil {
 		log.Fatal(err)
 	}
-	if err := backupDatabase(dataDir, dbPath); err != nil {
-		log.Printf("数据库备份跳过：%v", err)
+	if err := ensureContent(cfg.DataDir); err != nil {
+		log.Fatal(err)
 	}
-	database, err := store.Open(dbPath)
+	if cfg.BackupKeep > 0 {
+		if err := backupDatabase(cfg.DataDir, cfg.DBPath, cfg.BackupKeep); err != nil {
+			log.Printf("数据库备份跳过：%v", err)
+		}
+	}
+	database, err := store.Open(cfg.DBPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer database.Close()
 
 	mux := http.NewServeMux()
-	app := server.New(database, filepath.Join(dataDir, "content"), os.Getenv("GQ_SECURE_COOKIE") == "true")
+	app := server.New(database, cfg.ContentDir(), cfg.SecureCookie)
 	app.RegisterRoutes(mux)
 	// 重启后双方 ready 标记还在库里、却没人再发 ready，回合结算会永远等不到触发。
 	runCtx, stopRun := context.WithCancel(context.Background())
 	defer stopRun()
 	app.StartTurnReconciler(runCtx)
 	// 回放用的回合快照在后台压缩：写入路径只写原样 JSON，worker 负责把已结束的回合压成 gzip。
-	database.StartTurnCompressor(runCtx, 0, 0)
+	database.StartTurnCompressor(runCtx, time.Duration(cfg.TurnCompressIntervalSeconds)*time.Second, cfg.TurnCompressBatch)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"status":"ok"}`))
@@ -67,7 +79,7 @@ func main() {
 	})
 	registerSPA(mux)
 
-	httpServer := &http.Server{Addr: ":" + env("PORT", "8080"), Handler: securityHeaders(mux), ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 90 * time.Second}
+	httpServer := &http.Server{Addr: cfg.Listen, Handler: securityHeaders(mux), ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 90 * time.Second}
 	go func() {
 		log.Printf("General Quarters listening on %s", httpServer.Addr)
 		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -81,13 +93,6 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	_ = httpServer.Shutdown(ctx)
-}
-
-func env(key, fallback string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return fallback
 }
 
 func ensureContent(dataDir string) error {
@@ -122,8 +127,6 @@ func ensureContent(dataDir string) error {
 	})
 }
 
-const backupKeep = 3
-
 // backupDatabase 在打开数据库之前留一份一致的快照。
 //
 // 以前是直接 io.Copy 那个 .db 文件：WAL 里还没 checkpoint 的提交会被漏掉，
@@ -131,7 +134,7 @@ const backupKeep = 3
 // 开发期反复重启，5.9 GB 的旧备份就这么堆在 data/backups 里。
 // 现在用 VACUUM INTO 生成一致快照（包含 WAL 里的内容），只保留最近 backupKeep 份；
 // 库文件自上次备份后没被改动过就直接跳过，不白复制一份 45 MB。
-func backupDatabase(dataDir, dbPath string) error {
+func backupDatabase(dataDir, dbPath string, keep int) error {
 	info, err := os.Stat(dbPath)
 	if err != nil {
 		return err
@@ -141,7 +144,7 @@ func backupDatabase(dataDir, dbPath string) error {
 		return err
 	}
 	if newest, ok := newestBackup(dir); ok && !newest.ModTime().Before(info.ModTime()) {
-		return pruneBackups(dir, backupKeep)
+		return pruneBackups(dir, keep)
 	}
 	target := uniqueBackupPath(dir)
 	db, err := sql.Open("sqlite", fmt.Sprintf("file:%s?_pragma=busy_timeout(5000)", dbPath))
@@ -153,7 +156,7 @@ func backupDatabase(dataDir, dbPath string) error {
 		_ = os.Remove(target)
 		return err
 	}
-	return pruneBackups(dir, backupKeep)
+	return pruneBackups(dir, keep)
 }
 
 func quoteSQLString(value string) string {

@@ -1,0 +1,9 @@
+{
+  "data_dir": "/data",
+  "db_path": "/data/generalquarters.db",
+  "listen": ":8080",
+  "secure_cookie": false,
+  "backup_keep": 3,
+  "turn_compress_interval_seconds": 3,
+  "turn_compress_batch": 8
+}

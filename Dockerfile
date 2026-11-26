@@ -17,6 +17,8 @@ RUN CGO_ENABLED=0 go test ./... && CGO_ENABLED=0 go build -trimpath -ldflags="-s
 FROM docker.m.daocloud.io/library/alpine:3.22
 WORKDIR /app
 COPY --from=go-build /out/general-quarters /usr/local/bin/general-quarters
+# 环境变量只是"没挂配置文件"时的兜底默认值；正式配置用 -config 或 GQ_CONFIG 指向挂进来的 JSON。
+# 注意：改了配置文件里的 listen 端口，也要同步改下面的 HEALTHCHECK 和 compose 的 ports。
 ENV GQ_DATA_DIR=/data GQ_DB_PATH=/data/generalquarters.db PORT=8080
 USER 1000:1000
 EXPOSE 8080
