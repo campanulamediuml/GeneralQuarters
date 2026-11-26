@@ -705,9 +705,6 @@ func reconDetectionChance(state State, aircraft *AirUnit, members []Unit) float6
 			chance += 5
 		}
 	}
-	if aircraft.SectorWidth == 120 {
-		chance /= 2
-	}
 	// 水上飞机（含飞行艇）飞得慢，但驻空久、观察条件好：最终发现率 ×2。
 	if aircraft.Seaplane {
 		chance *= 2
@@ -717,6 +714,11 @@ func reconDetectionChance(state State, aircraft *AirUnit, members []Unit) float6
 		// 前面的 -5/-10/-15 是"目标藏在云底下不好找"，这个系数是"整片天根本看不出去"，
 		// 两笔叠加：基础 40% 的搜索在风暴里先 -15 再 ×0.2，只剩 5%。
 		chance *= weatherFactor(weatherAt(state.Map, members[0].Coord))
+	}
+	// 宽扇面按规则书"应用全部修正后的最终发现率 ÷2"放在最后：对整条链折半，
+	// 所以 120 度永远正好是同机种 60 度的一半（水上飞机的 ×2 也在被折的范围里）。
+	if aircraft.SectorWidth == 120 {
+		chance /= 2
 	}
 	return math.Max(0, math.Min(100, chance))
 }

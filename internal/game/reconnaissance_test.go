@@ -32,6 +32,25 @@ func TestReconSectorGeometryUsesHeadingAndWidth(t *testing.T) {
 	}
 }
 
+// 宽扇面的 ÷2 放在最后：120 度永远正好是同机种 60 度的一半，
+// 水上飞机的 ×2 也在被折的范围里（否则水机开宽扇面等于白赚覆盖）。
+func TestWideSectorHalvesFinalChance(t *testing.T) {
+	state := State{Map: MapDefinition{Rows: 3, Cols: 5, Cells: []MapCell{{Coord: "0104", Weather: "rain"}}}}
+	members := []Unit{
+		{ID: "b1", FleetID: "target", Faction: "B", Type: "BB", Coord: "0104"},
+		{ID: "b2", FleetID: "target", Faction: "B", Type: "DD", Coord: "0104"},
+	}
+	for _, seaplane := range []bool{false, true} {
+		narrow := &AirUnit{OriginCoord: "0101", SectorWidth: 60, Faction: "A", Seaplane: seaplane}
+		wide := &AirUnit{OriginCoord: "0101", SectorWidth: 120, Faction: "A", Seaplane: seaplane}
+		narrowChance := reconDetectionChance(state, narrow, members)
+		wideChance := reconDetectionChance(state, wide, members)
+		if math.Abs(wideChance-narrowChance/2) > 0.001 {
+			t.Fatalf("seaplane=%v：120 度应正好是 60 度的一半，实际 %.2f vs %.2f", seaplane, wideChance, narrowChance)
+		}
+	}
+}
+
 func TestReconDetectionChanceModifiers(t *testing.T) {
 	state := State{Map: MapDefinition{Rows: 3, Cols: 5, Cells: []MapCell{{Coord: "0104", Weather: "rain"}}}}
 	aircraft := &AirUnit{OriginCoord: "0101", SectorWidth: 60, Faction: "A"}
