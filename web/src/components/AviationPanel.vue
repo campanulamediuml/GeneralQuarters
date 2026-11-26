@@ -9,7 +9,7 @@ import ShipCounter from './ShipCounter.vue'
 type AirCommandType = 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' | 'LAUNCH_COVER' | 'LAUNCH_TRANSFER' | 'RETURN_TO_HANGAR' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK' | 'SET_AIR_CYCLE' | 'RECALL_AIR' | 'RETASK_AIR' | 'RETARGET_AIR' | 'SET_STRIKE_DISPERSION'
 type CommandOptions = { heading?: ReconHeading; sector_width?: 60 | 120; task_id?: string; coord?: string; task_kind?: string; loadout?: string; disperse?: boolean; cycle?: boolean; lane?: number }
 type TaskLane = { id: string; name: string; kind: string; slot?: number }
-type AirZone = 'hangar' | 'deck'
+type AirZone = 'hangar' | 'deck' | 'elevator'
 
 const props = defineProps<{ aviation: AviationView; units: Unit[]; fleetId: string; targets: StrikeTarget[]; playerFaction: Player['faction']; focusUnitId?: string; selectedAircraftId?: string; busy: boolean; clock?: import('../types').GameClock | null; locked?: boolean; airfield?: GroundAirStatus | null; radioTasks?: { task_id: string; kind: string; coord: string; airborne: number; used: boolean; chance: number; distance: number }[] }>()
 
@@ -473,10 +473,47 @@ function elevatorZone(aircraftID: string): AirZone {
 
 function aircraftAt(zone: AirZone) {
   const aircraft = selectedCarrier.value?.aircraft || []
-  if (zone === 'hangar') {
-    return aircraft.filter((item) => ['hangar', 'service'].includes(item.status) || (item.status === 'elevator' && elevatorZone(item.id) === 'hangar'))
+  // 升降机上的算子有自己的那一栏，不再混进甲板或机库：
+  // 以前它们被按方向塞回甲板/机库，玩家看到"下降中"的飞机还挂在甲板上。
+  if (zone === 'elevator') {
+    return aircraft.filter((item) => item.status === 'elevator')
   }
-  return aircraft.filter((item) => ['deck', 'ready', 'recovery'].includes(item.status) || (item.status === 'elevator' && elevatorZone(item.id) === 'deck'))
+  if (zone === 'hangar') {
+    return aircraft.filter((item) => ['hangar', 'service'].includes(item.status))
+  }
+  return aircraft.filter((item) => ['deck', 'ready', 'recovery'].includes(item.status))
+}
+
+// 升降机栏：一艘船可能有多部升降机/吊车，每部一列，写着它现在在提升还是下降。
+const elevatorRowVisible = computed(() => (selectedCarrier.value?.elevators?.length || 0) > 0)
+
+function elevatorStatusLabel(status?: string) {
+  if (status === 'lifting') return '▲ 提升中'
+  if (status === 'lowering') return '▼ 下降中'
+  if (status === 'damaged') return '损坏'
+  return '空闲'
+}
+
+// 数据里的升降机 id 是 "a-cv-01-elevator-1" 这种长串，卡片上只留尾号。
+function elevatorLabel(elevatorID: string, index: number) {
+  const tail = elevatorID.split('-').pop() || ''
+  return `升降机 ${tail || index + 1}`
+}
+
+function elevatorAircraft(elevator: { aircraft_ids?: string[] }) {
+  const ids = new Set(elevator.aircraft_ids || [])
+  return (selectedCarrier.value?.aircraft || []).filter((item) => ids.has(item.id))
+}
+
+function elevatorStacks(elevator: { aircraft_ids?: string[] }) {
+  const stacks = new Map<string, { aircraft: AirUnit; ids: string[] }>()
+  for (const aircraft of elevatorAircraft(elevator)) {
+    const key = aircraftStackKey(aircraft)
+    const stack = stacks.get(key)
+    if (stack) stack.ids.push(aircraft.id)
+    else stacks.set(key, { aircraft, ids: [aircraft.id] })
+  }
+  return [...stacks.values()]
 }
 
 // 叠加只合并"同型同状态"的算子；损伤/检修必须进 key。
@@ -647,6 +684,24 @@ function operationName(carrier: CarrierAirStatus) {
           <span v-if="!aircraftAt('deck').length" class="empty-air-zone">甲板空置</span>
         </div>
 
+      </section>
+
+      <!-- 升降机单独一栏：飞机在提升/下降时既不挂在甲板上也不在机库里，
+           玩家要能一眼看出"这部升降机在往上还是往下、上面是谁"。 -->
+      <section v-if="selectedCarrier && elevatorRowVisible" class="air-storage-zone elevator-zone mission-elevator">
+        <header><div><span class="section-kicker">ELEVATOR</span><h3>升降机</h3></div><strong>{{ aircraftAt('elevator').length }}</strong></header>
+        <div class="elevator-grid">
+          <article v-for="(elevator, index) in selectedCarrier.elevators || []" :key="elevator.id" class="elevator-card" :class="'elevator-' + elevator.status" :data-elevator-id="elevator.id" :data-status="elevator.status">
+            <header><strong>{{ elevatorLabel(elevator.id, index) }}</strong><span :class="'elevator-status-' + elevator.status">{{ elevatorStatusLabel(elevator.status) }}</span></header>
+            <div v-if="elevatorStacks(elevator).length" class="air-counter-grid">
+              <div v-for="stack in elevatorStacks(elevator)" :key="stack.aircraft.id" class="air-counter-item" :data-aircraft-id="stack.aircraft.id" :data-stack-count="stack.ids.length">
+                <AircraftCounter :aircraft="stack.aircraft" :stack-count="stack.ids.length" :player-faction="playerFaction" />
+                <span class="air-no-action">{{ counterHint(stack.aircraft) }}</span>
+              </div>
+            </div>
+            <p v-else class="elevator-idle">空闲</p>
+          </article>
+        </div>
       </section>
 
       <section v-if="selectedCarrier" class="carrier-air-card mission-ship" :class="{ focused: focusUnitId === selectedCarrier.unit_id }" :data-carrier-id="selectedCarrier.unit_id">
