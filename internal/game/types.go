@@ -83,6 +83,7 @@ type DeploymentOverrides struct {
 	SpeedClass     *string  `json:"speed_class,omitempty"`
 	Gunnery        *int     `json:"gunnery,omitempty"`
 	ArmoredCarrier *bool    `json:"armored_carrier,omitempty"`
+	OpenHangar     *bool    `json:"open_hangar,omitempty"`
 }
 
 type AirDeployment struct {
@@ -156,7 +157,10 @@ type ShipCard struct {
 	DepthCharges   int     `json:"depth_charges"`
 	Cargo          int     `json:"cargo"`
 	ArmoredCarrier bool    `json:"armored_carrier"`
-	HistoricalLoss string  `json:"historical_loss,omitempty"`
+	// OpenHangar 表示开放式机库：机库侧面有大量卷帘开口，油气不容易积聚，
+	// 被炸弹引爆的机库 DCT 取优势（两投取小）。封闭式机库反过来取劣势。
+	OpenHangar     bool   `json:"open_hangar,omitempty"`
+	HistoricalLoss string `json:"historical_loss,omitempty"`
 }
 
 type AircraftDefinition struct {

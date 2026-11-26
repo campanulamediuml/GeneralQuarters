@@ -160,16 +160,13 @@ func TestBombAircraftGroupsSplitEffects(t *testing.T) {
 	}
 }
 
-// 美军开放机库取优势（两投取小），日军封闭机库取劣势（两投取大）：
-// 同样一发炸弹、同样 50% 的失败线，美军 25% 会失败，日军 75%。
-func TestHangarDCTAdvantageByDoctrine(t *testing.T) {
+// 机库形式是卡面属性：开放机库取优势（两投取小），封闭机库取劣势（两投取大）。
+// 同样一发炸弹、同样 50% 的失败线，开放机库 25% 会失败，封闭机库 75%。
+func TestHangarDCTAdvantageByCard(t *testing.T) {
 	trials := 400
-	failRate := func(doctrine string) float64 {
-		state := &State{RNGState: 1, Doctrines: map[string]string{"A": "us", "B": "japan"}}
-		unit := &Unit{ID: "cv", Type: "CV", Faction: "A", Card: ShipCard{DamageControl: 5}}
-		if doctrine == "japan" {
-			unit.Faction = "B"
-		}
+	failRate := func(openHangar bool) float64 {
+		state := &State{RNGState: 1}
+		unit := &Unit{ID: "cv", Type: "CV", Faction: "A", Card: ShipCard{DamageControl: 5, OpenHangar: openHangar}}
 		failures := 0
 		for i := 0; i < trials; i++ {
 			if hangarDCTRoll(state, unit) > unit.Card.DamageControl {
@@ -178,18 +175,36 @@ func TestHangarDCTAdvantageByDoctrine(t *testing.T) {
 		}
 		return float64(failures) / float64(trials)
 	}
-	us := failRate("us")
-	japan := failRate("japan")
-	if us < 0.18 || us > 0.32 {
-		t.Fatalf("美军开放机库的失败率应接近 25%%，实际 %.2f", us)
+	open := failRate(true)
+	closed := failRate(false)
+	if open < 0.18 || open > 0.32 {
+		t.Fatalf("开放机库的失败率应接近 25%%，实际 %.2f", open)
 	}
-	if japan < 0.68 || japan > 0.82 {
-		t.Fatalf("日军封闭机库的失败率应接近 75%%，实际 %.2f", japan)
+	if closed < 0.68 || closed > 0.82 {
+		t.Fatalf("封闭机库的失败率应接近 75%%，实际 %.2f", closed)
 	}
-	if !(japan > us) {
-		t.Fatalf("日军机库应该更容易被炸：us=%.2f japan=%.2f", us, japan)
+	if !(closed > open) {
+		t.Fatalf("封闭机库应该更容易被炸：open=%.2f closed=%.2f", open, closed)
 	}
-	if rulesForDoctrine("us", 1942, false).HangarDCTAdvantage != true || rulesForDoctrine("japan", 1942, false).HangarDCTAdvantage {
-		t.Fatal("阵营规则里的机库优势配置不对")
+}
+
+// 部署覆盖能按单舰改机库形式（剧本里微调不需要复制整张卡）。
+func TestOpenHangarDeploymentOverride(t *testing.T) {
+	scenario, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err := NewState(scenario, gameMap, catalog, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	openCount := 0
+	for _, unit := range state.Units {
+		if unit.Card.OpenHangar {
+			openCount++
+		}
+	}
+	if openCount == 0 {
+		t.Fatal("珊瑚海剧本里应该有开放式机库的航母（翔鹤、瑞鹤）")
 	}
 }

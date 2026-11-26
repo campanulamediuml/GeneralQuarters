@@ -60,10 +60,6 @@ type FactionRules struct {
 
 	// DeckDestroyChance：航母甲板被炸弹命中后彻底报废的概率（%）。
 	DeckDestroyChance float64
-	// HangarDCTAdvantage：机库被炸弹命中后的 DCT 是否取优势。
-	// 美军是开放机库（两投取小），日军是封闭机库（两投取大）——同样一发炸弹，
-	// 日军航母更容易被机库里挂弹的飞机连锁点着。
-	HangarDCTAdvantage bool
 	// EarlyRadarPenalty：雷达火控还不成熟的年份里，雷击命中率的惩罚（%）。
 	EarlyRadarPenalty float64
 	// HeavyAALateBonus：后期重型防空命中率加成（%）。
@@ -149,7 +145,6 @@ func rulesForDoctrine(doctrine string, year int, night bool) FactionRules {
 		rules.ReconInCAPBonus = 20
 		rules.DeckDestroyChance = 1
 		rules.FleetLightAAMerge = true
-		rules.HangarDCTAdvantage = true
 		rules.SurpriseRadarBonus = 1
 		if year > 0 && year < 1944 {
 			rules.EarlyRadarPenalty = 20

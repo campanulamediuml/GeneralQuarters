@@ -358,11 +358,12 @@ func destroyAircraftGroup(state *State, carrier *Unit, group []*AirUnit, count i
 // 有可能被一发炸弹炸出油气爆炸。甲板上没有这个结算（飞机在甲板上不构成封闭空间）。
 var hangarExplosionTable = []string{"avgas_explosion", "ammo_explosion", "small_fire"}
 
-// hangarDCTRoll 是机库爆炸判定的 d10。美军开放机库取优势（两投取小，更容易过），
-// 日军封闭机库取劣势（两投取大，更容易炸）；DCT 失败的条件是骰点大于损管值。
+// hangarDCTRoll 是机库爆炸判定的 d10：开放机库取优势（两投取小，更容易过），
+// 封闭机库取劣势（两投取大，油气积聚更容易炸）。机库形式是卡面属性，不看阵营。
+// DCT 失败的条件是骰点大于损管值。
 func hangarDCTRoll(state *State, unit *Unit) int {
 	first, second := d10(state), d10(state)
-	if rulesFor(*state, unit.Faction).HangarDCTAdvantage {
+	if unit.Card.OpenHangar {
 		return min(first, second)
 	}
 	return max(first, second)
