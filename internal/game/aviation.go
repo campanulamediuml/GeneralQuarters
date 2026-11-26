@@ -1816,6 +1816,25 @@ func LandAircraft(state *State, aircraft *AirUnit, carrier *Unit) {
 	carrier.Deck.Operation = "recover"
 }
 
+// ReconcileCarrierAircraftCounts 把 Card.Aircraft 拉回真实在舰数。
+//
+// Card.Aircraft 是"机库/甲板上的算子数"，放飞时减、着舰时加。旧版本在两种摔毁路径上
+// 反向加了回去（备用油透支、夜间着舰失败），于是每摔一架机库就凭空多占一个位置，
+// 计数一路涨到 21/18，还会让 transferHost 这类容量判断误判"机库已满"。
+// 每回合对一次账：以实际在舰算子为准，历史脏数据自然被修回去。
+func ReconcileCarrierAircraftCounts(state *State) {
+	if state == nil {
+		return
+	}
+	for _, id := range sortedUnitIDs(state.Units) {
+		unit := state.Units[id]
+		if unit == nil || unit.Deck == nil || unit.Card.HangarCapacity <= 0 {
+			continue
+		}
+		unit.Card.Aircraft = aboardAircraft(*state, unit.ID)
+	}
+}
+
 // landIfCapacity 统一着舰入口：先确认甲板真的有空间，再落地，避免同一回合多架返航飞机叠加上限。
 // loseCarrierAircraft 处理母舰已沉没的空中/待处置算子：能备降就转移到同阵营可用甲板整备，
 // 否则按燃油耗尽处理移除。避免出现"航母已沉、机库指标还在"的幽灵算子。

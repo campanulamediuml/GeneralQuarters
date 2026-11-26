@@ -1227,6 +1227,8 @@ func ResolveOrders(state *State, orders []Order) []EngineEvent {
 	// 胜利条件（DESIGN.md 49 行）：每回合结算后统一判定一次。
 	// 回合结束对账：花名册里有、现在不在编的算子记为损失（击落/油箱耗尽/随舰沉没/机库被炸）。
 	settleAircraftLosses(state)
+	// 机库占位以实际在舰算子为准：旧版摔毁路径把计数加回去过，脏数据要能自己修回来。
+	ReconcileCarrierAircraftCounts(state)
 	return append(events, settleOutcome(state)...)
 }
 

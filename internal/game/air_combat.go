@@ -1125,9 +1125,8 @@ func resolveLandingRisk(state *State, aircraft *AirUnit) (bool, []EngineEvent) {
 	if probabilityRoll(&state.RNGState) >= chance {
 		return false, []EngineEvent{{Type: "air_landing_overdue", Audience: aircraft.Faction, Text: fmt.Sprintf("%s备用油透支（剩余%d），仍安全着舰（失败率%.0f%%）", model, reserve, chance)}}
 	}
-	if carrier := state.Units[aircraft.CarrierID]; carrier != nil {
-		carrier.Card.Aircraft++
-	}
+	// 摔毁的算子从来没有真正上舰：它在放飞时就已经从 Card.Aircraft 里扣掉了，
+	// 这里再加回去等于凭空多出一架，机库计数会一路涨到"21/18"，还会挡住后续转场和回收。
 	delete(state.Aircraft, aircraft.ID)
 	return true, []EngineEvent{{Type: "air_landing_crash", Audience: aircraft.Faction, Text: fmt.Sprintf("%s备用油透支（剩余%d），着舰失败，算子损毁", model, reserve)}}
 }
@@ -1210,8 +1209,8 @@ func advanceAircraftReturn(state *State, aircraft *AirUnit) []EngineEvent {
 	// 机场 20%（机场落地在 landAtAirfield 里做）。摔毁先于降落判定，否则夜间返航永远是安全的。
 	if state.Night && !aircraft.Seaplane && probabilityRoll(&state.RNGState) < 70 {
 		model := aircraft.Model
+		// 同 resolveLandingRisk：摔毁的算子不占机库位置，放飞时已经扣过了。
 		delete(state.Aircraft, aircraft.ID)
-		carrier.Card.Aircraft++
 		return []EngineEvent{{Type: "night_landing_crash", Audience: aircraft.Faction, Text: model + "夜间降落失败，撞上甲板"}}
 	}
 	crashed, riskEvents := resolveLandingRisk(state, aircraft)

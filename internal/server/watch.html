@@ -158,6 +158,8 @@
   var HEADING_ANGLE = { E: 0, SE: 60, SW: 120, W: 180, NW: 240, NE: 300 };
   var COLOR = { A: '#5aa9ff', B: '#ff6f61' };
   var AIRBORNE = { cap: 1, recon: 1, attack: 1, attack_holding: 1, cover: 1, transfer: 1 };
+  // 在舰状态：这些才算占机库/甲板位置。升空在外的不占——它们返航时才要往下落。
+  var ABOARD = { hangar: 1, service: 1, deck: 1, ready: 1, recovery: 1, elevator: 1 };
   var NS = 'http://www.w3.org/2000/svg';
   var parts = location.pathname.split('/').filter(Boolean);
   var room = parts[1] || '';
@@ -577,7 +579,14 @@
       var carrier = carrierMap[member.id];
       var details = [(member.type || '—'), '强度 ' + (member.strength == null ? '?' : member.strength) + '/' + (member.max_strength == null ? '?' : member.max_strength)];
       if (member.card && member.card.cargo) details.push('货物 ' + member.card.cargo);
-      if (carrier) details.push('舰载机 ' + (carrier.aircraft || []).length + '/' + (carrier.hangar_capacity || '?'));
+      if (carrier) {
+        // 分母是机库上限，分子只能算"在舰"的算子：以前把所有归属这艘航母的飞机都数进去，
+        // 升空的 6 架 CAP 也算，于是翔鹤显示成 21/18，像是超编了。
+        var carrierAir = carrier.aircraft || [];
+        var aboard = carrierAir.filter(function (item) { return ABOARD[item.status] === 1; }).length;
+        var airborne = carrierAir.length - aboard;
+        details.push('舰载机 ' + aboard + '/' + (carrier.hangar_capacity || '?') + (airborne > 0 ? ' · 空中 ' + airborne : ''));
+      }
       return '<div class="detail-card">' + pictureBlock(member.card && member.card.picture, member.type || '舰', 'ship-pic') +
         '<div class="detail-copy"><b>' + escapeHTML(member.name || member.type || '未知舰') + '</b>' +
         '<small>' + escapeHTML(details.join(' · ')) + '</small>' +
@@ -642,27 +651,49 @@
   }
   function showAirDetail(group) {
     if (!group) return;
-    var rows = {};
+    // 一行 = 机型 + 状态 + 挂载 + 剩余航程。剩余航程必须进分组键：
+    // 同一队飞机是分几批升空的，烧掉的油各不相同，按老口径合并只会显示第一架的值
+    // （32 架的攻击编队里，前面几架已经飞到 10/21、后升空的还有 18/21，界面上却只写一个数）。
+    var rows = [];
+    var rowIndex = {};
     (group.aircraft || []).forEach(function (aircraft) {
-      var key = [aircraft.model || '?', aircraft.status || '', aircraft.loadout || ''].join('|');
-      if (!rows[key]) {
-        rows[key] = {
-          model: aircraft.model || '未知机型', picture: aircraft.picture, status: aircraft.status,
-          loadout: aircraft.loadout, range: aircraft.remaining_range, max: aircraft.max_range, count: 0
+      var model = aircraft.model || '未知机型';
+      var range = aircraft.remaining_range == null ? null : aircraft.remaining_range;
+      var key = [model, aircraft.status || '', aircraft.loadout || '', range == null ? '' : range].join('|');
+      if (!rowIndex[key]) {
+        rowIndex[key] = {
+          model: model, picture: aircraft.picture, status: aircraft.status,
+          loadout: aircraft.loadout, range: range, max: aircraft.max_range, count: 0
         };
+        rows.push(rowIndex[key]);
       }
-      rows[key].count++;
+      rowIndex[key].count++;
     });
-    var cards = Object.keys(rows).map(function (key) {
-      var row = rows[key];
-      var details = ['状态 ' + statusLabel(row.status), '数量 ' + row.count];
+    // 同型排在一起，型内按剩余航程从多到少：一眼看出哪几架快没油了。
+    rows.sort(function (a, b) {
+      if (a.model !== b.model) return a.model < b.model ? -1 : 1;
+      return (b.range == null ? -1 : b.range) - (a.range == null ? -1 : a.range);
+    });
+    var byModel = {};
+    var modelOrder = [];
+    rows.forEach(function (row) {
+      if (!byModel[row.model]) {
+        byModel[row.model] = 0;
+        modelOrder.push(row.model);
+      }
+      byModel[row.model] += row.count;
+    });
+    var cards = rows.map(function (row) {
+      var details = ['状态 ' + statusLabel(row.status), '数量 ' + row.count + ' 架'];
       if (row.range != null) details.push('航程 ' + row.range + (row.max ? '/' + row.max : ''));
       return '<div class="detail-card">' + pictureBlock(row.picture, '机') +
         '<div class="detail-copy"><b>' + escapeHTML(row.model) + '</b>' +
         '<small>' + escapeHTML(details.join(' · ')) + '</small>' +
         '<em>' + escapeHTML(row.loadout || '') + '</em></div></div>';
     }).join('');
-    var meta = '<span>兵力 <b>' + (group.count || (group.aircraft || []).length) + '</b> 架</span>' +
+    var total = (group.aircraft || []).length || group.count || 0;
+    var meta = '<span>兵力 <b>' + total + '</b> 架</span>' +
+      '<span>机型 <b>' + escapeHTML(modelOrder.map(function (model) { return model + '×' + byModel[model]; }).join(' / ')) + '</b></span>' +
       '<span>当前 <b>' + escapeHTML(group.coord || '—') + '</b></span>' +
       '<span>任务 <b>' + escapeHTML(group.mission || '空中') + '</b></span>' +
       '<span>目标 <b>' + escapeHTML(group.target || '未设置') + '</b></span>' +
@@ -854,7 +885,16 @@
     // 空中单位：按实际坐标画小飞机，A 蓝 B 红；同格多架合并成 ×N。
     var seenAircraft = {};
     var airGroups = {};
-    function addAircraft(aircraft, fallbackFaction) {
+    // 任务级的起飞顶点/目标按 task_id 建索引：前出的 CAP、按坐标聚合过的混编编队，
+    // 逐机上只有当前坐标，起飞点和值班空域只记在任务里。
+    var taskInfo = {};
+    ((data.aviation && data.aviation.tasks) || []).forEach(function (task) {
+      if (task.id) taskInfo[task.id] = { origin: task.origin_coord || '', target: task.target_coord || '' };
+    });
+    ((data.ground_tasks) || []).forEach(function (task) {
+      if (task.id) taskInfo[task.id] = { origin: task.origin_coord || '', target: task.target_coord || '' };
+    });
+    function addAircraft(aircraft, fallbackFaction, task) {
       if (!aircraft || !aircraft.id || seenAircraft[aircraft.id]) return;
       seenAircraft[aircraft.id] = true;
       if (!aircraft.coord || !AIRBORNE[aircraft.status]) return;
@@ -878,8 +918,12 @@
         };
       }
       airGroups[key].count++;
-      if (!airGroups[key].origin && aircraft.origin_coord) airGroups[key].origin = aircraft.origin_coord;
-      if (!airGroups[key].target && aircraft.target_coord) airGroups[key].target = aircraft.target_coord;
+      // 逐机的坐标可能缺（老快照、或者 CAP 的值班空域只记在任务上），任务上的值兜底。
+      var info = taskInfo[aircraft.task_id] || {};
+      var origin = aircraft.origin_coord || info.origin || (task && task.origin_coord) || '';
+      var target = aircraft.target_coord || info.target || (task && task.target_coord) || '';
+      if (!airGroups[key].origin && origin) airGroups[key].origin = origin;
+      if (!airGroups[key].target && target) airGroups[key].target = target;
       airGroups[key].aircraft.push(aircraft);
     }
     ((data.aviation && data.aviation.carriers) || []).forEach(function (carrier) {
@@ -889,7 +933,7 @@
       (airfield.aircraft || []).forEach(function (aircraft) { addAircraft(aircraft, airfield.faction); });
     });
     ((data.aviation && data.aviation.tasks) || []).forEach(function (task) {
-      (task.aircraft || []).forEach(function (aircraft) { addAircraft(aircraft, task.faction); });
+      (task.aircraft || []).forEach(function (aircraft) { addAircraft(aircraft, task.faction, task); });
     });
 
     var airByCoord = {};
