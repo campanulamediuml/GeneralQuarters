@@ -3890,7 +3890,7 @@
    "faction": "A",
    "name": "水上侦察机",
    "model": "OS2U 翠鸟",
-   "picture": "misc/image/aircraft/soc.png",
+   "picture": "misc/image/aircraft/os2u.png",
    "picture_mode": "image",
    "kind": "recon",
    "strength": 1,

@@ -41,6 +41,7 @@ B5N/TBD/G3M/H6K 是侧视图、D3A/SBD/G4M/B25 是斜视（3/4 视角），只�
 | b6n.png | B6NTop@2x.png（旋转 180°） | B6N2 天山 |
 | p1y.png | P1YTop@2x.png（旋转 180°） | P1Y1 银河 |
 | h8k.png | H8KTop@2x.png（旋转 180°） | H8K2 二式大艇 |
+| os2u.png | OS2UTop@2x.png（旋转 180°） | OS2U 翠鸟（老式战列舰水上侦察机） |
 
 素材包里还有大量本作尚未建卡的机型（F4U、B-24、B-29、N1K、Ki-84、PBM、PB4Y……），
 文件名去掉 `@2x` 就是机型代号；加机型时把对应 PNG 抄进本目录、在 `units/*.json` 的
