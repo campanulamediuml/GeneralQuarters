@@ -277,6 +277,33 @@ func friendlyCarrierHostAt(state State, faction, coord string, aircraft *Airfiel
 	return nil
 }
 
+// friendlyFleetIDAt 找出指定 hex 上的一支己方舰队 ID，转场到舰队时用它记住"要跟谁"。
+func friendlyFleetIDAt(state State, faction, coord string) string {
+	for _, id := range sortedUnitIDs(state.Units) {
+		unit := state.Units[id]
+		if unit == nil || unit.Faction != faction || unit.Coord != coord || unit.FleetID == "" {
+			continue
+		}
+		return unit.FleetID
+	}
+	return ""
+}
+
+// friendlyFleetCoord 返回己方舰队现在所在的 hex：舰队整体一起走，随便取一艘舰的位置。
+func friendlyFleetCoord(state State, faction, fleetID string) (string, bool) {
+	if fleetID == "" {
+		return "", false
+	}
+	for _, id := range sortedUnitIDs(state.Units) {
+		unit := state.Units[id]
+		if unit == nil || unit.Faction != faction || unit.FleetID != fleetID {
+			continue
+		}
+		return unit.Coord, true
+	}
+	return "", false
+}
+
 // boardGroundAircraftOnCarrier 把飞到航母上空的机场算子转成舰载机算子：停在甲板上等待下降整备。
 func boardGroundAircraftOnCarrier(state *State, aircraft *AirfieldAirUnit, carrier *Unit) {
 	if state.Aircraft == nil {
@@ -1368,8 +1395,21 @@ func ApplyGroundAirOrder(state *State, order Order) []EngineEvent {
 			// 掩护 / 转场改目标。
 			aircraft.TargetCoord = order.Coord
 			aircraft.Returning = false
-			if kind == "cover" {
+			aircraft.TargetFleetID = ""
+			switch kind {
+			case "cover":
 				aircraft.CoverUnitID = friendlyUnitIDAt(*state, airfield.Faction, order.Coord)
+			case "transfer":
+				// 转场到舰队时必须记住舰队 ID：hex 只是玩家点选那一刻舰队所在的位置。
+				// 以前只认 hex，舰队开出去一格，下一回合就判成"目的地不再是我方机场或航母"，
+				// 整队白飞一趟再返回原基地（把凯恩斯的 F4F 转场到 TF11 就是这么丢的）。
+				if id := order.TargetFleetID; id != "" {
+					if _, ok := friendlyFleetCoord(*state, airfield.Faction, id); ok {
+						aircraft.TargetFleetID = id
+					}
+				} else if friendlyAirfieldAtCoord(*state, airfield.Faction, order.Coord) == nil {
+					aircraft.TargetFleetID = friendlyFleetIDAt(*state, airfield.Faction, order.Coord)
+				}
 			}
 		}
 		text := fmt.Sprintf("攻击编队目标设为%s", order.Coord)
@@ -1993,6 +2033,18 @@ func advanceGroundTransfer(state *State, aircraft *AirfieldAirUnit) []EngineEven
 	if len(members) == 0 {
 		return nil
 	}
+	events := []EngineEvent{}
+	// 追舰转场：目标 hex 只是下命令那一刻舰队所在的位置，舰队一开走就只剩空海。
+	// 任务里记了舰队 ID 就每回合按舰队当前位置校正，而不是把"舰队移动"当成"目的地没了"。
+	if aircraft.TargetFleetID != "" {
+		if coord, ok := friendlyFleetCoord(*state, aircraft.Faction, aircraft.TargetFleetID); ok && coord != aircraft.TargetCoord {
+			aircraft.TargetCoord = coord
+			for _, member := range members {
+				member.TargetCoord = coord
+			}
+			events = append(events, EngineEvent{Type: "transfer_tracking", Audience: aircraft.Faction, Text: fmt.Sprintf("%s跟着舰队把转场目的地改到%s", aircraft.Model, coord)})
+		}
+	}
 	dest := friendlyAirfieldAtCoord(*state, aircraft.Faction, aircraft.TargetCoord)
 	// 目的地也可以是己方航母：陆基机场的舰载型飞机补上航母就是这条路径。
 	var host *Unit
@@ -2003,7 +2055,15 @@ func advanceGroundTransfer(state *State, aircraft *AirfieldAirUnit) []EngineEven
 				member.Returning = true
 				member.TargetCoord = member.OriginCoord
 			}
-			return []EngineEvent{{Type: "transfer_aborted", Audience: aircraft.Faction, Text: fmt.Sprintf("%s的目的地已不再是我方机场或航母，转场中止返航", aircraft.Model)}}
+			text := fmt.Sprintf("%s的目的地已不再是我方机场或航母，转场中止返航", aircraft.Model)
+			if aircraft.TargetFleetID != "" {
+				if _, tracked := friendlyFleetCoord(*state, aircraft.Faction, aircraft.TargetFleetID); tracked {
+					text = fmt.Sprintf("%s跟到了%s，但舰队里已没有能接收的航母，转场中止返航", aircraft.Model, aircraft.TargetCoord)
+				} else {
+					text = fmt.Sprintf("%s要跟的舰队已经不在，转场中止返航", aircraft.Model)
+				}
+			}
+			return append(events, EngineEvent{Type: "transfer_aborted", Audience: aircraft.Faction, Text: text})
 		}
 	}
 	destCoord := aircraft.TargetCoord
@@ -2016,10 +2076,17 @@ func advanceGroundTransfer(state *State, aircraft *AirfieldAirUnit) []EngineEven
 	} else if host != nil {
 		destName = host.Name
 	}
-	events := []EngineEvent{}
 	moved := false
 	arrived := 0
 	for _, member := range members {
+		// 追着舰队飞可能越追越远：剩的油连目标格都够不着就别追了，回原基地，
+		// 否则编队会在海上把油烧到 0 之后一直飞不走。
+		if member.Coord != destCoord && member.Range() < Distance(member.Coord, destCoord) {
+			member.Returning = true
+			member.TargetCoord = member.OriginCoord
+			events = append(events, EngineEvent{Type: "transfer_rtb", Audience: aircraft.Faction, Text: fmt.Sprintf("%s剩余航程%d够不到%s，放弃转场返航", member.Model, member.Range(), destName)})
+			continue
+		}
 		for steps := 0; steps < 1 && member.Coord != destCoord; steps++ {
 			next := nextGroundFlightCoord(*state, member, member.Coord, destCoord)
 			if next == "" {
