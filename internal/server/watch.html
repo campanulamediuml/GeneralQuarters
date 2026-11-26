@@ -657,6 +657,12 @@
     openDetail('AIRFIELD · ' + faction + ' · ' + airfieldTypeLabel(airfield.type), airfield.name, meta,
       baseCard + (cards || '<div class="detail-empty">机库空置</div>'));
   }
+  // 牌子/标题上的机型只写型号第一个词，中文全名放在悬停 title 里。
+  function aircraftCode(model) {
+    if (!model) return '未知机型';
+    return String(model).split(/\s+/)[0];
+  }
+
   function showAirDetail(group) {
     if (!group) return;
     // 一行 = 机型 + 状态 + 挂载 + 剩余航程。剩余航程必须进分组键：
@@ -687,10 +693,10 @@
     var cards = rows.map(function (row) {
       var details = ['状态 ' + flightStateLabel(row)];
       if (row.range != null) details.push('航程 ' + row.range + (row.max ? '/' + row.max : ''));
-      // 一行就是一个机型（分组键里带了机型），所以标题直接写"机型 ×N"——
-      // 混编编队看的是这一行的机型，不是整队的机型，不会再有"整队都是它"的误解。
+      // 一行就是一个机型（分组键里带了机型），标题写"型号 ×N"——
+      // 只留型号（A6M2 / B5N2 / G3M），机型全名留在悬停 title 里，牌子够小。
       return '<div class="detail-card" title="' + escapeHTML(row.model) + ' ×' + row.count + '">' + pictureBlock(row.picture, '机') +
-        '<div class="detail-copy"><b>' + escapeHTML(row.model) + ' ×' + row.count + '</b>' +
+        '<div class="detail-copy"><b>' + escapeHTML(aircraftCode(row.model)) + ' ×' + row.count + '</b>' +
         '<small>' + escapeHTML(details.join(' · ')) + '</small>' +
         '<em>' + escapeHTML(row.loadout || '') + '</em></div></div>';
     }).join('');

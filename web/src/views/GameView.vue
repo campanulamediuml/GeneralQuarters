@@ -195,7 +195,8 @@ const mapAirTaskModels = computed(() => {
   if (!task) return ''
   const counts = new Map<string, number>()
   for (const aircraft of task.aircraft) counts.set(aircraft.model, (counts.get(aircraft.model) || 0) + 1)
-  return [...counts.entries()].map(([model, count]) => `${model} ×${count}`).join('、')
+  // 编队详情只写型号（A6M2 / B5N2 / G3M），和航空界面的算子牌一致；中文全名放在算子的 title 里。
+  return [...counts.entries()].map(([model, count]) => `${model.split(/\s+/)[0]} ×${count}`).join('、')
 })
 const mapAirTaskPhase = computed(() => {
   const task = mapAirTask.value
