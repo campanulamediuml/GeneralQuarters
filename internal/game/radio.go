@@ -308,10 +308,16 @@ func ApplyRadioOrder(state *State, faction string, order Order) []EngineEvent {
 		events = append(events, retaskRadio(state, faction, order, carrierMembers, groundMembers, distance, chance)...)
 	case RadioRetarget:
 		for _, aircraft := range carrierMembers {
+			if aircraft.Returning {
+				continue
+			}
 			setStrikeTarget(state, aircraft, faction, order.Coord)
 			aircraft.Engaged = false
 		}
 		for _, aircraft := range groundMembers {
+			if aircraft.Returning {
+				continue
+			}
 			setGroundStrikeTarget(state, aircraft, faction, order.Coord)
 		}
 		events = append(events, EngineEvent{Type: "radio_retarget", Audience: faction, Text: fmt.Sprintf("%s无线电改目标成功（最近友军 %d hex，成功率 %.0f%%），新目标 %s", coord, distance, chance, order.Coord)})
@@ -347,6 +353,11 @@ func retaskRadio(state *State, faction string, order Order, carrierMembers []*Ai
 		}
 		mission := MissionKind(kind)
 		for _, aircraft := range carrierMembers {
+			// 已经在返航的成员收不到改令：以前这里无条件把 Returning 清掉，
+			// 一架掉头回家的飞机会被"改令 → 打击"重新塞回打击编队。
+			if aircraft.Returning {
+				continue
+			}
 			aircraft.TaskKind = kind
 			aircraft.Returning = false
 			aircraft.Engaged = false
@@ -371,6 +382,9 @@ func retaskRadio(state *State, faction string, order Order, carrierMembers []*Ai
 	}
 	mission := MissionKind(kind)
 	for _, aircraft := range groundMembers {
+		if aircraft.Returning {
+			continue
+		}
 		aircraft.TaskKind = kind
 		aircraft.Returning = false
 		switch mission {

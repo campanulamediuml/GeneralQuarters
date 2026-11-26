@@ -1253,6 +1253,9 @@ func ApplyGroundAirOrder(state *State, order Order) []EngineEvent {
 		kind := list[0].TaskKind
 		for _, aircraft := range groundTaskAircraft(*state, taskID) {
 			if kind == "attack" {
+				if aircraft.Returning {
+					continue
+				}
 				setGroundStrikeTarget(state, aircraft, airfield.Faction, order.Coord)
 				if order.TargetFleetID != "" {
 					aircraft.TargetFleetID = order.TargetFleetID
@@ -1467,6 +1470,8 @@ func AdvanceGroundAir(state *State) []EngineEvent {
 			}
 		}
 	}
+	// 已经掉头返航的机场算子从打击编队里拆出去单独成组（与舰载机同一套逻辑）。
+	events = append(events, splitGroundReturningMembers(state)...)
 	return events
 }
 

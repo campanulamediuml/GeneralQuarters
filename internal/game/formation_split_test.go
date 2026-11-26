@@ -97,3 +97,78 @@ func TestHoldingMemberIsNotDraggedToTarget(t *testing.T) {
 		t.Fatalf("等待编队的成员不该被拖走：%s -> %s", before, got)
 	}
 }
+
+// 返航中的成员要从打击编队里拆出去：编队卡只列还在执行任务的飞机。
+func TestReturningMembersSplitOutOfStrikeTask(t *testing.T) {
+	state := sandboxState(t)
+	ids := []string{"b-cv-01-dive_bomber-x1", "b-cv-01-torpedo_bomber-x1"}
+	for _, id := range ids {
+		aircraft := state.Aircraft[id]
+		aircraft.TaskID = "strike-split-out"
+		aircraft.TaskKind = "attack"
+		aircraft.Status = "attack"
+		aircraft.Launched = true
+		aircraft.TargetCoord = "0202"
+	}
+	state.Aircraft[ids[0]].Returning = true
+	splitCarrierReturningMembers(&state)
+	if got := state.Aircraft[ids[0]].TaskID; got != "strike-split-out"+returningTaskSuffix {
+		t.Fatalf("返航成员应单独成组，实际任务号 %s", got)
+	}
+	if got := state.Aircraft[ids[1]].TaskID; got != "strike-split-out" {
+		t.Fatalf("还在任务的成员不该改任务号，实际 %s", got)
+	}
+	// 全员返航时整组就是返航编队，不用再拆。
+	for _, id := range ids {
+		state.Aircraft[id].Returning = true
+	}
+	splitCarrierReturningMembers(&state)
+	if got := state.Aircraft[ids[1]].TaskID; got != "strike-split-out" {
+		t.Fatalf("全员返航时不该拆组，实际 %s", got)
+	}
+}
+
+// 机场侧同样：返航的机场算子不再挂在打击编队里。
+func TestGroundReturningMembersSplitOutOfStrikeTask(t *testing.T) {
+	state := coralCombatState(t)
+	members := []string{"af-b-rabaul-g4m-1", "af-b-rabaul-g4m-2"}
+	for _, id := range members {
+		plane := state.GroundAir[id]
+		plane.TaskID = "af-strike-split"
+		plane.TaskKind = "attack"
+		plane.Status = "attack"
+		plane.TargetCoord = "1611"
+	}
+	state.GroundAir[members[0]].Returning = true
+	splitGroundReturningMembers(&state)
+	if got := state.GroundAir[members[0]].TaskID; got != "af-strike-split"+returningTaskSuffix {
+		t.Fatalf("返航的机场算子应单独成组，实际 %s", got)
+	}
+	if got := state.GroundAir[members[1]].TaskID; got != "af-strike-split" {
+		t.Fatalf("还在任务的机场算子不该改任务号，实际 %s", got)
+	}
+}
+
+// 无线电改令不能把已经返航的飞机重新塞回打击编队。
+func TestRadioRetaskSkipsReturningMembers(t *testing.T) {
+	state := sandboxState(t)
+	ids := []string{"b-cv-01-dive_bomber-x1", "b-cv-01-torpedo_bomber-x1"}
+	for _, id := range ids {
+		aircraft := state.Aircraft[id]
+		aircraft.TaskID = "strike-radio"
+		aircraft.TaskKind = "cap"
+		aircraft.Status = "cap"
+	}
+	state.Aircraft[ids[0]].Returning = true
+	order := Order{Type: "RETASK_AIR", TaskID: "strike-radio", TaskKind: "attack", Coord: "0202"}
+	retaskRadio(&state, "B", order, []*AirUnit{state.Aircraft[ids[0]], state.Aircraft[ids[1]]}, nil, 0, 100)
+	if !state.Aircraft[ids[0]].Returning {
+		t.Fatal("返航中的成员不该被改令拉回来")
+	}
+	if state.Aircraft[ids[0]].TaskKind != "cap" {
+		t.Fatalf("返航中的成员不该换任务类型：%s", state.Aircraft[ids[0]].TaskKind)
+	}
+	if state.Aircraft[ids[1]].TaskKind != "attack" {
+		t.Fatalf("没返航的成员应该按改令转成打击：%s", state.Aircraft[ids[1]].TaskKind)
+	}
+}

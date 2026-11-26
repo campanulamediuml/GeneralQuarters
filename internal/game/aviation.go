@@ -1033,6 +1033,11 @@ func ApplyAirOrder(state *State, order Order) []EngineEvent {
 		kind := aircraftList[0].TaskKind
 		for _, aircraft := range taskAircraft(*state, taskID) {
 			if kind == "attack" {
+				// 已经在返航的成员不再被改目标拉回来：它们已经在回家路上，再塞回打击编队
+				// 只会让编队卡里混进"返航中"的飞机。
+				if aircraft.Returning {
+					continue
+				}
 				setStrikeTarget(state, aircraft, carrier.Faction, order.Coord)
 				if order.TargetFleetID != "" {
 					aircraft.TargetFleetID = order.TargetFleetID
@@ -1678,7 +1683,8 @@ func AdvanceAviation(state *State) []EngineEvent {
 	// 之前只有玩家再发一次 SET_STRIKE_TARGET 才会触发 updateAttackFormation，
 	// 编队白白在舰队上空停 1-2 回合，白白烧油。
 	events = append(events, departReadyAttacks(state)...)
-	_ = events
+	// 已经掉头返航的成员从打击编队里拆出去单独成组：编队卡只列还在执行任务的飞机。
+	events = append(events, splitCarrierReturningMembers(state)...)
 	events = append(events, scheduleElevators(state)...)
 	for _, unit := range state.Units {
 		if unit.Deck != nil {
