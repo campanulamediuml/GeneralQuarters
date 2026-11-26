@@ -1,13 +1,19 @@
 package server
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
+	"time"
 )
 
 // 一次回合结算会连着广播好几条事件（ready_changed、turn_resolved、presence_changed）。
 // 观战端应该把这一批合并成一次投影、只下发一帧最终态；
 // 以前是每条通知都整份重算，一次结算就是 4 次投影、4 帧几百 KB 的中间态。
+//
+// 这里不数服务端内部的投影次数，而是直接数观战连接收到了几帧：
+// 合并没生效就会多出中间态。房间内部的状态不该为了"被测试看一眼"而引入原子量，
+// 而"客户端看到几帧"本来就是玩家能感知的那一面。
 func TestSpectatorCoalescesBroadcastBurst(t *testing.T) {
 	host, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
@@ -23,20 +29,27 @@ func TestSpectatorCoalescesBroadcastBurst(t *testing.T) {
 		t.Fatalf("首帧回合=%v", view["turn"])
 	}
 
-	actor := host.app.roomActor(created.RoomID)
-	before := actor.spectateProjections.Load()
 	if status := host.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, nil); status != http.StatusOK {
 		t.Fatalf("ready status %d", status)
 	}
-	// 合并窗口内的中间态可能先到一帧，但最终必须落到结算后的状态。
-	last := readStateView(t, conn, 2)
-	if last["turn"] != float64(2) {
-		t.Fatalf("观战没收到结算后的状态：%v", last["turn"])
+	// 数到结算后那一帧为止：整批广播只该产生一帧。
+	reader := viewReader(conn)
+	frames := 0
+	_ = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	for {
+		var envelope map[string]json.RawMessage
+		if err := conn.ReadJSON(&envelope); err != nil {
+			t.Fatal(err)
+		}
+		if !reader.apply(t, envelope) {
+			continue
+		}
+		frames++
+		if reader.view["turn"] == float64(2) {
+			break
+		}
 	}
-	after := actor.spectateProjections.Load()
-	// 结算的几条广播都在同一个房间任务里，投影只可能发生在任务结束之后，
-	// 所以这里必须是 1（老实现是每条通知一次，至少 2 次）。
-	if projections := after - before; projections != 1 {
-		t.Fatalf("一次结算投影了 %d 次，广播合并没生效", projections)
+	if frames != 1 {
+		t.Fatalf("一次结算给观战推了 %d 帧，广播合并没生效", frames)
 	}
 }

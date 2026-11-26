@@ -16,7 +16,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"generalquarters/internal/game"
@@ -161,9 +160,6 @@ type roomActor struct {
 	// views 是这个房间上一次推给每个玩家、以及观战者的视图。
 	// 只由 worker 自己读写，所以不需要锁：这也是补丁顺序天然正确的原因。
 	views roomViews
-	// spectateProjections 是这个房间投影过几次观战视图。
-	// 用原子量只是为了让测试能从外面读一眼；写的一方永远是 worker 自己。
-	spectateProjections atomic.Int64
 	// meta 是这个房间 diff 用的类型元数据缓存。只有 worker 自己读写，所以不需要锁。
 	meta diffCache
 }

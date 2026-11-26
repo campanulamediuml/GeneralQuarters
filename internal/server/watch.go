@@ -46,10 +46,6 @@ func (s *Server) spectateView(ctx context.Context, room store.Room) (map[string]
 	if err != nil {
 		return nil, err
 	}
-	// 投影次数记在房间自己身上：这是观战合并有没有生效的唯一证据，
-	// 但它是房间的账，不该变成一张全局表（几个房间并发时也说不清是谁的）。
-	// 这条路径只在房间 worker 里被调用，所以拿到的就是当前房间的 actor。
-	s.roomActor(room.ID).spectateProjections.Add(1)
 	return buildSpectateView(room, players, events), nil
 }
 
