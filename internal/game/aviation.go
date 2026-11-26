@@ -1568,6 +1568,9 @@ func AdvanceAviation(state *State) []EngineEvent {
 			continue
 		}
 		if !airborne(aircraft) {
+			// 甲板/机库里的算子不可能是"返航中"（落地时 clearAirTask 已经清过，老存档可能留着 true）。
+			// 留着它会让编队卡把地面整备的飞机混进返航队，也会被"返航中不改目标"的判定挡住。
+			aircraft.Returning = false
 			// 升降机孤儿：算子标着 elevator，但没有任何升降机还认它（AircraftIDs 被后一次作业覆盖过）。
 			// 这种算子会永远卡在升降机上：不上甲板、不进机库、任务组也散不掉。
 			// 兜底直接送回机库，并留一条战报。

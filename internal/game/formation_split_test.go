@@ -200,3 +200,58 @@ func TestTaskIDsAreUniqueAcrossSorties(t *testing.T) {
 		}
 	}
 }
+
+// 落地即"不返航"：以前落地保留 Returning=true，整备到 ready 还挂着，
+// 编队卡把地面整备的飞机混进返航队，设目标时又被"返航中不改目标"挡掉，永远打不出去。
+func TestGroundAircraftClearsReturningWhenGrounded(t *testing.T) {
+	state := coralCombatState(t)
+	airfield := state.Airfields["af-b-rabaul"]
+	plane := state.GroundAir["af-b-rabaul-g4m-1"]
+	if plane == nil || airfield == nil {
+		t.Fatal("缺少拉包尔机场或 G4M")
+	}
+	plane.Status = "ready"
+	plane.Coord = airfield.Coord
+	plane.Returning = true
+	plane.TaskID = ""
+	AdvanceGroundAir(&state)
+	if plane.Returning {
+		t.Fatal("地面上的算子不该还挂着返航中")
+	}
+
+	// 新任务的成员同样从"没在返航"开始。
+	plane.Returning = true
+	beginGroundMission(plane, "task-new", MissionStrike, 1)
+	if plane.Returning {
+		t.Fatal("新编队的成员不该继承上一轮的返航标记")
+	}
+}
+
+// 返航的那一波拆出去之后，停在机场整备的同任务飞机留在原组：
+// 编队卡不会再出现"整备完毕 + 返航中"混在一张卡里的情况。
+func TestSplitKeepsGroundedMembersInOriginalTask(t *testing.T) {
+	state := coralCombatState(t)
+	taskID := "af-strike-mixed"
+	airborne := state.GroundAir["af-b-rabaul-g4m-1"]
+	grounded := state.GroundAir["af-b-rabaul-g4m-2"]
+	for _, plane := range []*AirfieldAirUnit{airborne, grounded} {
+		plane.TaskID = taskID
+		plane.TaskKind = "attack"
+		plane.TargetCoord = "1611"
+	}
+	airborne.Status = "attack"
+	airborne.Returning = true
+	airborne.Coord = "0910"
+	grounded.Status = "ready"
+	grounded.Returning = false
+	grounded.Coord = state.Airfields["af-b-rabaul"].Coord
+
+	splitGroundReturningMembers(&state)
+
+	if airborne.TaskID == taskID {
+		t.Fatal("返航中的空中算子应拆到新任务组")
+	}
+	if grounded.TaskID != taskID {
+		t.Fatalf("停在机场整备的算子应留在原任务组，实际 %s", grounded.TaskID)
+	}
+}

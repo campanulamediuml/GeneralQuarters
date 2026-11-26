@@ -1385,6 +1385,9 @@ func AdvanceGroundAir(state *State) []EngineEvent {
 			continue
 		}
 		if !airfieldAirborne(aircraft) {
+			// 地面上的算子不可能是"返航中"：落地那一刻就该清掉。老存档里可能留着 true，
+			// 这里统一纠正——否则它会被当成"已经在回家"的成员，跳过设目标、也进不了编队出发判定。
+			aircraft.Returning = false
 			if aircraft.Status == "hangar" {
 				refillGroundFuelForLoadout(aircraft)
 			}
@@ -1787,7 +1790,10 @@ func landGroundAircraft(state *State, aircraft *AirfieldAirUnit, airfield *Airfi
 		return events
 	}
 	aircraft.Status = "recovery"
-	aircraft.Returning = true
+	// 落地就不再是"返航中"了。以前这里留 Returning=true，整备到 ready 之后还挂着：
+	// 编队卡把地面上的飞机和空中的返航队混在一起，设目标时又因为"返航中不能改目标"
+	// 被跳过——表现就是同一波出击里有的已经回来整备、有的还在返航，剩下的永远打不出去。
+	aircraft.Returning = false
 	// 落地会清空任务参数：循环必须在清空之前把航向/扇面/掩护点抄进 Cycle*（规则书 188 行）。
 	rememberGroundCycleParams(aircraft, aircraft.TaskKind)
 	aircraft.TaskID = ""

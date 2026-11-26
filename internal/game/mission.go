@@ -108,6 +108,9 @@ func beginGroundMission(aircraft *AirfieldAirUnit, taskID string, kind MissionKi
 	aircraft.TaskID = taskID
 	aircraft.TaskKind = string(kind)
 	aircraft.Priority = priority
+	// 新任务从"没在返航"开始：上一轮落地留下的 Returning 不能带进新编队，
+	// 否则它会被当成"已经在回家"的成员，跳过设目标、也永远等不到出发判定。
+	aircraft.Returning = false
 }
 
 // assignGroundReconMission 写死机场侦察的参数，半径同样只取机型上限。
