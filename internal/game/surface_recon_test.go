@@ -10,19 +10,20 @@ func TestSurfaceReconChanceModifiers(t *testing.T) {
 	state := State{Map: MapDefinition{Cells: []MapCell{{Coord: "0102", Weather: "rain"}}}, Night: true}
 	observer := []Unit{{ID: "a", Type: "DD", Coord: "0101"}}
 	target := []Unit{{ID: "b", Type: "DD", Coord: "0102"}}
-	// 50 - 15(降水) - 10(夜间) + 1(己方 1 艘) + 1(敌方普通 1 艘) = 27，再乘降水系数 0.35 → 9.45
-	if chance := surfaceReconChance(state, observer, target); math.Abs(chance-9.45) > 0.001 {
-		t.Fatalf("基础修正错误：%.2f，期望 9.45", chance)
+	// 50 - 15(降水) - 10(夜间) + 1(己方 1 艘) + 1(敌方普通 1 艘) = 27。
+	// 天气系数只给航空侦察，舰队侦查不再乘 0.35，所以这里还是 27。
+	if chance := surfaceReconChance(state, observer, target); math.Abs(chance-27) > 0.001 {
+		t.Fatalf("基础修正错误：%.2f，期望 27", chance)
 	}
 	// 侦查方装备对海搜索雷达 +20
 	observer[0].Card.SurfaceRadar = true
-	if chance := surfaceReconChance(state, observer, target); math.Abs(chance-16.45) > 0.001 {
-		t.Fatalf("对海雷达加成错误：%.2f，期望 16.45", chance)
+	if chance := surfaceReconChance(state, observer, target); math.Abs(chance-47) > 0.001 {
+		t.Fatalf("对海雷达加成错误：%.2f，期望 47", chance)
 	}
 	// 雷达被打坏以后不再给加成
 	observer[0].Damage = &ShipDamage{SurfaceRadarDisabled: true}
-	if chance := surfaceReconChance(state, observer, target); math.Abs(chance-9.45) > 0.001 {
-		t.Fatalf("搜索雷达损坏后仍有加成：%.2f，期望 9.45", chance)
+	if chance := surfaceReconChance(state, observer, target); math.Abs(chance-27) > 0.001 {
+		t.Fatalf("搜索雷达损坏后仍有加成：%.2f，期望 27", chance)
 	}
 	// 目标换成战列舰：+2 替代 +1；漏油 +10；起火 +20
 	target = []Unit{{
@@ -30,9 +31,9 @@ func TestSurfaceReconChanceModifiers(t *testing.T) {
 		Damage: &ShipDamage{OilLeak: true, Fire: "burning"},
 	}}
 	observer[0].Damage = nil
-	// 50 - 15 - 10 + 20(雷达) + 1(己方 1 艘) + 2(战列舰) + 10(漏油) + 20(起火) = 78，再 × 0.35 → 27.3
-	if chance := surfaceReconChance(state, observer, target); math.Abs(chance-27.3) > 0.001 {
-		t.Fatalf("目标修正错误：%.2f，期望 27.3", chance)
+	// 50 - 15 - 10 + 20(雷达) + 1(己方 1 艘) + 2(战列舰) + 10(漏油) + 20(起火) = 78
+	if chance := surfaceReconChance(state, observer, target); math.Abs(chance-78) > 0.001 {
+		t.Fatalf("目标修正错误：%.2f，期望 78", chance)
 	}
 }
 
