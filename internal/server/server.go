@@ -735,12 +735,17 @@ type hub struct {
 }
 
 type wsClient struct {
-	conn          *websocket.Conn
-	send          chan []byte
-	roomID        string
-	playerID      string
-	spectator     bool
-	spectateToken string
+	conn *websocket.Conn
+	// send 走必须送达的帧：RPC 响应、错误、玩家的事件通知。顺序有意义，写不进去就断线重连。
+	send chan []byte
+	// wake 只是"这个房间有变化"的合并信号，容量 1：处理不过来时后来的信号被丢掉，
+	// 因为观战帧是完整快照——与其排队推中间态，不如等一等只算最后一版。
+	wake chan struct{}
+	// lastSnapshot 是上一次真正写出去的观战快照版本，版本没变就不再发一遍。
+	lastSnapshot int64
+	roomID       string
+	playerID     string
+	spectator    bool
 }
 
 type wsRequest struct {
@@ -779,15 +784,32 @@ func (h *hub) remove(client *wsClient) {
 }
 
 func (h *hub) broadcast(roomID, eventType string, version int64) {
-	message, _ := json.Marshal(map[string]any{"type": eventType, "version": version, "time": time.Now().UTC()})
+	message, err := json.Marshal(map[string]any{"type": eventType, "version": version, "time": time.Now().UTC()})
+	if err != nil {
+		return
+	}
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	for client := range h.clients[roomID] {
+		if client.spectator {
+			// 观战帧是几百 KB 的完整快照，逐条推送没有意义：只戳一下写泵，
+			// 让它把这一批变更合并成一次投影。
+			client.poke()
+			continue
+		}
 		select {
 		case client.send <- message:
 		default:
 			_ = client.conn.Close() // Slow clients must reconnect, never silently miss the final update.
 		}
+	}
+}
+
+// poke 通知写泵"状态变了"。信号本身就是幂等的，重复戳只留一下。
+func (c *wsClient) poke() {
+	select {
+	case c.wake <- struct{}{}:
+	default:
 	}
 }
 
@@ -859,7 +881,7 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	conn.SetReadLimit(1 << 20)
-	client := &wsClient{conn: conn, send: make(chan []byte, 32)}
+	client := &wsClient{conn: conn, send: make(chan []byte, 32), wake: make(chan struct{}, 1)}
 	if playerAuthed {
 		client.roomID, client.playerID = player.RoomID, player.ID
 	} else {
@@ -894,7 +916,9 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 			_ = conn.Close()
 			return
 		}
-		client.roomID, client.spectator, client.spectateToken = first.RoomID, true, first.Token
+		// token 只在这一步校验一次：连接建立之后它就是这条订阅的身份，
+		// 后续快照由写泵自己按房间投影，不必每次都带着 token 重走一遍 HTTP 鉴权。
+		client.roomID, client.spectator = first.RoomID, true
 	}
 	_ = conn.SetReadDeadline(time.Now().Add(90 * time.Second))
 	conn.SetPongHandler(func(string) error { return conn.SetReadDeadline(time.Now().Add(90 * time.Second)) })
@@ -902,16 +926,9 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 	if !client.spectator {
 		s.submitRoom(client.roomID, func() { _ = s.store.SetConnected(context.Background(), client.playerID, true) })
 		s.hub.broadcast(client.roomID, "presence_changed", 0)
-	} else if initial, err := s.spectatorSnapshot(client.roomID, client.spectateToken); err == nil {
-		select {
-		case client.send <- initial:
-		default:
-		}
 	} else {
-		s.hub.remove(client)
-		_ = conn.WriteJSON(map[string]any{"type": "error", "error": err.Error()})
-		_ = conn.Close()
-		return
+		// 首帧和后续更新走同一条路径：写泵收到信号就投影当前状态。
+		client.poke()
 	}
 	done := make(chan struct{})
 	go func() {
@@ -950,15 +967,12 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 	for {
 		select {
 		case message := <-client.send:
-			if client.spectator {
-				if snapshot, err := s.spectatorSnapshot(client.roomID, client.spectateToken); err == nil {
-					message = snapshot
-				} else {
-					message, _ = json.Marshal(map[string]any{"type": "error", "error": err.Error()})
-				}
-			}
 			_ = conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {
+				return
+			}
+		case <-client.wake:
+			if err := s.writeSpectateSnapshot(client); err != nil {
 				return
 			}
 		case <-ticker.C:
@@ -981,19 +995,42 @@ func (s *Server) webSocketPlayer(r *http.Request) (store.Player, bool) {
 	return player, err == nil
 }
 
-func (s *Server) spectatorSnapshot(roomID, token string) ([]byte, error) {
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/rooms/"+url.PathEscape(roomID)+"/spectate?token="+url.QueryEscape(token), nil)
-	recorder := httptest.NewRecorder()
-	s.submitRoom(roomID, func() { s.spectate(recorder, req, roomID) })
-	if recorder.Code != http.StatusOK {
-		var body errorResponse
-		_ = json.Unmarshal(recorder.Body.Bytes(), &body)
-		if body.Error == "" {
-			body.Error = "观战快照读取失败"
-		}
-		return nil, errors.New(body.Error)
+// spectateDebounce 是一次广播风暴的合并窗口：回合结算会连着广播好几条事件
+// （turn_resolved、ready_changed、presence_changed），等这一小会儿再投影就只算最后那一版。
+const spectateDebounce = 25 * time.Millisecond
+
+// writeSpectateSnapshot 把这一批变更合并成一次完整投影再下发。
+//
+// 以前每个观战连接在自己的写泵里收到一条通知就整份重算一遍：一次结算广播 4 条事件
+// 就是 4 次投影（每次约 1.4 ms 的投影 + 350 KB 的编码下发），其中三份是中间态，
+// 而且投影期间这个连接的写全被堵着。现在先把信号收拢，再投影一次。
+func (s *Server) writeSpectateSnapshot(client *wsClient) error {
+	if !client.spectator {
+		return nil
 	}
-	return json.Marshal(map[string]any{"type": "snapshot", "view": json.RawMessage(recorder.Body.Bytes())})
+	time.Sleep(spectateDebounce)
+	for drained := false; !drained; {
+		select {
+		case <-client.wake:
+		default:
+			drained = true
+		}
+	}
+	payload, version, err := s.spectatePayload(client.roomID)
+	if err != nil {
+		if body, marshalErr := json.Marshal(map[string]any{"type": "error", "error": err.Error()}); marshalErr == nil {
+			_ = client.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			_ = client.conn.WriteMessage(websocket.TextMessage, body)
+		}
+		return err
+	}
+	// 版本没变说明这一批里没有影响视图的改动，不用让观战页白闪一次。
+	if version != 0 && version == client.lastSnapshot {
+		return nil
+	}
+	client.lastSnapshot = version
+	_ = client.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+	return client.conn.WriteMessage(websocket.TextMessage, payload)
 }
 
 var errNotFound = errors.New("not found")

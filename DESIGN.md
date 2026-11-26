@@ -138,7 +138,7 @@ ready即冻结：一名玩家点击ready（完成部署/下一回合）后，本
 
 每个房间有独立`roomActor`、带缓冲的`jobs`channel和一个消费goroutine。房间的`state`、`events`、`commands`、`ready`以及WebSocket连接状态写入全部通过`submitRoom`投递；只有actor goroutine顺序执行这些操作，不同房间可以并行。会话认证和不可变邀请token查询不属于状态变更，可在投递前执行。版本检查和状态修改在同一个房间任务内完成，因此同一版本的并发命令至多一个能生效。
 
-WebSocket玩家连接按Cookie绑定单一房间，RPC仅允许读取该房间的`state/events`及提交`commands/ready`，并复用`roomRoutes`、会话认证与房间actor，保持HTTP命令的版本检查、幂等和错误语义。推送事件仅作失效提示；客户端再通过WS state RPC获取完整阵营私有视图，不依赖易丢失的增量补丁，也不在本地结算。断线重连后立即读快照，离线时才用低频HTTP对账。观战连接不需要Cookie，必须先用`room_id + join_token`发送subscribe；服务端只推合并观战视图，不占玩家席位，也不修改在线状态。
+WebSocket玩家连接按Cookie绑定单一房间，RPC仅允许读取该房间的`state/events`及提交`commands/ready`，并复用`roomRoutes`、会话认证与房间actor，保持HTTP命令的版本检查、幂等和错误语义。推送事件仅作失效提示；客户端再通过WS state RPC获取完整阵营私有视图，不依赖易丢失的增量补丁，也不在本地结算。断线重连后立即读快照，离线时才用低频HTTP对账。观战连接不需要Cookie，必须先用`room_id + join_token`发送subscribe；服务端只推合并观战视图，不占玩家席位，也不修改在线状态。观战帧是几百 KB 的完整快照，所以广播对观战连接只发一个合并信号（容量1，处理不过来就丢掉），写泵等一个 25 ms 窗口把这一批事件收拢后只投影一次，版本号没变就不重复下发——一次回合结算会连着广播好几条事件，逐条投影等于白白多做几遍，中间态也没有人要看。玩家连接相反：事件类型本身有含义（`turn_resolved`和`ready_changed`不一样），走必须送达的通道，满了就断开让客户端重连取快照。
 
 ## 胜利条件与战果分
 

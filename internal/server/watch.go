@@ -2,10 +2,12 @@ package server
 
 import (
 	"bytes"
+	"context"
 	_ "embed"
 	"encoding/json"
 	"net/http"
 	"strings"
+	"sync/atomic"
 
 	"generalquarters/internal/game"
 	"generalquarters/internal/store"
@@ -13,6 +15,13 @@ import (
 
 //go:embed watch.html
 var watchHTML []byte
+
+// spectateViews 是观战视图的投影次数。
+//
+// 观战链路的重点不是"投影一次多快"（已经压到 1.4 ms），而是"一次变更投影几次"：
+// 一次回合结算会连着广播好几条事件，每条都整份重算就是白白多做几遍。
+// 计数放在这里是为了让测试能直接断言合并生效。
+var spectateViews atomic.Int64
 
 // spectate 是"观战"视角：用房间 join_token 换一份不按阵营裁剪的完整快照。
 // 对局本身仍然是两边私有情报各看各的；这个接口只给拿得到邀请 token 的人（房主/旁观者）用，
@@ -28,22 +37,61 @@ func (s *Server) spectate(w http.ResponseWriter, r *http.Request, roomID string)
 		writeError(w, http.StatusForbidden, "观战 token 不正确")
 		return
 	}
-	players, err := s.store.Players(r.Context(), roomID)
+	view, err := s.spectateView(r.Context(), room)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "读取玩家失败")
+		writeError(w, http.StatusInternalServerError, "读取观战视图失败")
 		return
 	}
-	events, err := s.store.AllEvents(r.Context(), roomID)
-	if err != nil {
-		writeError(w, http.StatusInternalServerError, "读取战报失败")
-		return
-	}
-	writeJSON(w, http.StatusOK, buildSpectateView(room, players, events))
+	writeJSON(w, http.StatusOK, view)
 }
 
-// spectateView 把房间状态整理成观战页要的那一份 JSON 视图。
-// 抽出来是为了能单独量它的开销：接口一次请求里真正的重活几乎都在这里。
+// spectateView 读取玩家和战报再投影。HTTP 接口和 WebSocket 推送共用这条路径，
+// 免得两边对同一份状态给出不一样的视图。
+func (s *Server) spectateView(ctx context.Context, room store.Room) (map[string]any, error) {
+	players, err := s.store.Players(ctx, room.ID)
+	if err != nil {
+		return nil, err
+	}
+	events, err := s.store.AllEvents(ctx, room.ID)
+	if err != nil {
+		return nil, err
+	}
+	return buildSpectateView(room, players, events), nil
+}
+
+// spectatePayload 生成一条可直接下发的观战帧，并带上投影时的房间版本。
+//
+// 必须在房间 actor 里跑：读房间、读玩家、读战报三件事要在同一个时间点上完成，
+// 否则版本号和视图内容会对不上（写泵靠版本号判断"这一批有没有实际变化"）。
+func (s *Server) spectatePayload(roomID string) ([]byte, int64, error) {
+	var payload []byte
+	var version int64
+	var failure error
+	s.submitRoom(roomID, func() {
+		ctx := context.Background()
+		room, err := s.store.Room(ctx, roomID)
+		if err != nil {
+			failure = err
+			return
+		}
+		view, err := s.spectateView(ctx, room)
+		if err != nil {
+			failure = err
+			return
+		}
+		version = room.Version
+		payload, failure = json.Marshal(map[string]any{"type": "snapshot", "view": view})
+	})
+	if failure != nil {
+		return nil, 0, failure
+	}
+	return payload, version, nil
+}
+
+// buildSpectateView 把房间状态整理成观战页要的那一份 JSON 视图。
+// 抽出来是为了能单独量它的开销：一次观战投影的重活几乎都在这里。
 func buildSpectateView(room store.Room, players []store.Player, events []store.Event) map[string]any {
+	spectateViews.Add(1)
 	state := room.State
 	units := []game.Unit{}
 	fleets := []game.FleetGroup{}
