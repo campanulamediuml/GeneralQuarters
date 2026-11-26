@@ -174,7 +174,14 @@ func hasSurfaceRadar(members []Unit) bool {
 // hasFireControlRadar 判断开火舰船的火控雷达是否还能给炮击加成。
 // 搜索雷达损坏不影响命中率，只有火控雷达损坏才扣掉这 10%。
 func hasFireControlRadar(unit *Unit) bool {
-	return unit.Card.SurfaceRadar && !EnsureDamage(unit).FireControlRadarDisabled
+	if EnsureDamage(unit).FireControlRadarDisabled {
+		return false
+	}
+	if unit.Card.FireControlRadar != nil {
+		return *unit.Card.FireControlRadar
+	}
+	// 老存档没有这个字段：沿用旧语义（有对海雷达就算有火控）。
+	return unit.Card.SurfaceRadar
 }
 
 func priorDetection(state State, observer string, enemies []Unit) bool {

@@ -17,6 +17,9 @@ const speedTitle = computed(() => {
   const name = speedNames[props.unit.card.speed_class] || '常速'
   return `${name} · ${speedValue.value} 节 · 每 ${speedActionTurns(props.unit.card.speed_class)} 回合行动一次`
 })
+// 右下角交战值白字＝有火控雷达（Mk.8 这类），黑字＝没有；
+// 老存档没有 fire_control_radar 字段时回落到 surface_radar。
+const hasFireControlRadar = computed(() => (props.unit.card.fire_control_radar ?? props.unit.card.surface_radar) && props.unit.card.gunnery > 0)
 // 兵牌中部的剪影没有文字说明，这里用一行舰种中文名标注，避免只靠外形辨认。
 const shipClassLabel = computed(() => ({ CV: '航空母舰', CVL: '轻型航母', CVE: '护航航母', BB: '战列舰', BC: '战列巡洋舰', CA: '重巡洋舰', CL: '轻巡洋舰', DD: '驱逐舰', TRS: '运输船' } as Record<string, string>)[props.unit.type] || props.unit.type)
 // 角标显示的是"这艘船最多能装多少架"（机库容量），不是当前在编数量。
@@ -58,7 +61,7 @@ const aircraftPayload = computed(() => {
       <footer class="counter-bottom">
         <span title="重型防空 / 轻型防空">{{ formatNumber(unit.card.heavy_aa) }}-{{ formatNumber(unit.card.light_aa) }}</span>
         <i></i>
-        <strong title="火炮能力">{{ unit.card.gunnery }}</strong>
+        <strong :class="{ 'fc-radar': hasFireControlRadar }" :title="hasFireControlRadar ? '火炮能力（白字＝有火控雷达）' : '火炮能力（黑字＝无火控雷达）'">{{ unit.card.gunnery }}</strong>
       </footer>
     </div>
 

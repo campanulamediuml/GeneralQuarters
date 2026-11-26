@@ -29,6 +29,8 @@ export interface ShipCard {
   light_aa: number
   surface_radar: boolean
   air_radar: boolean
+  /** 火控雷达：白字交战值的依据；老存档没有这个字段时按 surface_radar 回落 */
+  fire_control_radar?: boolean
   speed_class: 'normal' | 'fast' | 'slow' | 'very_slow'
   torpedo_salvos: number
   aircraft: number

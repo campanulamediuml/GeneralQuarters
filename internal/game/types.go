@@ -177,6 +177,9 @@ type ShipCard struct {
 	LightAA        float64 `json:"light_aa"`
 	SurfaceRadar   bool    `json:"surface_radar"`
 	AirRadar       bool    `json:"air_radar"`
+	// FireControlRadar 是火控雷达（Mk.8 这类）：只有它给炮击 +10%，对海搜索看 SurfaceRadar。
+	// 用指针是为了区分"老存档没写"（nil → 回落到 SurfaceRadar）和"明确没有"（false）。
+	FireControlRadar *bool `json:"fire_control_radar,omitempty"`
 	SpeedClass     string  `json:"speed_class"`
 	TorpedoSalvos  int     `json:"torpedo_salvos"`
 	Aircraft       int     `json:"aircraft"`

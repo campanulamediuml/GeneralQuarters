@@ -47,6 +47,12 @@ func TestAdvanceAviationSurvivesAircraftDestroyedDuringStrike(t *testing.T) {
 	// 防空值拉到夸张，保证本回合一定摧毁至少两架攻击机，逼出"快照里有已删除算子"的情形。
 	state.Units["b-cv-01"].Card.HeavyAA = 4000
 	state.Units["b-cv-01"].Card.LightAA = 4000
+	// 这个用例测的是"快照里有已删除算子"的崩溃，不是日军重防空的新算法；
+	// 给防守方套美军规则，保证整队重防空在投弹前就打出大量击落。
+	if state.Doctrines == nil {
+		state.Doctrines = map[string]string{}
+	}
+	state.Doctrines["B"] = DoctrineUS
 	events := AdvanceAviation(&state)
 	if len(state.Aircraft) == len(ids) {
 		t.Fatalf("测试前提不成立，没有任何攻击机被摧毁")

@@ -24,7 +24,8 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "gunnery": 16
+    "gunnery": 16,
+    "fire_control_radar": true
    },
    "picture": "misc/image/ship/north_carolina.png"
   },
@@ -50,7 +51,8 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "gunnery": 15
+    "gunnery": 15,
+    "fire_control_radar": true
    },
    "picture": "misc/image/ship/usa_bc1.png"
   },
@@ -76,7 +78,8 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "gunnery": 7
+    "gunnery": 7,
+    "fire_control_radar": true
    },
    "picture": "misc/image/ship/northampton.png"
   },
@@ -102,7 +105,8 @@
     "depth_charges": 2,
     "cargo": 0,
     "armored_carrier": false,
-    "gunnery": 4
+    "gunnery": 4,
+    "fire_control_radar": true
    },
    "picture": "misc/image/ship/leander.png"
   },
@@ -128,7 +132,8 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "gunnery": 3
+    "gunnery": 3,
+    "fire_control_radar": true
    },
    "picture": "misc/image/ship/farragut.png"
   },
@@ -155,7 +160,8 @@
     "cargo": 0,
     "armored_carrier": false,
     "gunnery": 0,
-    "hangar_capacity": 24
+    "hangar_capacity": 24,
+    "fire_control_radar": true
    },
    "picture": "misc/image/ship/lexington.png"
   },
@@ -182,7 +188,8 @@
     "cargo": 0,
     "armored_carrier": false,
     "gunnery": 0,
-    "hangar_capacity": 9
+    "hangar_capacity": 9,
+    "fire_control_radar": false
    },
    "picture": "misc/image/ship/usa_cvl1.png"
   },
@@ -209,7 +216,8 @@
     "cargo": 0,
     "armored_carrier": false,
     "gunnery": 2,
-    "hangar_capacity": 9
+    "hangar_capacity": 9,
+    "fire_control_radar": false
    },
    "picture": "misc/image/ship/usa_cve0.png"
   },
@@ -235,7 +243,8 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "gunnery": 0
+    "gunnery": 0,
+    "fire_control_radar": false
    },
    "picture": "misc/image/ship/cmn_ms1_3.png"
   },
@@ -261,7 +270,8 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "gunnery": 16
+    "gunnery": 16,
+    "fire_control_radar": false
    },
    "picture": "misc/image/ship/nagato.png"
   },
@@ -287,7 +297,8 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "gunnery": 15
+    "gunnery": 15,
+    "fire_control_radar": false
    },
    "picture": "misc/image/ship/kongo.png"
   },
@@ -313,7 +324,8 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "gunnery": 7
+    "gunnery": 7,
+    "fire_control_radar": false
    },
    "picture": "misc/image/ship/myoko.png"
   },
@@ -339,7 +351,8 @@
     "depth_charges": 2,
     "cargo": 0,
     "armored_carrier": false,
-    "gunnery": 4
+    "gunnery": 4,
+    "fire_control_radar": false
    },
    "picture": "misc/image/ship/yubari.png"
   },
@@ -365,7 +378,8 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "gunnery": 3
+    "gunnery": 3,
+    "fire_control_radar": false
    },
    "picture": "misc/image/ship/jap_dd1.png"
   },
@@ -392,7 +406,8 @@
     "cargo": 0,
     "armored_carrier": false,
     "hangar_capacity": 18,
-    "gunnery": 0
+    "gunnery": 0,
+    "fire_control_radar": false
    },
    "picture": "misc/image/ship/shokaku.png"
   },
@@ -419,7 +434,8 @@
     "cargo": 0,
     "armored_carrier": false,
     "gunnery": 0,
-    "hangar_capacity": 9
+    "hangar_capacity": 9,
+    "fire_control_radar": false
    },
    "picture": "misc/image/ship/jap_cvl1.png"
   },
@@ -446,7 +462,8 @@
     "cargo": 0,
     "armored_carrier": false,
     "gunnery": 2,
-    "hangar_capacity": 9
+    "hangar_capacity": 9,
+    "fire_control_radar": false
    },
    "picture": "misc/image/ship/jap_cve0.png"
   },
@@ -472,7 +489,8 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "gunnery": 0
+    "gunnery": 0,
+    "fire_control_radar": false
    },
    "picture": "misc/image/ship/cmn_ms1_3.png"
   }

@@ -21,6 +21,7 @@
   "depth_charges": 0,
   "cargo": 0,
   "armored_carrier": false,
-  "gunnery": 8
+  "gunnery": 8,
+  "fire_control_radar": false
  }
 }

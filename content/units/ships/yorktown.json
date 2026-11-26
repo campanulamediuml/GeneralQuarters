@@ -23,6 +23,7 @@
   "armored_carrier": false,
   "gunnery": 0,
   "hangar_capacity": 24,
-  "hangar_advantage": true
+  "hangar_advantage": true,
+  "fire_control_radar": false
  }
 }

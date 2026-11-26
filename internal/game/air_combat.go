@@ -532,6 +532,43 @@ func resolveHeavyAA(state *State, attackers []*AirUnit, defenders []Unit, coord 
 	return events
 }
 
+// resolveShipHeavyAA 是日军式的重防空：没有统一火控，每艘舰的重防空只打
+// "正在攻击本舰"的那一小队飞机，而不是整支舰队的火力叠在一起。
+// 命中率与舰队结算完全一样（3% 基础、雨天/风暴修正），只是射界只覆盖自己。
+func resolveShipHeavyAA(state *State, attackers []*AirUnit, ship *Unit, report *AirCombatReport) []EngineEvent {
+	if ship == nil || len(attackers) == 0 || ship.Card.HeavyAA <= 0 {
+		return nil
+	}
+	events := []EngineEvent{}
+	heavy := ship.Card.HeavyAA
+	chance := aaHitChance(*state, ship.Coord, true, ship.Faction)
+	hits := 0
+	shots := int(heavy)
+	if probabilityRoll(&state.RNGState) <= (heavy - float64(shots)) {
+		shots++
+	}
+	for ; shots > 0; shots-- {
+		if probabilityRoll(&state.RNGState) >= chance {
+			confuseRandomAircraft(state, attackers)
+			continue
+		}
+		target := randomOperationalAircraft(state, attackers)
+		if target == nil {
+			break
+		}
+		hits++
+		report.AAHits++
+		outcome, hitEvents := applyAircraftHit(state, target)
+		recordAirHit(report, target, outcome)
+		recordAircraftLoss(report, target, outcome, true)
+		events = append(events, hitEvents...)
+	}
+	if hits > 0 {
+		events = append(events, EngineEvent{Type: "heavy_aa", Audience: "all", Text: fmt.Sprintf("%s的重型防空命中率%.1f%%，命中%d次", ship.Name, chance, hits)})
+	}
+	return events
+}
+
 // carrierLightAABoost 返回美军航母"并入舰队最高轻防空"的那部分加成（规则书 675 行）。
 // 规则书 119 行：CVL/CVE 在空袭结算中视为 CV，所以轻航母同样享受。
 func carrierLightAABoost(state State, target *Unit) float64 {
@@ -897,6 +934,10 @@ func resolveBombingWave(state *State, bombers []*AirUnit, ships []Unit, mixed, c
 		if ship == nil {
 			continue
 		}
+		// 日军没有统一火控：重防空只能打“正在攻击本舰”的机群，命中率和舰队结算一致。
+		if !rulesFor(*state, ship.Faction).FleetHeavyAA {
+			events = append(events, resolveShipHeavyAA(state, attackers, ship, report)...)
+		}
 		// 进场轻防空：这一舰对本小分队掷一副骰子。
 		events = append(events, resolveLightAAPool(state, attackers, ship, mixed, report)...)
 		// 小队内部仍按波次投弹：水平轰炸 → 俯冲轰炸 → 鱼雷。
@@ -1080,7 +1121,11 @@ func resolveAirStrike(state *State, taskID, coord string) []EngineEvent {
 	mixed := len(mixedKinds) > 1
 	// 规则书 689 行：重型防空从“当前参与空袭的算子”里随机选目标——护航战斗机同样会被打，
 	// 而不是只有投弹的轰炸机挨打。
-	events = append(events, resolveHeavyAA(state, attackers, ships, coord, &report)...)
+	// 美军（FleetHeavyAA）整支舰队的重防空合并结算；日军没有统一火控，只能各舰自保，
+	// 在投弹波里按“正在攻击本舰”的机群单独判定（见 resolveShipHeavyAA）。
+	if rulesFor(*state, ships[0].Faction).FleetHeavyAA {
+		events = append(events, resolveHeavyAA(state, attackers, ships, coord, &report)...)
+	}
 	capRemaining := false
 	for _, group := range groups {
 		if len(activeAircraft(state, group)) > 0 {
