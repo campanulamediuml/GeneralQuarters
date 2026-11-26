@@ -5265,7 +5265,12 @@
    "heavy_aa": 8.0,
    "light_aa": 12.0,
    "coastal": 6,
-   "aircraft": []
+   "aircraft": [
+    "af-b-truk-a6m5-1",
+    "af-b-truk-a6m5-2",
+    "af-b-truk-g4m2-1",
+    "af-b-truk-g4m2-2"
+   ]
   },
   {
    "id": "af-b-iwo",
@@ -5278,7 +5283,14 @@
    "heavy_aa": 6.0,
    "light_aa": 10.0,
    "coastal": 6,
-   "aircraft": []
+   "aircraft": [
+    "af-b-iwo-a6m5-1",
+    "af-b-iwo-a6m5-2",
+    "af-b-iwo-a6m5-3",
+    "af-b-iwo-a6m5-4",
+    "af-b-iwo-g4m2-1",
+    "af-b-iwo-g4m2-2"
+   ]
   }
  ],
  "objectives": [

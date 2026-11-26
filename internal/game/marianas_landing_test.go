@@ -101,6 +101,12 @@ func TestMarianasLandingGroups(t *testing.T) {
 	if state.Airfields["af-b-truk"] == nil || state.Airfields["af-b-iwo"] == nil {
 		t.Fatal("缺少特鲁克/硫磺岛机场")
 	}
+	if state.GroundAir["af-b-iwo-a6m5-1"] == nil || state.GroundAir["af-b-iwo-g4m2-1"] == nil {
+		t.Fatal("硫磺岛没有驻机")
+	}
+	if state.GroundAir["af-b-truk-a6m5-1"] == nil || state.GroundAir["af-b-truk-g4m2-1"] == nil {
+		t.Fatal("特鲁克没有驻机")
+	}
 	// 日军两个部署区：机动部队在帕劳以北，栗田的第一游击部队在硫磺岛西南。
 	if zone := deployZoneForFleet(state.DeployZones, "B", "TG1"); zone == nil || zone.Anchor != "3717" {
 		t.Fatalf("TG1 应该出生在帕劳以北：%+v", zone)
