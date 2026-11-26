@@ -100,7 +100,7 @@ func TestMarianasLandingGroups(t *testing.T) {
 			supplyTargets[objective.Coord] = true
 		}
 	}
-	for _, coord := range []string{"1844", "2043", "2544"} {
+	for _, coord := range []string{"1874", "2073", "2574"} {
 		if !supplyTargets[coord] {
 			t.Fatalf("缺少 %s 的 40 点投送目标", coord)
 		}
@@ -110,7 +110,7 @@ func TestMarianasLandingGroups(t *testing.T) {
 	const fleet = "TRN1"
 	for _, unit := range state.Units {
 		if unit.FleetID == fleet {
-			unit.Coord = "2544"
+			unit.Coord = "2574"
 		}
 	}
 	if state.FleetSessions == nil {
@@ -120,13 +120,13 @@ func TestMarianasLandingGroups(t *testing.T) {
 	for turn := 0; turn < 12; turn++ {
 		resolveUnloading(&state)
 	}
-	if got := state.ShoreSupplies["A|2544"]; got < 40 {
+	if got := state.ShoreSupplies["A|2574"]; got < 40 {
 		t.Fatalf("关岛累计只卸下 %d 点，没到 40", got)
 	}
 	for _, objective := range state.Objectives {
-		if objective.Kind == ObjectiveSupplies && objective.Coord == "2544" {
+		if objective.Kind == ObjectiveSupplies && objective.Coord == "2574" {
 			if !objectiveCompleted(state, "A", objective) {
-				t.Fatalf("关岛卸到 %d 点了，目标仍未完成", state.ShoreSupplies["A|2544"])
+				t.Fatalf("关岛卸到 %d 点了，目标仍未完成", state.ShoreSupplies["A|2574"])
 			}
 		}
 	}
