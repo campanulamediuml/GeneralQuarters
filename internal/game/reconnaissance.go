@@ -712,6 +712,12 @@ func reconDetectionChance(state State, aircraft *AirUnit, members []Unit) float6
 	if aircraft.Seaplane {
 		chance *= 2
 	}
+	if len(members) > 0 {
+		// 天气再额外打一次折：多云 ×0.5、降雨 ×0.35、风暴 ×0.2。
+		// 前面的 -5/-10/-15 是"目标藏在云底下不好找"，这个系数是"整片天根本看不出去"，
+		// 两笔叠加：基础 40% 的搜索在风暴里先 -15 再 ×0.2，只剩 5%。
+		chance *= weatherFactor(weatherAt(state.Map, members[0].Coord))
+	}
 	return math.Max(0, math.Min(100, chance))
 }
 
@@ -724,7 +730,8 @@ func resolveTracking(state *State, aircraft *AirUnit, members []Unit) []EngineEv
 			chance++
 		}
 	}
-	switch weatherAt(state.Map, members[0].Coord) {
+	weather := weatherAt(state.Map, members[0].Coord)
+	switch weather {
 	case "cloud":
 		chance -= 10
 	case "rain":
@@ -732,6 +739,8 @@ func resolveTracking(state *State, aircraft *AirUnit, members []Unit) []EngineEv
 	case "storm":
 		chance -= 20
 	}
+	// 和发现率一样，天气再乘一遍系数：风暴里连盯住目标都很难。
+	chance *= weatherFactor(weather)
 	chance = math.Max(0, math.Min(100, chance))
 	roll := probabilityRoll(&state.RNGState)
 	if roll >= chance {

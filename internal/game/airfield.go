@@ -2030,6 +2030,10 @@ func groundReconChance(state State, aircraft *AirfieldAirUnit, members []Unit) f
 	if unitIsSeaplane(state, aircraft) {
 		chance *= 2
 	}
+	if len(members) > 0 {
+		// 与舰载机一致：除了上面的 -5/-10/-15，天气再乘一次系数（多云 ×0.5、降雨 ×0.35、风暴 ×0.2）。
+		chance *= weatherFactor(weatherAt(state.Map, members[0].Coord))
+	}
 	if chance < 0 {
 		return 0
 	}

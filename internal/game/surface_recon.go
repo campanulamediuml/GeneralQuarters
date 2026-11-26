@@ -53,6 +53,11 @@ func surfaceReconChance(state State, observer, target []Unit) float64 {
 			chance += 20
 		}
 	}
+	// 天气除了上面按档扣点，再额外乘一次系数（多云 ×0.5、降雨 ×0.35、风暴 ×0.2）：
+	// 云底下望远镜和雷达都抓瞎。目标格没船就没什么可乘的。
+	if len(target) > 0 {
+		chance *= weatherFactor(weatherAt(state.Map, target[0].Coord))
+	}
 	return math.Max(0, math.Min(100, chance))
 }
 
