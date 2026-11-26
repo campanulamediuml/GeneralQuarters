@@ -35,6 +35,10 @@ func sandboxState(t *testing.T) State {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// 沙盒用例大多手动摆 MapCell.Weather 来测天气系数；云层是随机的，
+	// 留着会把靶场的天气变成不可控，所以这里清掉、天气系统也不推进。
+	state.WeatherTurns = 0
+	state.Map.Clouds = ""
 	return state
 }
 

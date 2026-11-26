@@ -20,6 +20,10 @@ type MapDefinition struct {
 	Rows    int       `json:"rows"`
 	Cols    int       `json:"cols"`
 	Cells   []MapCell `json:"cells"`
+	// Clouds 是天气层：行优先、每格一个字符 '0'..'3'，表示这个 hex 压了几层云
+	// （0 晴 / 1 多云 / 2 降雨 / 3 风暴）。它随房间状态每 3 回合整体移动一次，
+	// 和地图的静态地形分开放，读天气统一走 weatherAt。
+	Clouds string `json:"clouds"`
 	// board 是载入时编译出来的地形表（见 board.go）：运行期查地形不再扫 Cells。
 	// 不进 JSON——UnmarshalJSON 解完会重新编译，所以从库里读出来也是就绪的。
 	board *board

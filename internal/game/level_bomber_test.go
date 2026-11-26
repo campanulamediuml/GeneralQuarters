@@ -221,6 +221,10 @@ func coralCombatState(t *testing.T) State {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// 命中率用例要的是"天气中性"的靶场：云层会随机落在目标格上、
+	// 把两种攻击一起压到命中下限，那样比不出机种差异。
+	state.WeatherTurns = 0
+	state.Map.Clouds = ""
 	return state
 }
 

@@ -50,6 +50,13 @@
   .fleet-ship,.fleet-label,.watch-air{cursor:pointer}
   @media(max-width:600px){.detail-cards{grid-template-columns:1fr}.detail-panel{top:38px}}
   .hex{fill:#102830;stroke:#34505a;stroke-width:.7}
+  /* 云层：1 层多云（淡白）、2 层降雨（蓝）、3 层风暴（深紫）。 */
+  .weather{pointer-events:none}
+  .weather-1{fill:#cfe0e8;fill-opacity:.10}
+  .weather-2{fill:#5b83c4;fill-opacity:.22}
+  .weather-3{fill:#3b3f66;fill-opacity:.36}
+  /* 格底风向箭头：指向"风吹向"，只做提示。 */
+  .wind-arrow{fill:none;stroke:#7fa6b0;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;opacity:.55;pointer-events:none}
   .hex.island{fill:#34463e;stroke:#6b8066}
   .hex.shoal{fill:#173c42;stroke:#4b7775;stroke-dasharray:3 2}
   .hex.reef{fill:#273137;stroke:#7e6f67;stroke-dasharray:2 2}
@@ -302,10 +309,65 @@
       }
     }
     svg.appendChild(layer);
+    // 天气色块在格子之上、标注之下；风向箭头再压一层。
+    svg.appendChild(el('g', { id: 'weather' }));
+    svg.appendChild(el('g', { id: 'hexlabels' }));
+    svg.appendChild(el('g', { id: 'hexdeco' }));
     svg.appendChild(el('g', { id: 'distance' }));
     svg.appendChild(el('g', { id: 'marks' }));
     svg.appendChild(el('g', { id: 'distance-labels', 'pointer-events': 'none' }));
+    // 每格的编号（hex id）是静态的：建图时画一次，之后不随推送重建。
+    var labels = document.getElementById('hexlabels');
+    for (var labelRow = 1; labelRow <= map.rows; labelRow++) {
+      for (var labelCol = 1; labelCol <= map.cols; labelCol++) {
+        var labelCoord = pad(labelRow) + pad(labelCol);
+        var labelPoint = center(labelCoord);
+        labels.appendChild(text(labelPoint.x, labelPoint.y - 9, labelCoord, '#5f7e86', 6.5, 400, 'middle'));
+      }
+    }
     built = true;
+    hexDecoSig = '';
+  }
+
+  // 逐格风向箭头 + 天气色块：只在风向场 / 天气层变化时重建，平时推送不动这三千多个节点。
+  var hexDecoSig = '';
+  function renderHexDeco(data) {
+    var wind = data.wind_cells || '';
+    var weather = data.weather_cells || '';
+    var signature = wind + '|' + weather;
+    if (signature === hexDecoSig) return;
+    hexDecoSig = signature;
+    var arrows = document.getElementById('hexdeco');
+    var tints = document.getElementById('weather');
+    if (!arrows || !tints) return;
+    arrows.innerHTML = '';
+    tints.innerHTML = '';
+    if (!wind && !weather) return;
+    var rows = MAP_ROWS, cols = MAP_COLS;
+    for (var row = 1; row <= rows; row++) {
+      for (var col = 1; col <= cols; col++) {
+        var index = (row - 1) * cols + (col - 1);
+        var point = center(pad(row) + pad(col));
+        if (wind) {
+          var direction = wind.charCodeAt(index) - 48;
+          if (direction >= 0 && direction <= 5) {
+            // 六方位：0=NE(30°)…；箭头指向"风吹向"，罗盘转 SVG 要减 90°。
+            var rotation = (30 + 60 * direction + 180 - 90 + 360) % 360;
+            arrows.appendChild(el('path', {
+              class: 'wind-arrow',
+              transform: 'translate(' + point.x + ' ' + (point.y + 11) + ') rotate(' + rotation + ')',
+              d: 'M-4 0H2M0 -2.4L2.5 0L0 2.4'
+            }));
+          }
+        }
+        if (weather) {
+          var layers = weather.charCodeAt(index) - 48;
+          if (layers > 0 && layers <= 3) {
+            tints.appendChild(el('polygon', { points: hexPoints(point.x, point.y), class: 'weather weather-' + layers }));
+          }
+        }
+      }
+    }
   }
 
   function applyView() {
@@ -929,6 +991,7 @@
     status.textContent = data.status === 'running' ? '进行中' : String(data.status || '');
     status.className = 'status ' + (data.status === 'running' ? 'running' : 'finished');
     renderSummary(data);
+    renderHexDeco(data);
     renderFleets(data);
     renderCarriers(data);
     renderEvents(data);

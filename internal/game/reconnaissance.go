@@ -745,15 +745,6 @@ func isCapitalShip(shipType string) bool {
 	return shipType == "BB" || shipType == "BC" || shipType == "CV" || shipType == "CVL" || shipType == "CVE"
 }
 
-func weatherAt(gameMap MapDefinition, coord string) string {
-	for _, cell := range gameMap.Cells {
-		if cell.Coord == coord {
-			return strings.ToLower(cell.Weather)
-		}
-	}
-	return ""
-}
-
 func probabilityRoll(rng *uint64) float64 {
 	return float64(nextUint64(rng)>>11) / float64(uint64(1)<<53) * 100
 }

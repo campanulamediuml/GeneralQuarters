@@ -109,10 +109,13 @@ func buildSpectateView(room store.Room, players []store.Player, events []store.E
 		"outcome":        state.Outcome,
 		"night":          state.Night,
 		"clock":          game.Clock(state),
-		"wind":           state.Wind,
-		"players":        playersSnapshot(players),
-		"events":         events,
-		"spectator":      true,
+		"wind":           game.PrevailingWind(state),
+		// 逐格风向/天气：行优先字符串，观战页按格画箭头和云层。
+		"wind_cells":    game.WindCells(state),
+		"weather_cells": state.Map.Clouds,
+		"players":       playersSnapshot(players),
+		"events":        events,
+		"spectator":     true,
 	}
 	return response
 }

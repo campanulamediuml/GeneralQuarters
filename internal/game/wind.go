@@ -217,11 +217,16 @@ func validateHeadingOrder(state State, faction string, order Order) error {
 }
 
 // VisibleWind 把风向和每个己方舰队的风向关系告诉前端。
-func VisibleWind(state State, faction string) WindView {
-	prevailing := state.Wind
+// PrevailingWind 返回盛行风名（有风场取风场，没有就用剧本值）。
+func PrevailingWind(state State) string {
 	if state.WindField != nil {
-		prevailing = windDirectionName(state.WindField.BaseDeg)
+		return windDirectionName(state.WindField.BaseDeg)
 	}
+	return strings.ToUpper(strings.TrimSpace(state.Wind))
+}
+
+func VisibleWind(state State, faction string) WindView {
+	prevailing := PrevailingWind(state)
 	view := WindView{Wind: prevailing, Cells: WindCells(state), Fleets: []FleetWind{}}
 	fleetIDs := map[string]bool{}
 	for _, unit := range state.Units {

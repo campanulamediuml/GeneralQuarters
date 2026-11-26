@@ -483,6 +483,8 @@ export interface GameView {
   shore_supplies?: Record<string, number>
   /** 敌方卸在己方机场上的滩头物资：坐标 → 数量 */
   enemy_shore_supplies?: Record<string, number>
+  /** 逐格天气：行优先、每格一个字符 '0'..'3'（晴/多云/降雨/风暴） */
+  weather_cells?: string
   wind?: {
     wind: string
     /** 逐格风向：行优先、每格一个字符，'0'..'5' 对应 NE/E/SE/SW/W/NW */

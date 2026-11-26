@@ -34,6 +34,8 @@ const props = defineProps<{
   navTargeting?: boolean
   /** 逐格风向：行优先、每格一个字符，'0'..'5' 对应 NE/E/SE/SW/W/NW；空串=单一风向 */
   windCells?: string
+  /** 逐格天气：行优先、每格一个字符 '0'..'3'（晴/多云/降雨/风暴）；空串=无天气层 */
+  weatherCells?: string
 }>()
 
 const emit = defineEmits<{
@@ -437,6 +439,17 @@ function windIndexAt(coord: string): number {
   const code = cells.charCodeAt(index) - 48
   return code >= 0 && code <= 5 ? code : -1
 }
+// 逐格天气：0 晴 / 1 多云 / 2 降雨 / 3 风暴，直接来自服务端的天气层。
+function weatherIndexAt(coord: string): number {
+  const cells = props.weatherCells
+  if (!cells || cells.length === 0) return 0
+  const row = Number(coord.slice(0, 2))
+  const col = Number(coord.slice(2))
+  const index = (row - 1) * props.map.cols + (col - 1)
+  if (index < 0 || index >= cells.length) return 0
+  const code = cells.charCodeAt(index) - 48
+  return code >= 0 && code <= 3 ? code : 0
+}
 function windRotation(coord: string): number | undefined {
   const index = windIndexAt(coord)
   if (index < 0) return undefined
@@ -605,9 +618,11 @@ const hexSigs = computed(() => {
   const reconCurrent = reconCurrentCells.value
   const empty = 'g' + hexGeneration
   const windCells = props.windCells || ''
+  const weatherCells = props.weatherCells || ''
   for (let index = 0; index < list.length; index++) {
     const hex = list[index]
     const windChar = windCells ? windCells[index] || '' : ''
+    const weatherChar = weatherCells ? weatherCells[index] || '' : ''
     const planned = plannedFleetsAt(hex.coord)
     const navDest = navDestinationAt(hex.coord)
     const reconAir = reconCurrentAircraftAt(hex.coord)
@@ -617,12 +632,12 @@ const hexSigs = computed(() => {
     const inRecon = recon.has(hex.coord)
     const inCurrent = reconCurrent.has(hex.coord)
     const hovered = dropHover.value === hex.coord
-    if (!planned.length && !navDest.length && !reconAir && !airfieldHere && distance < 0 && !isLegal && !inRecon && !inCurrent && !hovered && !windChar) {
+    if (!planned.length && !navDest.length && !reconAir && !airfieldHere && distance < 0 && !isLegal && !inRecon && !inCurrent && !hovered && !windChar && !weatherChar) {
       sigs[index] = empty
       continue
     }
     sigs[index] = [
-      hex.terrain, hex.name, windChar,
+      hex.terrain, hex.name, windChar, weatherChar,
       Number(isLegal), Number(hovered), Number(inRecon), Number(inCurrent),
       distance, reconAir, Number(airfieldHere),
       planned.join(','),
@@ -845,6 +860,8 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
            整个替换掉，扇面就变成一块盖住地形的色块，观感非常刺眼。 -->
       <polygon v-if="reconCells.has(hex.coord)" class="recon-tint" :points="points(hex.x, hex.y)" />
       <polygon v-if="reconCurrentCells.has(hex.coord)" class="recon-current-tint" :points="points(hex.x, hex.y)" />
+      <!-- 云层天气：1 层多云、2 层降雨、3 层风暴 -->
+      <polygon v-if="weatherIndexAt(hex.coord) > 0" :class="'weather-tint weather-' + weatherIndexAt(hex.coord)" :points="points(hex.x, hex.y)" />
       <text class="coord-label" :x="hex.x" :y="hex.y - 23">{{ hex.coord }}</text>
       <!-- 机场格的地名由机场算子自己写，地形标签再写一遍会变成上下两个"拉包尔"。 -->
       <text v-if="hex.name && !airfieldsAt(hex.coord).length" class="terrain-label" :x="hex.x" :y="hex.y + 18">{{ hex.name }}</text>

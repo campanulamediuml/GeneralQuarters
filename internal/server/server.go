@@ -231,6 +231,14 @@ func (s *Server) actorRoom(roomID string) (*roomActor, error) {
 	if err != nil {
 		return nil, err
 	}
+	// 老存档没记 weather_turns（以前 NewState 漏拷这个字段），天气层因此一直是空的。
+	// 载入时从剧本定义补回来，并铺一次云；已经有的房间不受影响。
+	if room.State.WeatherTurns == 0 && room.State.Map.Clouds == "" {
+		if scenario, _, _, loadErr := game.LoadScenario(s.contentDir, room.State.ScenarioID); loadErr == nil && scenario.WeatherTurns > 0 {
+			room.State.WeatherTurns = scenario.WeatherTurns
+			game.EnsureWeather(&room.State)
+		}
+	}
 	actor.room, actor.players, actor.loaded = room, players, true
 	return actor, nil
 }
@@ -898,10 +906,12 @@ func (s *Server) privateView(ctx context.Context, room store.Room, players []sto
 		"radio_used":           game.VisibleRadioUsage(room.State, player.Faction),
 		"radio_tasks":          game.AirborneRadioTasks(room.State, player.Faction),
 		"wind":                 game.VisibleWind(room.State, player.Faction),
-		"night":                room.State.Night,
-		"clock":                game.Clock(room.State),
-		"enemy_air":            game.VisibleEnemyAir(room.State, player.Faction),
-		"losses":               game.VisibleLosses(room.State, player.Faction),
+		// weather_cells：行优先、每格一个字符 '0'..'3'（晴/多云/降雨/风暴）。
+		"weather_cells": room.State.Map.Clouds,
+		"night":         room.State.Night,
+		"clock":         game.Clock(room.State),
+		"enemy_air":     game.VisibleEnemyAir(room.State, player.Faction),
+		"losses":        game.VisibleLosses(room.State, player.Faction),
 		// scores 是战果分：击沉/击落 + 已完成的投送目标；剧本用 score 目标时按它判定。
 		"scores":     game.VictoryPoints(room.State),
 		"outcome":    room.State.Outcome,

@@ -102,6 +102,9 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		Map:          gameMap, Units: map[string]*Unit{}, Aircraft: map[string]*AirUnit{}, Contacts: map[string]map[string]*FleetContact{}, RNGState: seed,
 		Definitions: map[string]string{"scenario": fmt.Sprint(scenario.Version), "map": fmt.Sprint(gameMap.Version), "units": fmt.Sprint(catalog.Version)},
 		Objectives:  scenario.Objectives, MaxTurns: scenario.MaxTurns, Turn: 1, Timeline: scenario.Timeline,
+		// 天气刷新间隔以前漏拷进状态，导致生产环境天气系统从来没跑起来（只有测试里
+		// 手动设过 WeatherTurns）。这里补上，新房间开局就能铺云。
+		WeatherTurns: scenario.WeatherTurns,
 		// 昼夜循环靠这两个字段推进：此前只写了 Timeline 却没把开局时刻/每天回合数带进状态，
 		// 结果是剧本配了时间线，引擎里 TurnsPerDay 仍然是 0，永远停在剧本固定的 night 值。
 		DayHours: scenario.DayHours, TurnsPerDay: scenario.TurnsPerDay,
@@ -339,6 +342,8 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		return state, err
 	}
 	EnsureAviation(&state)
+	// 天气系统开启的剧本开局铺一次云：70%/20%/10% 三层独立撒点。
+	EnsureWeather(&state)
 	// 开局就要按当前风向与朝向算一次甲板长度：否则第一回合快照里 heading 已经是
 	// 初始朝向，deck_length 却还是没修正的 base，玩家按它规划会差 2 架。
 	RefreshDeckLengths(&state)

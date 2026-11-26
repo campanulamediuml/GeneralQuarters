@@ -39,7 +39,7 @@ type WindField struct {
 	Harmonics []WindHarmonic `json:"harmonics"`
 }
 
-const windFieldVersion = 2
+const windFieldVersion = 3
 
 // windHarmonicTemplate 是初始化用的三层长波：幅度和波长的比值决定了每格最大变化。
 // 取到这个幅度（±18/15/10°），整张图会跨到 3–4 个方位带，而相邻格最大连续变化约 20°，
@@ -128,6 +128,10 @@ func EnsureWindField(state *State) {
 // upgradeWindField 把旧版本的风场参数换成当前模板：保留盛行风和每层相位，
 // 换成新的振幅/波长。只发生在载入时，不会每回合重排。
 func upgradeWindField(field *WindField) {
+	// v2 及更早的 BaseDeg 是用侦察角度（0=东）存的，换算成罗盘角度要 +90°。
+	if field.Version < 3 {
+		field.BaseDeg = normalizeDegrees(field.BaseDeg + 90)
+	}
 	phases := make([]int, len(field.Harmonics))
 	for index := range field.Harmonics {
 		phases[index] = field.Harmonics[index].Phase
@@ -178,11 +182,29 @@ func normalizeDegrees(degrees int) int {
 	return degrees
 }
 
-// compassDegrees 把六方位名转成来向角度；不认识就是"没风"。
-func compassDegrees(compass string) (int, bool) {
-	angle, ok := reconHeadings[strings.ToUpper(strings.TrimSpace(compass))]
-	return int(angle), ok
+// windFromDegrees 把六方位名转成风向来向的罗盘角度（0=北、90=东）。
+// 注意不能用 reconHeadings——侦察扇面的角度是 0=东、顺时针，和罗盘差了 90°，
+// 混用会让"东风"变成"北风"。
+func windFromDegrees(compass string) (int, bool) {
+	switch strings.ToUpper(strings.TrimSpace(compass)) {
+	case "NE":
+		return 30, true
+	case "E":
+		return 90, true
+	case "SE":
+		return 150, true
+	case "SW":
+		return 210, true
+	case "W":
+		return 270, true
+	case "NW":
+		return 330, true
+	}
+	return 0, false
 }
+
+// compassDegrees 是旧名字，保留给风场初始化等调用点。
+func compassDegrees(compass string) (int, bool) { return windFromDegrees(compass) }
 
 // DirectionAt 返回某个 hex 的六方位风向来向（windDirections 见 weather.go）。
 // 逐格风向量化到六档：底层连续场每格最多变 8°，量化后相邻格最多差 60°（一档），
