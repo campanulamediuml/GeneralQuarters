@@ -87,17 +87,18 @@ func TestMarianasLandingGroups(t *testing.T) {
 			carriers[unit.Name] = true
 		}
 	}
-	for _, name := range []string{"大凤", "翔鹤", "瑞鹤", "隼鹰", "飞鹰", "龙凤"} {
+	// 甲部队是复活的中途岛四艘老航母 + 两艘改装航母：精英机组只能开老飞机。
+	for _, name := range []string{"赤城", "加贺", "飞龙", "苍龙", "隼鹰", "飞鹰"} {
 		if !carriers[name] {
 			t.Fatalf("六航母主力缺少 %s：%v", name, carriers)
 		}
 	}
-	if got := factionFleetSize(state, "TG3"); got != 10 {
-		t.Fatalf("丙部队 %d 艘，期望 10", got)
+	if got := factionFleetSize(state, "TG3"); got != 13 {
+		t.Fatalf("丙部队 %d 艘，期望 13", got)
 	}
 	// 丁部队：信浓 + 千岁/千代田/瑞凤 + 高雄级全家 + 阿贺野 + 4 驱逐。
-	if got := factionFleetSize(state, "TG4"); got != 13 {
-		t.Fatalf("丁部队 %d 艘，期望 13", got)
+	if got := factionFleetSize(state, "TG4"); got != 14 {
+		t.Fatalf("丁部队 %d 艘，期望 14", got)
 	}
 	for _, name := range []string{"信浓", "千岁", "千代田", "瑞凤", "高雄", "爱宕", "摩耶", "鸟海"} {
 		found := false
