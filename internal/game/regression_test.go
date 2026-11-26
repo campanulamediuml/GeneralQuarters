@@ -5,7 +5,7 @@ import "testing"
 // TestAdvanceMovementCooldownLocksFleetUntilZero 回归：冷却未归零前 LegalMoves 必须为空、
 // SET_MOVE 必须被拒绝，减到 0 之后必须恢复可移动。旧实现在冷却期间直接返回空列表并让校验依赖该列表，
 // 导致舰队移动一次后永远无法再下达移动命令。
-// 3 回合周期：移动后挂 2 点冷却，两次结算之后才归零。
+// 纯高速驱逐舰是 2 回合周期，所以移动后挂 1 点冷却，下一次结算开始就归零。
 func TestAdvanceMovementCooldownLocksFleetUntilZero(t *testing.T) {
 	state := sandboxState(t)
 	state.Units["probe"] = &Unit{ID: "probe", Type: "DD", Faction: "A", Coord: "0202", FleetID: "probe", Name: "探路舰", Strength: 3, MaxStrength: 3, Card: ShipCard{SpeedClass: "fast", DamageControl: 5}}
@@ -25,8 +25,8 @@ func TestAdvanceMovementCooldownLocksFleetUntilZero(t *testing.T) {
 		t.Fatalf("初始移动被拒绝：%v", err)
 	}
 	ApplyImmediateMove(&state, Order{Type: "SET_MOVE", UnitID: "probe", Coord: move})
-	if unit.MoveCooldown != 2 {
-		t.Fatalf("3 回合周期，移动后应挂 2 点冷却，实际 %d", unit.MoveCooldown)
+	if unit.MoveCooldown != 1 {
+		t.Fatalf("纯高速驱逐舰是 2 回合周期，移动后应挂 1 点冷却，实际 %d", unit.MoveCooldown)
 	}
 	if err := ValidateOrder(state, "A", Order{Type: "SET_MOVE", UnitID: "probe", Coord: unit.Coord}); err == nil {
 		t.Fatal("冷却期间不应接受移动")
@@ -35,15 +35,8 @@ func TestAdvanceMovementCooldownLocksFleetUntilZero(t *testing.T) {
 	if unit.Moved {
 		t.Fatal("结算后 Moved 应复位")
 	}
-	if unit.MoveCooldown != 1 {
-		t.Fatalf("第一次结算后冷却应剩 1，实际 %d", unit.MoveCooldown)
-	}
-	if moves := LegalMoves(state, unit); len(moves) != 0 {
-		t.Fatalf("冷却没结束就不该有合法移动：%v", moves)
-	}
-	AdvanceMovementCooldown(&state)
 	if unit.MoveCooldown != 0 {
-		t.Fatalf("第二次结算后冷却应归零，实际 %d", unit.MoveCooldown)
+		t.Fatalf("冷却应归零，实际 %d", unit.MoveCooldown)
 	}
 	if moves := LegalMoves(state, unit); len(moves) == 0 {
 		t.Fatal("冷却结束后必须恢复合法移动，否则舰队会被永久锁死")
