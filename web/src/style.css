@@ -371,7 +371,7 @@ path.hex-wind{pointer-events:none;fill:none;stroke:#7fa6b0;stroke-width:1.3;stro
 /* —— 敌军损伤清单：4 级情报下把兵牌换成"每艘船还剩多少、坏了什么" ——
    一行一舰，点击仍走原路径打开角色卡，所以它只是同一批数据的另一种排法。 */
 .enemy-damage-list{display:grid;gap:4px;padding:8px}
-.enemy-damage-row{display:grid;grid-template-columns:minmax(120px,auto) minmax(70px,1fr) auto minmax(0,1.3fr);align-items:center;gap:10px;padding:5px 9px;border:1px solid #3d565e;background:#12252b;color:#c3d4d0;text-align:left;cursor:pointer}
+.enemy-damage-row{display:grid;grid-template-columns:minmax(104px,auto) 132px auto minmax(0,1fr);align-items:center;gap:10px;padding:5px 9px;border:1px solid #3d565e;background:#12252b;color:#c3d4d0;text-align:left;cursor:pointer}
 .enemy-damage-row:hover,.enemy-damage-row.active{border-color:var(--gold);background:#d7bb7b12}
 .enemy-damage-row.wrecked{opacity:.55}
 .enemy-damage-name{display:flex;align-items:baseline;gap:7px;min-width:0}
@@ -383,7 +383,7 @@ path.hex-wind{pointer-events:none;fill:none;stroke:#7fa6b0;stroke-width:1.3;stro
 .enemy-damage-value{color:#d8e4df;font:600 13px 'Rajdhani',sans-serif;white-space:nowrap}
 .enemy-damage-value small{color:#7b9598;font-size:9px}
 .enemy-damage-badges{display:flex;flex-wrap:wrap;gap:4px;min-width:0}
-@media(max-width:800px){.enemy-damage-row{grid-template-columns:minmax(90px,auto) minmax(48px,1fr) auto;row-gap:4px}.enemy-damage-badges{grid-column:1/-1}}
+@media(max-width:800px){.enemy-damage-row{grid-template-columns:minmax(84px,auto) minmax(48px,1fr) auto;row-gap:4px}.enemy-damage-badges{grid-column:1/-1}}
 
 /* —— 地图上的编队牌：点开 = 编队详情（机型 / 状态 / 目标 / 改目标 / 召回） —— */
 .map-flight-task,.map-ground-task{pointer-events:all;cursor:pointer}
