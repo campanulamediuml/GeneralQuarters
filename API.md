@@ -146,28 +146,62 @@
 客户端不得假设未返回的敌舰不存在，也不得从WebSocket或其他接口推导其真实位置。
 ## WebSocket
 
-路径：`GET /ws`，同源检查。创建房间、输入邀请 token 加入房间仍使用 HTTP；进入游戏后，玩家通过同一个 WebSocket 收取房间变更，并以 RPC 请求读取状态、提交命令和 ready。握手使用 `gq_session` Cookie，连接绑定到会话所在房间。
+路径：`GET /ws`。创建房间、输入邀请 token 加入房间仍用 HTTP；进房之后状态读取、命令、ready 和房间变更推送全走这一条连接。升级后会做同源检查（没有 `Origin` 的非浏览器客户端直接放行）。
 
-玩家 RPC 请求：
+两条身份路径：
+
+- **玩家**：握手带 `gq_session` Cookie（HTTP 建房/加入时下发），连接自动绑定会话所在房间。可选的 `?room_id=` 只用来校验"这条会话是不是这个房间的"，填错直接 403。
+- **观战**：`?mode=spectator` 或不带 Cookie。连接后 **10 秒内**第一条消息必须是订阅帧，否则断开：
+
+  `{"type":"subscribe","room_id":"ROOM","token":"XXXX-XXXX-XXXX"}`
+
+  `token` 是房间的 join_token（观战页 `/watch/{token}` 会把它注入页面）。订阅失败回 `{"type":"error","error":"..."}` 并关闭连接。观战不占玩家席位、不改在线状态。
+
+所有帧都是**文本帧**，单帧上限 1 MB。服务端每 30 秒发一次 ping，90 秒收不到 pong 即断开（客户端只需按标准 WebSocket 回 pong）。
+
+### RPC
+
+玩家侧统一 envelope：
+
 ```json
 {"type":"rpc_request","id":"req-17","method":"GET","path":"/api/v1/rooms/ROOM/state"}
+{"type":"rpc_request","id":"req-18","method":"POST","path":"/api/v1/rooms/ROOM/commands","body":{"command_id":"...","type":"SET_MOVE","unit_id":"...","coord":"0203"}}
 ```
 
-命令和 ready 使用相同 envelope：path 限于当前房间的 `/commands`、`/ready`；body 是原 HTTP API JSON 请求体。服务端复用原有版本检查、幂等 ID、权限校验和错误语义。响应通过同一个 WebSocket 返回：
+应答沿用同一个 `id`：
+
 ```json
-{"type":"rpc_response","id":"req-17","status":200,"body":{"accepted":true,"turn":2}}
+{"type":"rpc_response","id":"req-17","status":200,"body":{...}}
 ```
 
-房间状态变化时服务端直接推送视图，分两种帧：
+规则：
 
-- 全量：只在连接建立（含重连）时存在一份，由客户端发 `GET state` RPC 拿（响应即全量，服务端同时把它记成这条连接的底座）。观战连接不做 RPC 拉取，首帧由服务端直接推 `{"type":"snapshot","view":{...}}`。
-- 补丁：`{"type":"state","patch":{...}}`，只包含和上一帧相比真正变化的节点（没有版本号：补丁本身即"变了"的信号）。
+- `id` 非空且不超过 128 字节；`method` 必须是 GET/POST；`path` 不超过 512 字节、不能带 query 或 fragment。
+- `path` 只允许 `/api/v1/rooms/{当前房间}/state`（GET）、`/events`（GET）、`/commands`（POST）、`/ready`（POST），且必须属于当前会话的房间，否则 403（"WebSocket 请求必须属于当前房间" / "不允许通过 WebSocket 调用此接口"）。
+- `body` 就是原 HTTP 接口的请求体（≤1 MB）。服务端复用同一套校验、幂等 `command_id`、`base_turn` 和错误语义，所以错误码和 HTTP 完全一致（400/403/404/409/500）。
+- 校验失败（路径、房间、格式）在读取侧就直接回 `rpc_response`，不进房间队列；业务失败（未就绪就提命令、回合已结算等）在 worker 里处理，同样以 `rpc_response` 返回。
+- 会话已失效的连接如果先发 `rpc_request`，会收到 `status:401` 的应答后被关闭——前端据此回大厅重新加入，而不是无限重连。
 
-补丁形态：对象逐键收敛；实体数组（每个元素带 `id`/`unit_id` 等主键）给 `{"upsert":[只含变化属性的记录],"remove":[主键]}`；其余值整块替换。客户端按主键找到节点、把 upsert 里的属性**就地合并**进去即可（不重建对象，Vue 的响应式才能只重算用到那几个字段的地方），不需要知道业务语义。实测：下一条移动命令 100 B、点 ready 71 B、一次安静的夜间结算 314 B、12 艘舰队改航向 1.4 KB——全量是 150 KB。
+### 推送
 
-补丁是从"上次推给这条连接的那份投影"和"新投影"之间 diff 出来的，不是按命令手写的，所以不需要维护"这条命令改了哪些字段"。没有变化时一条帧都不发（对手下命令、命令被拒绝都属于这种情况：前者在他视野里不可见，后者什么都没改）。推送前有 8 ms 合并窗口，一次结算连着触发的好几条变更只投影、下发一次。`GET state` 仍然保留：首帧和重连用它；`/ready` 只回 `{"accepted":true,"turn":N}` 这一条回执，就绪标记和结算结果都走推送。房间内不做 HTTP 轮询：连接断开时前端指数退避重连，重连成功后立即重新拉取快照；只有大厅的建房/加入仍使用 HTTP。
+玩家连接**不会**主动收全量：首帧和重连都必须自己发一条 `GET state`，那条 `rpc_response` 的 `body` 既是数据，也是这条连接的补丁底座。之后房间状态变化时服务端只推补丁：
 
-观战页使用 `/watch/{token}`，例如 `/watch/CAUX-5XDW-NA2X`。服务端用 token 查出房间，把房间 ID 注入页面；也兼容旧的 `/watch/{roomID}/{token}` 和 `?token=` 形式。无需玩家 Cookie，连接 `/ws?mode=spectator` 后发送 `subscribe`，包含 `room_id` 与 `token`（房间 join_token）；服务端先推 `snapshot`（`view` 为合并后的观战 JSON），之后房间状态变化时推送新快照，同样按 25ms 合并窗口只算最后那一版。观战不占玩家席位，也不修改在线状态。旧的 HTTP `/spectate?token=...` 快照接口保留兼容。
+```json
+{"type":"state","patch":{...}}
+```
+
+观战连接反过来：订阅成功后服务端立刻推 `{"type":"snapshot","view":{...}}`，之后是 `{"type":"snapshot","patch":{...}}`。
+
+补丁形态：对象逐键收敛；实体数组（元素带 `id`/`unit_id`/`task_id`/`carrier_id`/`fleet_id`/`coord` 之一）给 `{"upsert":[只含变化属性的记录],"remove":[主键]}`，主键按上面那个顺序认第一个非空的值；其余值整块替换。客户端按主键找到节点、把 upsert 的属性**就地合并**进去（不重建对象，Vue 的响应式才能只重算用到那几个字段的地方），不需要理解业务语义。实测：一条移动命令约 100 B、点 ready 约 70 B、一次夜间结算约 300 B，而全量约 150 KB。
+
+补丁是"上次推给你的投影"和"新投影"之间 diff 出来的，不是按命令手写的，所以不需要维护"这条命令改了哪些字段"。没有变化就一帧都不发——对手的不可见动作、被拒绝的命令都属于这种情况。合并发生在房间 worker 内部：一次结算里连着的几条变更只投影一次、只下发一帧，不存在时间窗，也没有版本号，补丁本身即"变了"的信号。
+
+客户端必须守的几条：
+
+- 收到补丁却还没有底座（例如从 HTTP 快照切过来、或本地那份已经不对了），要主动断线重连并重新 `GET state`；拿着错的底座继续合并会一直歪下去。
+- 补丁按入队顺序到达（worker 串行、每条连接一个发送队列），不需要排序，但也不要跳帧。
+- 每条连接的发送队列只有 32 帧。客户端读不动了（队列塞满），服务端会直接断开这条连接——这是有意的：让它重连后重拉全量，好过收一半补丁继续跑。
+- 房间内不做 HTTP 轮询；断线用指数退避重连，重连成功后立刻重新拉快照。只有大厅的建房/加入仍用 HTTP。
 
 ## DeepSeek与文字对手扩展
 
