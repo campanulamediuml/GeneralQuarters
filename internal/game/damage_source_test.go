@@ -236,3 +236,37 @@ func TestHangarAdvantageInScenario(t *testing.T) {
 		}
 	}
 }
+
+// 漏油每 3 回合掷一次 d10：≤ 当前损管值即修复，失败再等 3 回合。
+func TestOilLeakRepairCycle(t *testing.T) {
+	build := func(damageControl int) (*State, *Unit) {
+		unit := &Unit{ID: "ca", FleetID: "ca", Name: "重巡", Type: "CA", Faction: "A", Strength: 5, MaxStrength: 5, Card: ShipCard{DamageControl: damageControl}}
+		unit.Damage = &ShipDamage{OilLeak: true, OilLeakTurns: 3}
+		state := &State{RNGState: 7, Units: map[string]*Unit{"ca": unit}}
+		return state, unit
+	}
+
+	// 损管 10：必过。第 3 个损管阶段才修复。
+	state, unit := build(10)
+	AdvanceShipConditions(state)
+	AdvanceShipConditions(state)
+	if !unit.Damage.OilLeak {
+		t.Fatal("漏油不满 3 回合不该修复")
+	}
+	AdvanceShipConditions(state)
+	if unit.Damage.OilLeak {
+		t.Fatal("第 3 回合损管判定成功应修复漏油")
+	}
+
+	// 损管 0：永远过不了，失败后重置为 3 再等一轮。
+	state, unit = build(0)
+	for turn := 0; turn < 6; turn++ {
+		AdvanceShipConditions(state)
+	}
+	if !unit.Damage.OilLeak {
+		t.Fatal("损管 0 时漏油不可能修好")
+	}
+	if unit.Damage.OilLeakTurns <= 0 || unit.Damage.OilLeakTurns > 3 {
+		t.Fatalf("失败后倒计时应重置到 1..3，实际 %d", unit.Damage.OilLeakTurns)
+	}
+}

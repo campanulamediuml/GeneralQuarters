@@ -166,6 +166,21 @@ func AdvanceShipConditions(state *State) []EngineEvent {
 			}
 		}
 		damage.Flooding = flooding
+		// 漏油：每 3 回合掷一次 d10，≤ 当前损管值即修复，失败就再等 3 回合。
+		if damage.OilLeak {
+			if damage.OilLeakTurns > 0 {
+				damage.OilLeakTurns--
+			}
+			if damage.OilLeakTurns <= 0 {
+				if d10(state) <= unit.Card.DamageControl {
+					damage.OilLeak = false
+					damage.OilLeakTurns = 0
+					events = append(events, EngineEvent{Type: "oil_leak_repaired", Audience: unit.Faction, Text: unit.Name + "的漏油已修复"})
+				} else {
+					damage.OilLeakTurns = 3
+				}
+			}
+		}
 		if damage.Tilt && probabilityRoll(&state.RNGState) < float64(unit.Card.DamageControl*5) {
 			damage.Tilt = false
 			events = append(events, EngineEvent{Type: "tilt_repaired", Audience: unit.Faction, Text: unit.Name + "的进水倾斜已修复"})
@@ -253,6 +268,9 @@ func applySevereDamageResult(state *State, unit *Unit, result string) []EngineEv
 		events = append(events, damageStrength(state, unit, 1)...)
 	case "oil_leak":
 		damage.OilLeak = true
+		if damage.OilLeakTurns <= 0 {
+			damage.OilLeakTurns = 3
+		}
 	case "severe_flooding":
 		events = append(events, damageStrength(state, unit, unit.Strength)...)
 	case "hull_damage":

@@ -445,15 +445,18 @@ type ShipDamage struct {
 	Fire string `json:"fire,omitempty"`
 	// SmallFireHits 记录本回合内已经触发过几次小型火灾：第二次触发即升级为起火燃烧（规则书 432 行）。
 	// 小型火灾在回合开始时自动扑灭，同时清零这个计数。
-	SmallFireHits   int   `json:"small_fire_hits,omitempty"`
-	Flooding        []int `json:"flooding,omitempty"`
-	Disabled        bool  `json:"disabled,omitempty"`
-	Tilt            bool  `json:"tilt,omitempty"`
-	OilLeak         bool  `json:"oil_leak,omitempty"`
-	DeckDamaged     bool  `json:"deck_damaged,omitempty"`
-	DeckDestroyed   bool  `json:"deck_destroyed,omitempty"`
-	ElevatorDamage  int   `json:"elevator_damage,omitempty"`
-	TorpedoDisabled bool  `json:"torpedo_disabled,omitempty"`
+	SmallFireHits int   `json:"small_fire_hits,omitempty"`
+	Flooding      []int `json:"flooding,omitempty"`
+	Disabled      bool  `json:"disabled,omitempty"`
+	Tilt          bool  `json:"tilt,omitempty"`
+	OilLeak       bool  `json:"oil_leak,omitempty"`
+	// OilLeakTurns 是漏油修复判定的倒计时：漏油后每 3 回合掷一次 d10，
+	// 小于等于当前损管值即修复；失败则重置为 3 再等一轮。
+	OilLeakTurns    int  `json:"oil_leak_turns,omitempty"`
+	DeckDamaged     bool `json:"deck_damaged,omitempty"`
+	DeckDestroyed   bool `json:"deck_destroyed,omitempty"`
+	ElevatorDamage  int  `json:"elevator_damage,omitempty"`
+	TorpedoDisabled bool `json:"torpedo_disabled,omitempty"`
 	// 对海雷达有两种损坏，各管一摊：搜索雷达提供侦查/突袭判定，火控雷达提供炮击命中加成。
 	// 规则书原来把"火控雷达损坏"和"对海搜索雷达损坏"写成都失去对海雷达加成，
 	// 这里拆开，让命中率只受火控影响、搜索相关判定只受搜索雷达影响。
