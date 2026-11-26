@@ -144,6 +144,9 @@ type ScenarioDefinition struct {
 	// Objectives 是剧本胜利条件（DESIGN.md 49 行）。
 	Objectives []Objective `json:"objectives"`
 	Timeline   *Timeline   `json:"timeline"`
+	// FleetMaxShips 是整编时一支舰队允许的最大舰船数；0 表示按规则书的 20 艘。
+	// 马里亚纳这种航母特混大队开局就 29 艘，剧本里放宽到 40 才有拆编的空间。
+	FleetMaxShips int `json:"fleet_max_ships"`
 }
 
 type UnitDefinition struct {
@@ -963,6 +966,8 @@ type State struct {
 	// 胜利条件（DESIGN.md 49 行）：剧本目标 + 回合上限，结算后统一判定。
 	Objectives []Objective `json:"objectives"`
 	MaxTurns   int         `json:"max_turns"`
+	// FleetMaxShips 是本局一支舰队的舰船上限（来自剧本，0 表示 20）。
+	FleetMaxShips int `json:"fleet_max_ships"`
 	// Turn 是当前回合号（1 起），由服务端每回合结算后递增；引擎内部的胜负判定要用到它。
 	Turn int `json:"turn"`
 	// AirContacts 是"某个阵营已经发现的敌方飞行编队"（键：观察者 → 任务 ID）。

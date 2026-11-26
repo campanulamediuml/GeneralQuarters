@@ -10,6 +10,7 @@
  "turns_per_day": 72,
  "weather_turns": 6,
  "max_turns": 360,
+ "fleet_max_ships": 45,
  "wind": "E",
  "doctrines": {
   "A": "us",
@@ -4222,6 +4223,24 @@
    "skill": "veteran"
   },
   {
+   "id": "us-cvl-01-f6f-x5",
+   "unit": "f6f",
+   "carrier": "us-cvl-01",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-01-f6f-x6",
+   "unit": "f6f",
+   "carrier": "us-cvl-01",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-01-f6f-x7",
+   "unit": "f6f",
+   "carrier": "us-cvl-01",
+   "skill": "veteran"
+  },
+  {
    "id": "us-cvl-01-tbf-x1",
    "unit": "tbf",
    "carrier": "us-cvl-01",
@@ -4229,24 +4248,6 @@
   },
   {
    "id": "us-cvl-01-tbf-x2",
-   "unit": "tbf",
-   "carrier": "us-cvl-01",
-   "skill": "veteran"
-  },
-  {
-   "id": "us-cvl-01-tbf-x3",
-   "unit": "tbf",
-   "carrier": "us-cvl-01",
-   "skill": "veteran"
-  },
-  {
-   "id": "us-cvl-01-tbf-x4",
-   "unit": "tbf",
-   "carrier": "us-cvl-01",
-   "skill": "veteran"
-  },
-  {
-   "id": "us-cvl-01-tbf-x5",
    "unit": "tbf",
    "carrier": "us-cvl-01",
    "skill": "veteran"
@@ -4276,6 +4277,24 @@
    "skill": "veteran"
   },
   {
+   "id": "us-cvl-02-f6f-x5",
+   "unit": "f6f",
+   "carrier": "us-cvl-02",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-02-f6f-x6",
+   "unit": "f6f",
+   "carrier": "us-cvl-02",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-02-f6f-x7",
+   "unit": "f6f",
+   "carrier": "us-cvl-02",
+   "skill": "veteran"
+  },
+  {
    "id": "us-cvl-02-tbf-x1",
    "unit": "tbf",
    "carrier": "us-cvl-02",
@@ -4283,24 +4302,6 @@
   },
   {
    "id": "us-cvl-02-tbf-x2",
-   "unit": "tbf",
-   "carrier": "us-cvl-02",
-   "skill": "veteran"
-  },
-  {
-   "id": "us-cvl-02-tbf-x3",
-   "unit": "tbf",
-   "carrier": "us-cvl-02",
-   "skill": "veteran"
-  },
-  {
-   "id": "us-cvl-02-tbf-x4",
-   "unit": "tbf",
-   "carrier": "us-cvl-02",
-   "skill": "veteran"
-  },
-  {
-   "id": "us-cvl-02-tbf-x5",
    "unit": "tbf",
    "carrier": "us-cvl-02",
    "skill": "veteran"
@@ -4330,6 +4331,24 @@
    "skill": "veteran"
   },
   {
+   "id": "us-cvl-03-f6f-x5",
+   "unit": "f6f",
+   "carrier": "us-cvl-03",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-03-f6f-x6",
+   "unit": "f6f",
+   "carrier": "us-cvl-03",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-03-f6f-x7",
+   "unit": "f6f",
+   "carrier": "us-cvl-03",
+   "skill": "veteran"
+  },
+  {
    "id": "us-cvl-03-tbf-x1",
    "unit": "tbf",
    "carrier": "us-cvl-03",
@@ -4337,24 +4356,6 @@
   },
   {
    "id": "us-cvl-03-tbf-x2",
-   "unit": "tbf",
-   "carrier": "us-cvl-03",
-   "skill": "veteran"
-  },
-  {
-   "id": "us-cvl-03-tbf-x3",
-   "unit": "tbf",
-   "carrier": "us-cvl-03",
-   "skill": "veteran"
-  },
-  {
-   "id": "us-cvl-03-tbf-x4",
-   "unit": "tbf",
-   "carrier": "us-cvl-03",
-   "skill": "veteran"
-  },
-  {
-   "id": "us-cvl-03-tbf-x5",
    "unit": "tbf",
    "carrier": "us-cvl-03",
    "skill": "veteran"
@@ -4384,6 +4385,24 @@
    "skill": "veteran"
   },
   {
+   "id": "us-cvl-04-f6f-x5",
+   "unit": "f6f",
+   "carrier": "us-cvl-04",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-04-f6f-x6",
+   "unit": "f6f",
+   "carrier": "us-cvl-04",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-04-f6f-x7",
+   "unit": "f6f",
+   "carrier": "us-cvl-04",
+   "skill": "veteran"
+  },
+  {
    "id": "us-cvl-04-tbf-x1",
    "unit": "tbf",
    "carrier": "us-cvl-04",
@@ -4391,24 +4410,6 @@
   },
   {
    "id": "us-cvl-04-tbf-x2",
-   "unit": "tbf",
-   "carrier": "us-cvl-04",
-   "skill": "veteran"
-  },
-  {
-   "id": "us-cvl-04-tbf-x3",
-   "unit": "tbf",
-   "carrier": "us-cvl-04",
-   "skill": "veteran"
-  },
-  {
-   "id": "us-cvl-04-tbf-x4",
-   "unit": "tbf",
-   "carrier": "us-cvl-04",
-   "skill": "veteran"
-  },
-  {
-   "id": "us-cvl-04-tbf-x5",
    "unit": "tbf",
    "carrier": "us-cvl-04",
    "skill": "veteran"

@@ -102,6 +102,8 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		Map:          gameMap, Units: map[string]*Unit{}, Aircraft: map[string]*AirUnit{}, Contacts: map[string]map[string]*FleetContact{}, RNGState: seed,
 		Definitions: map[string]string{"scenario": fmt.Sprint(scenario.Version), "map": fmt.Sprint(gameMap.Version), "units": fmt.Sprint(catalog.Version)},
 		Objectives:  scenario.Objectives, MaxTurns: scenario.MaxTurns, Turn: 1, Timeline: scenario.Timeline,
+		// 舰队规模上限跟剧本走：马里亚纳的航母特混大队开局就 29 艘，按默认 20 艘根本编不回去。
+		FleetMaxShips: scenario.FleetMaxShips,
 		// 天气刷新间隔以前漏拷进状态，导致生产环境天气系统从来没跑起来（只有测试里
 		// 手动设过 WeatherTurns）。这里补上，新房间开局就能铺云。
 		WeatherTurns: scenario.WeatherTurns,
@@ -868,6 +870,21 @@ func ValidateOrder(state State, faction string, order Order) error {
 		if FleetConfusion(state, FleetKey(unit)) > 0 || FleetConfusion(state, FleetKey(target)) > 0 {
 			return fmt.Errorf("交战后混乱的舰队无法整编")
 		}
+		// 合并后也要守同一个舰队规模上限：两个 20 艘的舰队贴在一起不能拼成 40 艘，
+		// 否则编队校验只在 REORGANIZE_HEX 里拦一下，MERGE_FLEET 就是绕过去的后门。
+		limit := fleetShipLimit(state)
+		size := 0
+		for _, other := range state.Units {
+			if other.Faction != faction || other.Coord != unit.Coord {
+				continue
+			}
+			if FleetKey(other) == FleetKey(unit) || FleetKey(other) == FleetKey(target) {
+				size++
+			}
+		}
+		if size > limit {
+			return fmt.Errorf("两支舰队合并后共%d艘，超过一支舰队的上限%d艘", size, limit)
+		}
 		return nil
 	default:
 		return fmt.Errorf("不支持的命令类型")
@@ -887,17 +904,27 @@ func validateReorganization(state State, faction string, order Order) error {
 	if len(expected) == 0 || len(order.Assignments) != len(expected) {
 		return fmt.Errorf("整编必须包含当前hex内的全部己方舰船")
 	}
+	limit := fleetShipLimit(state)
 	fleetSizes := map[string]int{}
 	for unitID, fleetID := range order.Assignments {
 		if !expected[unitID] || strings.TrimSpace(fleetID) == "" || len(fleetID) > 64 {
 			return fmt.Errorf("整编包含无效单位或舰队标识")
 		}
 		fleetSizes[fleetID]++
-		if fleetSizes[fleetID] > 20 {
-			return fmt.Errorf("一支舰队最多允许20艘船")
+		if fleetSizes[fleetID] > limit {
+			return fmt.Errorf("一支舰队最多允许%d艘船", limit)
 		}
 	}
 	return nil
+}
+
+// fleetShipLimit 是整编时一支舰队的舰船上限：剧本可以放宽（马里亚纳 40 艘），
+// 没配就按规则书默认的 20 艘。老存档没有这个字段，取 0 时同样回落到 20。
+func fleetShipLimit(state State) int {
+	if state.FleetMaxShips > 0 {
+		return state.FleetMaxShips
+	}
+	return 20
 }
 
 func ApplyImmediateMove(state *State, order Order) []EngineEvent {
