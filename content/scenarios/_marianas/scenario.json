@@ -143,32 +143,32 @@
    "id": "us-dd-05",
    "faction": "A",
    "name": "弗莱彻号05",
-   "fleet_id": "TF58.2",
-   "fleet_name": "第58.2特混大队",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
    "ship": "us-dd-05"
   },
   {
    "id": "us-dd-06",
    "faction": "A",
    "name": "弗莱彻号06",
-   "fleet_id": "TF58.2",
-   "fleet_name": "第58.2特混大队",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
    "ship": "us-dd-06"
   },
   {
    "id": "us-dd-07",
    "faction": "A",
    "name": "弗莱彻号07",
-   "fleet_id": "TF58.2",
-   "fleet_name": "第58.2特混大队",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
    "ship": "us-dd-07"
   },
   {
    "id": "us-dd-08",
    "faction": "A",
    "name": "弗莱彻号08",
-   "fleet_id": "TF58.2",
-   "fleet_name": "第58.2特混大队",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
    "ship": "us-dd-08"
   },
   {
@@ -247,64 +247,64 @@
    "id": "us-dd-09",
    "faction": "A",
    "name": "弗莱彻号09",
-   "fleet_id": "TF52",
-   "fleet_name": "第52特混舰队（火力支援）",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
    "ship": "us-dd-09"
   },
   {
    "id": "us-dd-10",
    "faction": "A",
    "name": "弗莱彻号10",
-   "fleet_id": "TF52",
-   "fleet_name": "第52特混舰队（火力支援）",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
    "ship": "us-dd-10"
   },
   {
    "id": "us-dd-11",
    "faction": "A",
    "name": "弗莱彻号11",
-   "fleet_id": "TF52",
-   "fleet_name": "第52特混舰队（火力支援）",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
    "ship": "us-dd-11"
   },
   {
    "id": "us-dd-12",
    "faction": "A",
    "name": "弗莱彻号12",
-   "fleet_id": "TF52",
-   "fleet_name": "第52特混舰队（火力支援）",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
    "ship": "us-dd-12"
   },
   {
    "id": "us-dd-13",
    "faction": "A",
    "name": "弗莱彻号13",
-   "fleet_id": "CVE1",
-   "fleet_name": "护航航母群1",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
    "ship": "us-dd-13"
   },
   {
    "id": "us-dd-14",
    "faction": "A",
    "name": "弗莱彻号14",
-   "fleet_id": "CVE1",
-   "fleet_name": "护航航母群1",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
    "ship": "us-dd-14"
   },
   {
    "id": "us-dd-15",
    "faction": "A",
    "name": "弗莱彻号15",
-   "fleet_id": "CVE1",
-   "fleet_name": "护航航母群1",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
    "ship": "us-dd-15"
   },
   {
    "id": "us-dd-16",
    "faction": "A",
    "name": "弗莱彻号16",
-   "fleet_id": "CVE1",
-   "fleet_name": "护航航母群1",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
    "ship": "us-dd-16"
   },
   {
@@ -831,96 +831,96 @@
    "id": "us-dd-17",
    "faction": "A",
    "name": "弗莱彻号17",
-   "fleet_id": "CVE2",
-   "fleet_name": "护航航母群2",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
    "ship": "us-dd-17"
   },
   {
    "id": "us-dd-18",
    "faction": "A",
    "name": "弗莱彻号18",
-   "fleet_id": "CVE2",
-   "fleet_name": "护航航母群2",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
    "ship": "us-dd-18"
   },
   {
    "id": "us-dd-19",
    "faction": "A",
    "name": "弗莱彻号19",
-   "fleet_id": "CVE2",
-   "fleet_name": "护航航母群2",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
    "ship": "us-dd-19"
   },
   {
    "id": "us-dd-20",
    "faction": "A",
    "name": "弗莱彻号20",
-   "fleet_id": "CVE2",
-   "fleet_name": "护航航母群2",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
    "ship": "us-dd-20"
   },
   {
    "id": "us-dd-21",
    "faction": "A",
    "name": "弗莱彻号21",
-   "fleet_id": "CVE3",
-   "fleet_name": "护航航母群3",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
    "ship": "us-dd-21"
   },
   {
    "id": "us-dd-22",
    "faction": "A",
    "name": "弗莱彻号22",
-   "fleet_id": "CVE3",
-   "fleet_name": "护航航母群3",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
    "ship": "us-dd-22"
   },
   {
    "id": "us-dd-23",
    "faction": "A",
    "name": "弗莱彻号23",
-   "fleet_id": "CVE3",
-   "fleet_name": "护航航母群3",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
    "ship": "us-dd-23"
   },
   {
    "id": "us-dd-24",
    "faction": "A",
    "name": "弗莱彻号24",
-   "fleet_id": "CVE3",
-   "fleet_name": "护航航母群3",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
    "ship": "us-dd-24"
   },
   {
    "id": "us-dd-25",
    "faction": "A",
    "name": "弗莱彻号25",
-   "fleet_id": "CVE4",
-   "fleet_name": "护航航母群4",
+   "fleet_id": "TF58.3",
+   "fleet_name": "第58.3特混大队（轻航母）",
    "ship": "us-dd-25"
   },
   {
    "id": "us-dd-26",
    "faction": "A",
    "name": "弗莱彻号26",
-   "fleet_id": "CVE4",
-   "fleet_name": "护航航母群4",
+   "fleet_id": "TF58.3",
+   "fleet_name": "第58.3特混大队（轻航母）",
    "ship": "us-dd-26"
   },
   {
    "id": "us-dd-27",
    "faction": "A",
    "name": "弗莱彻号27",
-   "fleet_id": "CVE4",
-   "fleet_name": "护航航母群4",
+   "fleet_id": "TF58.3",
+   "fleet_name": "第58.3特混大队（轻航母）",
    "ship": "us-dd-27"
   },
   {
    "id": "us-dd-28",
    "faction": "A",
    "name": "弗莱彻号28",
-   "fleet_id": "CVE4",
-   "fleet_name": "护航航母群4",
+   "fleet_id": "TF58.3",
+   "fleet_name": "第58.3特混大队（轻航母）",
    "ship": "us-dd-28"
   },
   {
@@ -1050,6 +1050,390 @@
    "fleet_id": "TF58.2",
    "fleet_name": "第58.2特混大队",
    "ship": "us-bb-16"
+  },
+  {
+   "id": "us-dd-33",
+   "faction": "A",
+   "name": "弗莱彻号33",
+   "fleet_id": "TF52",
+   "fleet_name": "第52特混舰队（火力支援）",
+   "ship": "us-dd-33"
+  },
+  {
+   "id": "us-dd-34",
+   "faction": "A",
+   "name": "弗莱彻号34",
+   "fleet_id": "TF52",
+   "fleet_name": "第52特混舰队（火力支援）",
+   "ship": "us-dd-34"
+  },
+  {
+   "id": "us-dd-35",
+   "faction": "A",
+   "name": "弗莱彻号35",
+   "fleet_id": "TF52",
+   "fleet_name": "第52特混舰队（火力支援）",
+   "ship": "us-dd-35"
+  },
+  {
+   "id": "us-dd-36",
+   "faction": "A",
+   "name": "弗莱彻号36",
+   "fleet_id": "TF52",
+   "fleet_name": "第52特混舰队（火力支援）",
+   "ship": "us-dd-36"
+  },
+  {
+   "id": "us-dd-37",
+   "faction": "A",
+   "name": "弗莱彻号37",
+   "fleet_id": "TF52",
+   "fleet_name": "第52特混舰队（火力支援）",
+   "ship": "us-dd-37"
+  },
+  {
+   "id": "us-dd-38",
+   "faction": "A",
+   "name": "弗莱彻号38",
+   "fleet_id": "TF52",
+   "fleet_name": "第52特混舰队（火力支援）",
+   "ship": "us-dd-38"
+  },
+  {
+   "id": "us-dd-39",
+   "faction": "A",
+   "name": "弗莱彻号39",
+   "fleet_id": "TF52",
+   "fleet_name": "第52特混舰队（火力支援）",
+   "ship": "us-dd-39"
+  },
+  {
+   "id": "us-dd-40",
+   "faction": "A",
+   "name": "弗莱彻号40",
+   "fleet_id": "TF52",
+   "fleet_name": "第52特混舰队（火力支援）",
+   "ship": "us-dd-40"
+  },
+  {
+   "id": "us-dd-41",
+   "faction": "A",
+   "name": "弗莱彻号41",
+   "fleet_id": "CVE1",
+   "fleet_name": "护航航母群1",
+   "ship": "us-dd-41"
+  },
+  {
+   "id": "us-dd-42",
+   "faction": "A",
+   "name": "弗莱彻号42",
+   "fleet_id": "CVE1",
+   "fleet_name": "护航航母群1",
+   "ship": "us-dd-42"
+  },
+  {
+   "id": "us-dd-43",
+   "faction": "A",
+   "name": "弗莱彻号43",
+   "fleet_id": "CVE1",
+   "fleet_name": "护航航母群1",
+   "ship": "us-dd-43"
+  },
+  {
+   "id": "us-dd-44",
+   "faction": "A",
+   "name": "弗莱彻号44",
+   "fleet_id": "CVE1",
+   "fleet_name": "护航航母群1",
+   "ship": "us-dd-44"
+  },
+  {
+   "id": "us-dd-45",
+   "faction": "A",
+   "name": "弗莱彻号45",
+   "fleet_id": "CVE2",
+   "fleet_name": "护航航母群2",
+   "ship": "us-dd-45"
+  },
+  {
+   "id": "us-dd-46",
+   "faction": "A",
+   "name": "弗莱彻号46",
+   "fleet_id": "CVE2",
+   "fleet_name": "护航航母群2",
+   "ship": "us-dd-46"
+  },
+  {
+   "id": "us-dd-47",
+   "faction": "A",
+   "name": "弗莱彻号47",
+   "fleet_id": "CVE2",
+   "fleet_name": "护航航母群2",
+   "ship": "us-dd-47"
+  },
+  {
+   "id": "us-dd-48",
+   "faction": "A",
+   "name": "弗莱彻号48",
+   "fleet_id": "CVE2",
+   "fleet_name": "护航航母群2",
+   "ship": "us-dd-48"
+  },
+  {
+   "id": "us-dd-49",
+   "faction": "A",
+   "name": "弗莱彻号49",
+   "fleet_id": "CVE3",
+   "fleet_name": "护航航母群3",
+   "ship": "us-dd-49"
+  },
+  {
+   "id": "us-dd-50",
+   "faction": "A",
+   "name": "弗莱彻号50",
+   "fleet_id": "CVE3",
+   "fleet_name": "护航航母群3",
+   "ship": "us-dd-50"
+  },
+  {
+   "id": "us-dd-51",
+   "faction": "A",
+   "name": "弗莱彻号51",
+   "fleet_id": "CVE3",
+   "fleet_name": "护航航母群3",
+   "ship": "us-dd-51"
+  },
+  {
+   "id": "us-dd-52",
+   "faction": "A",
+   "name": "弗莱彻号52",
+   "fleet_id": "CVE3",
+   "fleet_name": "护航航母群3",
+   "ship": "us-dd-52"
+  },
+  {
+   "id": "us-dd-53",
+   "faction": "A",
+   "name": "弗莱彻号53",
+   "fleet_id": "CVE4",
+   "fleet_name": "护航航母群4",
+   "ship": "us-dd-53"
+  },
+  {
+   "id": "us-dd-54",
+   "faction": "A",
+   "name": "弗莱彻号54",
+   "fleet_id": "CVE4",
+   "fleet_name": "护航航母群4",
+   "ship": "us-dd-54"
+  },
+  {
+   "id": "us-dd-55",
+   "faction": "A",
+   "name": "弗莱彻号55",
+   "fleet_id": "CVE4",
+   "fleet_name": "护航航母群4",
+   "ship": "us-dd-55"
+  },
+  {
+   "id": "us-dd-56",
+   "faction": "A",
+   "name": "弗莱彻号56",
+   "fleet_id": "CVE4",
+   "fleet_name": "护航航母群4",
+   "ship": "us-dd-56"
+  },
+  {
+   "id": "us-ca-05",
+   "faction": "A",
+   "name": "巴尔的摩",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-ca-05"
+  },
+  {
+   "id": "us-ca-06",
+   "faction": "A",
+   "name": "波士顿",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-ca-06"
+  },
+  {
+   "id": "us-cl-07",
+   "faction": "A",
+   "name": "克利夫兰",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-cl-07"
+  },
+  {
+   "id": "us-cl-08",
+   "faction": "A",
+   "name": "蒙彼利埃",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-cl-08"
+  },
+  {
+   "id": "us-ca-07",
+   "faction": "A",
+   "name": "芝加哥",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-ca-07"
+  },
+  {
+   "id": "us-ca-08",
+   "faction": "A",
+   "name": "休斯顿",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-ca-08"
+  },
+  {
+   "id": "us-cl-09",
+   "faction": "A",
+   "name": "丹佛",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-cl-09"
+  },
+  {
+   "id": "us-cl-10",
+   "faction": "A",
+   "name": "圣菲",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-cl-10"
+  },
+  {
+   "id": "us-de-01",
+   "faction": "A",
+   "name": "护航驱逐舰01",
+   "fleet_id": "CVE1",
+   "fleet_name": "护航航母群1",
+   "ship": "us-de-01"
+  },
+  {
+   "id": "us-de-02",
+   "faction": "A",
+   "name": "护航驱逐舰02",
+   "fleet_id": "CVE1",
+   "fleet_name": "护航航母群1",
+   "ship": "us-de-02"
+  },
+  {
+   "id": "us-de-03",
+   "faction": "A",
+   "name": "护航驱逐舰03",
+   "fleet_id": "CVE1",
+   "fleet_name": "护航航母群1",
+   "ship": "us-de-03"
+  },
+  {
+   "id": "us-de-04",
+   "faction": "A",
+   "name": "护航驱逐舰04",
+   "fleet_id": "CVE1",
+   "fleet_name": "护航航母群1",
+   "ship": "us-de-04"
+  },
+  {
+   "id": "us-de-05",
+   "faction": "A",
+   "name": "护航驱逐舰05",
+   "fleet_id": "CVE2",
+   "fleet_name": "护航航母群2",
+   "ship": "us-de-05"
+  },
+  {
+   "id": "us-de-06",
+   "faction": "A",
+   "name": "护航驱逐舰06",
+   "fleet_id": "CVE2",
+   "fleet_name": "护航航母群2",
+   "ship": "us-de-06"
+  },
+  {
+   "id": "us-de-07",
+   "faction": "A",
+   "name": "护航驱逐舰07",
+   "fleet_id": "CVE2",
+   "fleet_name": "护航航母群2",
+   "ship": "us-de-07"
+  },
+  {
+   "id": "us-de-08",
+   "faction": "A",
+   "name": "护航驱逐舰08",
+   "fleet_id": "CVE2",
+   "fleet_name": "护航航母群2",
+   "ship": "us-de-08"
+  },
+  {
+   "id": "us-de-09",
+   "faction": "A",
+   "name": "护航驱逐舰09",
+   "fleet_id": "CVE3",
+   "fleet_name": "护航航母群3",
+   "ship": "us-de-09"
+  },
+  {
+   "id": "us-de-10",
+   "faction": "A",
+   "name": "护航驱逐舰10",
+   "fleet_id": "CVE3",
+   "fleet_name": "护航航母群3",
+   "ship": "us-de-10"
+  },
+  {
+   "id": "us-de-11",
+   "faction": "A",
+   "name": "护航驱逐舰11",
+   "fleet_id": "CVE3",
+   "fleet_name": "护航航母群3",
+   "ship": "us-de-11"
+  },
+  {
+   "id": "us-de-12",
+   "faction": "A",
+   "name": "护航驱逐舰12",
+   "fleet_id": "CVE3",
+   "fleet_name": "护航航母群3",
+   "ship": "us-de-12"
+  },
+  {
+   "id": "us-de-13",
+   "faction": "A",
+   "name": "护航驱逐舰13",
+   "fleet_id": "CVE4",
+   "fleet_name": "护航航母群4",
+   "ship": "us-de-13"
+  },
+  {
+   "id": "us-de-14",
+   "faction": "A",
+   "name": "护航驱逐舰14",
+   "fleet_id": "CVE4",
+   "fleet_name": "护航航母群4",
+   "ship": "us-de-14"
+  },
+  {
+   "id": "us-de-15",
+   "faction": "A",
+   "name": "护航驱逐舰15",
+   "fleet_id": "CVE4",
+   "fleet_name": "护航航母群4",
+   "ship": "us-de-15"
+  },
+  {
+   "id": "us-de-16",
+   "faction": "A",
+   "name": "护航驱逐舰16",
+   "fleet_id": "CVE4",
+   "fleet_name": "护航航母群4",
+   "ship": "us-de-16"
   }
  ],
  "air_deployments": [
@@ -4028,6 +4412,30 @@
    "unit": "tbf",
    "carrier": "us-cvl-04",
    "skill": "veteran"
+  },
+  {
+   "id": "us-ca-05-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-ca-05",
+   "skill": "regular"
+  },
+  {
+   "id": "us-ca-06-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-ca-06",
+   "skill": "regular"
+  },
+  {
+   "id": "us-ca-07-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-ca-07",
+   "skill": "regular"
+  },
+  {
+   "id": "us-ca-08-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-ca-08",
+   "skill": "regular"
   }
  ],
  "airfields": [
