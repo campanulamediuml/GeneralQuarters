@@ -1418,8 +1418,16 @@ func AdvanceGroundAir(state *State) []EngineEvent {
 				processedAttack[aircraft.TaskID] = true
 			}
 		case "cover":
+			// 被召回（入夜前返航、玩家主动召回）的掩护编队必须真的往回飞：
+			// 以前这里不看 Returning，advanceGroundPatrol 又会跳过 Returning 的成员，
+			// 于是"强制返航"的日志发出去了，飞机却钉在掩护空域一格不动、也不烧油，
+			// 天黑之后还在天上——和转场那个 bug 是同一个形状。
 			if !processedAttack[aircraft.TaskID] {
-				events = append(events, advanceGroundPatrol(state, aircraft, "cover")...)
+				if aircraft.Returning {
+					events = append(events, advanceGroundAirReturn(state, aircraft)...)
+				} else {
+					events = append(events, advanceGroundPatrol(state, aircraft, "cover")...)
+				}
 				processedAttack[aircraft.TaskID] = true
 			}
 		case "transfer":
