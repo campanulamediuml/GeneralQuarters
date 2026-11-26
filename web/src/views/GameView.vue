@@ -252,6 +252,16 @@ function mapNotice(text: string) {
   if (typeof localStorage !== 'undefined' && localStorage.getItem('gq_drag_debug') === '1') console.log('[gq map]', text)
 }
 
+// 命令失败改成弹窗：以前是一条常驻横幅，插在回合条和 OPERATIONAL MAP 之间，
+// 一报错就把整张海图往下顶一截，而且没人关得掉，直到下一次操作成功才消失。
+// 现在弹窗自己带关闭按钮，Esc 和点背景也能关，关掉就是清空。
+function dismissError() {
+  error.value = ''
+}
+function onErrorKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && error.value) dismissError()
+}
+
 // 剧本时间线：顶部时钟直接标出"现在能不能整备/放飞"，因为放飞窗口只有几回合，
 // 玩家靠回合号推算 05:20/19:40 很容易整组错过去。
 // 战果分：剧本声明了 kind:"score" 目标才计分。以前侧栏写死 "0 : 0 / 沙盒不计分"，
@@ -837,9 +847,11 @@ onMounted(() => {
   // 服务端推来一份新视图就直接落地；首帧按"初始"处理，不重播历史战报。
   onPushedState((view) => applyState(view, !state.value))
   connectSocket()
+  window.addEventListener('keydown', onErrorKeydown)
 })
 
 onUnmounted(() => {
+  window.removeEventListener('keydown', onErrorKeydown)
   onPushedState(undefined)
   if (reconnectTimer) clearTimeout(reconnectTimer)
   attachRoomSocket(undefined)
@@ -903,8 +915,6 @@ onUnmounted(() => {
           <small>首页「或凭邀请加入」填这个就能进</small>
           <a v-if="watchPath" class="watch-link" :href="watchPath" target="_blank" rel="noreferrer">观战页 ↗</a>
         </div>
-        <!-- 就绪即冻结：本回合命令已锁定，界面只保留查看；不再挂整条横幅，靠按钮禁用态与就地提示表达 -->
-        <p v-if="error" class="error-banner game-error" role="alert">{{ error }}</p>
 
         <p v-if="outcomeText" class="outcome-banner" role="status">{{ outcomeText }}</p>
 
@@ -1059,6 +1069,15 @@ onUnmounted(() => {
           </article>
         </div>
         <footer class="manager-actions"><button class="reset-button" @click="openManager(menuCoord)">重置</button><span>整编由服务器立即生效</span><button class="apply-button" :disabled="actionBusy" @click="applyReorganization">应用整编</button></footer>
+      </section>
+    </div>
+
+    <!-- 命令被拒/同步失败：居中弹窗，玩家看完自己关。不再占页面布局，也不会挡着海图等下一次成功操作。 -->
+    <div v-if="error" class="fleet-dialog error-dialog" @click.self="dismissError">
+      <section class="fleet-modal error-modal" role="alertdialog" aria-modal="true" aria-label="操作未生效">
+        <header><div><span class="section-kicker">COMMAND REJECTED</span><h2>操作未生效</h2></div><button aria-label="关闭" @click="dismissError">×</button></header>
+        <p class="error-modal-text">{{ error }}</p>
+        <footer class="error-modal-actions"><button class="apply-button" @click="dismissError">知道了</button></footer>
       </section>
     </div>
   </main>
