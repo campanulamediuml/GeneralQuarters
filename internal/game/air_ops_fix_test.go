@@ -68,14 +68,14 @@ func TestReconFormationCanBeRecalledByRadio(t *testing.T) {
 	}
 }
 
-// TestIntelDecaysEveryTwoTurns 白天脱离接触后每 2 回合降一级（规则书 591 行），
-// 不按等级放宽。低等级情报掉级前要发 contact_stale 预警，让玩家知道坐标快失效了。
-func TestIntelDecaysEveryTwoTurns(t *testing.T) {
-	if got := contactDecayInterval(1); got != 2 {
-		t.Fatalf("1 级情报也应按每 2 回合衰减，实际 %d", got)
+// TestIntelTimesOutWithWarning 白天脱离接触 12 回合（4 小时）情报直接归零，
+// 不逐级衰减；到期前一回合发 contact_stale 预警，别让玩家以为坐标还能用。
+func TestIntelTimesOutWithWarning(t *testing.T) {
+	if got := contactDecayTurns(false); got != 12 {
+		t.Fatalf("白天情报应存续 12 回合，实际 %d", got)
 	}
-	if got := contactDecayInterval(4); got != 2 {
-		t.Fatalf("4 级情报每 2 回合衰减，实际 %d", got)
+	if got := contactDecayTurns(true); got != 4 {
+		t.Fatalf("夜间情报应存续 4 回合，实际 %d", got)
 	}
 
 	state := sandboxState(t)
@@ -84,23 +84,24 @@ func TestIntelDecaysEveryTwoTurns(t *testing.T) {
 		"B": {"TG-A": {FleetID: "TG-A", Level: 1, Coord: "0303", DisplayCoord: "0303"}},
 	}
 	stale := false
-	// 第 1 回合不该掉级，掉级前应有预警；第 2 回合降到 0 并消失。
-	for turn := 0; turn < 2; turn++ {
+	for turn := 0; turn < 12; turn++ {
 		state.IntelFresh = map[string]bool{}
 		for _, event := range decayContactIntel(&state) {
 			if event.Type == "contact_stale" {
 				stale = true
 			}
 		}
-		if turn == 0 && (state.Contacts["B"]["TG-A"] == nil || state.Contacts["B"]["TG-A"].Level != 1) {
-			t.Fatal("第 1 回合 1 级情报不该掉级")
+		if turn < 11 {
+			if contact := state.Contacts["B"]["TG-A"]; contact == nil || contact.Level != 1 {
+				t.Fatalf("第 %d 回合情报不该消失或降级", turn+1)
+			}
 		}
 	}
 	if !stale {
-		t.Fatal("低等级情报掉级前应有 contact_stale 预警")
+		t.Fatal("到期前应有 contact_stale 预警")
 	}
 	if state.Contacts["B"]["TG-A"] != nil {
-		t.Fatal("第 2 回合 1 级情报应衰减到 0 并移除")
+		t.Fatal("白天 12 回合没有新情报，情报应直接归零并移除")
 	}
 }
 

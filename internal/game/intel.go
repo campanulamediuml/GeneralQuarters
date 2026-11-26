@@ -109,22 +109,19 @@ func directionVector(heading string) sectorPoint {
 
 // —— 情报过时（规则书 587–593 行）——
 
-// contactDecayInterval 返回白天时该等级情报掉一级需要"脱离接触"多少回合。
-//
-// 规则书只给了"每回合/每两回合"的粗粒度节奏，但 1–2 级情报本身误差就有 3–5 hex，
-// 打击链路（整备 3 回合 + 飞行 2 hex/回合）根本来不及：实测里 1 级情报两回合就消失，
-// 设过去的打击编队只能对着空海搜索。低等级情报给更长的尾巴，高等级维持原节奏。
-// contactDecayInterval 白天脱离接触后每 2 回合降一级（规则书 591 行）。
-// 不要按等级放宽：情报存续时间是规则的一部分，"1 级活太久"属于数值问题，
-// 应该通过侦察节奏或打击链路去调，而不是改规则。
-func contactDecayInterval(level int) int {
-	return 2
+// contactDecayTurns 返回脱离接触后情报还能存续多少回合：
+// 白天 4 小时 = 12 回合，夜间 4 回合。到期不逐级衰减，直接归零（接触消失）。
+func contactDecayTurns(night bool) int {
+	if night {
+		return 4
+	}
+	return 12
 }
 
-// decayContactIntel 在回合结束时衰减情报：
+// decayContactIntel 在回合结束时结算情报过时：
 // 上一回合没有获得该舰队的任何新侦查结果、也没有侦察机持续跟踪时，视为脱离接触。
-// 白天每 2 回合 -1 级（规则书 604–610 行），夜间每 1 回合 -1 级；
-// 衰减不改变显示位置，继续停留在最后发现位置。低等级情报在掉级前会提前发"即将失效"提示。
+// 白天 4 小时（12 回合）、夜间 4 回合没有刷新，情报直接归零（规则书 604–610 行），
+// 不再逐级衰减。归零不改变显示位置——到期前一直停在最后发现位置。
 func decayContactIntel(state *State) []EngineEvent {
 	events := []EngineEvent{}
 	if len(state.Contacts) == 0 {
@@ -156,40 +153,27 @@ func decayContactIntel(state *State) []EngineEvent {
 				continue
 			}
 			key := observer + "|" + fleetID
-			if !state.Night {
-				if state.IntelStaleTurns == nil {
-					state.IntelStaleTurns = map[string]int{}
-				}
-				state.IntelStaleTurns[key]++
-				// 快照里的接触带一份"几回合没更新"，AI 才能判断坐标还可不可信。
-				contact.StaleTurns = state.IntelStaleTurns[key]
-				interval := contactDecayInterval(contact.Level)
-				if state.IntelStaleTurns[key]%interval != 0 {
-					// 低等级情报快到期时提前预警，别让玩家以为坐标还在有效期内。
-					if contact.Level <= 2 && state.IntelStaleTurns[key]%interval == interval-1 {
-						name := contact.FleetID
-						if len(contact.Members) > 0 {
-							name = contact.Members[0].FleetName
-						}
-						events = append(events, EngineEvent{Type: "contact_stale", Audience: observer, Text: fmt.Sprintf("%s的%d级情报已过期%d回合，位置误差最大%d hex，下一回合将降级", name, contact.Level, state.IntelStaleTurns[key], intelErrorRadius(contact.Level))})
-					}
-					continue
-				}
+			if state.IntelStaleTurns == nil {
+				state.IntelStaleTurns = map[string]int{}
 			}
-			if state.IntelStaleTurns != nil {
-				state.IntelStaleTurns[key] = 0
-			}
-			contact.Level--
+			state.IntelStaleTurns[key]++
+			// 快照里的接触带一份"几回合没更新"，AI 才能判断坐标还可不可信。
+			contact.StaleTurns = state.IntelStaleTurns[key]
+			limit := contactDecayTurns(state.Night)
 			name := contact.FleetID
 			if len(contact.Members) > 0 {
 				name = contact.Members[0].FleetName
 			}
-			if contact.Level <= 0 {
-				delete(state.Contacts[observer], fleetID)
-				events = append(events, EngineEvent{Type: "contact_lost", Audience: observer, Text: fmt.Sprintf("%s的情报已完全过时，接触消失", name)})
+			if state.IntelStaleTurns[key] < limit {
+				// 到期前一回合预警：情报会直接归零，不是掉一级。
+				if state.IntelStaleTurns[key] == limit-1 {
+					events = append(events, EngineEvent{Type: "contact_stale", Audience: observer, Text: fmt.Sprintf("%s的情报已过期%d回合（%s上限%d回合），下一回合将失去接触", name, state.IntelStaleTurns[key], map[bool]string{true: "夜间", false: "白天"}[state.Night], limit)})
+				}
 				continue
 			}
-			events = append(events, EngineEvent{Type: "contact_decay", Audience: observer, Text: fmt.Sprintf("%s脱离接触，情报等级降为%d", name, contact.Level)})
+			delete(state.IntelStaleTurns, key)
+			delete(state.Contacts[observer], fleetID)
+			events = append(events, EngineEvent{Type: "contact_lost", Audience: observer, Text: fmt.Sprintf("%s脱离接触已%d回合，情报归零，接触消失", name, limit)})
 		}
 	}
 	return events

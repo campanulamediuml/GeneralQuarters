@@ -40,8 +40,8 @@ func TestIntelDisplayCoordIsStableInRange(t *testing.T) {
 	}
 }
 
-// 脱离接触后情报衰减：夜间每回合 -1，白天每 2 回合 -1（规则书 591–592 行）。
-func TestContactIntelDecaysWhenStale(t *testing.T) {
+// 脱离接触后不逐级衰减：白天 12 回合（4 小时）到期直接归零，夜间 4 回合归零。
+func TestContactIntelTimesOutDirectly(t *testing.T) {
 	newState := func(night bool) State {
 		state := sandboxState(t)
 		state.Night = night
@@ -50,19 +50,41 @@ func TestContactIntelDecaysWhenStale(t *testing.T) {
 		}
 		return state
 	}
-	night := newState(true)
-	decayContactIntel(&night)
-	if night.Contacts["B"]["TG-A"].Level != 2 {
-		t.Fatalf("夜间一回合应降一级：%d", night.Contacts["B"]["TG-A"].Level)
-	}
+
 	day := newState(false)
-	decayContactIntel(&day)
-	if day.Contacts["B"]["TG-A"].Level != 3 {
-		t.Fatalf("白天第一回合不应衰减：%d", day.Contacts["B"]["TG-A"].Level)
+	for turn := 1; turn <= 12; turn++ {
+		day.IntelFresh = map[string]bool{}
+		decayContactIntel(&day)
+		contact := day.Contacts["B"]["TG-A"]
+		if turn < 12 {
+			if contact == nil {
+				t.Fatalf("白天第 %d 回合不应丢失情报", turn)
+			}
+			if contact.Level != 3 {
+				t.Fatalf("白天不应逐级衰减：第 %d 回合等级变成 %d", turn, contact.Level)
+			}
+		}
 	}
-	decayContactIntel(&day)
-	if day.Contacts["B"]["TG-A"].Level != 2 {
-		t.Fatalf("白天第二回合应降一级：%d", day.Contacts["B"]["TG-A"].Level)
+	if _, ok := day.Contacts["B"]["TG-A"]; ok {
+		t.Fatal("白天 12 回合没有新情报，接触应直接归零")
+	}
+
+	night := newState(true)
+	for turn := 1; turn <= 4; turn++ {
+		night.IntelFresh = map[string]bool{}
+		decayContactIntel(&night)
+		contact := night.Contacts["B"]["TG-A"]
+		if turn < 4 {
+			if contact == nil {
+				t.Fatalf("夜间第 %d 回合不应丢失情报", turn)
+			}
+			if contact.Level != 3 {
+				t.Fatalf("夜间不应逐级衰减：第 %d 回合等级变成 %d", turn, contact.Level)
+			}
+		}
+	}
+	if _, ok := night.Contacts["B"]["TG-A"]; ok {
+		t.Fatal("夜间 4 回合没有新情报，接触应直接归零")
 	}
 }
 
@@ -87,15 +109,18 @@ func TestContactIntelKeepsWhenFreshOrTracked(t *testing.T) {
 	}
 }
 
-// 衰减到 0 级时情报消失，但显示位置停在最后发现处（规则书 593 行）。
+// 到期归零时情报消失，但在到期前一直停在最后发现位置。
 func TestContactDisappearsAtZero(t *testing.T) {
 	state := sandboxState(t)
 	state.Night = true
 	state.Contacts["B"] = map[string]*FleetContact{
-		"TG-A": {FleetID: "TG-A", Faction: "A", Level: 1, Coord: "0202", Count: 14},
+		"TG-A": {FleetID: "TG-A", Faction: "A", Level: 1, Coord: "0202", DisplayCoord: "0303", Count: 14},
 	}
-	decayContactIntel(&state)
+	for turn := 0; turn < 4; turn++ {
+		state.IntelFresh = map[string]bool{}
+		decayContactIntel(&state)
+	}
 	if _, ok := state.Contacts["B"]["TG-A"]; ok {
-		t.Fatal("情报降到0后应当消失")
+		t.Fatal("夜间 4 回合到期后情报应当消失")
 	}
 }
