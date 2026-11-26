@@ -377,6 +377,7 @@ func (s *Store) ResetConnections(ctx context.Context) error {
 }
 
 // IdleRoomIDs 找出"超过 idle 没有任何活动、而且现在没有玩家在线"的房间。
+// 只用来决定哪些房间可以释放内存：房间和它的对战日志都不删，下次打开照样能载入复盘。
 // 活动时间看 rooms.updated_at：落库的命令/结算会刷新它，玩家上下线也会刷新（见 SetConnected），
 // 所以开着页面看海图不算僵尸房。
 func (s *Store) IdleRoomIDs(ctx context.Context, idle time.Duration) ([]string, error) {
@@ -395,33 +396,6 @@ func (s *Store) IdleRoomIDs(ctx context.Context, idle time.Duration) ([]string, 
 		ids = append(ids, id)
 	}
 	return ids, rows.Err()
-}
-
-// DeleteRooms 把房间连它整段历史一起删掉：战报、订单、回合快照、指令回执、players/sessions。
-// players/sessions 有外键级联，但 events/orders/turns 没有，必须显式删。
-func (s *Store) DeleteRooms(ctx context.Context, roomIDs []string) error {
-	if len(roomIDs) == 0 {
-		return nil
-	}
-	tx, err := s.DB.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-	for _, roomID := range roomIDs {
-		for _, statement := range []string{
-			`DELETE FROM events WHERE room_id=?`,
-			`DELETE FROM orders WHERE room_id=?`,
-			`DELETE FROM turns WHERE room_id=?`,
-			`DELETE FROM commands WHERE player_id IN (SELECT id FROM players WHERE room_id=?)`,
-			`DELETE FROM rooms WHERE id=?`,
-		} {
-			if _, err := tx.ExecContext(ctx, statement, roomID); err != nil {
-				return err
-			}
-		}
-	}
-	return tx.Commit()
 }
 
 // CommandResponse 返回某个 command_id 之前写下的回执，以及当时的请求指纹。

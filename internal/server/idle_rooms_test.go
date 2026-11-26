@@ -11,9 +11,9 @@ import (
 	"generalquarters/internal/store"
 )
 
-// 闲置超过 12 小时的房间要被真删掉：库里连战报一起清空，内存里的 worker 停掉，
-// 之后再访问就是 404——不能出现"库删了、actor 还留着空壳"的泄漏。
-func TestSweepIdleRoomsEvictsActorAndRoom(t *testing.T) {
+// 闲置超过 12 小时的房间只释放内存：worker 停掉、连接断开，
+// 但房间、事件、回合快照一行都不删——那是复盘用的。再进来会从库里重新载入。
+func TestSweepIdleRoomsFreesActorButKeepsHistory(t *testing.T) {
 	ctx := context.Background()
 	database, err := store.Open(filepath.Join(t.TempDir(), "test.db"))
 	if err != nil {
@@ -50,22 +50,37 @@ func TestSweepIdleRoomsEvictsActorAndRoom(t *testing.T) {
 
 	app.sweepIdleRooms(ctx)
 
-	if _, err := database.Room(ctx, created.RoomID); err == nil {
-		t.Fatal("闲置房间还留在库里")
-	}
 	if _, ok := app.actors.Load(created.RoomID); ok {
 		t.Fatal("闲置房间的 actor 还挂在内存里")
 	}
-	// 房间和会话一起删了，所以再拿原 cookie 访问是 401（会话已失效、前端会回首页），
-	// 空房间壳则是 404。两种都算"访问不到了"，只要不是 200 就对了。
-	var state map[string]any
-	status := client.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &state)
-	if status != http.StatusUnauthorized && status != http.StatusNotFound {
-		t.Fatalf("房间删掉后不应还能读状态，实际 %d", status)
+	// 库里的东西一样不能少：房间、事件、回合快照。
+	if _, err := database.Room(ctx, created.RoomID); err != nil {
+		t.Fatalf("闲置房间被误删：%v", err)
+	}
+	var events, turns int
+	if err := database.DB.QueryRow("SELECT COUNT(*) FROM events WHERE room_id=?", created.RoomID).Scan(&events); err != nil {
+		t.Fatalf("统计事件失败：%v", err)
+	}
+	if events == 0 {
+		t.Fatal("对战日志被清掉了，复盘就没了")
+	}
+	if err := database.DB.QueryRow("SELECT COUNT(*) FROM turns WHERE room_id=?", created.RoomID).Scan(&turns); err != nil {
+		t.Fatalf("统计回合快照失败：%v", err)
+	}
+	if turns == 0 {
+		t.Fatal("回合快照被清掉了")
+	}
+	// 再访问一次：按需从库里重新载入，状态照常返回，而不是 404。
+	var reloaded map[string]any
+	if status := client.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &reloaded); status != http.StatusOK {
+		t.Fatalf("释放内存后重进应当能重新载入，实际 %d", status)
+	}
+	if _, ok := app.actors.Load(created.RoomID); !ok {
+		t.Fatal("重新载入后应当有新的 room actor")
 	}
 }
 
-// 有人在线的房间即使很久没出过命令也不能删：玩家开着页面看海图不算废弃。
+// 有人在线的房间即使很久没出过命令也不能动：玩家开着页面看海图不算废弃。
 func TestSweepIdleRoomsKeepsConnectedRoom(t *testing.T) {
 	ctx := context.Background()
 	database, err := store.Open(filepath.Join(t.TempDir(), "test.db"))
@@ -100,9 +115,6 @@ func TestSweepIdleRoomsKeepsConnectedRoom(t *testing.T) {
 
 	app.sweepIdleRooms(ctx)
 
-	if _, err := database.Room(ctx, created.RoomID); err != nil {
-		t.Fatalf("有人在线时不应当回收：%v", err)
-	}
 	if _, ok := app.actors.Load(created.RoomID); !ok {
 		t.Fatal("在线房间的 actor 不该被清掉")
 	}

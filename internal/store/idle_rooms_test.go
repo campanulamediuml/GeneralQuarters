@@ -8,9 +8,9 @@ import (
 	"generalquarters/internal/game"
 )
 
-// 闲置房间的判定：活动时间早于门槛、而且没人在线，两条都成立才回收。
-// 玩家上线会刷新活动时间，所以"刚有人看过"的房间不会被误删。
-func TestIdleRoomsOnlyDropsDisconnectedOnes(t *testing.T) {
+// 闲置判定：活动时间早于门槛、而且没人在线，两条都成立才算"可以释放内存"。
+// 这里只判断能不能放内存，房间和它的对战日志一律保留。
+func TestIdleRoomsOnlyListsDisconnectedOnes(t *testing.T) {
 	ctx := context.Background()
 	database := newTestStore(t)
 	state := game.State{ScenarioID: "_test", ScenarioName: "测试", Turn: 1}
@@ -37,33 +37,18 @@ func TestIdleRoomsOnlyDropsDisconnectedOnes(t *testing.T) {
 		t.Fatalf("查闲置房间失败：%v", err)
 	}
 	if len(ids) != 1 || ids[0] != "idle" {
-		t.Fatalf("只该回收 idle，实际 %v", ids)
+		t.Fatalf("只该列出 idle，实际 %v", ids)
 	}
-
-	if err := database.DeleteRooms(ctx, ids); err != nil {
-		t.Fatalf("删除闲置房间失败：%v", err)
+	// 关键：选了它也不代表要删——库里的房间、对战日志、快照都得留着复盘。
+	var events int
+	if err := database.DB.QueryRow("SELECT COUNT(*) FROM events WHERE room_id='idle'").Scan(&events); err != nil {
+		t.Fatalf("统计事件失败：%v", err)
 	}
-	if _, err := database.Room(ctx, "idle"); err == nil {
-		t.Fatal("闲置房间还留在库里")
+	if events == 0 {
+		t.Fatal("房间的事件日志不该被清掉")
 	}
-	if _, err := database.Room(ctx, "live"); err != nil {
-		t.Fatalf("在线房间被误删：%v", err)
-	}
-	// 战报、快照、玩家会话都要跟着走，不然库里只剩一堆孤儿行。
-	for _, query := range []string{
-		"SELECT COUNT(*) FROM events WHERE room_id='idle'",
-		"SELECT COUNT(*) FROM turns WHERE room_id='idle'",
-		"SELECT COUNT(*) FROM orders WHERE room_id='idle'",
-		"SELECT COUNT(*) FROM players WHERE room_id='idle'",
-		"SELECT COUNT(*) FROM sessions WHERE room_id='idle'",
-	} {
-		var count int
-		if err := database.DB.QueryRow(query).Scan(&count); err != nil {
-			t.Fatalf("统计失败：%v", err)
-		}
-		if count != 0 {
-			t.Fatalf("%s 还有 %d 行没删", query, count)
-		}
+	if _, err := database.Room(ctx, "idle"); err != nil {
+		t.Fatalf("闲置房间仍然要能读出来：%v", err)
 	}
 }
 

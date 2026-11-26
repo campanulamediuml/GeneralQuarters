@@ -757,13 +757,14 @@ func (s *Server) StartTurnReconciler(ctx context.Context) {
 	}()
 }
 
-// idleRoomAfter 是房间的闲置上限：12 小时没人连、也没出过命令，就整间删掉。
+// idleRoomAfter 是房间常驻内存的闲置上限：12 小时没人连、也没出过命令，就把内存里这份放掉。
 // 一个房间常驻内存的不只是 146KB 的状态：还有整份战报、视图缓存、diff 元数据和一条 worker
-// goroutine，打过的废弃对局攒着不动，进程只会越来越胖。
+// goroutine，攒多了进程只会越来越胖。**库里的记录一律保留**：房间、事件、回合快照、指令回执
+// 都是复盘用的，下次打开房间时按 state_blob 重新载入，跟一直挂着没有区别。
 const idleRoomAfter = 12 * time.Hour
 
-// StartRoomJanitor 周期回收闲置房间：先删库（连战报/快照/会话一起），
-// 再把内存里的 worker 停掉、断开还挂在上面的连接。
+// StartRoomJanitor 周期释放闲置房间占的内存：停掉 worker、断开还挂在上面的连接，
+// 但一行数据库记录都不删。
 func (s *Server) StartRoomJanitor(ctx context.Context) {
 	go func() {
 		ticker := time.NewTicker(time.Minute)
@@ -779,30 +780,27 @@ func (s *Server) StartRoomJanitor(ctx context.Context) {
 	}()
 }
 
-// sweepIdleRooms 扫一遍闲置房间。规则只有两条：最后活动时间早于 idleRoomAfter，
-// 而且现在没有任何玩家在线（观战者不算——他们连上来时会刷新活动时间）。
+// sweepIdleRooms 只释放内存，不动数据库：对战日志、回合快照和事件都留着复盘用，
+// 房间下次被打开时会从 state_blob 重新载入。判定条件是"超过 idleRoomAfter 没活动"
+// 且"现在没有玩家在线"（有人的房间哪怕一整天没出命令也不清）。
 func (s *Server) sweepIdleRooms(ctx context.Context) {
 	ids, err := s.store.IdleRoomIDs(ctx, idleRoomAfter)
 	if err != nil {
 		log.Printf("巡检闲置房间失败：%v", err)
 		return
 	}
-	if len(ids) == 0 {
-		return
-	}
-	if err := s.store.DeleteRooms(ctx, ids); err != nil {
-		log.Printf("删除闲置房间失败：%v", err)
-		return
-	}
 	for _, roomID := range ids {
-		if value, ok := s.actors.Load(roomID); ok {
-			if actor, alive := value.(*roomActor); alive {
-				actor.shutdown()
-			}
-			s.actors.Delete(roomID)
+		// 先原子地摘掉，再停 worker：摘掉之后新消息会落到一个新 actor 上按需从库里重载，
+		// 而不是投进一条正在退出的 worker。
+		value, ok := s.actors.LoadAndDelete(roomID)
+		if !ok {
+			continue // 本来就不在内存里，没东西可放
 		}
-		s.hub.closeRoom(roomID, "房间闲置超过 12 小时，已被清理")
-		log.Printf("回收闲置房间 %s（超过 %s 没有活动）", roomID, idleRoomAfter)
+		if actor, alive := value.(*roomActor); alive {
+			actor.shutdown()
+		}
+		s.hub.closeRoom(roomID, "房间闲置太久，内存已释放；刷新页面会从存档重新载入")
+		log.Printf("释放闲置房间 %s 的内存（超过 %s 没有活动，存档与对战日志保留）", roomID, idleRoomAfter)
 	}
 }
 
@@ -1168,7 +1166,7 @@ func (s *Server) askRoom(msg roomMsg) roomReply {
 	reply := make(chan roomReply, 1)
 	msg.reply = reply
 	if !s.roomActor(msg.roomID).send(msg) {
-		return roomError(http.StatusNotFound, "房间已被清理")
+		return roomError(http.StatusServiceUnavailable, "房间已释放内存，正在重新载入，请重试")
 	}
 	return <-reply
 }
@@ -1510,7 +1508,7 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 		// 观战者也刷新房间的活动时间，免得有人在看的房间被当成僵尸房回收。
 		_ = s.store.TouchRoom(context.Background(), client.roomID)
 		if !s.roomActor(client.roomID).send(roomMsg{kind: msgSpectatorJoin, roomID: client.roomID, client: client}) {
-			client.fail("房间已被清理")
+			client.fail("房间已释放内存，请刷新重试")
 			_ = conn.Close()
 			return
 		}
@@ -1538,7 +1536,7 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 			if msg, failure := s.roomMsgOfRPC(client, player, request); failure != nil {
 				replyRPCError(client, request.ID, failure)
 			} else if !s.roomActor(client.roomID).send(msg) {
-				replyRPCError(client, request.ID, &rpcFailure{status: http.StatusNotFound, message: "房间已被清理"})
+				replyRPCError(client, request.ID, &rpcFailure{status: http.StatusServiceUnavailable, message: "房间已释放内存，正在重新载入，请重试"})
 			}
 		}
 	}()
