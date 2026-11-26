@@ -153,10 +153,11 @@ func BenchmarkPrivateViewPush(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
+	cache := newDiffCache()
 	b.Run("diff", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-			if diffView(previous, next) != any(patchNone) {
+			if diffViewWith(cache, previous, next) != any(patchNone) {
 				b.Fatal("同一份状态不该算出补丁")
 			}
 		}

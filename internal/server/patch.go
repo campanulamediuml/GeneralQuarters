@@ -4,7 +4,6 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
-	"sync"
 )
 
 // 视图补丁：拿两份投影做 diff，算出"和上一帧相比变了哪些东西"。
@@ -30,7 +29,7 @@ var patchKeyFields = []string{"id", "unit_id", "task_id", "carrier_id", "fleet_i
 
 // patchKey 从一个元素里取主键（字段名 + 值）；认不出来返回空串，调用方会退回整块替换。
 // 字段名要一起带出来：补丁只发变了的属性，客户端还得知道按哪个字段去对号。
-func patchKey(value reflect.Value) (string, string) {
+func patchKey(cache diffCache, value reflect.Value) (string, string) {
 	for value.Kind() == reflect.Pointer || value.Kind() == reflect.Interface {
 		if value.IsNil() {
 			return "", ""
@@ -55,7 +54,7 @@ func patchKey(value reflect.Value) (string, string) {
 	if value.Kind() != reflect.Struct {
 		return "", ""
 	}
-	for _, key := range structMetaOf(value.Type()).keys {
+	for _, key := range cache.meta(value.Type()).keys {
 		found, ok := fieldByPath(value, key.path)
 		if !ok {
 			continue
@@ -106,12 +105,25 @@ type structKeyField struct {
 	name string
 }
 
-var structMetaCache sync.Map // reflect.Type -> *structMeta
+// diffCache 是 diff 用的类型元数据缓存。
+//
+// 它跟着房间 worker 走：每个房间一份，只在自己的 goroutine 里读写，
+// 所以不需要锁，也不需要 sync.Map。类型只有几十个，一局几份内存可以忽略。
+type diffCache map[reflect.Type]*structMeta
 
-func structMetaOf(t reflect.Type) *structMeta {
-	if cached, ok := structMetaCache.Load(t); ok {
-		return cached.(*structMeta)
+func newDiffCache() diffCache { return diffCache{} }
+
+func (cache diffCache) meta(t reflect.Type) *structMeta {
+	if meta, ok := cache[t]; ok {
+		return meta
 	}
+	meta := buildStructMeta(t)
+	cache[t] = meta
+	return meta
+}
+
+// buildStructMeta 只在某个类型第一次出现时跑一次。
+func buildStructMeta(t reflect.Type) *structMeta {
 	meta := &structMeta{fields: make([]structField, 0, t.NumField())}
 	for index := 0; index < t.NumField(); index++ {
 		field := t.Field(index)
@@ -134,8 +146,7 @@ func structMetaOf(t reflect.Type) *structMeta {
 		}
 		meta.keys = append(meta.keys, structKeyField{path: found.Index, name: candidate})
 	}
-	actual, _ := structMetaCache.LoadOrStore(t, meta)
-	return actual.(*structMeta)
+	return meta
 }
 
 // keyText 把主键字段转成字符串。事件的 id 是数字，不能只认 string：
@@ -170,9 +181,18 @@ func jsonFieldName(field reflect.StructField) string {
 }
 
 // diffView 返回从 prev 到 next 的补丁；没有变化时返回 patchNone。
-func diffView(prev, next any) any { return diffAny(reflect.ValueOf(prev), reflect.ValueOf(next)) }
+func diffView(prev, next any) any { return diffViewWith(newDiffCache(), prev, next) }
 
-func diffAny(prev, next reflect.Value) any {
+// diffViewWith 用调用方给的缓存算补丁。房间 worker 会一直复用自己的那一份，
+// 没必要每次推送都把类型元数据重建一遍。
+func diffViewWith(cache diffCache, prev, next any) any {
+	if cache == nil {
+		cache = newDiffCache()
+	}
+	return diffAny(cache, reflect.ValueOf(prev), reflect.ValueOf(next))
+}
+
+func diffAny(cache diffCache, prev, next reflect.Value) any {
 	// 指针字段（比如 units[].deck）先拆开：不拆的话任何变化都整块重发，
 	// 一条航向命令就会带上整个甲板对象（升降机、状态……），白多几百字节。
 	for next.Kind() == reflect.Pointer && !next.IsNil() {
@@ -194,7 +214,7 @@ func diffAny(prev, next reflect.Value) any {
 		if prev.Kind() == reflect.Interface && !prev.IsNil() {
 			prev = prev.Elem()
 		}
-		return diffAny(prev, next.Elem())
+		return diffAny(cache, prev, next.Elem())
 	}
 	if prev.Kind() == reflect.Interface {
 		if prev.IsNil() {
@@ -207,23 +227,23 @@ func diffAny(prev, next reflect.Value) any {
 		if prev.Kind() != reflect.Map || prev.Type() != next.Type() {
 			return next.Interface()
 		}
-		return diffMap(prev, next)
+		return diffMap(cache, prev, next)
 	case reflect.Slice, reflect.Array:
 		if !(prev.Kind() == next.Kind() && prev.Type() == next.Type()) {
 			return next.Interface()
 		}
-		return diffSlice(prev, next)
+		return diffSlice(cache, prev, next)
 	case reflect.Struct:
 		if prev.Kind() != reflect.Struct || prev.Type() != next.Type() {
 			return next.Interface()
 		}
-		meta := structMetaOf(next.Type())
+		meta := cache.meta(next.Type())
 		if len(meta.fields) == 0 {
 			return patchNone
 		}
 		patch := map[string]any{}
 		for _, field := range meta.fields {
-			change := diffAny(prev.Field(field.index), next.Field(field.index))
+			change := diffAny(cache, prev.Field(field.index), next.Field(field.index))
 			if change != any(patchNone) {
 				patch[field.name] = change
 			}
@@ -265,7 +285,7 @@ func indexComma(tag string) int {
 	return -1
 }
 
-func diffMap(prev, next reflect.Value) any {
+func diffMap(cache diffCache, prev, next reflect.Value) any {
 	if next.Type().Key().Kind() != reflect.String {
 		if valuesEqual(prev, next) {
 			return patchNone
@@ -280,7 +300,7 @@ func diffMap(prev, next reflect.Value) any {
 			patch[name] = next.MapIndex(key).Interface()
 			continue
 		}
-		change := diffAny(before, next.MapIndex(key))
+		change := diffAny(cache, before, next.MapIndex(key))
 		if change != any(patchNone) {
 			patch[name] = change
 		}
@@ -302,13 +322,13 @@ func diffMap(prev, next reflect.Value) any {
 //
 // 不按路径写死：载舰的飞机、舰队的成员都是嵌在实体里的数组，路径是动态的，
 // 写死一份清单迟早漏；这里按元素本身判断，嵌套多深都一样。
-func isEntityList(list reflect.Value) bool {
+func isEntityList(cache diffCache, list reflect.Value) bool {
 	if list.Len() == 0 {
 		return false
 	}
 	seen := make(map[string]bool, list.Len())
 	for index := 0; index < list.Len(); index++ {
-		_, key := patchKey(list.Index(index))
+		_, key := patchKey(cache, list.Index(index))
 		if key == "" || seen[key] {
 			return false
 		}
@@ -317,8 +337,8 @@ func isEntityList(list reflect.Value) bool {
 	return true
 }
 
-func diffSlice(prev, next reflect.Value) any {
-	if !isEntityList(prev) || !isEntityList(next) {
+func diffSlice(cache diffCache, prev, next reflect.Value) any {
+	if !isEntityList(cache, prev) || !isEntityList(cache, next) {
 		if valuesEqual(prev, next) {
 			return patchNone
 		}
@@ -327,14 +347,14 @@ func diffSlice(prev, next reflect.Value) any {
 	before := make(map[string]reflect.Value, prev.Len())
 	for index := 0; index < prev.Len(); index++ {
 		item := prev.Index(index)
-		_, key := patchKey(item)
+		_, key := patchKey(cache, item)
 		before[key] = item
 	}
 	upsert := make([]any, 0, next.Len())
 	seen := make(map[string]bool, next.Len())
 	for index := 0; index < next.Len(); index++ {
 		item := next.Index(index)
-		keyField, key := patchKey(item)
+		keyField, key := patchKey(cache, item)
 		seen[key] = true
 		old, exists := before[key]
 		if !exists {
@@ -342,7 +362,7 @@ func diffSlice(prev, next reflect.Value) any {
 			upsert = append(upsert, item.Interface())
 			continue
 		}
-		change := diffAny(old, item)
+		change := diffAny(cache, old, item)
 		if change == any(patchNone) {
 			continue
 		}

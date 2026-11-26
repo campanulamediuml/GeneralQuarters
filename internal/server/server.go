@@ -155,6 +155,8 @@ type roomActor struct {
 	// views 是这个房间上一次推给每个玩家、以及观战者的视图。
 	// 只由 worker 自己读写，所以不需要锁：这也是补丁顺序天然正确的原因。
 	views roomViews
+	// meta 是这个房间 diff 用的类型元数据缓存。只有 worker 自己读写，所以不需要锁。
+	meta diffCache
 }
 
 // roomViews 按玩家 / 观战分别缓存上一份推出去的视图，用来算下一次的补丁。
@@ -168,6 +170,7 @@ func newRoomActor(server *Server) *roomActor {
 	actor := &roomActor{
 		msgs:  make(chan roomMsg, 128),
 		views: roomViews{players: map[string]map[string]any{}},
+		meta:  newDiffCache(),
 	}
 	if server != nil {
 		actor.apply = server.applyRoomMsg
@@ -902,7 +905,7 @@ func (s *Server) publishRoom(roomID string) {
 			// 这个玩家还没有底座（客户端刚连上、还没拉全量）。那一拉会把它记下来。
 			continue
 		}
-		if patch := diffView(previous, view); patch != any(patchNone) {
+		if patch := diffViewWith(actor.meta, previous, view); patch != any(patchNone) {
 			if frame, err := json.Marshal(map[string]any{"type": "state", "patch": patch}); err == nil {
 				s.hub.deliverPlayer(roomID, player.ID, frame)
 			}
@@ -914,7 +917,7 @@ func (s *Server) publishRoom(roomID string) {
 		return
 	}
 	if previous := actor.views.spectate; previous != nil {
-		if patch := diffView(previous, view); patch != any(patchNone) {
+		if patch := diffViewWith(actor.meta, previous, view); patch != any(patchNone) {
 			if frame, err := json.Marshal(map[string]any{"type": "snapshot", "patch": patch}); err == nil {
 				s.hub.deliverSpectators(roomID, frame)
 			}
