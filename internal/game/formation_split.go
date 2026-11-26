@@ -10,7 +10,7 @@ import (
 //
 // 以前任务分组只认 TaskID，飞机开始返航后 TaskID 不会变，于是"攻击编队 ×22"的卡片里
 // 一直混着几架"返航中"——玩家算不清还有多少攻击力，也容易以为它们还在打。
-// 拆组只改任务号，不改任务类型和优先级：落地后照常清掉任务参数。
+// 拆组只换编队牌 tag，不改任务类型和优先级：落地后照常清掉任务参数。
 func splitCarrierReturningMembers(state *State) []EngineEvent {
 	events := []EngineEvent{}
 	if state == nil {
@@ -40,7 +40,7 @@ func splitCarrierReturningMembers(state *State) []EngineEvent {
 		if active == 0 {
 			continue
 		}
-		rtbID := nextTaskID(state, MissionStrike)
+		rtbID := newFlightTag(state)
 		for _, aircraft := range returning[taskID] {
 			aircraft.TaskID = rtbID
 		}
@@ -78,7 +78,7 @@ func splitGroundReturningMembers(state *State) []EngineEvent {
 		if active == 0 {
 			continue
 		}
-		rtbID := nextTaskID(state, MissionStrike)
+		rtbID := newFlightTag(state)
 		for _, aircraft := range returning[taskID] {
 			aircraft.TaskID = rtbID
 		}

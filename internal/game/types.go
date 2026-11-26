@@ -933,10 +933,6 @@ type State struct {
 	// IntelRaised 记录本回合哪些"观察者|舰队"已经升过级：同回合目视/雷达/搜索/跟踪
 	// 可能同时命中，等级只能 +1，靠它去重。
 	IntelRaised map[string]bool `json:"intel_raised"`
-	// TaskSeq 是任务号的自增序号：任务号一律 task-<序号>-<类型>，只增不减。
-	// 以前任务号直接拿"第一架飞机的 ID"当钥匙，同一次对局里重整编队就会撞号，
-	// 客户端手里的旧任务引用（选中、无线电次数、动画）会认错人。
-	TaskSeq int `json:"task_seq"`
 	// IntelStaleTurns 记录"脱离接触"后当前等级已经撑了几个回合：
 	// 4 级撑 6 回合，之后 3/2/1 级各撑 3 回合，到期降一级并清零重新计时
 	IntelStaleTurns map[string]int `json:"intel_stale_turns"`

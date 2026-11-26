@@ -176,7 +176,7 @@ func TestRadioRetaskSkipsReturningMembers(t *testing.T) {
 	}
 }
 
-// 任务号由只增不减的序号生成：同一批飞机第二次出击不会撞上一次的任务号。
+// 编队牌 tag 随机生成：同一批飞机第二次出击不会撞上一次的牌子。
 func TestTaskIDsAreUniqueAcrossSorties(t *testing.T) {
 	state := sandboxState(t)
 	ids := []string{"b-cv-01-dive_bomber-x1", "b-cv-01-torpedo_bomber-x1"}
@@ -200,6 +200,23 @@ func TestTaskIDsAreUniqueAcrossSorties(t *testing.T) {
 		}
 		if taskID == first {
 			t.Fatalf("第二次出击复用了同一个任务号 %s", taskID)
+		}
+	}
+}
+
+// 编队牌 tag 是随机的：一次 100 架的超远程打击能拆出上百张牌，
+// 牌子只需要唯一标识，不需要（也不该）用序号表达"第几个任务"。
+func TestFlightTagsAreRandomAndUnique(t *testing.T) {
+	state := sandboxState(t)
+	seen := map[string]bool{}
+	for i := 0; i < 500; i++ {
+		tag := newFlightTag(&state)
+		if seen[tag] {
+			t.Fatalf("编队牌 tag 重复：%s", tag)
+		}
+		seen[tag] = true
+		if !strings.HasPrefix(tag, "air-") {
+			t.Fatalf("编队牌 tag 格式不对：%s", tag)
 		}
 	}
 }

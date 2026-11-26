@@ -1195,9 +1195,9 @@ func ApplyGroundAirOrder(state *State, order Order) []EngineEvent {
 			taskID = "af-" + airfield.ID + "-cap"
 		}
 		if taskID == "" {
-			// 机场任务同样走发号器：以前直接拿第一架飞机的 ID 当任务号，
-			// 同一批飞机第二次出击会和上一次的任务号撞在一起。
-			taskID = nextTaskID(state, kind)
+			// 机场任务同样用随机编队牌 tag：以前直接拿第一架飞机的 ID 当钥匙，
+			// 同一批飞机第二次出击会和上一次的牌子撞号。
+			taskID = newFlightTag(state)
 		}
 		if existing := groundTaskAircraft(*state, taskID); len(existing) > 0 {
 			priority = existing[0].Priority

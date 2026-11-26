@@ -1,9 +1,12 @@
 package game
 
 import (
+	crand "crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 )
 
 func syncEmbarkedAircraft(state *State) {
@@ -668,37 +671,35 @@ func nextAirTaskPriority(state *State, faction string) int {
 	return priority
 }
 
-// nextTaskID 生成一个任务号：task-<序号>-<任务类型>。
+// newFlightTag 生成一张编队牌的 tag（形如 air-9f3c1a7b2d4e）。
 //
-// 序号存在 State.TaskSeq 里、随存档持久化，只增不减，所以同一次对局里不会重复；
-// 不用随机数是为了重放和测试仍然确定性（随机数会和战斗判定抢同一个 RNG 流）。
-// 任务类型写进任务号里，日志和调试时能看出这是打击编队还是侦察组；
-// CAP 是例外——它的任务号按母舰/机场固定（cap-<舰队>、af-<机场>-cap），
+// 拆组不是"又开了一个任务"：一次 100 架的超远程打击，沿途航程不足的算子会陆续
+// 掉队，一路能拆出几十上百张牌子。序号在这种规模下既不代表顺序、也不代表任务，
+// 反过来还会让人以为"拆组 = 新开一次任务"。牌子只需要一个唯一标识——
+// 服务端拿它当分组键，客户端拿它当 key——所以这里用随机 tag。
+// 随机源用 crypto/rand，不碰战斗判定的 RNG 流，重放/回放的对局结果不受影响。
+// CAP 是例外：它的 tag 按母舰/机场固定（cap-<舰队>、af-<机场>-cap），
 // 因为"同一支舰队的 CAP"在规则上就是同一个持续任务，见 EnsureAviation。
-func nextTaskID(state *State, kind MissionKind) string {
-	if state == nil {
-		return "task-0-air"
-	}
-	label := string(kind)
-	if label == "" {
-		label = "air"
-	}
-	for {
-		state.TaskSeq++
-		candidate := fmt.Sprintf("task-%d-%s", state.TaskSeq, label)
-		if len(taskAircraft(*state, candidate)) == 0 && len(groundTaskAircraft(*state, candidate)) == 0 {
-			return candidate
+func newFlightTag(state *State) string {
+	for attempt := 0; attempt < 64; attempt++ {
+		tag := randomFlightTag(attempt)
+		if state == nil {
+			return tag
+		}
+		if len(taskAircraft(*state, tag)) == 0 && len(groundTaskAircraft(*state, tag)) == 0 {
+			return tag
 		}
 	}
+	return randomFlightTag(64)
 }
 
-// newAirTaskID 只为老调用点保留签名：一律走 nextTaskID 的发号逻辑。
-func newAirTaskID(state *State, aircraftList []*AirUnit) string {
-	kind := MissionStrike
-	if len(aircraftList) > 0 {
-		kind = MissionKind(aircraftList[0].TaskKind)
+func randomFlightTag(attempt int) string {
+	var buf [6]byte
+	if _, err := crand.Read(buf[:]); err == nil {
+		return "air-" + hex.EncodeToString(buf[:])
 	}
-	return nextTaskID(state, kind)
+	// crypto/rand 不可用（几乎只发生在极端环境）：退回时间戳，仍然保证唯一。
+	return fmt.Sprintf("air-%x%02x", time.Now().UnixNano(), attempt)
 }
 
 func clearAirTask(aircraft *AirUnit) {
@@ -729,11 +730,11 @@ func configureAirTask(state *State, aircraftList []*AirUnit, order Order) {
 	var existingTask []*AirUnit
 	kind := missionKindFromOrder(order.Type)
 	if taskID == "" && order.Type == "LAUNCH_CAP" {
-		// CAP 的任务号按舰队固定：同一支舰队的 CAP 是一个持续任务，不能用发号器每次新建。
+		// CAP 的 tag 按舰队固定：同一支舰队的 CAP 是一个持续任务，不能每次新建随机 tag。
 		taskID = "cap-" + FleetKey(state.Units[aircraftList[0].CarrierID])
 	}
 	if taskID == "" {
-		taskID = nextTaskID(state, kind)
+		taskID = newFlightTag(state)
 		priority = nextAirTaskPriority(state, aircraftList[0].Faction)
 	} else {
 		existingTask = taskAircraft(*state, taskID)
