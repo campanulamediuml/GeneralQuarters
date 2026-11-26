@@ -68,22 +68,6 @@
    "ship": "us-cv-04"
   },
   {
-   "id": "us-bb-01",
-   "faction": "A",
-   "name": "北卡罗来纳",
-   "fleet_id": "TF58.1",
-   "fleet_name": "第58.1特混大队",
-   "ship": "us-bb-01"
-  },
-  {
-   "id": "us-bb-02",
-   "faction": "A",
-   "name": "华盛顿",
-   "fleet_id": "TF58.1",
-   "fleet_name": "第58.1特混大队",
-   "ship": "us-bb-02"
-  },
-  {
    "id": "us-ca-01",
    "faction": "A",
    "name": "巴尔的摩",
@@ -218,22 +202,6 @@
    "fleet_id": "TF58.2",
    "fleet_name": "第58.2特混大队",
    "ship": "us-cv-08"
-  },
-  {
-   "id": "us-bb-03",
-   "faction": "A",
-   "name": "南达科他",
-   "fleet_id": "TF58.2",
-   "fleet_name": "第58.2特混大队",
-   "ship": "us-bb-03"
-  },
-  {
-   "id": "us-bb-04",
-   "faction": "A",
-   "name": "印第安纳",
-   "fleet_id": "TF58.2",
-   "fleet_name": "第58.2特混大队",
-   "ship": "us-bb-04"
   },
   {
    "id": "us-ca-03",
@@ -730,38 +698,6 @@
    "fleet_id": "TF52",
    "fleet_name": "第52特混舰队（火力支援）",
    "ship": "us-bb-12"
-  },
-  {
-   "id": "us-bb-13",
-   "faction": "A",
-   "name": "新泽西",
-   "fleet_id": "TF58.1",
-   "fleet_name": "第58.1特混大队",
-   "ship": "us-bb-13"
-  },
-  {
-   "id": "us-bb-14",
-   "faction": "A",
-   "name": "衣阿华",
-   "fleet_id": "TF58.1",
-   "fleet_name": "第58.1特混大队",
-   "ship": "us-bb-14"
-  },
-  {
-   "id": "us-bb-15",
-   "faction": "A",
-   "name": "马萨诸塞",
-   "fleet_id": "TF58.2",
-   "fleet_name": "第58.2特混大队",
-   "ship": "us-bb-15"
-  },
-  {
-   "id": "us-bb-16",
-   "faction": "A",
-   "name": "阿拉巴马",
-   "fleet_id": "TF58.2",
-   "fleet_name": "第58.2特混大队",
-   "ship": "us-bb-16"
   },
   {
    "id": "us-cve-01",
@@ -3771,6 +3707,54 @@
    "id": "us-bb-12-os2u-x1",
    "unit": "os2u",
    "carrier": "us-bb-12",
+   "skill": "regular"
+  },
+  {
+   "id": "us-bb-01-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-bb-01",
+   "skill": "regular"
+  },
+  {
+   "id": "us-bb-02-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-bb-02",
+   "skill": "regular"
+  },
+  {
+   "id": "us-bb-03-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-bb-03",
+   "skill": "regular"
+  },
+  {
+   "id": "us-bb-04-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-bb-04",
+   "skill": "regular"
+  },
+  {
+   "id": "us-bb-13-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-bb-13",
+   "skill": "regular"
+  },
+  {
+   "id": "us-bb-14-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-bb-14",
+   "skill": "regular"
+  },
+  {
+   "id": "us-bb-15-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-bb-15",
+   "skill": "regular"
+  },
+  {
+   "id": "us-bb-16-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-bb-16",
    "skill": "regular"
   }
  ],
