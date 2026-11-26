@@ -72,14 +72,19 @@ func TestGroundTransferTargetAcceptsTaskTag(t *testing.T) {
 	}
 }
 
-// 航程不够就拒绝：F4F 转场航程 9×2.21≈20 hex，凯恩斯到莫尔兹比 21 hex。
+// 航程不够就拒绝：F4F 转场航程 10×2.21≈22 hex，汤斯维尔到莫尔兹比 28 hex；
+// P-40 转场航程 17×2.21≈37 hex，同一段能飞。两架都先挪到汤斯维尔再测。
+// （F4F 基础航程从 9 改成 10 之后，凯恩斯→莫尔兹比 21 hex 已经够得着了，得换一段更长的航线。）
 func TestGroundTransferRangeIsEnforced(t *testing.T) {
 	state := coralCombatState(t)
 	state.Turn = 17
 	UpdateDayNight(&state)
+	for _, id := range []string{"af-a-cairns-fighter-1", "af-a-cairns-p40-1"} {
+		state.GroundAir[id].AirfieldID = "af-a-townsville"
+	}
 	order := Order{Type: "LAUNCH_TRANSFER", AircraftIDs: []string{"af-a-cairns-fighter-1"}, Coord: "1611"}
 	if err := ValidateGroundAirOrder(state, order); err == nil {
-		t.Fatal("F4F 航程不足以从凯恩斯飞到莫尔兹比，应该报错")
+		t.Fatal("F4F 航程不足以从汤斯维尔飞到莫尔兹比，应该报错")
 	}
 	// P-40 转场航程 17×2.21≈38 hex，同一段航程应当允许。
 	ok := Order{Type: "LAUNCH_TRANSFER", AircraftIDs: []string{"af-a-cairns-p40-1"}, Coord: "1611"}

@@ -42,7 +42,7 @@ func TestFactionSpecificAircraft(t *testing.T) {
 		radius     int
 	}{
 		// 美军：F6F/SB2C/TBF 14，SOC 12
-		{"a2-cv-01-fighter-x1", "F4F 野猫", 9, LoadoutAirTank, 12, 6},
+		{"a2-cv-01-fighter-x1", "F4F 野猫", 10, LoadoutAirTank, 13, 6},
 		{"a2-cv-01-dive_bomber-x1", "SBD 无畏", 13, LoadoutBombTank, 17, 8},
 		{"a2-cv-01-torpedo_bomber-x1", "TBD 蹂躏者", 14, LoadoutTorpedoTank, 18, 9},
 		{"air-a-11", "SOC 海鸥", 9, LoadoutReconTank, 12, 6},
@@ -83,7 +83,7 @@ func TestAirfieldAircraftUsesFaction(t *testing.T) {
 		t.Fatalf("日军机场战斗机解析错误：%+v", japanese)
 	}
 	american := state.GroundAir["af-a-fighter-1"]
-	if american == nil || american.Model != "F4F 野猫" || american.BaseRange != 9 {
+	if american == nil || american.Model != "F4F 野猫" || american.BaseRange != 10 {
 		t.Fatalf("美军机场战斗机解析错误：%+v", american)
 	}
 }

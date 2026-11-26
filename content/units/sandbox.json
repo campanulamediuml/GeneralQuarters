@@ -505,7 +505,7 @@
    "picture_mode": "image",
    "kind": "fighter",
    "strength": 2,
-   "range": 9,
+   "range": 10,
    "air_combat": 2,
    "anti_ship": 0,
    "anti_ground": 1
