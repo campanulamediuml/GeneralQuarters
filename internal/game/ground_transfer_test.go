@@ -43,6 +43,35 @@ func TestGroundAircraftTransfersToAnotherAirfield(t *testing.T) {
 	t.Fatalf("60 回合内没有转场到凯恩斯（airborne=%v）", sawAirborne)
 }
 
+// 转场目标可以用"编队牌 tag"提交：以前校验阶段按 TaskID 回退解析，
+// 执行阶段却只查 state.GroundAir[tag]，结果是校验通过、实际一架都没改目标——
+// 玩家点目的地看到的就是"点了没反应"。
+func TestGroundTransferTargetAcceptsTaskTag(t *testing.T) {
+	state := coralCombatState(t)
+	state.Turn = 17
+	UpdateDayNight(&state)
+	ids := []string{"af-a-cairns-p40-1", "af-a-cairns-p40-2"}
+	launch := Order{Type: "LAUNCH_TRANSFER", AircraftIDs: ids}
+	if err := ValidateGroundAirOrder(state, launch); err != nil {
+		t.Fatalf("先建转场编队应该成功：%v", err)
+	}
+	ApplyGroundAirOrder(&state, launch)
+	taskID := state.GroundAir[ids[0]].TaskID
+	if taskID == "" {
+		t.Fatal("转场编队应该有编队牌 tag")
+	}
+	target := Order{Type: "SET_STRIKE_TARGET", AircraftID: taskID, TaskID: taskID, Coord: "1611"}
+	if err := ValidateGroundAirOrder(state, target); err != nil {
+		t.Fatalf("用编队牌 tag 设转场目标应该通过校验：%v", err)
+	}
+	ApplyGroundAirOrder(&state, target)
+	for _, id := range ids {
+		if got := state.GroundAir[id].TargetCoord; got != "1611" {
+			t.Fatalf("%s 的转场目标没有落到状态里：%q", id, got)
+		}
+	}
+}
+
 // 航程不够就拒绝：F4F 转场航程 9×2.21≈20 hex，凯恩斯到莫尔兹比 21 hex。
 func TestGroundTransferRangeIsEnforced(t *testing.T) {
 	state := coralCombatState(t)

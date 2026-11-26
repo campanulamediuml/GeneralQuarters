@@ -876,6 +876,37 @@ func groundOrderNeedsRunway(orderType string) bool {
 	return false
 }
 
+// groundTaskLevelOrder 判断机场命令是不是"编队级"：这类命令用编队牌 tag 当载荷，
+// 需要对整组成员生效，而不是只改那一架飞机。
+func groundTaskLevelOrder(orderType string) bool {
+	switch orderType {
+	case "PRIORITIZE_AIR_TASK", "SET_STRIKE_TARGET", "SET_STRIKE_DISPERSION":
+		return true
+	}
+	return false
+}
+
+// groundAircraftForOrderID 把命令里的一个 ID 解析成机场算子：先按算子 ID 找；
+// 编队级命令允许传编队牌 tag，这时回退到 TaskID 找组里的第一个成员。
+// 校验和执行必须共用这一条解析，否则会出现"校验通过、执行找不到算子、命令静默无效"。
+func groundAircraftForOrderID(state *State, id string, taskLevel bool) *AirfieldAirUnit {
+	if state == nil {
+		return nil
+	}
+	if aircraft := state.GroundAir[id]; aircraft != nil {
+		return aircraft
+	}
+	if !taskLevel {
+		return nil
+	}
+	for _, memberID := range sortedGroundAirIDsAll(*state) {
+		if aircraft := state.GroundAir[memberID]; aircraft != nil && aircraft.TaskID == id {
+			return aircraft
+		}
+	}
+	return nil
+}
+
 // ValidateGroundAirOrder 校验机场航空命令：LAUNCH_CAP / LAUNCH_RECON / LAUNCH_STRIKE / PRIORITIZE_AIR_TASK / SET_STRIKE_TARGET。
 func ValidateGroundAirOrder(state State, order Order) error {
 	if !state.ServiceWindowOpen() && nightBlockedAirOrder(order.Type) {
@@ -894,15 +925,7 @@ func ValidateGroundAirOrder(state State, order Order) error {
 	var airfield *Airfield
 	list := make([]*AirfieldAirUnit, 0, len(ids))
 	for _, id := range ids {
-		aircraft := state.GroundAir[id]
-		if aircraft == nil && (order.Type == "PRIORITIZE_AIR_TASK" || order.Type == "SET_STRIKE_TARGET" || order.Type == "SET_STRIKE_DISPERSION") {
-			for _, candidate := range state.GroundAir {
-				if candidate.TaskID == id {
-					aircraft = candidate
-					break
-				}
-			}
-		}
+		aircraft := groundAircraftForOrderID(&state, id, groundTaskLevelOrder(order.Type))
 		if aircraft == nil {
 			return fmt.Errorf("航空算子不存在或不属于当前玩家")
 		}
@@ -1172,7 +1195,11 @@ func ApplyGroundAirOrder(state *State, order Order) []EngineEvent {
 	ids := airOrderIDs(order)
 	list := make([]*AirfieldAirUnit, 0, len(ids))
 	for _, id := range ids {
-		if aircraft := state.GroundAir[id]; aircraft != nil {
+		// 改目标/改攻法/优先级这类命令的载荷是"编队牌 tag"，不是算子 ID：
+		// 校验阶段按 TaskID 回退解析，执行阶段以前只看 state.GroundAir[id]，
+		// 于是命令校验通过、落到执行时找不到算子，静默什么都不做——
+		// 玩家看到的就是"点了转场目的格但没生效"。
+		if aircraft := groundAircraftForOrderID(state, id, groundTaskLevelOrder(order.Type)); aircraft != nil {
 			list = append(list, aircraft)
 		}
 	}
