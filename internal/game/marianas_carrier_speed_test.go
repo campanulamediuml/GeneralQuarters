@@ -45,7 +45,7 @@ func TestMarianasJapaneseCarrierSpeeds(t *testing.T) {
 	}
 
 	// 三个机动部队现在同速：每 3 回合走一格，不会再出现乙部队 6 回合、甲部队 3 回合的落差。
-	for _, fleet := range []string{"TG1", "TG2", "TG3"} {
+	for _, fleet := range []string{"TG1", "TG3", "TG4"} {
 		id := firstUnitOfFleet(state, fleet)
 		if id == "" {
 			t.Fatalf("找不到舰队 %s", fleet)

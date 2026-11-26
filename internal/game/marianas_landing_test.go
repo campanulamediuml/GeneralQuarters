@@ -77,10 +77,23 @@ func TestMarianasLandingGroups(t *testing.T) {
 	if len(bb) != 11 || !bb["比叡"] || !bb["雾岛"] || !bb["扶桑"] || !bb["伊势"] {
 		t.Fatalf("栗田部队战列舰 %v，期望 11 艘且含比叡/雾岛/扶桑/伊势", bb)
 	}
-	for _, fleet := range []string{"TG1", "TG2", "TG3"} {
-		if got := factionFleetSize(state, fleet); got != 10 {
-			t.Fatalf("%s %d 艘，期望 10", fleet, got)
+	// 甲部队把两个航空战队合编成六航母主力（20 艘，88 个航空算子挤一个 hex），丙部队仍是 3 航母编队。
+	if got := factionFleetSize(state, "TG1"); got != 20 {
+		t.Fatalf("甲部队 %d 艘，期望 20", got)
+	}
+	carriers := map[string]bool{}
+	for _, unit := range state.Units {
+		if unit.FleetID == "TG1" && unit.Type == "CV" {
+			carriers[unit.Name] = true
 		}
+	}
+	for _, name := range []string{"大凤", "翔鹤", "瑞鹤", "隼鹰", "飞鹰", "龙凤"} {
+		if !carriers[name] {
+			t.Fatalf("六航母主力缺少 %s：%v", name, carriers)
+		}
+	}
+	if got := factionFleetSize(state, "TG3"); got != 10 {
+		t.Fatalf("丙部队 %d 艘，期望 10", got)
 	}
 	// 丁部队：信浓 + 千岁/千代田/瑞凤 + 高雄级全家 + 阿贺野 + 4 驱逐。
 	if got := factionFleetSize(state, "TG4"); got != 13 {
