@@ -828,15 +828,21 @@ func updateAttackFormation(state *State, taskID string) []EngineEvent {
 	if len(members) == 0 {
 		return nil
 	}
-	ready := true
+	ready := false
 	airborneCount := 0
 	for _, aircraft := range members {
 		if airborne(aircraft) {
 			airborneCount++
 		}
+		// 返航中的成员不参与"到齐没有"的判定：它们自己往母舰飞，编队照常出发。
+		if aircraft.Returning {
+			continue
+		}
 		if aircraft.Status != "attack_holding" && aircraft.Status != "attack" {
 			ready = false
+			break
 		}
+		ready = true
 	}
 	if !ready {
 		return []EngineEvent{{Type: "attack_assembling", Audience: members[0].Faction, Text: fmt.Sprintf("攻击编队%d/%d个算子已升空，先起飞的飞机在舰队上空等待", airborneCount, len(members))}}
@@ -845,6 +851,9 @@ func updateAttackFormation(state *State, taskID string) []EngineEvent {
 		return []EngineEvent{{Type: "attack_waiting_target", Audience: members[0].Faction, Text: "攻击编队已全部升空，等待选择目标"}}
 	}
 	for _, aircraft := range members {
+		if aircraft.Returning {
+			continue
+		}
 		aircraft.Status = "attack"
 		// 离场这一刻是"新一轮出击"的起点：整备期间攒下的接敌/搜索状态必须清掉。
 		// 上一轮打击留下的 Engaged=true 如果带出去，编队会在还没飞到的位置就按目标 hex
@@ -911,12 +920,17 @@ func departReadyAttacks(state *State) []EngineEvent {
 				continue
 			}
 		}
-		allHolding := true
+		// 已在返航的成员不再挡住编队出发：一架燃油不足掉头的飞机不能让整队留在舰队上空烧油。
+		allHolding := false
 		for _, member := range members {
+			if member.Returning {
+				continue
+			}
 			if member.Status != "attack_holding" {
 				allHolding = false
 				break
 			}
+			allHolding = true
 		}
 		if !allHolding {
 			continue

@@ -1419,13 +1419,22 @@ func AdvanceGroundAir(state *State) []EngineEvent {
 				events = append(events, advanceGroundAirReturn(state, aircraft)...)
 				continue
 			}
-			// 机场编队同样要等全部算子升空、目标已定才离场；
+			// 机场编队同样要等还没返航的算子全部升空、目标已定才离场；
 			// 之前这里只扣航程不做状态切换，导致对地编队永远停在机场上空。
 			if groupReady := groundTaskReadyToDepart(*state, aircraft.TaskID); groupReady {
 				for _, member := range groundTaskAircraft(*state, aircraft.TaskID) {
+					// 已经掉头返航的成员不跟着改状态：它们走 advanceGroundAirReturn 自己回家，
+					// 编队剩下的人继续出击（"燃料不够的自己拆编队返航"）。
+					if member.Returning {
+						continue
+					}
 					member.Status = "attack"
 				}
 				events = append(events, EngineEvent{Type: "attack_departed", Audience: aircraft.Faction, Text: fmt.Sprintf("%s攻击编队全部升空，离开机场", aircraft.Model)})
+			} else if airfieldFor(state, aircraft.AirfieldID) != nil && aircraft.Range() <= airfieldRtbDistance(*state, aircraft) {
+				// 等编队的时候也要看油：剩的航程只够回家就自己退出，别在跑道上空烧干。
+				aircraft.Returning = true
+				events = append(events, EngineEvent{Type: "attack_rtb", Audience: aircraft.Faction, Text: fmt.Sprintf("%s剩余航程%d不足以往返，脱离攻击编队返航", aircraft.Model, aircraft.Range())})
 			} else {
 				aircraft.Spend(1)
 			}
@@ -1560,7 +1569,9 @@ func advanceGroundAttack(state *State, aircraft *AirfieldAirUnit) []EngineEvent 
 	// 本回合已经飞了几格：接敌失败后的外扩搜索同样受"每回合不超过 2 hex"限制。
 	groundStepsFlown := 0
 	for _, member := range members {
-		if member.Returning {
+		// 只推进已经离场的成员：混在编队里的 attack_holding（后加入还没起飞/还在等编队）
+		// 以前会被一起拖着飞，最后停在目标上空却还是"等待编队"，既不打也回不去。
+		if member.Returning || member.Status != "attack" {
 			continue
 		}
 		// 规则书 197 行：水上飞机和双翼机每回合移动 1 hex，其他飞机 2 hex。
@@ -2790,16 +2801,22 @@ func capGroupsWithin(state State, defender, coord string, distance int) [][]*Air
 }
 
 // groundTaskReadyToDepart 判断机场攻击编队是否可以离场：
-// 全部成员都已升空（处于 attack_holding 或 attack）且已经设定目标。
+// 还在编队里的成员都已升空（处于 attack_holding 或 attack）且已经设定目标。
+//
+// 已经在返航的成员不再挡住整个编队：以前编队里只要有一架因为燃油不足掉头，
+// 剩下的飞机就永远停在原地等它——实测 12 架 B-17 卡在目标上空烧了十几回合油，
+// 既不打也不回。返航的飞机自己走自己的路，编队用剩下的人继续出击。
 func groundTaskReadyToDepart(state State, taskID string) bool {
 	members := groundTaskAircraft(state, taskID)
 	if len(members) == 0 {
 		return false
 	}
+	active := 0
 	for _, member := range members {
 		if member.Returning {
-			return false
+			continue
 		}
+		active++
 		if member.Status != "attack_holding" && member.Status != "attack" {
 			return false
 		}
@@ -2807,5 +2824,5 @@ func groundTaskReadyToDepart(state State, taskID string) bool {
 			return false
 		}
 	}
-	return true
+	return active > 0
 }

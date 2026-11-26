@@ -295,7 +295,9 @@ func advanceAttack(state *State, aircraft *AirUnit) []EngineEvent {
 	for _, member := range members {
 		// 剩余航程 <= 回到母舰/备降机场所需距离时停止前进并返航（规则书 618 行）。
 		// 这里用"剩余航程 == 返航距离"作阈值，而不是等到燃油真的耗尽。
-		if member.Returning || member.Coord == member.TargetCoord || alreadyOnTarget {
+		// 只推进已经离场的成员：混在编队里的 attack_holding（后加入的护航/还没起飞）
+		// 不能跟着一起飞到目标上空——那会让它停在目标上却还挂着"等待编队"。
+		if member.Returning || member.Status != "attack" || member.Coord == member.TargetCoord || alreadyOnTarget {
 			continue
 		}
 		// 每回合按机种走 1–2 hex（规则书 200 行），但每一步之前都要确认走完还回得了家。
