@@ -8,7 +8,7 @@
 - 后端：Go模块化单体，唯一权威状态与随机判定来源。
 - 联机：创建/加入房间使用HTTP；进入房间后玩家状态、命令与ready经WebSocket RPC，变更事件触发私有快照同步。观战也使用WebSocket订阅完整视图。房间内不做HTTP轮询，断线由前端指数退避重连。
 - 持久化：SQLite与可编辑内容包均位于服务器`~/GeneralQuarterData`。
-- 部署：单个容器提供前端、API和WebSocket，现有Compose仅追加独立服务。开发时前后端可以拆成两个进程各改各的：`web_dir` 指到`web/dist`、`watch_html` 指到`internal/server/watch.html`后，服务端改成读盘（前端产物不缓存、观战页按mtime读），改完刷新即可，只有改了Go代码才需要重新编译重启；配合Vite dev server（默认`http://127.0.0.1:8099`，把`/api`、`/ws`、`/watch`、`/content`代理到`:8100`）连编译都省了。两项留空就回到`go:embed`的单文件发布形态。运行配置由`internal/config`统一加载，优先级是默认值 < 配置文件 < 环境变量：配置文件路径按`-config`参数、`GQ_CONFIG`、工作目录下的`generalquarters.json`依次查找，读到的字段再被`GQ_DATA_DIR`/`GQ_DB_PATH`/`GQ_LISTEN`/`PORT`/`GQ_SECURE_COOKIE`/`GQ_BACKUP_KEEP`覆盖；配置文件用严格JSON解码，字段名拼错直接启动失败，不会静默跑默认值。数据目录、库文件路径、监听地址、备份保留份数都在这里配，换部署环境只改一份JSON（`generalquarters.example.json`是完整样例，`generalquarters.docker.json`给Compose用）。
+- 部署：单个容器提供前端、API和WebSocket，现有Compose仅追加独立服务。运行形态只有一个进程：Go在`:8100`同时发前端、API、WebSocket和观战页。为了让“改页面”不必重新编译二进制，配置里可以给`web_dir`（指到`web/dist`）和`watch_html`（指到`internal/server/watch.html`），服务端改成读盘——前端产物不缓存、观战页按mtime读，于是改完`npm run build`（或挂着`vite build --watch`）刷新即生效，观战页连build都不用；只有改Go代码才需要重新编译重启。`npm run dev`（Vite在`5173`，把`/api`、`/ws`、`/watch`、`/content`代理给`:8100`）是可选的第二步，只在想改`.vue`不刷新页面时才用。两个字段留空就回到`go:embed`的单文件发布形态。运行配置由`internal/config`统一加载，优先级是默认值 < 配置文件 < 环境变量：配置文件路径按`-config`参数、`GQ_CONFIG`、工作目录下的`generalquarters.json`依次查找，读到的字段再被`GQ_DATA_DIR`/`GQ_DB_PATH`/`GQ_LISTEN`/`PORT`/`GQ_SECURE_COOKIE`/`GQ_BACKUP_KEEP`覆盖；配置文件用严格JSON解码，字段名拼错直接启动失败，不会静默跑默认值。数据目录、库文件路径、监听地址、备份保留份数都在这里配，换部署环境只改一份JSON（`generalquarters.example.json`是完整样例，`generalquarters.docker.json`给Compose用）。
 - 规模：单实例、个位数在线用户；不在第一阶段引入微服务或外部数据库。
 
 ## 总体结构

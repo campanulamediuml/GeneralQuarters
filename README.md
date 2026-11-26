@@ -13,7 +13,7 @@ go run ./cmd/server -config ./generalquarters.json
 配置优先级：默认值 < 配置文件 < 环境变量。配置文件按 `-config` → `GQ_CONFIG` → 当前目录的
 `generalquarters.json` 依次查找，字段见 [`generalquarters.example.json`](generalquarters.example.json)；
 `GQ_DATA_DIR`、`GQ_DB_PATH`、`GQ_LISTEN`、`PORT`、`GQ_SECURE_COOKIE`、`GQ_BACKUP_KEEP`、
-`GQ_TURN_COMPRESS_INTERVAL`、`GQ_TURN_COMPRESS_BATCH` 可以临时覆盖文件里的值。
+`GQ_WEB_DIR`、`GQ_WATCH_HTML`、`GQ_TURN_COMPRESS_INTERVAL`、`GQ_TURN_COMPRESS_BATCH` 可以临时覆盖文件里的值。
 
 数据目录里会有 `generalquarters.db`、启动快照备份 `backups/`（只保留最近 `backup_keep` 份，设为 `0` 就不备份）
 和从内嵌资源同步出来的 `content/`。这个目录可以直接挂到卷上。
@@ -22,23 +22,24 @@ go run ./cmd/server -config ./generalquarters.json
 不要写到 `/tmp`。`.gq/` 已经在 `.gitignore` 里：它同时放着本地配置、二进制和会话 cookie，本身就不进库，
 所以临时产物随手丢进去即可，用完也不用担心污染提交。
 
-### 前端和服务分开跑（改页面不用重启后端）
+### 改页面不用重启服务
 
-默认形态是"单文件"：`web/dist` 用 `go:embed` 编进二进制，部署只要一个文件。改页面就得重新编译，
-联调很烦。开发时拆成两个进程，各改各的：
+默认形态是"单文件"：`web/dist` 用 `go:embed` 编进二进制，部署只要一个文件，代价是改一行 CSS 都得重新编译。
+本地开发时在配置里给两个路径，服务端就改成读盘：
 
-```bash
-# 后端：只出 API / WebSocket / 观战页，监听 :8100
-./.gq/gq-server -config .gq/config.json     # 配置里 listen = ":8100"
-
-# 前端：vite dev server 占 :8099，热更新，把 /api /ws /watch /content 代理给 :8100
-cd web && npm run dev                        # 后端不在 8100 就 GQ_API=http://127.0.0.1:9000 npm run dev
+```json
+{ "listen": ":8100", "web_dir": "web/dist", "watch_html": "internal/server/watch.html" }
 ```
 
-浏览器打开 `http://127.0.0.1:8099`：`.vue` 改一行立刻热更新，不用编译、不用重启 Go。
-观战页（`internal/server/watch.html`）是独立的静态页，由 Go 直接发——配置文件里给它一个
-`watch_html` 路径，服务端就按 mtime 读盘，改完刷新浏览器就生效；`web_dir` 同理，指到
-`web/dist` 后 `npm run build` 的产物直接生效，也不用重启。两项留空就回到内嵌版本（发布形态）。
+于是只有 Go 代码需要重新编译重启，页面都不需要：
+
+- 改 Vue/CSS：`cd web && npm run build`（不到 1 秒）→ 刷新浏览器。想连这一步都省，就挂着
+  `npm run watch`（`vite build --watch`），存盘即重建，刷新即可见。
+- 改观战页 `internal/server/watch.html`：服务端按 mtime 读盘，保存后刷新就有，连 build 都不用。
+- 真要改 .vue 还不想刷新，再 `npm run dev`（Vite 在 5173 热更新，把 `/api`、`/ws`、`/watch`、
+  `/content` 代理给 8100）。
+
+两个字段留空就回到内嵌版本（发布形态）。部署/联调统一用 `http://127.0.0.1:8100`。
 
 ## Docker
 

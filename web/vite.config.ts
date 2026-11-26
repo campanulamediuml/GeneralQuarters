@@ -2,8 +2,9 @@ import process from 'node:process'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
-// 开发时前端独立跑（vite dev server 带热更新）：页面改一行立刻生效，
-// 后端还是那个 Go 进程，只靠这个代理接 /api、/ws、/watch。
+// 平时不跑 dev server：Go 直接从 web/dist 读盘，改完前端刷新就生效。
+// 想真·热更新（改 .vue 不刷新页面）再 npm run dev：5173 起一个带 HMR 的壳，
+// /api、/ws、/watch、/content 全部代理给正在跑的 Go 服务端。
 // 后端换了端口就 GQ_API=http://127.0.0.1:9000 npm run dev。
 const backend = process.env.GQ_API || 'http://127.0.0.1:8100'
 const backendWS = backend.replace(/^http/, 'ws')
@@ -12,8 +13,8 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     host: '0.0.0.0',
-    // 前端自己占 8099，后端 Go 在 8100：两边各是各的进程，前端改完热更新，后端不用重启。
-    port: 8099,
+    // Go 服务端占 8100，dev server 用 5173，免得两边抢端口。
+    port: 5173,
     strictPort: true,
     proxy: {
       '/api': backend,
