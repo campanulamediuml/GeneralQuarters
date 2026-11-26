@@ -933,6 +933,16 @@ func ValidateGroundAirOrder(state State, order Order) error {
 		// 是不是"加入已有的攻击编队"。这个判断要放在机型校验之前：编队里已经有轰炸机时，
 		// 后补的战斗机就是护航机，不能按"单架战斗机建新编队"处理。
 		joiningExisting := order.TaskID != "" && len(groundTaskAircraft(state, order.TaskID)) > 0
+		// 打击编队一旦出击就不能再往里加人：集结逻辑是"全员升空后在机场上空等齐再走"，
+		// 已经出发的编队再塞一架，要么让它单独飞过去（分批出击），要么永远等在地面。
+		// 侦察组例外：侦察组本来就允许后到的飞机加入同一扇面。
+		if joiningExisting && order.Type == "LAUNCH_STRIKE" {
+			for _, member := range groundTaskAircraft(state, order.TaskID) {
+				if member.Status == "attack" {
+					return fmt.Errorf("攻击编队已经离场，不能继续加入飞机")
+				}
+			}
+		}
 		for _, aircraft := range list {
 			if aircraft.TaskID != "" {
 				return fmt.Errorf("算子已经属于其他任务，请先取消原任务")
@@ -2830,7 +2840,9 @@ func groundTaskReadyToDepart(state State, taskID string) bool {
 			continue
 		}
 		active++
-		if member.Status != "attack_holding" && member.Status != "attack" {
+		// 只认 attack_holding：已经在出击（attack）的成员说明这一波早就走了，
+		// 剩下还在等的那几架不能再被推成 attack 单独飞过去，否则就成了分批出击。
+		if member.Status != "attack_holding" {
 			return false
 		}
 		if member.TargetCoord == "" {

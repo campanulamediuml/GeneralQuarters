@@ -1,6 +1,9 @@
 package game
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // 编队里有一架燃油不足掉头返航，剩下的飞机必须照常出发：
 // 实测 12 架 B-17 因为 4 架 B-26 掉头，在莱城上空"等待编队"烧了十几回合油。
@@ -253,5 +256,83 @@ func TestSplitKeepsGroundedMembersInOriginalTask(t *testing.T) {
 	}
 	if grounded.TaskID != taskID {
 		t.Fatalf("停在机场整备的算子应留在原任务组，实际 %s", grounded.TaskID)
+	}
+}
+
+// 集结逻辑：已经在出击的成员不会把还在等待的成员一起推出发。
+// 分批出击（谁升空谁直接走）是另一套逻辑，两套混用时会出现"部分飞机单独飞向目标"。
+func TestAttackFormationDoesNotDepartPartially(t *testing.T) {
+	state := sandboxState(t)
+	ids := []string{"b-cv-01-dive_bomber-x1", "b-cv-01-torpedo_bomber-x1"}
+	taskID := "task-partial"
+	for _, id := range ids {
+		aircraft := state.Aircraft[id]
+		aircraft.Status = "attack_holding"
+		aircraft.Launched = true
+		aircraft.TargetCoord = "0202"
+		aircraft.TaskID = taskID
+		aircraft.TaskKind = "attack"
+	}
+	// 一号机已经出发，二号机还在母舰上空等。
+	state.Aircraft[ids[0]].Status = "attack"
+	updateAttackFormation(&state, taskID)
+	if got := state.Aircraft[ids[1]].Status; got != "attack_holding" {
+		t.Fatalf("等待中的成员不该被推出发（分批出击）：%s", got)
+	}
+	if got := state.Aircraft[ids[0]].Status; got != "attack" {
+		t.Fatalf("已出发的成员不该被改回来：%s", got)
+	}
+}
+
+// 机场编队同样：只有全员 attack_holding（升空等待）才算集结完毕。
+func TestGroundFormationAssembleRequiresAllHolding(t *testing.T) {
+	state := coralCombatState(t)
+	taskID := "af-assemble"
+	members := []string{"af-b-rabaul-g4m-1", "af-b-rabaul-g4m-2"}
+	for _, id := range members {
+		plane := state.GroundAir[id]
+		plane.TaskID = taskID
+		plane.TaskKind = "attack"
+		plane.Coord = state.Airfields["af-b-rabaul"].Coord
+		plane.TargetCoord = "1611"
+	}
+	state.GroundAir[members[0]].Status = "attack"
+	state.GroundAir[members[1]].Status = "attack_holding"
+	if groundTaskReadyToDepart(state, taskID) {
+		t.Fatal("有成员已经出击时，剩下的不该判成集结完毕")
+	}
+	AdvanceGroundAir(&state)
+	if got := state.GroundAir[members[1]].Status; got != "attack_holding" {
+		t.Fatalf("等待中的机场算子不该被推出发：%s", got)
+	}
+}
+
+// 打击编队出发后不能再加入飞机：要么让它单独飞过去（分批出击），要么永远等在地面。
+func TestGroundStrikeJoinRejectedAfterDeparture(t *testing.T) {
+	state := coralCombatState(t)
+	// 校验第一步先看整备窗口：把时钟拨到白天，才能测到"编队已离场"这条。
+	state.Turn = 1
+	state.DayHours = 12
+	state.Night = false
+	taskID := "af-departed"
+	flying := state.GroundAir["af-b-rabaul-g4m-1"]
+	flying.TaskID = taskID
+	flying.TaskKind = "attack"
+	flying.Status = "attack"
+	flying.Coord = "0910"
+	flying.TargetCoord = "1611"
+
+	extra := state.GroundAir["af-b-rabaul-g4m-2"]
+	extra.Status = "ready"
+	extra.TaskID = ""
+	extra.TaskKind = ""
+
+	order := Order{Type: "LAUNCH_STRIKE", AircraftID: extra.ID, TaskID: taskID}
+	err := ValidateGroundAirOrder(state, order)
+	if err == nil {
+		t.Fatal("编队已出击时应该拒绝中途加入")
+	}
+	if !strings.Contains(err.Error(), "已经离场") {
+		t.Fatalf("拒绝原因应说明编队已离场：%v", err)
 	}
 }

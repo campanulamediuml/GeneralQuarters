@@ -849,6 +849,9 @@ func updateAttackFormation(state *State, taskID string) []EngineEvent {
 	if len(members) == 0 {
 		return nil
 	}
+	// 集结判定只认 attack_holding：一架已经在往目标飞的成员说明编队早就出发了，
+	// 这时再有飞机在母舰上空等待，只能算另一波（等它自己落地/重新组队），
+	// 不能反过来把等待的这架也推成 attack 让它单独飞过去——那是分批出击。
 	ready := false
 	airborneCount := 0
 	for _, aircraft := range members {
@@ -859,13 +862,20 @@ func updateAttackFormation(state *State, taskID string) []EngineEvent {
 		if aircraft.Returning {
 			continue
 		}
-		if aircraft.Status != "attack_holding" && aircraft.Status != "attack" {
+		if aircraft.Status != "attack_holding" {
 			ready = false
 			break
 		}
 		ready = true
 	}
 	if !ready {
+		// 已经有成员在攻击状态（编队出发过了）时不再重新集结：剩下的等待成员
+		// 属于"没赶上这一波"，等它们自己落地/整备，或者玩家另开编队。
+		for _, aircraft := range members {
+			if aircraft.Status == "attack" {
+				return nil
+			}
+		}
 		return []EngineEvent{{Type: "attack_assembling", Audience: members[0].Faction, Text: fmt.Sprintf("攻击编队%d/%d个算子已升空，先起飞的飞机在舰队上空等待", airborneCount, len(members))}}
 	}
 	if members[0].TargetCoord == "" {
