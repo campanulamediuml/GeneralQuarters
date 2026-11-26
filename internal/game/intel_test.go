@@ -40,51 +40,56 @@ func TestIntelDisplayCoordIsStableInRange(t *testing.T) {
 	}
 }
 
-// 脱离接触后不逐级衰减：白天 12 回合（4 小时）到期直接归零，夜间 4 回合归零。
-func TestContactIntelTimesOutDirectly(t *testing.T) {
-	newState := func(night bool) State {
-		state := sandboxState(t)
-		state.Night = night
-		state.Contacts["B"] = map[string]*FleetContact{
-			"TG-A": {FleetID: "TG-A", Faction: "A", Level: 3, Coord: "0202", Count: 14},
-		}
-		return state
+// 脱离接触后逐级衰减：4 级撑 6 回合掉到 3，之后每 3 回合掉一级（3→2→1→消失）。
+func TestContactIntelDecaysByLevel(t *testing.T) {
+	state := sandboxState(t)
+	state.Contacts["B"] = map[string]*FleetContact{
+		"TG-A": {FleetID: "TG-A", Faction: "A", Level: 4, Coord: "0202", DisplayCoord: "0202", Count: 14},
 	}
-
-	day := newState(false)
-	for turn := 1; turn <= 12; turn++ {
-		day.IntelFresh = map[string]bool{}
-		decayContactIntel(&day)
-		contact := day.Contacts["B"]["TG-A"]
-		if turn < 12 {
-			if contact == nil {
-				t.Fatalf("白天第 %d 回合不应丢失情报", turn)
-			}
-			if contact.Level != 3 {
-				t.Fatalf("白天不应逐级衰减：第 %d 回合等级变成 %d", turn, contact.Level)
+	// 期望值按回合号给：第 1–5 回合还是 4 级，第 6 回合掉到 3，之后每 3 回合掉一级。
+	want := map[int]int{1: 4, 2: 4, 3: 4, 4: 4, 5: 4, 6: 3, 7: 3, 8: 3, 9: 2, 10: 2, 11: 2, 12: 1, 13: 1, 14: 1}
+	stale := 0
+	decayed := 0
+	for turn := 1; turn <= 14; turn++ {
+		state.IntelFresh = map[string]bool{}
+		for _, event := range decayContactIntel(&state) {
+			switch event.Type {
+			case "contact_stale":
+				stale++
+			case "contact_decayed":
+				decayed++
+			case "contact_lost":
+				t.Fatalf("第 %d 回合不该已经失去接触", turn)
 			}
 		}
-	}
-	if _, ok := day.Contacts["B"]["TG-A"]; ok {
-		t.Fatal("白天 12 回合没有新情报，接触应直接归零")
-	}
-
-	night := newState(true)
-	for turn := 1; turn <= 4; turn++ {
-		night.IntelFresh = map[string]bool{}
-		decayContactIntel(&night)
-		contact := night.Contacts["B"]["TG-A"]
-		if turn < 4 {
-			if contact == nil {
-				t.Fatalf("夜间第 %d 回合不应丢失情报", turn)
-			}
-			if contact.Level != 3 {
-				t.Fatalf("夜间不应逐级衰减：第 %d 回合等级变成 %d", turn, contact.Level)
-			}
+		contact := state.Contacts["B"]["TG-A"]
+		if contact == nil {
+			t.Fatalf("第 %d 回合不该丢失接触", turn)
+		}
+		if contact.Level != want[turn] {
+			t.Fatalf("第 %d 回合情报等级应为 %d，实际 %d", turn, want[turn], contact.Level)
+		}
+		if contact.StaleTurns != turn {
+			t.Fatalf("第 %d 回合 StaleTurns 应累计到 %d，实际 %d", turn, turn, contact.StaleTurns)
 		}
 	}
-	if _, ok := night.Contacts["B"]["TG-A"]; ok {
-		t.Fatal("夜间 4 回合没有新情报，接触应直接归零")
+	if decayed != 3 {
+		t.Fatalf("14 回合内应降级 3 次（4→3→2→1），实际 %d", decayed)
+	}
+	// 降级前各一次（第 5/8/11 回合），外加第 14 回合"下一回合失去接触"的预警。
+	if stale != 4 {
+		t.Fatalf("每次降级与消失前一回合都应预警，实际 %d 次", stale)
+	}
+	// 1 级再撑 3 回合（第 15 回合）就归零，接触消失。
+	state.IntelFresh = map[string]bool{}
+	var lost bool
+	for _, event := range decayContactIntel(&state) {
+		if event.Type == "contact_lost" {
+			lost = true
+		}
+	}
+	if _, ok := state.Contacts["B"]["TG-A"]; ok || !lost {
+		t.Fatal("满级情报脱离接触 15 回合后应归零并移除")
 	}
 }
 
@@ -112,15 +117,23 @@ func TestContactIntelKeepsWhenFreshOrTracked(t *testing.T) {
 // 到期归零时情报消失，但在到期前一直停在最后发现位置。
 func TestContactDisappearsAtZero(t *testing.T) {
 	state := sandboxState(t)
-	state.Night = true
 	state.Contacts["B"] = map[string]*FleetContact{
 		"TG-A": {FleetID: "TG-A", Faction: "A", Level: 1, Coord: "0202", DisplayCoord: "0303", Count: 14},
 	}
-	for turn := 0; turn < 4; turn++ {
+	for turn := 1; turn <= 2; turn++ {
 		state.IntelFresh = map[string]bool{}
 		decayContactIntel(&state)
+		contact := state.Contacts["B"]["TG-A"]
+		if contact == nil {
+			t.Fatalf("第 %d 回合 1 级情报不该立刻消失", turn)
+		}
+		if contact.Level != 1 || contact.DisplayCoord != "0303" {
+			t.Fatalf("衰减过程不该改动等级/显示位置：%+v", contact)
+		}
 	}
+	state.IntelFresh = map[string]bool{}
+	decayContactIntel(&state)
 	if _, ok := state.Contacts["B"]["TG-A"]; ok {
-		t.Fatal("夜间 4 回合到期后情报应当消失")
+		t.Fatal("1 级情报脱离接触 3 回合后应当消失")
 	}
 }

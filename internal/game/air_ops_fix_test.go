@@ -68,40 +68,60 @@ func TestReconFormationCanBeRecalledByRadio(t *testing.T) {
 	}
 }
 
-// TestIntelTimesOutWithWarning 白天脱离接触 12 回合（4 小时）情报直接归零，
-// 不逐级衰减；到期前一回合发 contact_stale 预警，别让玩家以为坐标还能用。
-func TestIntelTimesOutWithWarning(t *testing.T) {
-	if got := contactDecayTurns(false); got != 12 {
-		t.Fatalf("白天情报应存续 12 回合，实际 %d", got)
+// TestContactDecayWarnsBeforeLoss 各等级的存续回合数固定（4 级 6、其余 3），
+// 每级到期前一回合发 contact_stale 预警，别让玩家以为坐标还能用。
+func TestContactDecayWarnsBeforeLoss(t *testing.T) {
+	if got := contactDecayLimit(intelMaxLevel); got != 6 {
+		t.Fatalf("4 级情报应存续 6 回合，实际 %d", got)
 	}
-	if got := contactDecayTurns(true); got != 4 {
-		t.Fatalf("夜间情报应存续 4 回合，实际 %d", got)
+	for level := 1; level < intelMaxLevel; level++ {
+		if got := contactDecayLimit(level); got != 3 {
+			t.Fatalf("%d 级情报应每 3 回合降一级，实际 %d", level, got)
+		}
 	}
 
 	state := sandboxState(t)
-	state.Night = false
 	state.Contacts = map[string]map[string]*FleetContact{
 		"B": {"TG-A": {FleetID: "TG-A", Level: 1, Coord: "0303", DisplayCoord: "0303"}},
 	}
 	stale := false
-	for turn := 0; turn < 12; turn++ {
+	for turn := 0; turn < 3; turn++ {
 		state.IntelFresh = map[string]bool{}
 		for _, event := range decayContactIntel(&state) {
 			if event.Type == "contact_stale" {
 				stale = true
 			}
 		}
-		if turn < 11 {
+		if turn < 2 {
 			if contact := state.Contacts["B"]["TG-A"]; contact == nil || contact.Level != 1 {
 				t.Fatalf("第 %d 回合情报不该消失或降级", turn+1)
 			}
 		}
 	}
 	if !stale {
-		t.Fatal("到期前应有 contact_stale 预警")
+		t.Fatal("失去接触前一回合应有 contact_stale 预警")
 	}
 	if state.Contacts["B"]["TG-A"] != nil {
-		t.Fatal("白天 12 回合没有新情报，情报应直接归零并移除")
+		t.Fatal("1 级情报脱离接触 3 回合后应归零并移除")
+	}
+
+	// 夜间不逐级衰减：满 4 级也就撑 4 回合，然后直接归零。
+	night := sandboxState(t)
+	night.Night = true
+	night.Contacts["B"] = map[string]*FleetContact{
+		"TG-A": {FleetID: "TG-A", Level: 4, Coord: "0303", DisplayCoord: "0303"},
+	}
+	for turn := 1; turn < contactNightDecayTurns; turn++ {
+		night.IntelFresh = map[string]bool{}
+		decayContactIntel(&night)
+		if contact := night.Contacts["B"]["TG-A"]; contact == nil || contact.Level != 4 {
+			t.Fatalf("夜间第 %d 回合情报不该降级或消失", turn)
+		}
+	}
+	night.IntelFresh = map[string]bool{}
+	decayContactIntel(&night)
+	if night.Contacts["B"]["TG-A"] != nil {
+		t.Fatal("夜间脱离接触 4 回合后情报应直接归零")
 	}
 }
 

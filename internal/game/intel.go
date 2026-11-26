@@ -107,21 +107,31 @@ func directionVector(heading string) sectorPoint {
 	return sectorPoint{x: math.Cos(angle * math.Pi / 180), y: math.Sin(angle * math.Pi / 180)}
 }
 
-// —— 情报过时（规则书 587–593 行）——
+// —— 情报过时（规则书 604–614 行）——
 
-// contactDecayTurns 返回脱离接触后情报还能存续多少回合：
-// 白天 4 小时 = 12 回合，夜间 4 回合。到期不逐级衰减，直接归零（接触消失）。
-func contactDecayTurns(night bool) int {
-	if night {
-		return 4
+// contactDecayLimit 返回白天某等级的情报在脱离接触后再维持几个回合才衰减一级：
+// 4 级（编成与状态已知）6 回合，3/2/1 级各 3 回合。
+// 也就是从满级往下走 4→3（6 回合）→2（+3）→1（+3）→0 接触消失（+3），
+// 满级情报全须全尾地保留 6 回合后开始一级一级变模糊，15 回合后彻底失去接触。
+func contactDecayLimit(level int) int {
+	if level >= intelMaxLevel {
+		return 6
 	}
-	return 12
+	return 3
 }
+
+// contactNightDecayTurns 是夜间脱离接触的存续上限：夜间不逐级衰减，
+// 满 4 回合直接归零（规则书 609 行）。夜里的目视和无线电条件太差，
+// 分级模糊没有意义——要么还知道大致方位，要么彻底失去接触。
+const contactNightDecayTurns = 4
 
 // decayContactIntel 在回合结束时结算情报过时：
 // 上一回合没有获得该舰队的任何新侦查结果、也没有侦察机持续跟踪时，视为脱离接触。
-// 白天 4 小时（12 回合）、夜间 4 回合没有刷新，情报直接归零（规则书 604–610 行），
-// 不再逐级衰减。归零不改变显示位置——到期前一直停在最后发现位置。
+// 白天按等级逐级衰减（规则书 604–612 行），每降一级重新计时：
+// 4 级撑 6 回合，之后 3/2/1 级各撑 3 回合，1 级再到期就归零（接触消失）。
+// 夜间不逐级衰减：满 4 回合直接归零。
+// 降级不改变显示位置——地图上的算子一直停在最后发现位置，
+// 只是等级越低，玩家能看到的编成信息越少、坐标越不可信。
 func decayContactIntel(state *State) []EngineEvent {
 	events := []EngineEvent{}
 	if len(state.Contacts) == 0 {
@@ -156,24 +166,48 @@ func decayContactIntel(state *State) []EngineEvent {
 			if state.IntelStaleTurns == nil {
 				state.IntelStaleTurns = map[string]int{}
 			}
+			// IntelStaleTurns 只记"当前等级还剩几回合"的计数器，降级后清零重新计时；
+			// StaleTurns 是这条情报总共几回合没更新，只增不减，给玩家和 AI 判断坐标可信度。
 			state.IntelStaleTurns[key]++
-			// 快照里的接触带一份"几回合没更新"，AI 才能判断坐标还可不可信。
-			contact.StaleTurns = state.IntelStaleTurns[key]
-			limit := contactDecayTurns(state.Night)
+			contact.StaleTurns++
 			name := contact.FleetID
 			if len(contact.Members) > 0 {
 				name = contact.Members[0].FleetName
 			}
+			// 夜间不逐级衰减：满 4 回合直接归零，只留"下一回合失去接触"的预警。
+			if state.Night {
+				if contact.StaleTurns < contactNightDecayTurns {
+					if contact.StaleTurns == contactNightDecayTurns-1 {
+						events = append(events, EngineEvent{Type: "contact_stale", Audience: observer, Text: fmt.Sprintf("%s的情报已过期%d回合（夜间上限%d回合），下一回合将失去接触", name, contact.StaleTurns, contactNightDecayTurns)})
+					}
+					continue
+				}
+				delete(state.IntelStaleTurns, key)
+				delete(state.Contacts[observer], fleetID)
+				events = append(events, EngineEvent{Type: "contact_lost", Audience: observer, Text: fmt.Sprintf("%s脱离接触已%d回合（夜间上限%d回合），情报归零，接触消失", name, contact.StaleTurns, contactNightDecayTurns)})
+				continue
+			}
+			limit := contactDecayLimit(contact.Level)
 			if state.IntelStaleTurns[key] < limit {
-				// 到期前一回合预警：情报会直接归零，不是掉一级。
+				// 到期前一回合预警：4 级以上说明会掉到几级，1 级说明会失去接触。
 				if state.IntelStaleTurns[key] == limit-1 {
-					events = append(events, EngineEvent{Type: "contact_stale", Audience: observer, Text: fmt.Sprintf("%s的情报已过期%d回合（%s上限%d回合），下一回合将失去接触", name, state.IntelStaleTurns[key], map[bool]string{true: "夜间", false: "白天"}[state.Night], limit)})
+					if contact.Level <= 1 {
+						events = append(events, EngineEvent{Type: "contact_stale", Audience: observer, Text: fmt.Sprintf("%s的情报已过期%d回合，下一回合将失去接触", name, contact.StaleTurns)})
+					} else {
+						events = append(events, EngineEvent{Type: "contact_stale", Audience: observer, Text: fmt.Sprintf("%s的情报已过期%d回合（%d级上限%d回合），下一回合将降为%d级", name, contact.StaleTurns, contact.Level, limit, contact.Level-1)})
+					}
 				}
 				continue
 			}
-			delete(state.IntelStaleTurns, key)
-			delete(state.Contacts[observer], fleetID)
-			events = append(events, EngineEvent{Type: "contact_lost", Audience: observer, Text: fmt.Sprintf("%s脱离接触已%d回合，情报归零，接触消失", name, limit)})
+			state.IntelStaleTurns[key] = 0
+			contact.Level--
+			if contact.Level <= 0 {
+				delete(state.IntelStaleTurns, key)
+				delete(state.Contacts[observer], fleetID)
+				events = append(events, EngineEvent{Type: "contact_lost", Audience: observer, Text: fmt.Sprintf("%s脱离接触已%d回合，情报耗尽，接触消失", name, contact.StaleTurns)})
+				continue
+			}
+			events = append(events, EngineEvent{Type: "contact_decayed", Audience: observer, Text: fmt.Sprintf("%s的情报降为%d级（脱离接触%d回合没有新情报）", name, contact.Level, contact.StaleTurns)})
 		}
 	}
 	return events
