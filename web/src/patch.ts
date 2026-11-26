@@ -39,40 +39,48 @@ export function applyViewPatch<T>(target: T, patch: ViewPatch): T {
   return target
 }
 
+// mergeIntoArray 按主键把实体补丁并进数组：同一条记录只改变化了的字段，其余保持原引用。
+function mergeIntoArray(target: unknown[], patch: { upsert?: Record<string, unknown>[]; remove?: string[] }): unknown[] {
+  const index = new Map<string, number>()
+  target.forEach((item, position) => index.set(keyOf(item), position))
+  for (const item of patch.upsert || []) {
+    const key = keyOf(item)
+    const existing = index.get(key)
+    if (existing === undefined) {
+      index.set(key, target.length)
+      target.push(item)
+    } else {
+      merge(target[existing], item)
+    }
+  }
+  for (const key of patch.remove || []) {
+    const existing = index.get(key)
+    if (existing !== undefined) {
+      target.splice(existing, 1)
+      index.delete(key)
+      for (const [other, position] of index) if (position > existing) index.set(other, position - 1)
+    }
+  }
+  return target
+}
+
 function merge(target: unknown, patch: unknown): unknown {
+  // 数组底座：实体补丁（{"upsert":[…],"remove":[…]}）按主键并进去，其余整块替换。
+  // 这一步必须在"补丁要求对象底座"的检查之前：数组字段的补丁以前会被整块赋成一个对象，
+  // 下一帧 players.filter / fleets.find 就直接抛错，整个页面渲染崩成空白。
+  if (Array.isArray(target)) {
+    if (!isCollectionPatch(patch)) return patch
+    return mergeIntoArray(target, patch)
+  }
   const mapPatch = isMapPatch(patch)
   // 合并不上就抛，不要静默降级成一个错误的结果：那种"不报错但慢一版"的状态
   // 比崩溃更难查——界面看起来正常，只是永远比服务端旧一点，直到下次重连。
-  if (!mapPatch && isCollectionPatch(patch) && !Array.isArray(target)) {
+  if (!mapPatch && isCollectionPatch(patch)) {
     throw new Error('补丁要求按主键合并，但底座不是数组：' + JSON.stringify(target)?.slice(0, 80))
   }
   if (!Array.isArray(patch) && patch !== null && typeof patch === 'object'
-    && target !== undefined && target !== null && (typeof target !== 'object' || Array.isArray(target))) {
+    && target !== undefined && target !== null && typeof target !== 'object') {
     throw new Error('补丁要求对象底座，实际是：' + JSON.stringify(target)?.slice(0, 80))
-  }
-  if (Array.isArray(target) && isCollectionPatch(patch)) {
-    const index = new Map<string, number>()
-    target.forEach((item, position) => index.set(keyOf(item), position))
-    for (const item of patch.upsert || []) {
-      const key = keyOf(item)
-      const existing = index.get(key)
-      if (existing === undefined) {
-        index.set(key, target.length)
-        target.push(item)
-      } else {
-        // 同一条记录只改变了的属性，其余字段保持原引用。
-        merge(target[existing], item)
-      }
-    }
-    for (const key of patch.remove || []) {
-      const existing = index.get(key)
-      if (existing !== undefined) {
-        target.splice(existing, 1)
-        index.delete(key)
-        for (const [other, position] of index) if (position > existing) index.set(other, position - 1)
-      }
-    }
-    return target
   }
   if (mapPatch && target && typeof target === 'object' && !Array.isArray(target)) {
     const targetRecord = target as Record<string, unknown>
@@ -83,6 +91,11 @@ function merge(target: unknown, patch: unknown): unknown {
   if (patch && typeof patch === 'object' && !Array.isArray(patch) && target && typeof target === 'object' && !Array.isArray(target)) {
     for (const [key, value] of Object.entries(patch as Record<string, unknown>)) {
       const current = (target as Record<string, unknown>)[key]
+      // 数组字段收到实体补丁：就地并进去，不能当成新值整块赋上去。
+      if (Array.isArray(current) && isCollectionPatch(value)) {
+        merge(current, value)
+        continue
+      }
       if (typeof value === 'object' && current && typeof current === 'object' && !Array.isArray(current)) merge(current, value)
       else (target as Record<string, unknown>)[key] = value
     }
