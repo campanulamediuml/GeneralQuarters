@@ -2024,6 +2024,40 @@ func advanceGroundRecon(state *State, aircraft *AirfieldAirUnit) []EngineEvent {
 	}
 	origin := aircraft.OriginCoord
 	events := []EngineEvent{}
+	// 已经锁定一支敌方舰队：改成跟着它飞，不再沿着原扇面飞。
+	// 以前只有舰载侦察有这段，岸基巡逻机发现舰队后只会继续扫扇面，
+	// 情报照常过期、也不会升级——玩家看到的就是"点亮了但没人持续跟踪"。
+	if aircraft.TrackingFleetID != "" {
+		members := fleetMembers(state, aircraft.TrackingFleetID)
+		if len(members) == 0 {
+			aircraft.TrackingFleetID = ""
+			aircraft.Returning = true
+		} else {
+			target := members[0].Coord
+			steps := 0
+			for steps < groundAirSpeed(*state, aircraft) && aircraft.Coord != target {
+				next := nextGroundFlightCoord(*state, aircraft, aircraft.Coord, target)
+				if next == "" {
+					break
+				}
+				aircraft.Coord = next
+				aircraft.ReconDistance = Distance(aircraft.OriginCoord, aircraft.Coord)
+				aircraft.Spend(1)
+				steps++
+			}
+			if steps == 0 {
+				// 已经和目标同格，或绕不过去：原地盘旋也烧 1 点油。
+				aircraft.ReconDistance = Distance(aircraft.OriginCoord, aircraft.Coord)
+				aircraft.Spend(1)
+			}
+			if aircraft.Range() <= airfieldRtbDistance(*state, aircraft) {
+				aircraft.TrackingFleetID = ""
+				aircraft.Returning = true
+				return append(events, EngineEvent{Type: "recon_returning", Audience: aircraft.Faction, Text: aircraft.Model + "燃料达到返航余量，停止跟踪并返航"})
+			}
+			return append(events, resolveGroundTracking(state, aircraft, members)...)
+		}
+	}
 	// 每步扫「当前圈 + 下一圈」；同一回合内每圈只判一次，否则两格速度的飞机会把
 	// 中间那圈再掷一遍骰子，等于白送一次发现判定。
 	scannedRings := map[int]bool{}
@@ -2052,6 +2086,10 @@ func advanceGroundRecon(state *State, aircraft *AirfieldAirUnit) []EngineEvent {
 			coords = append(coords, ReconRingHexes(state.Map, origin, aircraft.Heading, aircraft.SectorWidth, r)...)
 		}
 		events = append(events, searchGroundReconStep(state, aircraft, coords, ring)...)
+		// 本步发现并锁定了舰队：这一回合就停在这里跟踪，不再沿扇面继续飞。
+		if aircraft.TrackingFleetID != "" {
+			return events
+		}
 		if forward == "" {
 			aircraft.Returning = true
 			aircraft.Spend(1)
@@ -2089,6 +2127,10 @@ func searchGroundReconStep(state *State, aircraft *AirfieldAirUnit, coords []str
 		detail += fmt.Sprintf("等%d格", len(coords))
 	}
 	events := []EngineEvent{{Type: "recon_step_searched", Audience: aircraft.Faction, Text: fmt.Sprintf("%s扫描第%d圈%s", aircraft.Model, ring, detail)}}
+	// 和舰载侦察一样：成功的发现里挑成功率最高的那支舰队锁定跟踪。
+	// 返航中的不重新锁定（油已经不够再跟下去），已经被别人跟着的也不抢。
+	bestChance := -1.0
+	bestFleet := ""
 	for _, fleetID := range sortedFleetIDs(groups) {
 		members := groups[fleetID]
 		sort.Slice(members, func(i, j int) bool { return members[i].ID < members[j].ID })
@@ -2098,8 +2140,59 @@ func searchGroundReconStep(state *State, aircraft *AirfieldAirUnit, coords []str
 		}
 		level := recordContact(state, aircraft.Faction, fleetID, members)
 		events = append(events, EngineEvent{Type: "recon_contact", Audience: aircraft.Faction, Text: fmt.Sprintf("%s发现敌方舰队：%d艘，情报等级%d", members[0].Coord, len(members), level)})
+		if !aircraft.Returning && bestChance < chance && !fleetTrackedByOtherGround(state, aircraft, fleetID) {
+			bestChance = chance
+			bestFleet = fleetID
+		}
+	}
+	if bestFleet != "" {
+		aircraft.TrackingFleetID = bestFleet
+		aircraft.Returning = false
+		events = append(events, EngineEvent{Type: "recon_tracking", Audience: aircraft.Faction, Text: fmt.Sprintf("%s锁定%s的敌方舰队，开始持续跟踪", aircraft.Model, groups[bestFleet][0].Coord)})
 	}
 	return append(events, discoverEnemyAirfieldsAt(state, aircraft, coords)...)
+}
+
+// resolveGroundTracking 是岸基侦察机的跟踪判定：每回合按成功率提升情报等级，
+// 和舰载侦察同一套算法（50% 基础 + 舰船加成 × 天气系数）。
+func resolveGroundTracking(state *State, aircraft *AirfieldAirUnit, members []Unit) []EngineEvent {
+	chance := 50.0
+	for _, unit := range members {
+		if isCapitalShip(unit.Type) {
+			chance += 2
+		} else {
+			chance++
+		}
+	}
+	chance *= weatherFactor(weatherAt(state.Map, members[0].Coord))
+	if chance < 0 {
+		chance = 0
+	}
+	if chance > 100 {
+		chance = 100
+	}
+	roll := probabilityRoll(&state.RNGState)
+	if roll >= chance {
+		return []EngineEvent{{Type: "recon_tracking", Audience: aircraft.Faction, Text: aircraft.Model + "持续跟踪目标，本回合未能提升情报"}}
+	}
+	level := recordContact(state, aircraft.Faction, aircraft.TrackingFleetID, members)
+	return []EngineEvent{{Type: "recon_tracking", Audience: aircraft.Faction, Text: fmt.Sprintf("%s持续跟踪%s的敌方舰队，情报等级提升至%d（成功率%.1f%%，判定%.1f）", aircraft.Model, members[0].Coord, level, chance, roll)}}
+}
+
+// fleetTrackedByOtherGround 判断除了这架岸基侦察机之外，是否已经有人在跟同一支舰队
+// （舰载侦察机和岸基侦察机都算）：一队飞机同时锁定同一支舰队没有意义。
+func fleetTrackedByOtherGround(state *State, aircraft *AirfieldAirUnit, fleetID string) bool {
+	for _, other := range state.Aircraft {
+		if other.TrackingFleetID == fleetID && airborne(other) {
+			return true
+		}
+	}
+	for _, other := range state.GroundAir {
+		if other.ID != aircraft.ID && other.TrackingFleetID == fleetID && airfieldAirborne(other) {
+			return true
+		}
+	}
+	return false
 }
 func groundReconChance(state State, aircraft *AirfieldAirUnit, members []Unit) float64 {
 	chance := 25.0
@@ -2254,6 +2347,14 @@ func GroundAviationView(state State, faction string) AviationView {
 			task.Heading = leader.Heading
 			task.SectorWidth = leader.SectorWidth
 			task.ReconRadius = leader.ReconRadius
+			// 谁在持续跟踪哪支舰队：面板靠它显示"持续跟踪"，没有这个字段
+			// 岸基侦察锁定目标后，任务卡和舰载侦察长得一模一样。
+			for _, member := range members {
+				if member.TrackingFleetID != "" {
+					task.TrackingFleetID = member.TrackingFleetID
+					break
+				}
+			}
 			// 机场侦察也要给出扇面几何：以前只给航向和宽度，地图上没有黄色扇面，
 			// 玩家根本不知道这架飞机到底在扫哪一片，只能看着它飞出去又飞回来。
 			task.ReconSectors = []ReconSector{}

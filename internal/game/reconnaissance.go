@@ -760,6 +760,12 @@ func fleetTrackedByOther(state *State, aircraft *AirUnit, fleetID string) bool {
 			return true
 		}
 	}
+	// 岸基巡逻机也会跟踪：同一支舰队已经被机场侦察锁定时，舰载侦察不重复锁定。
+	for _, other := range state.GroundAir {
+		if other.Faction == aircraft.Faction && other.TrackingFleetID == fleetID && airfieldAirborne(other) {
+			return true
+		}
+	}
 	return false
 }
 
