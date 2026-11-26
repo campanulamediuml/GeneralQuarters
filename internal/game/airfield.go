@@ -930,6 +930,9 @@ func ValidateGroundAirOrder(state State, order Order) error {
 		if status != "hangar" && status != "service" && status != "deck" && status != "ready" {
 			return fmt.Errorf("只有机库或跑道上待命的算子可以分配任务")
 		}
+		// 是不是"加入已有的攻击编队"。这个判断要放在机型校验之前：编队里已经有轰炸机时，
+		// 后补的战斗机就是护航机，不能按"单架战斗机建新编队"处理。
+		joiningExisting := order.TaskID != "" && len(groundTaskAircraft(state, order.TaskID)) > 0
 		for _, aircraft := range list {
 			if aircraft.TaskID != "" {
 				return fmt.Errorf("算子已经属于其他任务，请先取消原任务")
@@ -950,7 +953,10 @@ func ValidateGroundAirOrder(state State, order Order) error {
 			if order.Type == "LAUNCH_RECON" && (aircraft.Kind == "fighter") {
 				return fmt.Errorf("战斗机不能执行扇面搜索")
 			}
-			if order.Type == "LAUNCH_STRIKE" && aircraft.Kind == "fighter" && order.Coord == "" && len(list) == 1 {
+			// 单架战斗机不能自己组成攻击编队（它没有投弹能力）。但"给已有攻击编队补一架战斗机"
+			// 是正常操作——以前这里不看 task_id，补一架 P-40 会被当成单架战斗机建新编队，
+			// 报"攻击编队只能由轰炸机和护航战斗机组成"，而编队里明明已经有轰炸机了。
+			if order.Type == "LAUNCH_STRIKE" && aircraft.Kind == "fighter" && order.Coord == "" && len(list) == 1 && !joiningExisting {
 				return fmt.Errorf("攻击编队只能由轰炸机和护航战斗机组成")
 			}
 		}
