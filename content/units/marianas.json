@@ -7981,7 +7981,7 @@
    "picture_mode": "image",
    "kind": "fighter",
    "strength": 3,
-   "range": 10,
+   "range": 17,
    "air_combat": 5,
    "anti_ship": 0,
    "anti_ground": 2
@@ -7995,10 +7995,10 @@
    "picture_mode": "image",
    "kind": "dive_bomber",
    "strength": 2,
-   "range": 12,
-   "air_combat": 1,
+   "range": 14,
+   "air_combat": 2,
    "anti_ship": 3,
-   "anti_ground": 3
+   "anti_ground": 1
   },
   {
    "id": "tbf",
@@ -8008,10 +8008,10 @@
    "picture": "misc/image/aircraft/tbd.png",
    "picture_mode": "image",
    "kind": "torpedo_bomber",
-   "strength": 2,
-   "range": 12,
+   "strength": 3,
+   "range": 14,
    "air_combat": 1,
-   "anti_ship": 3,
+   "anti_ship": 2,
    "anti_ground": 2,
    "torpedo_capable": true
   },
@@ -8054,7 +8054,7 @@
    "picture_mode": "image",
    "kind": "fighter",
    "strength": 2,
-   "range": 14,
+   "range": 21,
    "air_combat": 3,
    "anti_ship": 0,
    "anti_ground": 1
@@ -8068,10 +8068,10 @@
    "picture_mode": "image",
    "kind": "dive_bomber",
    "strength": 1,
-   "range": 15,
-   "air_combat": 1,
-   "anti_ship": 3,
-   "anti_ground": 2
+   "range": 23,
+   "air_combat": 2,
+   "anti_ship": 2,
+   "anti_ground": 1
   },
   {
    "id": "b6n",
@@ -8082,10 +8082,10 @@
    "picture_mode": "image",
    "kind": "torpedo_bomber",
    "strength": 1,
-   "range": 16,
+   "range": 23,
    "air_combat": 1,
-   "anti_ship": 3,
-   "anti_ground": 2,
+   "anti_ship": 2,
+   "anti_ground": 1,
    "torpedo_capable": true
   },
   {
@@ -8128,7 +8128,7 @@
    "picture_mode": "image",
    "kind": "recon",
    "strength": 2,
-   "range": 30,
+   "range": 49,
    "air_combat": 0,
    "anti_ship": 0,
    "anti_ground": 1,
@@ -8158,9 +8158,9 @@
    "picture": "misc/image/aircraft/f4f.png",
    "picture_mode": "image",
    "kind": "fighter",
-   "strength": 1,
-   "range": 8,
-   "air_combat": 3,
+   "strength": 3,
+   "range": 16,
+   "air_combat": 2,
    "anti_ship": 0,
    "anti_ground": 1
   },
