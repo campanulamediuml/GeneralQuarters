@@ -160,6 +160,12 @@ type roomActor struct {
 	// views 是这个房间上一次推给每个玩家、以及观战者的视图。
 	// 只由 worker 自己读写，所以不需要锁：这也是补丁顺序天然正确的原因。
 	views roomViews
+	// room / players 是这个房间在内存里的真值。worker 是唯一的写者，
+	// 所以读一律读这里，只有写才过库：以前每条消息都要把 146KB 的 state_json
+	// 从 SQLite 读回来重新解析一遍，读到的却是它自己上一次刚写进去的东西。
+	room    store.Room
+	players []store.Player
+	loaded  bool
 	// meta 是这个房间 diff 用的类型元数据缓存。只有 worker 自己读写，所以不需要锁。
 	meta diffCache
 }
@@ -207,6 +213,52 @@ func (a *roomActor) applySafely(msg roomMsg) (reply roomReply) {
 		return roomReply{}
 	}
 	return a.apply(msg)
+}
+
+// actorRoom 取房间在内存里的真值，第一次访问时从库里读一次。
+// 只能从 worker 里调：它是懒加载，语义上属于这个房间的 goroutine 私有的状态。
+func (s *Server) actorRoom(roomID string) (*roomActor, error) {
+	actor := s.roomActor(roomID)
+	if actor.loaded {
+		return actor, nil
+	}
+	ctx := context.Background()
+	room, err := s.store.Room(ctx, roomID)
+	if err != nil {
+		return nil, err
+	}
+	players, err := s.store.Players(ctx, roomID)
+	if err != nil {
+		return nil, err
+	}
+	actor.room, actor.players, actor.loaded = room, players, true
+	return actor, nil
+}
+
+// setReady / setConnected 把刚落库的标记同步进内存：
+// 下一次投影读的是内存，漏同步的话玩家会一直看到旧的准备/在线状态。
+func (a *roomActor) setReady(playerID string, ready bool) {
+	for index := range a.players {
+		if a.players[index].ID == playerID {
+			a.players[index].Ready = ready
+			return
+		}
+	}
+}
+
+func (a *roomActor) clearReady() {
+	for index := range a.players {
+		a.players[index].Ready = false
+	}
+}
+
+func (a *roomActor) setConnected(playerID string, connected bool) {
+	for index := range a.players {
+		if a.players[index].ID == playerID {
+			a.players[index].Connected = connected
+			return
+		}
+	}
 }
 
 // applyRoomMsg 是房间 worker 的分派表：一个房间能发生的事就这几种，全在这里。
@@ -438,10 +490,16 @@ func (s *Server) joinRoom(w http.ResponseWriter, r *http.Request) {
 
 // doJoin 在房间 worker 里加入：满员判断和落库是同一个串行动作。
 func (s *Server) doJoin(msg roomMsg) roomReply {
+	// 先加载再落库：加入之后 players 里会多一条，接进内存比再读一次库省事也省一次查询。
+	actor, err := s.actorRoom(msg.roomID)
+	if err != nil {
+		return roomError(http.StatusNotFound, "房间不存在")
+	}
 	player, err := s.store.JoinRoom(context.Background(), msg.token, strings.TrimSpace(msg.name), msg.playerID, hashToken(msg.session))
 	if err != nil {
 		return roomError(http.StatusBadRequest, err.Error())
 	}
+	actor.players = append(actor.players, player)
 	s.publishRoom(msg.roomID)
 	body, err := json.Marshal(roomResponse{RoomID: player.RoomID, PlayerID: player.ID})
 	if err != nil {
@@ -452,7 +510,11 @@ func (s *Server) doJoin(msg roomMsg) roomReply {
 
 // doConnect 记录玩家上下线，并推给对手（双方的 players 里都带在线状态）。
 func (s *Server) doConnect(msg roomMsg) {
-	_ = s.store.SetConnected(context.Background(), msg.playerID, msg.connected)
+	if err := s.store.SetConnected(context.Background(), msg.playerID, msg.connected); err == nil {
+		if actor, err := s.actorRoom(msg.roomID); err == nil {
+			actor.setConnected(msg.playerID, msg.connected)
+		}
+	}
 	s.publishRoom(msg.roomID)
 }
 
@@ -491,17 +553,14 @@ func (s *Server) doCommand(msg roomMsg) roomReply {
 		}
 		return roomReply{status: http.StatusOK, body: []byte(response)}
 	}
-	room, err := s.store.Room(ctx, roomID)
+	actor, err := s.actorRoom(roomID)
 	if err != nil {
 		return roomError(http.StatusNotFound, "房间不存在")
 	}
-	// 身份用库里最新的记录：连接是几分钟前建的，用连接上那份旧的 ready
+	room := actor.room
+	// 身份用房间内存里的记录：连接是几分钟前建的，用连接上那份旧的 ready
 	// 会绕过"就绪即冻结"，换过阵营之后也会按老阵营校验命令。
-	players, err := s.store.Players(ctx, roomID)
-	if err != nil {
-		return roomError(http.StatusInternalServerError, "读取玩家失败")
-	}
-	fresh, found := findPlayer(players, player.ID)
+	fresh, found := findPlayer(actor.players, player.ID)
 	if !found {
 		return roomError(http.StatusNotFound, "玩家不存在")
 	}
@@ -545,7 +604,7 @@ func (s *Server) doCommand(msg roomMsg) roomReply {
 			events = game.ApplyEngagementOrder(&room.State, order)
 		case "SET_MOVE":
 			// 移动命令走下面 SaveOrder 的"本回合规划"通道，真正的位移在回合结算里执行。
-			return s.savePlannedOrder(ctx, room, msg, request, order)
+			return s.savePlannedOrder(ctx, actor, msg, request, order)
 		case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_COVER", "LAUNCH_TRANSFER", "PREPARE_AIR", "RETURN_TO_HANGAR", "RECOVER_AIR", "PRIORITIZE_AIR_TASK", "SET_STRIKE_TARGET", "SET_STRIKE_DISPERSION", "ARM_AIR", "SET_AIR_CYCLE":
 			if game.IsAirfieldOrder(room.State, order) {
 				events = game.ApplyGroundAirOrder(&room.State, order)
@@ -563,6 +622,7 @@ func (s *Server) doCommand(msg roomMsg) roomReply {
 		if err != nil {
 			return roomError(http.StatusConflict, "命令结算失败："+err.Error())
 		}
+		actor.room = room
 		s.publishRoom(roomID)
 		return roomReply{status: http.StatusOK, body: response}
 	}
@@ -590,13 +650,14 @@ func pendingRadioTask(ctx context.Context, s *store.Store, roomID string, turn i
 }
 
 // savePlannedOrder 把一条待结算命令存进 orders 表（重复提交同一条移动不会重复记账）。
-func (s *Server) savePlannedOrder(ctx context.Context, room store.Room, msg roomMsg, request commandRequest, order game.Order) roomReply {
-	response, _ := json.Marshal(map[string]any{"accepted": true, "command_id": request.CommandID, "turn": room.Turn})
+func (s *Server) savePlannedOrder(ctx context.Context, actor *roomActor, msg roomMsg, request commandRequest, order game.Order) roomReply {
+	response, _ := json.Marshal(map[string]any{"accepted": true, "command_id": request.CommandID, "turn": actor.room.Turn})
 	// 先推进版本（commands 表在这里写幂等响应），再落待结算命令；顺序反了会让幂等重试撞上主键冲突。
-	room, err := s.store.BumpVersion(ctx, room, msg.player.ID, request.CommandID, commandFingerprint(request), string(response))
+	room, err := s.store.BumpVersion(ctx, actor.room, msg.player.ID, request.CommandID, commandFingerprint(request), string(response))
 	if err != nil {
 		return roomError(http.StatusConflict, "命令结算失败："+err.Error())
 	}
+	actor.room = room
 	if err := s.store.SaveOrder(ctx, msg.roomID, room.Turn, msg.player.ID, request.CommandID, order, string(response), commandFingerprint(request)); err != nil {
 		return roomError(http.StatusInternalServerError, "保存命令失败")
 	}
@@ -655,15 +716,15 @@ func (s *Server) settleStalledRooms(ctx context.Context) {
 func (s *Server) doSettle(msg roomMsg) {
 	ctx := context.Background()
 	roomID := msg.roomID
-	room, err := s.store.Room(ctx, roomID)
-	if err != nil || room.Status != "running" || room.State.Outcome != nil {
+	actor, err := s.actorRoom(roomID)
+	if err != nil || actor.room.Status != "running" || actor.room.State.Outcome != nil {
 		return
 	}
-	players, err := s.store.Players(ctx, roomID)
-	if err != nil || len(players) == 0 || (!room.Solo && len(players) < 2) {
+	room := actor.room
+	if len(actor.players) == 0 || (!room.Solo && len(actor.players) < 2) {
 		return
 	}
-	for _, player := range players {
+	for _, player := range actor.players {
 		if !player.Ready {
 			return
 		}
@@ -679,9 +740,12 @@ func (s *Server) doSettle(msg roomMsg) {
 	room.State.Turn = room.Turn
 	events := resolveRoomTurn(&room.State, orders)
 	room.State.Turn = room.Turn + 1
-	if _, err := s.store.Resolve(ctx, room, room.State, events); err != nil {
+	resolved, err := s.store.Resolve(ctx, room, room.State, events)
+	if err != nil {
 		return
 	}
+	actor.room = resolved
+	actor.clearReady()
 	log.Printf("房间 %s 双方已 ready 但停在第 %d 回合，巡检已自动结算", roomID, room.Turn)
 	s.publishRoom(roomID)
 }
@@ -695,10 +759,11 @@ func (s *Server) doReady(msg roomMsg) roomReply {
 	if err := decodeBody(msg.body, &request); err != nil {
 		return roomError(http.StatusBadRequest, err.Error())
 	}
-	room, err := s.store.Room(ctx, roomID)
+	actor, err := s.actorRoom(roomID)
 	if err != nil {
 		return roomError(http.StatusNotFound, "房间不存在")
 	}
+	room := actor.room
 	if request.BaseTurn > 0 && request.BaseTurn != room.Turn {
 		return roomError(http.StatusConflict, "本回合已经结算：请基于当前回合重新操作")
 	}
@@ -713,20 +778,16 @@ func (s *Server) doReady(msg roomMsg) roomReply {
 	// 双人对局不能一个人自己跟自己跑：对手没进房就直接拒绝 ready，
 	// 而不是"单人 ready 就结算"把十几个回合跑掉（那样回合、油量、侦察全白给）。
 	if !room.Solo {
-		players, err := s.store.Players(ctx, roomID)
-		if err != nil {
-			return roomError(http.StatusInternalServerError, "读取玩家失败")
-		}
-		if len(players) < 2 {
+		if len(actor.players) < 2 {
 			return roomError(http.StatusBadRequest, "这是双人对局，对手还没进房：把房间 token 发给他，两名玩家都到齐后回合才会推进")
 		}
 	}
 	if err := s.store.SetReady(ctx, player.ID, request.Ready); err != nil {
 		return roomError(http.StatusInternalServerError, "准备状态保存失败")
 	}
-	players, _ := s.store.Players(ctx, roomID)
-	allReady := len(players) > 0
-	for _, item := range players {
+	actor.setReady(player.ID, request.Ready)
+	allReady := len(actor.players) > 0
+	for _, item := range actor.players {
 		allReady = allReady && item.Ready
 	}
 	if allReady {
@@ -747,6 +808,10 @@ func (s *Server) doReady(msg roomMsg) roomReply {
 			return roomError(http.StatusConflict, err.Error())
 		}
 		room = resolved
+		actor.room = resolved
+		// 结算会把库里的 ready 清 0，内存这份要同步清掉，否则下一回合
+		// "只有一个人 ready"时会被上一回合的残留骗成双方就绪，多跑一回合。
+		actor.clearReady()
 	}
 	s.publishRoom(roomID)
 	// ready 的响应只是一条回执：状态由推送下发，不用为改一个标记回 150 KB 全量。
@@ -757,23 +822,19 @@ func (s *Server) doReady(msg roomMsg) roomReply {
 // 这份全量和之后的补丁由同一个 goroutine 先后入队，所以补丁不可能排在它前面。
 func (s *Server) doState(msg roomMsg) roomReply {
 	ctx := context.Background()
-	room, err := s.store.Room(ctx, msg.roomID)
+	actor, err := s.actorRoom(msg.roomID)
 	if err != nil {
 		return roomError(http.StatusNotFound, "房间不存在")
 	}
-	players, err := s.store.Players(ctx, msg.roomID)
-	if err != nil {
-		return roomError(http.StatusInternalServerError, "读取玩家失败")
-	}
-	player, found := findPlayer(players, msg.player.ID)
+	player, found := findPlayer(actor.players, msg.player.ID)
 	if !found {
 		return roomError(http.StatusNotFound, "玩家不存在")
 	}
-	view, err := s.privateView(ctx, room, players, player)
+	view, err := s.privateView(ctx, actor.room, actor.players, player)
 	if err != nil {
 		return roomError(http.StatusInternalServerError, err.Error())
 	}
-	s.roomActor(msg.roomID).views.players[player.ID] = view
+	actor.views.players[player.ID] = view
 	return roomJSON(http.StatusOK, view)
 }
 
@@ -891,15 +952,11 @@ func (s *Server) roomActor(roomID string) *roomActor {
 // 不需要版本号、不需要合并窗口、也不需要在推送侧再协调一次时序。
 func (s *Server) publishRoom(roomID string) {
 	ctx := context.Background()
-	room, err := s.store.Room(ctx, roomID)
+	actor, err := s.actorRoom(roomID)
 	if err != nil {
 		return
 	}
-	players, err := s.store.Players(ctx, roomID)
-	if err != nil {
-		return
-	}
-	actor := s.roomActor(roomID)
+	room, players := actor.room, actor.players
 	for _, player := range players {
 		view, err := s.privateView(ctx, room, players, player)
 		if err != nil {
@@ -917,7 +974,7 @@ func (s *Server) publishRoom(roomID string) {
 		}
 		actor.views.players[player.ID] = view
 	}
-	view, err := s.spectateView(ctx, room)
+	view, err := s.spectateView(ctx, room, players)
 	if err != nil {
 		return
 	}
@@ -1247,8 +1304,8 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 			_ = conn.Close()
 			return
 		}
-		room, err := s.store.Room(r.Context(), first.RoomID)
-		if err != nil || game.NormalizeToken(first.Token) != room.JoinToken {
+		joinToken, err := s.store.RoomJoinToken(r.Context(), first.RoomID)
+		if err != nil || game.NormalizeToken(first.Token) != joinToken {
 			_ = conn.WriteJSON(map[string]any{"type": "error", "error": "观战 token 不正确或房间不存在"})
 			_ = conn.Close()
 			return
@@ -1325,12 +1382,12 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 // 观战不走 RPC 拉取，所以首帧必须由服务端给。
 func (s *Server) doSpectatorJoin(msg roomMsg) {
 	ctx := context.Background()
-	room, err := s.store.Room(ctx, msg.roomID)
+	actor, err := s.actorRoom(msg.roomID)
 	if err != nil {
 		msg.client.fail(err.Error())
 		return
 	}
-	view, err := s.spectateView(ctx, room)
+	view, err := s.spectateView(ctx, actor.room, actor.players)
 	if err != nil {
 		msg.client.fail("读取观战视图失败")
 		return

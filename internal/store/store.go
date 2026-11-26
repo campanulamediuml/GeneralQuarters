@@ -254,6 +254,14 @@ func (s *Store) RoomIDByToken(ctx context.Context, token string) (string, error)
 	return roomID, err
 }
 
+// RoomJoinToken 只取邀请 token：观战握手要拿它比对，没必要把整份 146KB 的
+// state_json 读回来解析一遍（那一次读比这个查询贵三个数量级）。
+func (s *Store) RoomJoinToken(ctx context.Context, roomID string) (string, error) {
+	var token string
+	err := s.DB.QueryRowContext(ctx, `SELECT join_token FROM rooms WHERE id=?`, roomID).Scan(&token)
+	return token, err
+}
+
 func (s *Store) Room(ctx context.Context, roomID string) (Room, error) {
 	var room Room
 	var stateJSON string

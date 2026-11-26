@@ -21,14 +21,14 @@ var watchHTML []byte
 // 每艘船取自己阵营那份（含完整卡面），敌方视图里的情报投影直接丢掉。
 func (s *Server) doSpectate(msg roomMsg) roomReply {
 	ctx := context.Background()
-	room, err := s.store.Room(ctx, msg.roomID)
+	actor, err := s.actorRoom(msg.roomID)
 	if err != nil {
 		return roomError(http.StatusNotFound, "房间不存在")
 	}
-	if game.NormalizeToken(msg.token) != room.JoinToken {
+	if game.NormalizeToken(msg.token) != actor.room.JoinToken {
 		return roomError(http.StatusForbidden, "观战 token 不正确")
 	}
-	view, err := s.spectateView(ctx, room)
+	view, err := s.spectateView(ctx, actor.room, actor.players)
 	if err != nil {
 		return roomError(http.StatusInternalServerError, "读取观战视图失败")
 	}
@@ -37,11 +37,7 @@ func (s *Server) doSpectate(msg roomMsg) roomReply {
 
 // spectateView 读取玩家和战报再投影。HTTP 接口和 WebSocket 推送共用这条路径，
 // 免得两边对同一份状态给出不一样的视图。
-func (s *Server) spectateView(ctx context.Context, room store.Room) (map[string]any, error) {
-	players, err := s.store.Players(ctx, room.ID)
-	if err != nil {
-		return nil, err
-	}
+func (s *Server) spectateView(ctx context.Context, room store.Room, players []store.Player) (map[string]any, error) {
 	events, err := s.store.AllEvents(ctx, room.ID)
 	if err != nil {
 		return nil, err
