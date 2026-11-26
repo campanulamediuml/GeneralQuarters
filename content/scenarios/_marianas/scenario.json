@@ -21,7 +21,7 @@
   "launch_start": "05:30",
   "recover_by": "19:40"
  },
- "description": "架空历史：1944 年 6 月，美军第 58 特混舰队以 8 艘埃塞克斯级航母（两个特混大队）杀入马里亚纳，日军以小泽的三个机动部队（甲/乙/丙，各 3 艘航母）迎战，另在马里亚纳与帕劳诸岛布署岸基航空兵和水上飞机基地。地图 99×99（25 海里/hex），岛礁散布，适合跑大编队的甲板/升降机/CAP 循环压力测试。",
+ "description": "架空历史：1944 年 6 月，美军第 58 特混舰队以 8 艘埃塞克斯级航母（两个特混大队）杀入马里亚纳，另有第 52 特混舰队的 8 艘老式战列舰（田纳西、加利福尼亚、马里兰、科罗拉多、新墨西哥、爱达荷、密西西比、宾夕法尼亚）担任火力支援，4 个护航航母群（每群 4 艘 CVE + 4 艘驱逐舰）负责反潜与登陆掩护；日军以小泽的三个机动部队（甲/乙/丙，各 3 艘航母）迎战，另在马里亚纳与帕劳诸岛布署岸基航空兵和水上飞机基地。地图 99×99（25 海里/hex），岛礁散布，适合跑大编队的甲板/升降机/CAP 循环压力测试，也适合用护航航母群和慢速战列舰当\"送分题\"验证防空与空袭结算。",
  "deploy_zones": [
   {
    "faction": "A",
@@ -38,7 +38,7 @@
   {
    "id": "us-cv-01",
    "faction": "A",
-   "name": "us-cv-01",
+   "name": "埃塞克斯",
    "fleet_id": "TF58.1",
    "fleet_name": "第58.1特混大队",
    "ship": "us-cv-01"
@@ -46,7 +46,7 @@
   {
    "id": "us-cv-02",
    "faction": "A",
-   "name": "us-cv-02",
+   "name": "邦克山",
    "fleet_id": "TF58.1",
    "fleet_name": "第58.1特混大队",
    "ship": "us-cv-02"
@@ -54,7 +54,7 @@
   {
    "id": "us-cv-03",
    "faction": "A",
-   "name": "us-cv-03",
+   "name": "大黄蜂",
    "fleet_id": "TF58.1",
    "fleet_name": "第58.1特混大队",
    "ship": "us-cv-03"
@@ -62,7 +62,7 @@
   {
    "id": "us-cv-04",
    "faction": "A",
-   "name": "us-cv-04",
+   "name": "约克城",
    "fleet_id": "TF58.1",
    "fleet_name": "第58.1特混大队",
    "ship": "us-cv-04"
@@ -70,7 +70,7 @@
   {
    "id": "us-bb-01",
    "faction": "A",
-   "name": "us-bb-01",
+   "name": "北卡罗来纳",
    "fleet_id": "TF58.1",
    "fleet_name": "第58.1特混大队",
    "ship": "us-bb-01"
@@ -78,7 +78,7 @@
   {
    "id": "us-bb-02",
    "faction": "A",
-   "name": "us-bb-02",
+   "name": "华盛顿",
    "fleet_id": "TF58.1",
    "fleet_name": "第58.1特混大队",
    "ship": "us-bb-02"
@@ -86,7 +86,7 @@
   {
    "id": "us-ca-01",
    "faction": "A",
-   "name": "us-ca-01",
+   "name": "巴尔的摩",
    "fleet_id": "TF58.1",
    "fleet_name": "第58.1特混大队",
    "ship": "us-ca-01"
@@ -94,7 +94,7 @@
   {
    "id": "us-ca-02",
    "faction": "A",
-   "name": "us-ca-02",
+   "name": "威奇塔",
    "fleet_id": "TF58.1",
    "fleet_name": "第58.1特混大队",
    "ship": "us-ca-02"
@@ -102,7 +102,7 @@
   {
    "id": "us-cl-01",
    "faction": "A",
-   "name": "us-cl-01",
+   "name": "克利夫兰",
    "fleet_id": "TF58.1",
    "fleet_name": "第58.1特混大队",
    "ship": "us-cl-01"
@@ -110,7 +110,7 @@
   {
    "id": "us-cl-02",
    "faction": "A",
-   "name": "us-cl-02",
+   "name": "蒙彼利埃",
    "fleet_id": "TF58.1",
    "fleet_name": "第58.1特混大队",
    "ship": "us-cl-02"
@@ -118,7 +118,7 @@
   {
    "id": "us-cl-03",
    "faction": "A",
-   "name": "us-cl-03",
+   "name": "丹佛",
    "fleet_id": "TF58.1",
    "fleet_name": "第58.1特混大队",
    "ship": "us-cl-03"
@@ -126,7 +126,7 @@
   {
    "id": "us-dd-01",
    "faction": "A",
-   "name": "us-dd-01",
+   "name": "弗莱彻号01",
    "fleet_id": "TF58.1",
    "fleet_name": "第58.1特混大队",
    "ship": "us-dd-01"
@@ -134,7 +134,7 @@
   {
    "id": "us-dd-02",
    "faction": "A",
-   "name": "us-dd-02",
+   "name": "弗莱彻号02",
    "fleet_id": "TF58.1",
    "fleet_name": "第58.1特混大队",
    "ship": "us-dd-02"
@@ -142,7 +142,7 @@
   {
    "id": "us-dd-03",
    "faction": "A",
-   "name": "us-dd-03",
+   "name": "弗莱彻号03",
    "fleet_id": "TF58.1",
    "fleet_name": "第58.1特混大队",
    "ship": "us-dd-03"
@@ -150,7 +150,7 @@
   {
    "id": "us-dd-04",
    "faction": "A",
-   "name": "us-dd-04",
+   "name": "弗莱彻号04",
    "fleet_id": "TF58.1",
    "fleet_name": "第58.1特混大队",
    "ship": "us-dd-04"
@@ -158,39 +158,39 @@
   {
    "id": "us-dd-05",
    "faction": "A",
-   "name": "us-dd-05",
-   "fleet_id": "TF58.1",
-   "fleet_name": "第58.1特混大队",
+   "name": "弗莱彻号05",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
    "ship": "us-dd-05"
   },
   {
    "id": "us-dd-06",
    "faction": "A",
-   "name": "us-dd-06",
-   "fleet_id": "TF58.1",
-   "fleet_name": "第58.1特混大队",
+   "name": "弗莱彻号06",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
    "ship": "us-dd-06"
   },
   {
    "id": "us-dd-07",
    "faction": "A",
-   "name": "us-dd-07",
-   "fleet_id": "TF58.1",
-   "fleet_name": "第58.1特混大队",
+   "name": "弗莱彻号07",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
    "ship": "us-dd-07"
   },
   {
    "id": "us-dd-08",
    "faction": "A",
-   "name": "us-dd-08",
-   "fleet_id": "TF58.1",
-   "fleet_name": "第58.1特混大队",
+   "name": "弗莱彻号08",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
    "ship": "us-dd-08"
   },
   {
    "id": "us-cv-05",
    "faction": "A",
-   "name": "us-cv-05",
+   "name": "黄蜂",
    "fleet_id": "TF58.2",
    "fleet_name": "第58.2特混大队",
    "ship": "us-cv-05"
@@ -198,7 +198,7 @@
   {
    "id": "us-cv-06",
    "faction": "A",
-   "name": "us-cv-06",
+   "name": "富兰克林",
    "fleet_id": "TF58.2",
    "fleet_name": "第58.2特混大队",
    "ship": "us-cv-06"
@@ -206,7 +206,7 @@
   {
    "id": "us-cv-07",
    "faction": "A",
-   "name": "us-cv-07",
+   "name": "提康德罗加",
    "fleet_id": "TF58.2",
    "fleet_name": "第58.2特混大队",
    "ship": "us-cv-07"
@@ -214,7 +214,7 @@
   {
    "id": "us-cv-08",
    "faction": "A",
-   "name": "us-cv-08",
+   "name": "汉考克",
    "fleet_id": "TF58.2",
    "fleet_name": "第58.2特混大队",
    "ship": "us-cv-08"
@@ -222,7 +222,7 @@
   {
    "id": "us-bb-03",
    "faction": "A",
-   "name": "us-bb-03",
+   "name": "南达科他",
    "fleet_id": "TF58.2",
    "fleet_name": "第58.2特混大队",
    "ship": "us-bb-03"
@@ -230,7 +230,7 @@
   {
    "id": "us-bb-04",
    "faction": "A",
-   "name": "us-bb-04",
+   "name": "印第安纳",
    "fleet_id": "TF58.2",
    "fleet_name": "第58.2特混大队",
    "ship": "us-bb-04"
@@ -238,7 +238,7 @@
   {
    "id": "us-ca-03",
    "faction": "A",
-   "name": "us-ca-03",
+   "name": "旧金山",
    "fleet_id": "TF58.2",
    "fleet_name": "第58.2特混大队",
    "ship": "us-ca-03"
@@ -246,7 +246,7 @@
   {
    "id": "us-ca-04",
    "faction": "A",
-   "name": "us-ca-04",
+   "name": "昆西",
    "fleet_id": "TF58.2",
    "fleet_name": "第58.2特混大队",
    "ship": "us-ca-04"
@@ -254,7 +254,7 @@
   {
    "id": "us-cl-04",
    "faction": "A",
-   "name": "us-cl-04",
+   "name": "圣菲",
    "fleet_id": "TF58.2",
    "fleet_name": "第58.2特混大队",
    "ship": "us-cl-04"
@@ -262,7 +262,7 @@
   {
    "id": "us-cl-05",
    "faction": "A",
-   "name": "us-cl-05",
+   "name": "伯明翰",
    "fleet_id": "TF58.2",
    "fleet_name": "第58.2特混大队",
    "ship": "us-cl-05"
@@ -270,7 +270,7 @@
   {
    "id": "us-cl-06",
    "faction": "A",
-   "name": "us-cl-06",
+   "name": "莫比尔",
    "fleet_id": "TF58.2",
    "fleet_name": "第58.2特混大队",
    "ship": "us-cl-06"
@@ -278,71 +278,71 @@
   {
    "id": "us-dd-09",
    "faction": "A",
-   "name": "us-dd-09",
-   "fleet_id": "TF58.2",
-   "fleet_name": "第58.2特混大队",
+   "name": "弗莱彻号09",
+   "fleet_id": "TF52",
+   "fleet_name": "第52特混舰队（火力支援）",
    "ship": "us-dd-09"
   },
   {
    "id": "us-dd-10",
    "faction": "A",
-   "name": "us-dd-10",
-   "fleet_id": "TF58.2",
-   "fleet_name": "第58.2特混大队",
+   "name": "弗莱彻号10",
+   "fleet_id": "TF52",
+   "fleet_name": "第52特混舰队（火力支援）",
    "ship": "us-dd-10"
   },
   {
    "id": "us-dd-11",
    "faction": "A",
-   "name": "us-dd-11",
-   "fleet_id": "TF58.2",
-   "fleet_name": "第58.2特混大队",
+   "name": "弗莱彻号11",
+   "fleet_id": "TF52",
+   "fleet_name": "第52特混舰队（火力支援）",
    "ship": "us-dd-11"
   },
   {
    "id": "us-dd-12",
    "faction": "A",
-   "name": "us-dd-12",
-   "fleet_id": "TF58.2",
-   "fleet_name": "第58.2特混大队",
+   "name": "弗莱彻号12",
+   "fleet_id": "TF52",
+   "fleet_name": "第52特混舰队（火力支援）",
    "ship": "us-dd-12"
   },
   {
    "id": "us-dd-13",
    "faction": "A",
-   "name": "us-dd-13",
-   "fleet_id": "TF58.2",
-   "fleet_name": "第58.2特混大队",
+   "name": "弗莱彻号13",
+   "fleet_id": "CVE1",
+   "fleet_name": "护航航母群1",
    "ship": "us-dd-13"
   },
   {
    "id": "us-dd-14",
    "faction": "A",
-   "name": "us-dd-14",
-   "fleet_id": "TF58.2",
-   "fleet_name": "第58.2特混大队",
+   "name": "弗莱彻号14",
+   "fleet_id": "CVE1",
+   "fleet_name": "护航航母群1",
    "ship": "us-dd-14"
   },
   {
    "id": "us-dd-15",
    "faction": "A",
-   "name": "us-dd-15",
-   "fleet_id": "TF58.2",
-   "fleet_name": "第58.2特混大队",
+   "name": "弗莱彻号15",
+   "fleet_id": "CVE1",
+   "fleet_name": "护航航母群1",
    "ship": "us-dd-15"
   },
   {
    "id": "us-dd-16",
    "faction": "A",
-   "name": "us-dd-16",
-   "fleet_id": "TF58.2",
-   "fleet_name": "第58.2特混大队",
+   "name": "弗莱彻号16",
+   "fleet_id": "CVE1",
+   "fleet_name": "护航航母群1",
    "ship": "us-dd-16"
   },
   {
    "id": "jp-cv-01",
    "faction": "B",
-   "name": "jp-cv-01",
+   "name": "大凤",
    "fleet_id": "TG1",
    "fleet_name": "甲部队",
    "ship": "jp-cv-01"
@@ -350,7 +350,7 @@
   {
    "id": "jp-cv-02",
    "faction": "B",
-   "name": "jp-cv-02",
+   "name": "翔鹤",
    "fleet_id": "TG1",
    "fleet_name": "甲部队",
    "ship": "jp-cv-02"
@@ -358,7 +358,7 @@
   {
    "id": "jp-cv-03",
    "faction": "B",
-   "name": "jp-cv-03",
+   "name": "瑞鹤",
    "fleet_id": "TG1",
    "fleet_name": "甲部队",
    "ship": "jp-cv-03"
@@ -366,7 +366,7 @@
   {
    "id": "jp-bb-01",
    "faction": "B",
-   "name": "jp-bb-01",
+   "name": "大和",
    "fleet_id": "TG1",
    "fleet_name": "甲部队",
    "ship": "jp-bb-01"
@@ -374,7 +374,7 @@
   {
    "id": "jp-bb-02",
    "faction": "B",
-   "name": "jp-bb-02",
+   "name": "武藏",
    "fleet_id": "TG1",
    "fleet_name": "甲部队",
    "ship": "jp-bb-02"
@@ -382,7 +382,7 @@
   {
    "id": "jp-ca-01",
    "faction": "B",
-   "name": "jp-ca-01",
+   "name": "妙高",
    "fleet_id": "TG1",
    "fleet_name": "甲部队",
    "ship": "jp-ca-01"
@@ -390,7 +390,7 @@
   {
    "id": "jp-ca-02",
    "faction": "B",
-   "name": "jp-ca-02",
+   "name": "羽黑",
    "fleet_id": "TG1",
    "fleet_name": "甲部队",
    "ship": "jp-ca-02"
@@ -398,7 +398,7 @@
   {
    "id": "jp-cl-01",
    "faction": "B",
-   "name": "jp-cl-01",
+   "name": "矢矧",
    "fleet_id": "TG1",
    "fleet_name": "甲部队",
    "ship": "jp-cl-01"
@@ -406,7 +406,7 @@
   {
    "id": "jp-dd-01",
    "faction": "B",
-   "name": "jp-dd-01",
+   "name": "驱逐舰01",
    "fleet_id": "TG1",
    "fleet_name": "甲部队",
    "ship": "jp-dd-01"
@@ -414,7 +414,7 @@
   {
    "id": "jp-dd-02",
    "faction": "B",
-   "name": "jp-dd-02",
+   "name": "驱逐舰02",
    "fleet_id": "TG1",
    "fleet_name": "甲部队",
    "ship": "jp-dd-02"
@@ -422,7 +422,7 @@
   {
    "id": "jp-dd-03",
    "faction": "B",
-   "name": "jp-dd-03",
+   "name": "驱逐舰03",
    "fleet_id": "TG1",
    "fleet_name": "甲部队",
    "ship": "jp-dd-03"
@@ -430,7 +430,7 @@
   {
    "id": "jp-dd-04",
    "faction": "B",
-   "name": "jp-dd-04",
+   "name": "驱逐舰04",
    "fleet_id": "TG1",
    "fleet_name": "甲部队",
    "ship": "jp-dd-04"
@@ -438,7 +438,7 @@
   {
    "id": "jp-dd-05",
    "faction": "B",
-   "name": "jp-dd-05",
+   "name": "驱逐舰05",
    "fleet_id": "TG1",
    "fleet_name": "甲部队",
    "ship": "jp-dd-05"
@@ -446,7 +446,7 @@
   {
    "id": "jp-dd-06",
    "faction": "B",
-   "name": "jp-dd-06",
+   "name": "驱逐舰06",
    "fleet_id": "TG1",
    "fleet_name": "甲部队",
    "ship": "jp-dd-06"
@@ -454,7 +454,7 @@
   {
    "id": "jp-cv-04",
    "faction": "B",
-   "name": "jp-cv-04",
+   "name": "隼鹰",
    "fleet_id": "TG2",
    "fleet_name": "乙部队",
    "ship": "jp-cv-04"
@@ -462,7 +462,7 @@
   {
    "id": "jp-cv-05",
    "faction": "B",
-   "name": "jp-cv-05",
+   "name": "飞鹰",
    "fleet_id": "TG2",
    "fleet_name": "乙部队",
    "ship": "jp-cv-05"
@@ -470,7 +470,7 @@
   {
    "id": "jp-cv-06",
    "faction": "B",
-   "name": "jp-cv-06",
+   "name": "龙凤",
    "fleet_id": "TG2",
    "fleet_name": "乙部队",
    "ship": "jp-cv-06"
@@ -478,7 +478,7 @@
   {
    "id": "jp-bb-03",
    "faction": "B",
-   "name": "jp-bb-03",
+   "name": "长门",
    "fleet_id": "TG2",
    "fleet_name": "乙部队",
    "ship": "jp-bb-03"
@@ -486,7 +486,7 @@
   {
    "id": "jp-ca-03",
    "faction": "B",
-   "name": "jp-ca-03",
+   "name": "高雄",
    "fleet_id": "TG2",
    "fleet_name": "乙部队",
    "ship": "jp-ca-03"
@@ -494,7 +494,7 @@
   {
    "id": "jp-ca-04",
    "faction": "B",
-   "name": "jp-ca-04",
+   "name": "爱宕",
    "fleet_id": "TG2",
    "fleet_name": "乙部队",
    "ship": "jp-ca-04"
@@ -502,7 +502,7 @@
   {
    "id": "jp-cl-02",
    "faction": "B",
-   "name": "jp-cl-02",
+   "name": "大淀",
    "fleet_id": "TG2",
    "fleet_name": "乙部队",
    "ship": "jp-cl-02"
@@ -510,7 +510,7 @@
   {
    "id": "jp-dd-07",
    "faction": "B",
-   "name": "jp-dd-07",
+   "name": "驱逐舰07",
    "fleet_id": "TG2",
    "fleet_name": "乙部队",
    "ship": "jp-dd-07"
@@ -518,7 +518,7 @@
   {
    "id": "jp-dd-08",
    "faction": "B",
-   "name": "jp-dd-08",
+   "name": "驱逐舰08",
    "fleet_id": "TG2",
    "fleet_name": "乙部队",
    "ship": "jp-dd-08"
@@ -526,7 +526,7 @@
   {
    "id": "jp-dd-09",
    "faction": "B",
-   "name": "jp-dd-09",
+   "name": "驱逐舰09",
    "fleet_id": "TG2",
    "fleet_name": "乙部队",
    "ship": "jp-dd-09"
@@ -534,7 +534,7 @@
   {
    "id": "jp-dd-10",
    "faction": "B",
-   "name": "jp-dd-10",
+   "name": "驱逐舰10",
    "fleet_id": "TG2",
    "fleet_name": "乙部队",
    "ship": "jp-dd-10"
@@ -542,7 +542,7 @@
   {
    "id": "jp-dd-11",
    "faction": "B",
-   "name": "jp-dd-11",
+   "name": "驱逐舰11",
    "fleet_id": "TG2",
    "fleet_name": "乙部队",
    "ship": "jp-dd-11"
@@ -550,7 +550,7 @@
   {
    "id": "jp-dd-12",
    "faction": "B",
-   "name": "jp-dd-12",
+   "name": "驱逐舰12",
    "fleet_id": "TG2",
    "fleet_name": "乙部队",
    "ship": "jp-dd-12"
@@ -558,7 +558,7 @@
   {
    "id": "jp-cv-07",
    "faction": "B",
-   "name": "jp-cv-07",
+   "name": "云龙",
    "fleet_id": "TG3",
    "fleet_name": "丙部队",
    "ship": "jp-cv-07"
@@ -566,7 +566,7 @@
   {
    "id": "jp-cv-08",
    "faction": "B",
-   "name": "jp-cv-08",
+   "name": "天城",
    "fleet_id": "TG3",
    "fleet_name": "丙部队",
    "ship": "jp-cv-08"
@@ -574,7 +574,7 @@
   {
    "id": "jp-cv-09",
    "faction": "B",
-   "name": "jp-cv-09",
+   "name": "葛城",
    "fleet_id": "TG3",
    "fleet_name": "丙部队",
    "ship": "jp-cv-09"
@@ -582,7 +582,7 @@
   {
    "id": "jp-bb-04",
    "faction": "B",
-   "name": "jp-bb-04",
+   "name": "金刚",
    "fleet_id": "TG3",
    "fleet_name": "丙部队",
    "ship": "jp-bb-04"
@@ -590,7 +590,7 @@
   {
    "id": "jp-bb-05",
    "faction": "B",
-   "name": "jp-bb-05",
+   "name": "榛名",
    "fleet_id": "TG3",
    "fleet_name": "丙部队",
    "ship": "jp-bb-05"
@@ -598,7 +598,7 @@
   {
    "id": "jp-ca-05",
    "faction": "B",
-   "name": "jp-ca-05",
+   "name": "利根",
    "fleet_id": "TG3",
    "fleet_name": "丙部队",
    "ship": "jp-ca-05"
@@ -606,7 +606,7 @@
   {
    "id": "jp-ca-06",
    "faction": "B",
-   "name": "jp-ca-06",
+   "name": "筑摩",
    "fleet_id": "TG3",
    "fleet_name": "丙部队",
    "ship": "jp-ca-06"
@@ -614,7 +614,7 @@
   {
    "id": "jp-cl-03",
    "faction": "B",
-   "name": "jp-cl-03",
+   "name": "能代",
    "fleet_id": "TG3",
    "fleet_name": "丙部队",
    "ship": "jp-cl-03"
@@ -622,7 +622,7 @@
   {
    "id": "jp-dd-13",
    "faction": "B",
-   "name": "jp-dd-13",
+   "name": "驱逐舰13",
    "fleet_id": "TG3",
    "fleet_name": "丙部队",
    "ship": "jp-dd-13"
@@ -630,7 +630,7 @@
   {
    "id": "jp-dd-14",
    "faction": "B",
-   "name": "jp-dd-14",
+   "name": "驱逐舰14",
    "fleet_id": "TG3",
    "fleet_name": "丙部队",
    "ship": "jp-dd-14"
@@ -638,7 +638,7 @@
   {
    "id": "jp-dd-15",
    "faction": "B",
-   "name": "jp-dd-15",
+   "name": "驱逐舰15",
    "fleet_id": "TG3",
    "fleet_name": "丙部队",
    "ship": "jp-dd-15"
@@ -646,7 +646,7 @@
   {
    "id": "jp-dd-16",
    "faction": "B",
-   "name": "jp-dd-16",
+   "name": "驱逐舰16",
    "fleet_id": "TG3",
    "fleet_name": "丙部队",
    "ship": "jp-dd-16"
@@ -654,7 +654,7 @@
   {
    "id": "jp-dd-17",
    "faction": "B",
-   "name": "jp-dd-17",
+   "name": "驱逐舰17",
    "fleet_id": "TG3",
    "fleet_name": "丙部队",
    "ship": "jp-dd-17"
@@ -662,10 +662,330 @@
   {
    "id": "jp-dd-18",
    "faction": "B",
-   "name": "jp-dd-18",
+   "name": "驱逐舰18",
    "fleet_id": "TG3",
    "fleet_name": "丙部队",
    "ship": "jp-dd-18"
+  },
+  {
+   "id": "us-bb-05",
+   "faction": "A",
+   "name": "田纳西",
+   "fleet_id": "TF52",
+   "fleet_name": "第52特混舰队（火力支援）",
+   "ship": "us-bb-05"
+  },
+  {
+   "id": "us-bb-06",
+   "faction": "A",
+   "name": "加利福尼亚",
+   "fleet_id": "TF52",
+   "fleet_name": "第52特混舰队（火力支援）",
+   "ship": "us-bb-06"
+  },
+  {
+   "id": "us-bb-07",
+   "faction": "A",
+   "name": "马里兰",
+   "fleet_id": "TF52",
+   "fleet_name": "第52特混舰队（火力支援）",
+   "ship": "us-bb-07"
+  },
+  {
+   "id": "us-bb-08",
+   "faction": "A",
+   "name": "科罗拉多",
+   "fleet_id": "TF52",
+   "fleet_name": "第52特混舰队（火力支援）",
+   "ship": "us-bb-08"
+  },
+  {
+   "id": "us-bb-09",
+   "faction": "A",
+   "name": "新墨西哥",
+   "fleet_id": "TF52",
+   "fleet_name": "第52特混舰队（火力支援）",
+   "ship": "us-bb-09"
+  },
+  {
+   "id": "us-bb-10",
+   "faction": "A",
+   "name": "爱达荷",
+   "fleet_id": "TF52",
+   "fleet_name": "第52特混舰队（火力支援）",
+   "ship": "us-bb-10"
+  },
+  {
+   "id": "us-bb-11",
+   "faction": "A",
+   "name": "密西西比",
+   "fleet_id": "TF52",
+   "fleet_name": "第52特混舰队（火力支援）",
+   "ship": "us-bb-11"
+  },
+  {
+   "id": "us-bb-12",
+   "faction": "A",
+   "name": "宾夕法尼亚",
+   "fleet_id": "TF52",
+   "fleet_name": "第52特混舰队（火力支援）",
+   "ship": "us-bb-12"
+  },
+  {
+   "id": "us-bb-13",
+   "faction": "A",
+   "name": "新泽西",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-bb-13"
+  },
+  {
+   "id": "us-bb-14",
+   "faction": "A",
+   "name": "衣阿华",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-bb-14"
+  },
+  {
+   "id": "us-bb-15",
+   "faction": "A",
+   "name": "马萨诸塞",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-bb-15"
+  },
+  {
+   "id": "us-bb-16",
+   "faction": "A",
+   "name": "阿拉巴马",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-bb-16"
+  },
+  {
+   "id": "us-cve-01",
+   "faction": "A",
+   "name": "甘比尔湾",
+   "fleet_id": "CVE1",
+   "fleet_name": "护航航母群1",
+   "ship": "us-cve-01"
+  },
+  {
+   "id": "us-cve-02",
+   "faction": "A",
+   "name": "卡萨布兰卡",
+   "fleet_id": "CVE1",
+   "fleet_name": "护航航母群1",
+   "ship": "us-cve-02"
+  },
+  {
+   "id": "us-cve-03",
+   "faction": "A",
+   "name": "方肖湾",
+   "fleet_id": "CVE1",
+   "fleet_name": "护航航母群1",
+   "ship": "us-cve-03"
+  },
+  {
+   "id": "us-cve-04",
+   "faction": "A",
+   "name": "白平原",
+   "fleet_id": "CVE1",
+   "fleet_name": "护航航母群1",
+   "ship": "us-cve-04"
+  },
+  {
+   "id": "us-cve-05",
+   "faction": "A",
+   "name": "基特昆湾",
+   "fleet_id": "CVE2",
+   "fleet_name": "护航航母群2",
+   "ship": "us-cve-05"
+  },
+  {
+   "id": "us-cve-06",
+   "faction": "A",
+   "name": "图拉吉",
+   "fleet_id": "CVE2",
+   "fleet_name": "护航航母群2",
+   "ship": "us-cve-06"
+  },
+  {
+   "id": "us-cve-07",
+   "faction": "A",
+   "name": "科雷吉多尔",
+   "fleet_id": "CVE2",
+   "fleet_name": "护航航母群2",
+   "ship": "us-cve-07"
+  },
+  {
+   "id": "us-cve-08",
+   "faction": "A",
+   "name": "曼纳湾",
+   "fleet_id": "CVE2",
+   "fleet_name": "护航航母群2",
+   "ship": "us-cve-08"
+  },
+  {
+   "id": "us-cve-09",
+   "faction": "A",
+   "name": "萨金特湾",
+   "fleet_id": "CVE3",
+   "fleet_name": "护航航母群3",
+   "ship": "us-cve-09"
+  },
+  {
+   "id": "us-cve-10",
+   "faction": "A",
+   "name": "卡德",
+   "fleet_id": "CVE3",
+   "fleet_name": "护航航母群3",
+   "ship": "us-cve-10"
+  },
+  {
+   "id": "us-cve-11",
+   "faction": "A",
+   "name": "苏万尼",
+   "fleet_id": "CVE3",
+   "fleet_name": "护航航母群3",
+   "ship": "us-cve-11"
+  },
+  {
+   "id": "us-cve-12",
+   "faction": "A",
+   "name": "桑加蒙",
+   "fleet_id": "CVE3",
+   "fleet_name": "护航航母群3",
+   "ship": "us-cve-12"
+  },
+  {
+   "id": "us-cve-13",
+   "faction": "A",
+   "name": "陈纳德湾",
+   "fleet_id": "CVE4",
+   "fleet_name": "护航航母群4",
+   "ship": "us-cve-13"
+  },
+  {
+   "id": "us-cve-14",
+   "faction": "A",
+   "name": "香格里拉",
+   "fleet_id": "CVE4",
+   "fleet_name": "护航航母群4",
+   "ship": "us-cve-14"
+  },
+  {
+   "id": "us-cve-15",
+   "faction": "A",
+   "name": "温丹湾",
+   "fleet_id": "CVE4",
+   "fleet_name": "护航航母群4",
+   "ship": "us-cve-15"
+  },
+  {
+   "id": "us-cve-16",
+   "faction": "A",
+   "name": "斯蒂默湾",
+   "fleet_id": "CVE4",
+   "fleet_name": "护航航母群4",
+   "ship": "us-cve-16"
+  },
+  {
+   "id": "us-dd-17",
+   "faction": "A",
+   "name": "弗莱彻号17",
+   "fleet_id": "CVE2",
+   "fleet_name": "护航航母群2",
+   "ship": "us-dd-17"
+  },
+  {
+   "id": "us-dd-18",
+   "faction": "A",
+   "name": "弗莱彻号18",
+   "fleet_id": "CVE2",
+   "fleet_name": "护航航母群2",
+   "ship": "us-dd-18"
+  },
+  {
+   "id": "us-dd-19",
+   "faction": "A",
+   "name": "弗莱彻号19",
+   "fleet_id": "CVE2",
+   "fleet_name": "护航航母群2",
+   "ship": "us-dd-19"
+  },
+  {
+   "id": "us-dd-20",
+   "faction": "A",
+   "name": "弗莱彻号20",
+   "fleet_id": "CVE2",
+   "fleet_name": "护航航母群2",
+   "ship": "us-dd-20"
+  },
+  {
+   "id": "us-dd-21",
+   "faction": "A",
+   "name": "弗莱彻号21",
+   "fleet_id": "CVE3",
+   "fleet_name": "护航航母群3",
+   "ship": "us-dd-21"
+  },
+  {
+   "id": "us-dd-22",
+   "faction": "A",
+   "name": "弗莱彻号22",
+   "fleet_id": "CVE3",
+   "fleet_name": "护航航母群3",
+   "ship": "us-dd-22"
+  },
+  {
+   "id": "us-dd-23",
+   "faction": "A",
+   "name": "弗莱彻号23",
+   "fleet_id": "CVE3",
+   "fleet_name": "护航航母群3",
+   "ship": "us-dd-23"
+  },
+  {
+   "id": "us-dd-24",
+   "faction": "A",
+   "name": "弗莱彻号24",
+   "fleet_id": "CVE3",
+   "fleet_name": "护航航母群3",
+   "ship": "us-dd-24"
+  },
+  {
+   "id": "us-dd-25",
+   "faction": "A",
+   "name": "弗莱彻号25",
+   "fleet_id": "CVE4",
+   "fleet_name": "护航航母群4",
+   "ship": "us-dd-25"
+  },
+  {
+   "id": "us-dd-26",
+   "faction": "A",
+   "name": "弗莱彻号26",
+   "fleet_id": "CVE4",
+   "fleet_name": "护航航母群4",
+   "ship": "us-dd-26"
+  },
+  {
+   "id": "us-dd-27",
+   "faction": "A",
+   "name": "弗莱彻号27",
+   "fleet_id": "CVE4",
+   "fleet_name": "护航航母群4",
+   "ship": "us-dd-27"
+  },
+  {
+   "id": "us-dd-28",
+   "faction": "A",
+   "name": "弗莱彻号28",
+   "fleet_id": "CVE4",
+   "fleet_name": "护航航母群4",
+   "ship": "us-dd-28"
   }
  ],
  "air_deployments": [
@@ -2828,6 +3148,582 @@
    "unit": "e13a",
    "carrier": "jp-ca-06",
    "skill": "regular"
+  },
+  {
+   "id": "us-cve-01-fm2-x1",
+   "unit": "fm2",
+   "carrier": "us-cve-01",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-01-fm2-x2",
+   "unit": "fm2",
+   "carrier": "us-cve-01",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-01-fm2-x3",
+   "unit": "fm2",
+   "carrier": "us-cve-01",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-01-tbf-x1",
+   "unit": "tbf",
+   "carrier": "us-cve-01",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-01-tbf-x2",
+   "unit": "tbf",
+   "carrier": "us-cve-01",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-01-tbf-x3",
+   "unit": "tbf",
+   "carrier": "us-cve-01",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-02-fm2-x1",
+   "unit": "fm2",
+   "carrier": "us-cve-02",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-02-fm2-x2",
+   "unit": "fm2",
+   "carrier": "us-cve-02",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-02-fm2-x3",
+   "unit": "fm2",
+   "carrier": "us-cve-02",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-02-tbf-x1",
+   "unit": "tbf",
+   "carrier": "us-cve-02",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-02-tbf-x2",
+   "unit": "tbf",
+   "carrier": "us-cve-02",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-02-tbf-x3",
+   "unit": "tbf",
+   "carrier": "us-cve-02",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-03-fm2-x1",
+   "unit": "fm2",
+   "carrier": "us-cve-03",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-03-fm2-x2",
+   "unit": "fm2",
+   "carrier": "us-cve-03",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-03-fm2-x3",
+   "unit": "fm2",
+   "carrier": "us-cve-03",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-03-tbf-x1",
+   "unit": "tbf",
+   "carrier": "us-cve-03",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-03-tbf-x2",
+   "unit": "tbf",
+   "carrier": "us-cve-03",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-03-tbf-x3",
+   "unit": "tbf",
+   "carrier": "us-cve-03",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-04-fm2-x1",
+   "unit": "fm2",
+   "carrier": "us-cve-04",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-04-fm2-x2",
+   "unit": "fm2",
+   "carrier": "us-cve-04",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-04-fm2-x3",
+   "unit": "fm2",
+   "carrier": "us-cve-04",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-04-tbf-x1",
+   "unit": "tbf",
+   "carrier": "us-cve-04",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-04-tbf-x2",
+   "unit": "tbf",
+   "carrier": "us-cve-04",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-04-tbf-x3",
+   "unit": "tbf",
+   "carrier": "us-cve-04",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-05-fm2-x1",
+   "unit": "fm2",
+   "carrier": "us-cve-05",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-05-fm2-x2",
+   "unit": "fm2",
+   "carrier": "us-cve-05",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-05-fm2-x3",
+   "unit": "fm2",
+   "carrier": "us-cve-05",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-05-tbf-x1",
+   "unit": "tbf",
+   "carrier": "us-cve-05",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-05-tbf-x2",
+   "unit": "tbf",
+   "carrier": "us-cve-05",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-05-tbf-x3",
+   "unit": "tbf",
+   "carrier": "us-cve-05",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-06-fm2-x1",
+   "unit": "fm2",
+   "carrier": "us-cve-06",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-06-fm2-x2",
+   "unit": "fm2",
+   "carrier": "us-cve-06",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-06-fm2-x3",
+   "unit": "fm2",
+   "carrier": "us-cve-06",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-06-tbf-x1",
+   "unit": "tbf",
+   "carrier": "us-cve-06",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-06-tbf-x2",
+   "unit": "tbf",
+   "carrier": "us-cve-06",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-06-tbf-x3",
+   "unit": "tbf",
+   "carrier": "us-cve-06",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-07-fm2-x1",
+   "unit": "fm2",
+   "carrier": "us-cve-07",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-07-fm2-x2",
+   "unit": "fm2",
+   "carrier": "us-cve-07",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-07-fm2-x3",
+   "unit": "fm2",
+   "carrier": "us-cve-07",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-07-tbf-x1",
+   "unit": "tbf",
+   "carrier": "us-cve-07",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-07-tbf-x2",
+   "unit": "tbf",
+   "carrier": "us-cve-07",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-07-tbf-x3",
+   "unit": "tbf",
+   "carrier": "us-cve-07",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-08-fm2-x1",
+   "unit": "fm2",
+   "carrier": "us-cve-08",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-08-fm2-x2",
+   "unit": "fm2",
+   "carrier": "us-cve-08",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-08-fm2-x3",
+   "unit": "fm2",
+   "carrier": "us-cve-08",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-08-tbf-x1",
+   "unit": "tbf",
+   "carrier": "us-cve-08",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-08-tbf-x2",
+   "unit": "tbf",
+   "carrier": "us-cve-08",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-08-tbf-x3",
+   "unit": "tbf",
+   "carrier": "us-cve-08",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-09-fm2-x1",
+   "unit": "fm2",
+   "carrier": "us-cve-09",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-09-fm2-x2",
+   "unit": "fm2",
+   "carrier": "us-cve-09",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-09-fm2-x3",
+   "unit": "fm2",
+   "carrier": "us-cve-09",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-09-tbf-x1",
+   "unit": "tbf",
+   "carrier": "us-cve-09",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-09-tbf-x2",
+   "unit": "tbf",
+   "carrier": "us-cve-09",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-09-tbf-x3",
+   "unit": "tbf",
+   "carrier": "us-cve-09",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-10-fm2-x1",
+   "unit": "fm2",
+   "carrier": "us-cve-10",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-10-fm2-x2",
+   "unit": "fm2",
+   "carrier": "us-cve-10",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-10-fm2-x3",
+   "unit": "fm2",
+   "carrier": "us-cve-10",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-10-tbf-x1",
+   "unit": "tbf",
+   "carrier": "us-cve-10",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-10-tbf-x2",
+   "unit": "tbf",
+   "carrier": "us-cve-10",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-10-tbf-x3",
+   "unit": "tbf",
+   "carrier": "us-cve-10",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-11-fm2-x1",
+   "unit": "fm2",
+   "carrier": "us-cve-11",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-11-fm2-x2",
+   "unit": "fm2",
+   "carrier": "us-cve-11",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-11-fm2-x3",
+   "unit": "fm2",
+   "carrier": "us-cve-11",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-11-tbf-x1",
+   "unit": "tbf",
+   "carrier": "us-cve-11",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-11-tbf-x2",
+   "unit": "tbf",
+   "carrier": "us-cve-11",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-11-tbf-x3",
+   "unit": "tbf",
+   "carrier": "us-cve-11",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-12-fm2-x1",
+   "unit": "fm2",
+   "carrier": "us-cve-12",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-12-fm2-x2",
+   "unit": "fm2",
+   "carrier": "us-cve-12",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-12-fm2-x3",
+   "unit": "fm2",
+   "carrier": "us-cve-12",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-12-tbf-x1",
+   "unit": "tbf",
+   "carrier": "us-cve-12",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-12-tbf-x2",
+   "unit": "tbf",
+   "carrier": "us-cve-12",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-12-tbf-x3",
+   "unit": "tbf",
+   "carrier": "us-cve-12",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-13-fm2-x1",
+   "unit": "fm2",
+   "carrier": "us-cve-13",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-13-fm2-x2",
+   "unit": "fm2",
+   "carrier": "us-cve-13",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-13-fm2-x3",
+   "unit": "fm2",
+   "carrier": "us-cve-13",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-13-tbf-x1",
+   "unit": "tbf",
+   "carrier": "us-cve-13",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-13-tbf-x2",
+   "unit": "tbf",
+   "carrier": "us-cve-13",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-13-tbf-x3",
+   "unit": "tbf",
+   "carrier": "us-cve-13",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-14-fm2-x1",
+   "unit": "fm2",
+   "carrier": "us-cve-14",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-14-fm2-x2",
+   "unit": "fm2",
+   "carrier": "us-cve-14",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-14-fm2-x3",
+   "unit": "fm2",
+   "carrier": "us-cve-14",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-14-tbf-x1",
+   "unit": "tbf",
+   "carrier": "us-cve-14",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-14-tbf-x2",
+   "unit": "tbf",
+   "carrier": "us-cve-14",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-14-tbf-x3",
+   "unit": "tbf",
+   "carrier": "us-cve-14",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-15-fm2-x1",
+   "unit": "fm2",
+   "carrier": "us-cve-15",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-15-fm2-x2",
+   "unit": "fm2",
+   "carrier": "us-cve-15",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-15-fm2-x3",
+   "unit": "fm2",
+   "carrier": "us-cve-15",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-15-tbf-x1",
+   "unit": "tbf",
+   "carrier": "us-cve-15",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-15-tbf-x2",
+   "unit": "tbf",
+   "carrier": "us-cve-15",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-15-tbf-x3",
+   "unit": "tbf",
+   "carrier": "us-cve-15",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-16-fm2-x1",
+   "unit": "fm2",
+   "carrier": "us-cve-16",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-16-fm2-x2",
+   "unit": "fm2",
+   "carrier": "us-cve-16",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-16-fm2-x3",
+   "unit": "fm2",
+   "carrier": "us-cve-16",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-16-tbf-x1",
+   "unit": "tbf",
+   "carrier": "us-cve-16",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-16-tbf-x2",
+   "unit": "tbf",
+   "carrier": "us-cve-16",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cve-16-tbf-x3",
+   "unit": "tbf",
+   "carrier": "us-cve-16",
+   "skill": "veteran"
   }
  ],
  "airfields": [
