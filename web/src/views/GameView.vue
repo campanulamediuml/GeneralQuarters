@@ -557,10 +557,17 @@ function selectHex(coord: string) {
   mapAirTaskID.value = ''
   inspectedAirfieldID.value = ''
   shipDetailOpen.value = false
+  const airfieldHere = airfields.value.find((item) => item.coord === coord)
   const found = fleets.value.filter((fleet) => fleet.coord === coord)
   if (!found.length) {
     selectedID.value = ''
     menuCoord.value = ''
+    // 基地格：点整格和点那张小牌子应该是一回事。卡片缩到 55px 之后，
+    // 手指想精准点中它越来越难，而名字/details本来就在展开后的面板里。
+    if (airfieldHere) {
+      if (airfieldHere.faction === state.value?.you.faction) selectAirfield(airfieldHere.id)
+      else inspectAirfield(airfieldHere.id)
+    }
     return
   }
   if (found.length === 1) {
