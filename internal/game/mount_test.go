@@ -282,3 +282,93 @@ func TestLightLoadOnlyForWeapons(t *testing.T) {
 		}
 	}
 }
+
+// TestHeavyBombAddsGroundAttackValue 重型炸弹对地也要 +2（规则书 82 行）。
+// 对舰那条路径一直有加成，对地这条漏了：同一队挂重型炸弹的飞机炸船 +2、炸机场原值。
+func TestHeavyBombAddsGroundAttackValue(t *testing.T) {
+	state := sandboxState(t)
+	airfield := state.Airfields["af-b-sentry"]
+	if airfield == nil {
+		t.Fatal("靶场缺少 af-b-sentry")
+	}
+	state.Aircraft = map[string]*AirUnit{
+		"heavy": &AirUnit{ID: "heavy", CarrierID: "a2-cv-01", Faction: "A", Kind: "dive_bomber", Model: "SB2C", Status: "attack",
+			Strength: 2, AirCombat: 1, AntiShip: 4, AntiGround: 4, Loadout: LoadoutBomb, TaskID: "heavy-task", TaskKind: "attack",
+			Coord: airfield.Coord, TargetCoord: airfield.Coord, RemainingRange: 8, MaxRange: 12},
+		"tank": &AirUnit{ID: "tank", CarrierID: "a2-cv-01", Faction: "A", Kind: "dive_bomber", Model: "SB2C", Status: "attack",
+			Strength: 2, AirCombat: 1, AntiShip: 4, AntiGround: 4, Loadout: LoadoutBombTank, TaskID: "heavy-task", TaskKind: "attack",
+			Coord: airfield.Coord, TargetCoord: airfield.Coord, RemainingRange: 8, MaxRange: 12},
+	}
+	state.RNGState = 20241116
+	resolveGroundStrike(&state, "heavy-task", airfield.Coord)
+	if len(state.AirCombats) != 1 {
+		t.Fatalf("应生成对地报告：%v", state.AirCombats)
+	}
+	// 重型炸弹 4+2=6 点，普通炸弹 4 点：投弹尝试数就是两者之和。
+	if got := state.AirCombats[0].BombAttempts; got != 6+4 {
+		t.Fatalf("重型炸弹应让对地攻击值 +2：投弹尝试数=%d，期望 10", got)
+	}
+}
+
+// TestLoadoutBonusShowsInAircraftViews 视图里的对地/对舰要跟着挂载走：
+// 玩家切到重型炸弹，任务卡上的数字就得当场变大，不能只有航程缩水。
+// 加成只加在投影出来的副本上，state 里的基础值不许被改（否则结算会 +4）。
+func TestLoadoutBonusShowsInAircraftViews(t *testing.T) {
+	state := sandboxState(t)
+	id := "af-b-fighter-1"
+	aircraft := state.GroundAir[id]
+	if aircraft == nil {
+		t.Fatal("靶场缺少 af-b-fighter-1")
+	}
+	aircraft.Loadout = LoadoutBomb
+	baseGround, baseShip := aircraft.AntiGround, aircraft.AntiShip
+
+	view := GroundAircraftView(state, "B")
+	found := false
+	for _, unit := range view {
+		if unit.ID != id {
+			continue
+		}
+		found = true
+		if unit.AntiGround != baseGround+2 || unit.AntiShip != baseShip+2 {
+			t.Fatalf("重型炸弹在视图里应 +2：对地%d→%d 对舰%d→%d", baseGround, unit.AntiGround, baseShip, unit.AntiShip)
+		}
+	}
+	if !found {
+		t.Fatal("机场算子没出现在投影里")
+	}
+	if state.GroundAir[id].AntiGround != baseGround || state.GroundAir[id].AntiShip != baseShip {
+		t.Fatal("挂载加成不能写回 state，否则结算会重复计算")
+	}
+
+	// 舰载机那一侧同理：航母面板里的算子也走同一套投影。
+	carrier := coralCombatState(t)
+	carrierID := ""
+	baseShip = 0
+	for _, unit := range carrier.Aircraft {
+		if unit.Faction == "A" && unit.CarrierID != "" && unit.AntiShip > 0 {
+			carrierID = unit.ID
+			baseShip = unit.AntiShip
+			unit.Loadout = LoadoutBomb
+			break
+		}
+	}
+	if carrierID == "" {
+		t.Fatal("靶场没有可用的舰载机")
+	}
+	seen := false
+	for _, status := range VisibleAviation(carrier, "A").Carriers {
+		for _, unit := range status.Aircraft {
+			if unit.ID != carrierID {
+				continue
+			}
+			seen = true
+			if unit.AntiShip != baseShip+2 {
+				t.Fatalf("舰载机视图的对舰值应 +2：%d→%d", baseShip, unit.AntiShip)
+			}
+		}
+	}
+	if !seen {
+		t.Fatal("舰载机没出现在航母面板投影里")
+	}
+}

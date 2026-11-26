@@ -2295,7 +2295,7 @@ func VisibleAviation(state State, faction string) AviationView {
 			if canSearch(projection) {
 				projection.ReconRadiusLimit = ReconRadiusLimit(projection)
 			}
-			carrier.Aircraft = append(carrier.Aircraft, projection)
+			carrier.Aircraft = append(carrier.Aircraft, withLoadoutAttack(projection))
 		}
 		sort.Slice(carrier.Aircraft, func(i, j int) bool { return carrier.Aircraft[i].ID < carrier.Aircraft[j].ID })
 		// 甲板被占满时，指出是被"还没设目标的攻击编队"占住的：玩家需要把编队取消
@@ -2346,7 +2346,7 @@ func VisibleAviation(state State, faction string) AviationView {
 		carrierSet := map[string]bool{}
 		for _, aircraft := range aircraftList {
 			task.AircraftIDs = append(task.AircraftIDs, aircraft.ID)
-			task.Aircraft = append(task.Aircraft, *aircraft)
+			task.Aircraft = append(task.Aircraft, withLoadoutAttack(*aircraft))
 			if !carrierSet[aircraft.CarrierID] {
 				carrierSet[aircraft.CarrierID] = true
 				task.CarrierIDs = append(task.CarrierIDs, aircraft.CarrierID)

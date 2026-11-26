@@ -169,7 +169,7 @@ func VisibleGroundAir(state State, faction string) []AirfieldAirStatus {
 		}
 		for _, aircraftID := range sortedGroundAirIDs(state, airfield.ID) {
 			aircraft := state.GroundAir[aircraftID]
-			status.Aircraft = append(status.Aircraft, *aircraft)
+			status.Aircraft = append(status.Aircraft, withLoadoutAttackGround(*aircraft))
 			if !airfieldAirborne(aircraft) {
 				status.HangarUsed++
 			}
@@ -665,7 +665,9 @@ func resolveGroundStrike(state *State, taskID, coord string) []EngineEvent {
 		if !operationalAircraft(state, aircraft) {
 			continue
 		}
-		antiGround := aircraft.AntiGround
+		// 重型炸弹 +2 对地（规则书 82 行）：对舰那条路径早就加了，对地漏了，
+		// 于是同一队挂重型炸弹的飞机炸船是 +2、炸机场反而是原值。
+		antiGround := aircraft.AntiGround + AttackBonus(aircraft.Loadout)
 		if aircraft.Confusion && antiGround > 0 {
 			antiGround--
 		}
@@ -2245,7 +2247,7 @@ func GroundAviationView(state State, faction string) AviationView {
 		carrier := CarrierAirStatus{UnitID: status.UnitID, Name: status.Name, Type: string(status.Type), DeckLength: status.Runways}
 		carrier.Aircraft = []AirUnit{}
 		for _, aircraft := range status.Aircraft {
-			carrier.Aircraft = append(carrier.Aircraft, groundAirUnit(state, &aircraft))
+			carrier.Aircraft = append(carrier.Aircraft, withLoadoutAttack(groundAirUnit(state, &aircraft)))
 		}
 		view.Carriers = append(view.Carriers, carrier)
 	}
@@ -2266,7 +2268,8 @@ func GroundAviationView(state State, faction string) AviationView {
 		leader := members[0]
 		task := AirTask{ID: taskID, Kind: leader.TaskKind, Name: leader.Model, Priority: leader.Priority, AircraftIDs: []string{}, Aircraft: []AirUnit{}, CarrierIDs: []string{leader.AirfieldID}, CarrierID: leader.AirfieldID}
 		for _, member := range members {
-			unit := groundAirUnit(state, member)
+			// 任务卡上的对地/对舰要跟着挂载走：切重型炸弹就得当场 +2。
+			unit := withLoadoutAttack(groundAirUnit(state, member))
 			task.Aircraft = append(task.Aircraft, unit)
 			task.AircraftIDs = append(task.AircraftIDs, member.ID)
 			if airfieldAirborne(member) {
@@ -2439,7 +2442,7 @@ func groundAirUnit(state State, aircraft *AirfieldAirUnit) AirUnit {
 func GroundAircraftView(state State, faction string) []AirUnit {
 	result := []AirUnit{}
 	for _, id := range sortedGroundAirIDsByFaction(state, faction) {
-		result = append(result, groundAirUnit(state, state.GroundAir[id]))
+		result = append(result, withLoadoutAttack(groundAirUnit(state, state.GroundAir[id])))
 	}
 	return result
 }

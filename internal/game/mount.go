@@ -360,6 +360,28 @@ func AttackBonus(loadout Loadout) int {
 	return 0
 }
 
+// withLoadoutAttack 返回"折过挂载加成"的算子副本，只给玩家视图用。
+//
+// state 里存的是基础攻击值，结算时自己会加一次 AttackBonus（对舰见 resolveBombingOn、
+// 对地见 resolveGroundStrike）。视图是另一条路：玩家把挂载切成重型炸弹，卡片上的
+// 对地/对舰就该当场变成 +2，否则只能看到航程缩水，攻击值一点不动，很像没生效。
+// 加成绝不能写进 state：结算再加一次就会变成 +4，还会被状态存档带下去。
+func withLoadoutAttack(unit AirUnit) AirUnit {
+	bonus := AttackBonus(unit.Loadout)
+	unit.AntiShip += bonus
+	unit.AntiGround += bonus
+	return unit
+}
+
+// withLoadoutAttackGround 是同一个加成在机场算子上的版本：机场那套投影
+// 直接下发 AirfieldAirUnit 本体，不经过 AirUnit。
+func withLoadoutAttackGround(unit AirfieldAirUnit) AirfieldAirUnit {
+	bonus := AttackBonus(unit.Loadout)
+	unit.AntiShip += bonus
+	unit.AntiGround += bonus
+	return unit
+}
+
 // LightLoadRange 是投弹后的"轻载"加成：当前剩余航程 +20%（规则书 83 行）。
 func LightLoadRange(current int) int {
 	if current <= 0 {
