@@ -168,27 +168,38 @@ func TestShoreBombardmentStartsAfterOneTurnAndRepeats(t *testing.T) {
 	}
 }
 
-// TestAirfieldSortieBudget 跑道作业上限：每条可用跑道每回合 12 次起降，超出的顺延，
-// 机场被空袭打断的整备会占用一次通行名额（规则书 250、218 行）。
+// TestAirfieldSortieBudget 跑道作业上限：每条可用跑道每回合 12 次起降，只有起飞/降落占名额；
+// 机场被空袭打断的整备会占用一次通行名额（规则书 258、218 行）。
 func TestAirfieldSortieBudget(t *testing.T) {
 	state := sandboxState(t)
 	airfield := state.Airfields["af-a-lighthouse"]
-	// 造一个整备耗时更长的场景：塞满跑道作业预算后，新整备的算子应当顺延
-	state.GroundAir["fuel-1"] = &AirfieldAirUnit{ID: "fuel-1", AirfieldID: airfield.ID, Faction: "A", Kind: "recon", Model: "F6F-5P", Status: "service", MaxRange: 16, RemainingRange: 16}
-	// AdvanceAirfields 每回合会按跑道数重置预算（跑道×12），常规编制下永远用不完；
-	// 这里用负数模拟"本回合预算已被人为耗尽"（机场刚被打断作业），算子必须原地顺延。
-	state.GroundAir = map[string]*AirfieldAirUnit{"fuel-1": state.GroundAir["fuel-1"]}
+	// 跑道上的算子要起飞才占名额：预算为负（机场刚被打断作业）时必须留在跑道待命。
+	plane := &AirfieldAirUnit{ID: "fuel-1", AirfieldID: airfield.ID, Faction: "A", Kind: "recon", Model: "F6F-5P", Status: "ready",
+		TaskID: "af-recon", TaskKind: "recon", Heading: "E", SectorWidth: 60, ReconRadius: 4, MaxRange: 16, RemainingRange: 16}
+	state.GroundAir = map[string]*AirfieldAirUnit{"fuel-1": plane}
 	airfield.OpsRemaining = -1
+	events := AdvanceAirfields(&state)
+	if plane.Status != "ready" {
+		t.Fatalf("跑道作业已满时应顺延，实际状态 %s", plane.Status)
+	}
+	if !hasEvent(events, "airfield_congested") {
+		t.Fatal("起飞顺延应留一条跑道作业已满的战报")
+	}
+	// 每回合开始会按可用跑道重置名额：有空闲名额的下一回合就能起飞。
+	airfield.OpsRemaining = 1
 	AdvanceAirfields(&state)
-	if got := state.GroundAir["fuel-1"].Status; got != "service" {
-		t.Fatalf("跑道作业已满时应顺延，实际状态 %s", got)
+	if plane.Status != "recon" {
+		t.Fatalf("跑道有空闲作业名额时应起飞，实际状态 %s", plane.Status)
+	}
+	if want := RunwaysAvailable(airfield.Strength, airfield.Runways)*runwaySortiesPerTurn - 1; airfield.OpsRemaining != want {
+		t.Fatalf("起飞应消耗一次跑道作业名额：剩余 %d，期望 %d", airfield.OpsRemaining, want)
 	}
 	// 打断整备会消耗一次通行名额
 	airfield.OpsRemaining = 1
-	state.GroundAir["fuel-1"].Status = "deck"
+	plane.Status = "deck"
 	interruptAirfieldOperations(&state, airfield)
-	if airfield.OpsRemaining != 0 || state.GroundAir["fuel-1"].Status != "hangar" {
-		t.Fatalf("受袭打断应退回机库并占用一次通行名额：ops=%d status=%s", airfield.OpsRemaining, state.GroundAir["fuel-1"].Status)
+	if airfield.OpsRemaining != 0 || plane.Status != "hangar" {
+		t.Fatalf("受袭打断应退回机库并占用一次通行名额：ops=%d status=%s", airfield.OpsRemaining, plane.Status)
 	}
 }
 

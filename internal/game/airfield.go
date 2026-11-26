@@ -355,7 +355,10 @@ func AdvanceAirfields(state *State) []EngineEvent {
 		if runways == 0 {
 			continue
 		}
-		// 每条可用跑道每回合 12 次起降，超出部分顺延到后续回合；
+		// 规则书 252–258 行：机场整备是 机库整备 → 滑行到跑道 → 起飞，前两个阶段没有吞吐限制；
+		// 只有真正的起飞/降落才占跑道作业次数（每条可用跑道每回合 12 次）。
+		// 以前这里把整备、滑行、回收各扣一次名额，等于给机场也套了一道"升降机容量"的闸门，
+		// 岸基航空兵反而比航母出动得慢——机场既没有升降机，也不该有这道限制。
 		// OpsRemaining 小于 0 表示"预算已被人为耗尽"（机场被打断作业时扣掉名额），此时本回合不再放行。
 		budget := runways * runwaySortiesPerTurn
 		if airfield.OpsRemaining < 0 {
@@ -363,14 +366,6 @@ func AdvanceAirfields(state *State) []EngineEvent {
 		}
 		for _, aircraftID := range sortedGroundAirIDs(*state, airfield.ID) {
 			aircraft := state.GroundAir[aircraftID]
-			switch aircraft.Status {
-			case "service", "deck", "recovery":
-				if budget <= 0 {
-					events = append(events, EngineEvent{Type: "airfield_congested", Audience: airfield.Faction, Text: fmt.Sprintf("%s跑道作业已满，%s顺延到后续回合", airfield.Name, aircraft.Model)})
-					continue
-				}
-				budget--
-			}
 			switch aircraft.Status {
 			case "service":
 				aircraft.Status = "deck"
@@ -425,6 +420,13 @@ func launchReadyGroundTasks(state *State) []EngineEvent {
 			if !state.LaunchWindowOpen() {
 				continue
 			}
+			// 起飞才是跑道作业：每架扣一次起降名额，用完就留在跑道待命，下回合再走。
+			// 整备和滑行不占名额（规则书 258 行），所以这里才是机场唯一的吞吐闸门。
+			if airfield.OpsRemaining <= 0 {
+				events = append(events, EngineEvent{Type: "airfield_congested", Audience: aircraft.Faction, Text: fmt.Sprintf("%s跑道作业已满，%s顺延到后续回合", airfield.Name, aircraft.Model)})
+				continue
+			}
+			airfield.OpsRemaining--
 			launchGroundAircraft(state, aircraft, airfield)
 			events = append(events, EngineEvent{Type: "air_launched", Audience: aircraft.Faction, Text: fmt.Sprintf("%s从%s起飞", aircraft.Model, airfield.Name)})
 		}

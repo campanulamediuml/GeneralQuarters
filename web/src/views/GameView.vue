@@ -265,8 +265,10 @@ function aircraftFlightStatus(aircraft: AirUnit) {
   if (airborne && aircraft.returning) return '返航中'
   if (aircraft.status === 'attack_holding') return '出击中 · 等待编队'
   if (aircraft.status === 'attack') return '出击中'
-  if (aircraft.status === 'recovery') return '着舰中'
-  const labels: Record<string, string> = { hangar: '机库待命', service: '整备中', elevator: '升降机', deck: '甲板待命', ready: '整备完毕', cap: 'CAP', recon: '侦察', cover: '掩护', transfer: '转场中' }
+  // 机场算子不走甲板和升降机：落地是在跑道上，待命也是在跑道上，不能跟着航母叫"着舰/甲板"。
+  const fromAirfield = airfields.value.some((airfield) => airfield.id === aircraft.carrier_id)
+  if (aircraft.status === 'recovery') return fromAirfield ? '着陆中' : '着舰中'
+  const labels: Record<string, string> = { hangar: '机库待命', service: '整备中', elevator: '升降机', deck: fromAirfield ? '跑道待命' : '甲板待命', ready: '整备完毕', cap: 'CAP', recon: '侦察', cover: '掩护', transfer: '转场中' }
   return labels[aircraft.status] || '空中'
 }
 const mapAirTaskPhase = computed(() => {

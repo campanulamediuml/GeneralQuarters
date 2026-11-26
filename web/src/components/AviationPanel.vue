@@ -168,6 +168,9 @@ const headings: { id: ReconHeading; arrow: string; name: string }[] = [
 ]
 const headingRotation: Record<ReconHeading, number> = { E: 0, SE: 60, SW: 120, W: 180, NW: 240, NE: 300 }
 const selectedCarrier = computed(() => carriers.value.find((carrier) => carrier.unit_id === selectedCarrierID.value))
+// 当前看的这支部队是不是机场：机场没有升降机/甲板，面板里跟"提升、下降、甲板"有关的说法都要换掉，
+// 否则岸基飞机在跑道上待命，提示却写着"甲板待飞 · 可拖回排队下降"。
+const airfieldMode = computed(() => Boolean(selectedCarrier.value && isAirfield(selectedCarrier.value)))
 const selectedUnit = computed(() => props.units.find((unit) => unit.id === selectedCarrierID.value))
 const reconTask = computed(() => tasks.value.find((task) => task.id === reconTaskID.value && task.kind === 'recon'))
 const reconAircraft = computed(() => {
@@ -382,6 +385,12 @@ function taskPhase(task: AirTask) {
   return '出击中'
 }
 
+// 任务归属：机场任务的回收说法和航母不一样（着陆回机库 vs 着舰排队下降）。
+function isAirfieldTask(task: AirTask) {
+  const carrier = carriers.value.find((item) => item.unit_id === task.carrier_id)
+  return Boolean(carrier && isAirfield(carrier))
+}
+
 function taskTitle(task: AirTask) {
   if (task.kind === 'recon') return '扇面侦察'
   if (task.kind === 'attack') return '攻击编队'
@@ -398,7 +407,7 @@ function taskSummary(task: AirTask) {
     const base = `${task.airborne_count}/${task.aircraft_ids.length} 已升空 · 目标 ${task.target_coord || '未指定'}`
     return task.cannot_land ? `${base} · ⚠ 目标机库已满，无法降落` : base
   }
-  if (task.phase === 'recovering') return `${task.airborne_count}/${task.aircraft_ids.length} 仍在空中，其余已落舰等待下降`
+  if (task.phase === 'recovering') return `${task.airborne_count}/${task.aircraft_ids.length} 仍在空中，${isAirfieldTask(task) ? '其余已着陆回机库' : '其余已落舰等待下降'}`
   if (task.kind === 'cap') return `${task.airborne_count}/${task.aircraft_ids.length} 已升空`
   if (['servicing', 'lifting', 'preparing'].includes(task.phase)) return `${task.airborne_count}/${task.aircraft_ids.length} 已升空`
   if (task.tracking_fleet_id) return '持续跟踪'
@@ -552,8 +561,12 @@ function counterHint(aircraft: AirUnit) {
   if ((aircraft.maintenance || 0) > 0) return `检修中 · 还需${aircraft.maintenance}回合`
   if (aircraft.status === 'service') return '整备中 · 可拖回机库'
   if (aircraft.status === 'elevator') return elevatorZone(aircraft.id) === 'deck' ? '提升中 · 即将上甲板' : '下降中 · 即将进机库'
-  if (aircraft.status === 'recovery') return '已着舰 · 等待升降机下降'
-  if (aircraft.status === 'deck' || aircraft.status === 'ready') return aircraft.task_id ? '甲板待飞 · 可拖回排队下降' : '可拖入任务立即放飞'
+  // 岸基没有升降机：落地就是在跑道上，下一步回机位，不存在"排队下降"。
+  if (aircraft.status === 'recovery') return airfieldMode.value ? '已着陆 · 即将回机库' : '已着舰 · 等待升降机下降'
+  if (aircraft.status === 'deck' || aircraft.status === 'ready') {
+    if (airfieldMode.value) return aircraft.task_id ? '跑道待飞 · 可拖回机库取消任务' : '可拖入任务立即放飞'
+    return aircraft.task_id ? '甲板待飞 · 可拖回排队下降' : '可拖入任务立即放飞'
+  }
   const loadout = loadoutName(aircraft.loadout, aircraft.tank_dropped)
   // 在空中的算子要能分出"出击中"和"返航中"：单看 status 分不出来，
   // 往目标飞和往回飞都是 attack，只有 returning 这个标记能回答"它现在是在去还是回"。
@@ -616,7 +629,7 @@ function operationName(carrier: CarrierAirStatus) {
                 >
                   <option v-for="option in loadoutOptionsFor(stack.aircraft)" :key="option" :value="option">{{ loadoutLabels[option] || option }}</option>
                 </select>
-                <button v-if="stack.aircraft.status === 'cap'" :disabled="busy" @click.stop="recover(stack.ids)">着舰并排队下降</button>
+                <button v-if="stack.aircraft.status === 'cap'" :disabled="busy" @click.stop="recover(stack.ids)">{{ airfieldMode ? '着陆并回收' : '着舰并排队下降' }}</button>
               </div>
             </div>
             <aside class="air-task-content">
@@ -680,8 +693,8 @@ function operationName(carrier: CarrierAirStatus) {
             <AircraftCounter :aircraft="stack.aircraft" :stack-count="stack.ids.length" :player-faction="playerFaction" :class="{ selected: stack.ids.some((id) => selectedIDs.includes(id)), selectable: stack.aircraft.status !== 'recovery' }" :draggable="stack.aircraft.status !== 'recovery'" @click="stack.aircraft.status !== 'recovery' && selectCounter(stack.aircraft, stack.ids)" @toggle-cycle="toggleCycle(stack.aircraft, stack.ids)" @dragstart="stack.aircraft.status !== 'recovery' && startDrag(stack.aircraft, $event, stack.ids)" @dragend="endDrag" />
             <span class="air-no-action">{{ counterHint(stack.aircraft) }}</span>
           </div>
-          <button v-if="selectedIDs.length" class="return-hangar-button" :disabled="busy" @click="assignTarget('hangar')">取消任务并排队下降</button>
-          <span v-if="!aircraftAt('deck').length" class="empty-air-zone">甲板空置</span>
+          <button v-if="selectedIDs.length" class="return-hangar-button" :disabled="busy" @click="assignTarget('hangar')">{{ airfieldMode ? '取消任务并回机库' : '取消任务并排队下降' }}</button>
+          <span v-if="!aircraftAt('deck').length" class="empty-air-zone">{{ airfieldMode ? '跑道空置' : '甲板空置' }}</span>
         </div>
 
       </section>
@@ -758,7 +771,7 @@ function operationName(carrier: CarrierAirStatus) {
     <div v-if="reconAircraft" class="recon-dialog" @click.self="reconAircraftIDs = []; reconTaskID = ''">
       <section class="recon-modal" role="dialog" aria-modal="true" aria-label="配置扇面侦察">
         <header><div><span class="section-kicker">SECTOR RECONNAISSANCE</span><h2>{{ reconTask ? '加入已有侦察组' : '配置扇面侦察' }}</h2></div><button aria-label="关闭" @click="reconAircraftIDs = []; reconTaskID = ''">×</button></header>
-        <p>{{ reconAircraft.model }} · {{ reconAircraftIDs.length }}个算子。{{ reconTask ? `加入${reconTask.name}，沿用该组的航向、扇面和半径。` : '确认后进入所选侦察任务栏。' }}未备好的算子依次完成任务整备、升降机提升并自动放飞，已备好的算子立即起飞。服务器保存扇面配置，并以实际起飞时的母舰位置为顶点进行发现判定。</p>
+        <p>{{ reconAircraft.model }} · {{ reconAircraftIDs.length }}个算子。{{ reconTask ? `加入${reconTask.name}，沿用该组的航向、扇面和半径。` : '确认后进入所选侦察任务栏。' }}未备好的算子依次完成任务整备、{{ airfieldMode ? '滑行到跑道' : '升降机提升' }}并自动放飞，已备好的算子立即起飞。服务器保存扇面配置，并以实际起飞时的母舰位置为顶点进行发现判定。</p>
         <fieldset class="recon-heading-picker" :disabled="!!reconTask"><legend>预定侦察航向</legend><button v-for="heading in headings" :key="heading.id" :class="{ active: reconHeading === heading.id }" :aria-label="`${heading.id} ${heading.name}`" @click="reconHeading = heading.id"><span>{{ heading.arrow }}</span><b>{{ heading.id }}</b><small>{{ heading.name }}</small></button></fieldset>
         <div class="recon-options">
           <fieldset :disabled="!!reconTask"><legend>扇面角度</legend><div class="segmented-control"><button :class="{ active: reconWidth === 60 }" @click="reconWidth = 60">60°<small>标准发现率</small></button><button :class="{ active: reconWidth === 120 }" @click="reconWidth = 120">120°<small>发现率减半</small></button></div></fieldset>
