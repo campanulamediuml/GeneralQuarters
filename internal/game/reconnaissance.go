@@ -841,7 +841,8 @@ func raiseContactToMax(state *State, observer, fleetID string, members []Unit) i
 }
 
 // refreshContactMembers 用舰队当前真实成员刷新情报里的成员快照。
-// 只更新成员与数量，不动 Level / Coord / DisplayCoord —— 位置和等级由侦察与衰减决定。
+// 等级与"最后发现位置"由侦察决定；但 4 级情报是"编成与状态已知"，
+// 位置也要跟着真实舰队走（见函数里的说明）。
 func refreshContactMembers(state *State) {
 	for observer, fleets := range state.Contacts {
 		_ = observer
@@ -853,10 +854,16 @@ func refreshContactMembers(state *State) {
 			if len(members) == 0 {
 				continue
 			}
-			// 只刷新强度/损伤这类会变的字段，坐标必须钉在情报的最后发现位置上。
-			// 之前直接把真实成员塞进去，4 级情报在地图上显示实时位置，而打击命令仍按
-			// contact.Coord 校验——玩家点看得见的舰队被拒，只能盲点旧坐标。
+			// 1–3 级：只刷新强度/损伤这类会变的字段，坐标钉在最后发现位置上（误差按等级收敛）。
+			// 4 级：编成与状态已知，位置也按真实舰队刷新——4 级情报就是"看得见船在哪"，
+			// 地图、敌情面板和打击校验都必须用同一个真实 hex，不能还停在最后发现的那一格。
 			display := intelDisplayCoord(*contact)
+			if contact.Level >= intelMaxLevel {
+				display = members[0].Coord
+				contact.Coord = display
+				contact.Heading = members[0].Heading
+			}
+			contact.DisplayCoord = display
 			for index := range members {
 				members[index].Coord = display
 				members[index].LegalMoves = nil
