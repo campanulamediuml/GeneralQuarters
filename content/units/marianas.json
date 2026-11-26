@@ -2463,7 +2463,7 @@
    "kind": "fighter",
    "strength": 3,
    "range": 10,
-   "air_combat": 4,
+   "air_combat": 5,
    "anti_ship": 0,
    "anti_ground": 2
   },
