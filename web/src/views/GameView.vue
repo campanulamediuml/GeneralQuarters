@@ -59,8 +59,14 @@ const combatSeenKey = 'gq:combat-seen:' + (typeof window === 'undefined' ? '' : 
 function readSeenCombat(): string {
   try { return sessionStorage.getItem(combatSeenKey) || '' } catch { return '' }
 }
+// 本标签页已经播过的战报 id 集合。
+// 只靠"上一份 id 在哪"会漏播：服务端只留最近 20 份战报，一次几百架的大空袭
+// 一回合就可能产出 20 份以上（拦截、各波空袭、对地各算一份），
+// 上一份 id 滚出窗口之后，客户端会把整批新战报当成"窗口动过"直接丢掉。
+const seenCombatIDs = new Set<string>()
 function rememberCombat(id: string) {
   lastAirCombatID = id
+  seenCombatIDs.add(id)
   try { sessionStorage.setItem(combatSeenKey, id) } catch { /* 隐私模式：退化成内存记录 */ }
 }
 let lastAirCombatID = readSeenCombat()
@@ -360,6 +366,11 @@ const clockWindowLabel = computed(() => {
 // 一次结算可能同时产生"拦截 + 空袭"多份报告：以前只播最后一份，
 // 前面那份（常常是真正的投弹结果）直接被吞掉，玩家以为没打中。
 const combatQueue = ref<AirCombatReport[]>([])
+// 动画开始前玩家在哪个面板：战报播完回那里，而不是一律丢回大地图。
+// 播放期间用户可以随便切面板（动画牌位在面板链最前面，不会被卸载打断），
+// 所以关闭时只在自己的面板还占着位置时才恢复，否则尊重用户后点的面板。
+type PanelName = 'map' | 'rules' | 'settings' | 'aviation' | 'airCombat' | 'log' | 'results'
+const panelBeforeCombat = ref<PanelName>('map')
 
 function checkAirCombat(next: GameView, initial = false) {
   const reports = next.air_combats || []
@@ -369,17 +380,10 @@ function checkAirCombat(next: GameView, initial = false) {
     rememberCombat(latestID)
     return false
   }
-  const seenIndex = reports.findIndex((report) => report.id === lastAirCombatID)
-  if (seenIndex < 0) {
-    // 记住的那份已经滚出服务端保留窗口（只留最近 20 份），或者换了房间。
-    // 这只说明"窗口动了"，不代表有新战报：直接对齐到最新一份并静默跳过。
-    // 以前这里回退成 reports.slice(-1)，于是每次重连/刷新都会把最新战报重播一遍。
-    rememberCombat(latestID)
-    return false
-  }
-  const fresh = reports.slice(seenIndex + 1)
+  // 只播没见过的报告：不依赖"上一份在数组里的位置"，因为窗口滚动会把它挤出去。
+  const fresh = reports.filter((report) => !seenCombatIDs.has(report.id))
   if (!fresh.length) return false
-  rememberCombat(fresh[fresh.length - 1].id)
+  for (const report of fresh) rememberCombat(report.id)
   combatQueue.value.push(...fresh)
   // 正在播的那一份不能被打断：以前这里直接 playNext，props.report.id 一变动画就从头开始，
   // 一次结算出"拦截 + 空袭"两份报告时前一份播一半就跳掉，看起来像被卡掉。
@@ -394,20 +398,21 @@ function playNextAirCombat() {
     activeAirCombat.value = null
     return
   }
+  if (activePanel.value !== 'airCombat') panelBeforeCombat.value = activePanel.value
   activeAirCombat.value = nextReport
   activePanel.value = 'airCombat'
 }
 
 function closeAirCombat() {
-  activePanel.value = 'map'
+  // 播放期间玩家可能已经点了别的面板：那只恢复自己占着的这一格。
+  if (activePanel.value === 'airCombat') activePanel.value = panelBeforeCombat.value || 'map'
   activeAirCombat.value = null
   playNextAirCombat()
 }
 
 function baselineAirCombat(next: GameView) {
   const reports = next.air_combats || []
-  const latest = reports[reports.length - 1]
-  if (latest) rememberCombat(latest.id)
+  for (const report of reports) rememberCombat(report.id)
 }
 
 async function loadState(initial = false) {
@@ -1021,7 +1026,10 @@ onUnmounted(() => {
         <p v-if="outcomeText" class="outcome-banner" role="status">{{ outcomeText }}</p>
 
 
-        <div v-if="activePanel === 'map'" class="game-layout map-command-layout">
+        <!-- 战报动画是面板链的第一优先：播放期间切到航空/日志/大地图都不会把它卸载掉。
+             以前它在链中间，玩家随手点一下地图，组件被卸载、定时器清空，动画就停在半路。 -->
+        <AirCombatPanel v-if="activeAirCombat" :report="activeAirCombat" :has-next="combatQueue.length > 0" @close="closeAirCombat" />
+        <div v-else-if="activePanel === 'map'" class="game-layout map-command-layout">
           <section class="map-panel">
             <div class="map-toolbar"><div><span class="section-kicker">OPERATIONAL MAP</span><h1>{{ state.map.name }}</h1></div>
               <div v-if="state.wind" class="wind-indicator" :data-wind="state.wind.wind">
@@ -1157,7 +1165,6 @@ onUnmounted(() => {
         <section v-else-if="activePanel === 'settings'" class="workspace-page"><span class="section-kicker">SETTINGS</span><h1>作战室设置</h1><div class="settings-grid"><div class="side-card"><h2>当前会话</h2><p>指挥官：{{ state.you.name }}</p><p>阵营：{{ state.you.faction }} · 内部房间 ID：<code>{{ state.room_id }}</code></p><p v-if="state.join_token">房间 token：<code>{{ state.join_token }}</code></p><p v-if="watchPath">观战地址：<a :href="watchPath" target="_blank" rel="noreferrer">{{ watchPath }} ↗</a></p><p>连接方式：{{ socketStatus === 'online' ? 'WebSocket实时同步' : 'WebSocket重连中' }}</p></div><div class="side-card"><h2>地图与资源</h2><p>坐标格式：ABCD（行 + 列）</p><p>地图与剧本从服务器持久化内容目录载入。</p><a class="secondary-link" href="/api/docs" target="_blank">查看API与AI扩展文档 ↗</a></div></div></section>
         <AviationPanel v-else-if="activePanel === 'aviation'" :key="selectedAirfield ? 'airfield-' + selectedAirfield.unit_id : 'fleet'" :aviation="aviationCarriers ?? state.aviation" :units="ownUnits" :fleet-id="aviationFleetId" :targets="strikeTargets" :player-faction="state.you.faction" :focus-unit-id="aviationFocusID" :selected-aircraft-id="selectedAirTaskID" :busy="actionBusy || locked" :locked="locked" :airfield="selectedAirfield" :radio-tasks="state.radio_tasks" :clock="state.clock" @command="airCommand" @select-aircraft="selectAircraft" @select-target="chooseStrikeTarget" @night-eta="openStrikeEta" />
         <ResultsPanel v-else-if="activePanel === 'results'" :state="state" />
-        <AirCombatPanel v-else-if="activePanel === 'airCombat' && activeAirCombat" :report="activeAirCombat" :has-next="combatQueue.length > 0" @close="closeAirCombat" />
         <section v-else class="workspace-page"><span class="section-kicker">EVENT LOG</span><h1>日志信息</h1><div class="full-log"><div v-for="event in orderedEvents" :key="event.id" class="full-log-row"><span>T{{ String(event.turn).padStart(2, '0') }}</span><code>#{{ event.id }}</code><p>{{ event.text }}</p><time>{{ new Date(event.created_at).toLocaleTimeString() }}</time></div></div></section>
       </template>
     </div>

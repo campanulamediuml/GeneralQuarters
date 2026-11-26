@@ -49,27 +49,55 @@ const timers: ReturnType<typeof setTimeout>[] = []
 // 每个算子当前"打中并下沉"的舰船，用于逐次投弹的视觉反馈
 const flashes = reactive<Record<string, number>>({})
 
+let advanceTimer: ReturnType<typeof setTimeout> | undefined
+
+// 后面还排着战报（一次结算的"拦截 + 空袭"通常就是两份）时自动翻到下一份：
+// 队列是在播放过程中才变长的（第二份报告晚一帧推过来），所以不能只在挂载时判断一次，
+// 否则第一份停在"结算完成"不动，后面的战报看起来就永远没播。
+function scheduleAdvance() {
+  if (advanceTimer || !props.hasNext) return
+  advanceTimer = setTimeout(() => {
+    advanceTimer = undefined
+    emit('close')
+  }, 900)
+}
+
 function run() {
   timers.forEach(clearTimeout)
   timers.length = 0
+  if (advanceTimer) {
+    clearTimeout(advanceTimer)
+    advanceTimer = undefined
+  }
+  // 同一批命中闪烁不能跨战报串味：组件不一定重建（同一 tick 里换 report 对象时不会卸载），
+  // 不清空的话上一份的命中数会挂到这一份的舰船上。
+  for (const key of Object.keys(flashes)) delete flashes[key]
   phase.value = 'closing'
   timers.push(setTimeout(() => { phase.value = 'clash' }, 1200))
   timers.push(setTimeout(() => { phase.value = 'losses' }, 2300))
   timers.push(setTimeout(() => { phase.value = 'resolved' }, 3600))
-  // 后面还排着战报（一次结算的"拦截 + 空袭"就是两份）时自动翻到下一份，
-  // 不然玩家不点关闭，第二份就永远排在队列里，看起来像动画丢了。
-  if (props.hasNext) timers.push(setTimeout(() => emit('close'), 5600))
-  // 交火阶段后按分配逐条闪红，时序由数据决定
+  // 交火阶段后按分配逐条闪红，时序由数据决定。
+  // 一次几百架的大空袭分配数可能有几十条，按 140ms 线性排会排到十几秒之后，
+  // 早就被"自动翻下一份"关掉了——压缩到 1.25–2.1s 之内，保证每一条命中都看得到。
   props.report.target_allocations?.forEach((allocation, index) => {
     if (!allocation.hits) return
     timers.push(setTimeout(() => {
       flashes[allocation.ship_id] = (flashes[allocation.ship_id] || 0) + allocation.hits
-    }, 1250 + index * 140))
+    }, 1250 + Math.min(index * 90, 850)))
   })
 }
 
 watch(() => props.report.id, run, { immediate: true })
-onUnmounted(() => timers.forEach(clearTimeout))
+watch(phase, (value) => {
+  if (value === 'resolved') scheduleAdvance()
+})
+watch(() => props.hasNext, (hasNext) => {
+  if (hasNext && phase.value === 'resolved') scheduleAdvance()
+})
+onUnmounted(() => {
+  timers.forEach(clearTimeout)
+  if (advanceTimer) clearTimeout(advanceTimer)
+})
 
 const targetKind = computed<'ship' | 'group' | 'airfield'>(() => (props.report.target === 'airfield' ? 'airfield' : props.report.target === 'ship' ? 'ship' : 'group'))
 const isGround = computed(() => targetKind.value === 'airfield')
