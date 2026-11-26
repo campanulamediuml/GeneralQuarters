@@ -63,6 +63,8 @@ func main() {
 	runCtx, stopRun := context.WithCancel(context.Background())
 	defer stopRun()
 	app.StartTurnReconciler(runCtx)
+	// 闲置房间超过 12 小时没人来就整间回收：占的是内存和整段战报历史。
+	app.StartRoomJanitor(runCtx)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"status":"ok"}`))

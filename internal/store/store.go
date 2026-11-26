@@ -182,7 +182,9 @@ func (s *Store) CreateRoom(ctx context.Context, room Room, player Player, sessio
 	if err != nil {
 		return err
 	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO players(id,room_id,faction,name,is_host,ready,connected) VALUES(?,?,?,?,?,0,1)`, player.ID, room.ID, player.Faction, player.Name, boolInt(player.IsHost))
+	// connected 从 0 起步：房子建好时还没有 WebSocket 连上来，连上之后 handleConnect 再置 1。
+	// 写死 1 会让"建了房但没人进"的空房间看起来一直有人，清理器永远回收不掉。
+	_, err = tx.ExecContext(ctx, `INSERT INTO players(id,room_id,faction,name,is_host,ready,connected) VALUES(?,?,?,?,?,0,0)`, player.ID, room.ID, player.Faction, player.Name, boolInt(player.IsHost))
 	if err != nil {
 		return err
 	}
@@ -226,11 +228,11 @@ func (s *Store) JoinRoom(ctx context.Context, joinToken, name, playerID, session
 	if err == nil && existing == "A" {
 		faction = "B"
 	}
-	player = Player{ID: playerID, RoomID: roomID, Faction: faction, Name: name, IsHost: false, Connected: true}
+	player = Player{ID: playerID, RoomID: roomID, Faction: faction, Name: name, IsHost: false}
 	if name == "" {
 		player.Name = "玩家" + faction
 	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO players(id,room_id,faction,name,is_host,ready,connected) VALUES(?,?,?,?,0,0,1)`, player.ID, roomID, faction, player.Name)
+	_, err = tx.ExecContext(ctx, `INSERT INTO players(id,room_id,faction,name,is_host,ready,connected) VALUES(?,?,?,?,0,0,0)`, player.ID, roomID, faction, player.Name)
 	if err != nil {
 		return player, err
 	}
@@ -347,8 +349,79 @@ func (s *Store) SetReady(ctx context.Context, playerID string, ready bool) error
 }
 
 func (s *Store) SetConnected(ctx context.Context, playerID string, connected bool) error {
-	_, err := s.DB.ExecContext(ctx, `UPDATE players SET connected=? WHERE id=?`, boolInt(connected), playerID)
+	if _, err := s.DB.ExecContext(ctx, `UPDATE players SET connected=? WHERE id=?`, boolInt(connected), playerID); err != nil {
+		return err
+	}
+	// 上线、下线都算"房间里有人来过"：顺手刷新 updated_at，否则一个刚有人在看、
+	// 但十几小时没出过命令的房间会在下次巡检被当成僵尸回收。
+	return s.TouchRoomByPlayer(ctx, playerID)
+}
+
+// TouchRoomByPlayer 刷新玩家所在房间的 updated_at。房间"最近有没有动静"就看这个字段。
+func (s *Store) TouchRoomByPlayer(ctx context.Context, playerID string) error {
+	_, err := s.DB.ExecContext(ctx, `UPDATE rooms SET updated_at=? WHERE id=(SELECT room_id FROM players WHERE id=?)`, time.Now().UTC().Format(time.RFC3339Nano), playerID)
 	return err
+}
+
+// TouchRoom 刷新一个房间的 updated_at（观战者连上来看也算动静）。
+func (s *Store) TouchRoom(ctx context.Context, roomID string) error {
+	_, err := s.DB.ExecContext(ctx, `UPDATE rooms SET updated_at=? WHERE id=?`, time.Now().UTC().Format(time.RFC3339Nano), roomID)
+	return err
+}
+
+// ResetConnections 把"在线"标记全部清掉。服务启动时调用：进程一重启，
+// 库里留着的 connected=1 全是上次崩溃前的残留，不清的话僵尸房间永远回收不掉。
+func (s *Store) ResetConnections(ctx context.Context) error {
+	_, err := s.DB.ExecContext(ctx, `UPDATE players SET connected=0`)
+	return err
+}
+
+// IdleRoomIDs 找出"超过 idle 没有任何活动、而且现在没有玩家在线"的房间。
+// 活动时间看 rooms.updated_at：落库的命令/结算会刷新它，玩家上下线也会刷新（见 SetConnected），
+// 所以开着页面看海图不算僵尸房。
+func (s *Store) IdleRoomIDs(ctx context.Context, idle time.Duration) ([]string, error) {
+	cutoff := time.Now().UTC().Add(-idle).Format(time.RFC3339Nano)
+	rows, err := s.DB.QueryContext(ctx, `SELECT r.id FROM rooms r WHERE r.updated_at < ? AND NOT EXISTS(SELECT 1 FROM players p WHERE p.room_id=r.id AND p.connected=1) ORDER BY r.updated_at`, cutoff)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	ids := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+// DeleteRooms 把房间连它整段历史一起删掉：战报、订单、回合快照、指令回执、players/sessions。
+// players/sessions 有外键级联，但 events/orders/turns 没有，必须显式删。
+func (s *Store) DeleteRooms(ctx context.Context, roomIDs []string) error {
+	if len(roomIDs) == 0 {
+		return nil
+	}
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	for _, roomID := range roomIDs {
+		for _, statement := range []string{
+			`DELETE FROM events WHERE room_id=?`,
+			`DELETE FROM orders WHERE room_id=?`,
+			`DELETE FROM turns WHERE room_id=?`,
+			`DELETE FROM commands WHERE player_id IN (SELECT id FROM players WHERE room_id=?)`,
+			`DELETE FROM rooms WHERE id=?`,
+		} {
+			if _, err := tx.ExecContext(ctx, statement, roomID); err != nil {
+				return err
+			}
+		}
+	}
+	return tx.Commit()
 }
 
 // CommandResponse 返回某个 command_id 之前写下的回执，以及当时的请求指纹。

@@ -77,6 +77,7 @@ content/
 - `player_session`：随机256位会话凭证，仅以SHA-256散列保存，通过HttpOnly、SameSite=Lax Cookie发送。
 - 阵营：房主为A，第二位玩家为B；满员后拒绝加入。
 - 房主不是服务器，不参与权威计算。
+- 闲置回收：房间超过 12 小时没有任何活动、且当前没有玩家在线时整间删除。活动时间就是`rooms.updated_at`——落库的命令/结算会刷新它，玩家上下线（`SetConnected`）和观战者连入（`TouchRoom`）也会刷新，所以"开着页面看海图"不算废弃。回收时连`events`/`orders`/`turns`/`commands`/`players`/`sessions`一起删，并停掉内存里的 roomActor（`shutdown` 关`done` 让 worker 退出、只从`actors`里删引用会让 goroutine 继续攥着整份状态）。服务启动时`ResetConnections`把上次残留的`connected=1`清零，否则"没人在线"永远不成立。巡检每分钟一次（`StartRoomJanitor`）。
 
 ## 命令与回合
 

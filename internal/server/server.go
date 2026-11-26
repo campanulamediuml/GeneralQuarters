@@ -153,8 +153,13 @@ func roomError(status int, message string) roomReply {
 }
 
 type roomActor struct {
-	msgs  chan roomMsg
-	start sync.Once
+	msgs chan roomMsg
+	// done 关掉之后 worker 退出，投递给它的消息一律被拒。
+	// 房间被清理器回收时要靠它把这条 goroutine 和它手里那份 146KB 状态一起放掉：
+	// 只从 actors 里删掉引用是不够的，阻塞在 msgs 上的 goroutine 仍然攥着整个房间。
+	done     chan struct{}
+	stopOnce sync.Once
+	start    sync.Once
 	// apply 处理一条消息。生产里它就是 Server.applyRoomMsg；
 	// 单元测试会换成自己的实现，用来验证"串行"和"panic 之后还能继续"。
 	apply func(roomMsg) roomReply
@@ -181,6 +186,7 @@ type roomViews struct {
 func newRoomActor(server *Server) *roomActor {
 	actor := &roomActor{
 		msgs:  make(chan roomMsg, 128),
+		done:  make(chan struct{}),
 		views: roomViews{players: map[string]map[string]any{}},
 		meta:  newDiffCache(),
 	}
@@ -193,11 +199,37 @@ func newRoomActor(server *Server) *roomActor {
 // run 是房间唯一的一条处理循环：取消息、处理、应答。所有对权威状态的修改、
 // 所有推送都发生在这一个 goroutine 里，所以两条消息之间不可能交错。
 func (a *roomActor) run() {
-	for msg := range a.msgs {
-		reply := a.applySafely(msg)
-		if msg.wantsReply() {
-			msg.answer(reply)
+	for {
+		select {
+		case <-a.done:
+			return
+		case msg := <-a.msgs:
+			reply := a.applySafely(msg)
+			if msg.wantsReply() {
+				msg.answer(reply)
+			}
 		}
+	}
+}
+
+// shutdown 停掉这条 worker。重复调用安全；已经进来的消息会先处理完再退出。
+func (a *roomActor) shutdown() {
+	a.stopOnce.Do(func() { close(a.done) })
+}
+
+// send 投递一条消息。房间已经被回收（done 已关）时返回 false，
+// 调用方按"房间不存在"处理，而不是往一个关掉的通道里写、把整个进程打崩。
+func (a *roomActor) send(msg roomMsg) bool {
+	select {
+	case <-a.done:
+		return false
+	default:
+	}
+	select {
+	case a.msgs <- msg:
+		return true
+	case <-a.done:
+		return false
 	}
 }
 
@@ -226,6 +258,10 @@ func (s *Server) actorRoom(roomID string) (*roomActor, error) {
 	ctx := context.Background()
 	room, err := s.store.Room(ctx, roomID)
 	if err != nil {
+		// 房间已经被清理器删掉了：把这个空壳 actor 从 actors 里摘掉并停掉，
+		// 否则以后每条针对它的请求都会先造一个新壳，内存里堆一串没有房间的 worker。
+		s.actors.Delete(roomID)
+		actor.shutdown()
 		return nil, err
 	}
 	players, err := s.store.Players(ctx, roomID)
@@ -357,6 +393,11 @@ type errorResponse struct {
 func New(store *store.Store, contentDir string, secureCookie bool) *Server {
 	s := &Server{store: store, contentDir: contentDir, secure: secureCookie}
 	s.hub = newHub()
+	// 进程刚起来，谁都不在线：库里留着的 connected=1 全是上一次的残留，先清零。
+	// 不清的话，"没人在线"这个条件永远不成立，闲置房间一个也回收不掉。
+	if err := store.ResetConnections(context.Background()); err != nil {
+		log.Printf("清零在线标记失败：%v", err)
+	}
 	return s
 }
 
@@ -716,6 +757,55 @@ func (s *Server) StartTurnReconciler(ctx context.Context) {
 	}()
 }
 
+// idleRoomAfter 是房间的闲置上限：12 小时没人连、也没出过命令，就整间删掉。
+// 一个房间常驻内存的不只是 146KB 的状态：还有整份战报、视图缓存、diff 元数据和一条 worker
+// goroutine，打过的废弃对局攒着不动，进程只会越来越胖。
+const idleRoomAfter = 12 * time.Hour
+
+// StartRoomJanitor 周期回收闲置房间：先删库（连战报/快照/会话一起），
+// 再把内存里的 worker 停掉、断开还挂在上面的连接。
+func (s *Server) StartRoomJanitor(ctx context.Context) {
+	go func() {
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				s.sweepIdleRooms(ctx)
+			}
+		}
+	}()
+}
+
+// sweepIdleRooms 扫一遍闲置房间。规则只有两条：最后活动时间早于 idleRoomAfter，
+// 而且现在没有任何玩家在线（观战者不算——他们连上来时会刷新活动时间）。
+func (s *Server) sweepIdleRooms(ctx context.Context) {
+	ids, err := s.store.IdleRoomIDs(ctx, idleRoomAfter)
+	if err != nil {
+		log.Printf("巡检闲置房间失败：%v", err)
+		return
+	}
+	if len(ids) == 0 {
+		return
+	}
+	if err := s.store.DeleteRooms(ctx, ids); err != nil {
+		log.Printf("删除闲置房间失败：%v", err)
+		return
+	}
+	for _, roomID := range ids {
+		if value, ok := s.actors.Load(roomID); ok {
+			if actor, alive := value.(*roomActor); alive {
+				actor.shutdown()
+			}
+			s.actors.Delete(roomID)
+		}
+		s.hub.closeRoom(roomID, "房间闲置超过 12 小时，已被清理")
+		log.Printf("回收闲置房间 %s（超过 %s 没有活动）", roomID, idleRoomAfter)
+	}
+}
+
 // stalledReadyAfter 是允许的静止时间：正常结算就在 ready 请求里完成，
 // 超过这个时间还没推进，说明触发结算的请求已经丢了。
 const stalledReadyAfter = 45 * time.Second
@@ -1004,6 +1094,20 @@ func (s *Server) setSessionCookie(w http.ResponseWriter, session string) {
 
 // roomActor 取（必要时创建）房间的 worker。房间状态只由它的 goroutine 改。
 // roomActor 取（必要时创建）房间的 worker。房间状态只由它的 goroutine 改。
+// closeRoom 断开这个房间的所有连接（玩家和观战者）。房间被回收时不能让人挂在一个
+// 已经不存在的房间上看空海图，让他们重连、拿到"房间不存在"再回首页。
+func (h *hub) closeRoom(roomID, message string) {
+	h.mu.RLock()
+	clients := make([]*wsClient, 0, len(h.clients[roomID]))
+	for client := range h.clients[roomID] {
+		clients = append(clients, client)
+	}
+	h.mu.RUnlock()
+	for _, client := range clients {
+		client.fail(message)
+	}
+}
+
 func (s *Server) roomActor(roomID string) *roomActor {
 	value, ok := s.actors.Load(roomID)
 	if !ok {
@@ -1063,15 +1167,20 @@ func (s *Server) publishRoom(roomID string) {
 func (s *Server) askRoom(msg roomMsg) roomReply {
 	reply := make(chan roomReply, 1)
 	msg.reply = reply
-	s.roomActor(msg.roomID).msgs <- msg
+	if !s.roomActor(msg.roomID).send(msg) {
+		return roomError(http.StatusNotFound, "房间已被清理")
+	}
 	return <-reply
 }
 
 // postRoom 把一条不需要应答的消息交给房间 worker。队列满了就丢掉这条：
 // 在线状态这类消息会被下一次连接或推送纠正，不值得为它阻塞一个 socket goroutine。
 func (s *Server) postRoom(msg roomMsg) {
+	actor := s.roomActor(msg.roomID)
 	select {
-	case s.roomActor(msg.roomID).msgs <- msg:
+	case actor.msgs <- msg:
+	case <-actor.done:
+		// 房间刚被清理：这条状态消息没有意义，安静丢掉。
 	default:
 		log.Printf("房间 %s 的消息队列已满，丢弃 %s", msg.roomID, msg.kind)
 	}
@@ -1398,7 +1507,13 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 	s.hub.add(client)
 	if client.spectator {
 		// 观战不走 RPC 拉取：首帧全量由 worker 直接入到这条连接。
-		s.roomActor(client.roomID).msgs <- roomMsg{kind: msgSpectatorJoin, roomID: client.roomID, client: client}
+		// 观战者也刷新房间的活动时间，免得有人在看的房间被当成僵尸房回收。
+		_ = s.store.TouchRoom(context.Background(), client.roomID)
+		if !s.roomActor(client.roomID).send(roomMsg{kind: msgSpectatorJoin, roomID: client.roomID, client: client}) {
+			client.fail("房间已被清理")
+			_ = conn.Close()
+			return
+		}
 	} else {
 		// 玩家：在线状态变了要推给对手；自己的底座等他发 GET state 时再记。
 		s.postRoom(roomMsg{kind: msgConnect, roomID: client.roomID, playerID: client.playerID, connected: true})
@@ -1422,8 +1537,8 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 			// 写进 send，所以补丁不可能跑到它的底座前面。
 			if msg, failure := s.roomMsgOfRPC(client, player, request); failure != nil {
 				replyRPCError(client, request.ID, failure)
-			} else {
-				s.roomActor(client.roomID).msgs <- msg
+			} else if !s.roomActor(client.roomID).send(msg) {
+				replyRPCError(client, request.ID, &rpcFailure{status: http.StatusNotFound, message: "房间已被清理"})
 			}
 		}
 	}()
