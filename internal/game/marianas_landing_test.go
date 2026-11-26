@@ -63,9 +63,10 @@ func TestMarianasLandingGroups(t *testing.T) {
 		}
 	}
 
-	// 日军：栗田的第一游击部队 7 艘战列舰（含架空复活的比叡/雾岛），三个机动部队各 10 艘。
-	if got := factionFleetSize(state, "KURITA"); got != 13 {
-		t.Fatalf("第一游击部队 %d 艘，期望 13", got)
+	// 日军：栗田的第一游击部队把联合舰队的家底都带上了——11 艘战列舰（含架空复活的比叡/雾岛、
+	// 老式扶桑/山城/伊势/日向）+ 3 艘重巡 + 2 艘轻巡 + 6 艘驱逐，共 22 艘。
+	if got := factionFleetSize(state, "KURITA"); got != 22 {
+		t.Fatalf("第一游击部队 %d 艘，期望 22", got)
 	}
 	bb := map[string]bool{}
 	for _, unit := range state.Units {
@@ -73,12 +74,45 @@ func TestMarianasLandingGroups(t *testing.T) {
 			bb[unit.Name] = true
 		}
 	}
-	if len(bb) != 7 || !bb["比叡"] || !bb["雾岛"] {
-		t.Fatalf("栗田部队战列舰 %v，期望 7 艘且含比叡/雾岛", bb)
+	if len(bb) != 11 || !bb["比叡"] || !bb["雾岛"] || !bb["扶桑"] || !bb["伊势"] {
+		t.Fatalf("栗田部队战列舰 %v，期望 11 艘且含比叡/雾岛/扶桑/伊势", bb)
 	}
 	for _, fleet := range []string{"TG1", "TG2", "TG3"} {
 		if got := factionFleetSize(state, fleet); got != 10 {
 			t.Fatalf("%s %d 艘，期望 10", fleet, got)
+		}
+	}
+	// 丁部队：信浓 + 千岁/千代田/瑞凤 + 高雄级全家 + 阿贺野 + 4 驱逐。
+	if got := factionFleetSize(state, "TG4"); got != 13 {
+		t.Fatalf("丁部队 %d 艘，期望 13", got)
+	}
+	for _, name := range []string{"信浓", "千岁", "千代田", "瑞凤", "高雄", "爱宕", "摩耶", "鸟海"} {
+		found := false
+		for _, unit := range state.Units {
+			if unit.FleetID == "TG4" && unit.Name == name {
+				found = true
+			}
+		}
+		if !found {
+			t.Fatalf("丁部队缺少 %s", name)
+		}
+	}
+	// 信浓带 12 个算子（4 零战 + 4 彗星 + 4 天山），三艘轻航母各 7 个。
+	jpCounts := map[string]map[string]int{}
+	for _, aircraft := range state.Aircraft {
+		if aircraft.CarrierID == "jp-cv-10" || aircraft.CarrierID == "jp-cvl-01" || aircraft.CarrierID == "jp-cvl-02" || aircraft.CarrierID == "jp-cvl-03" {
+			if jpCounts[aircraft.CarrierID] == nil {
+				jpCounts[aircraft.CarrierID] = map[string]int{}
+			}
+			jpCounts[aircraft.CarrierID][aircraft.DefinitionID]++
+		}
+	}
+	if c := jpCounts["jp-cv-10"]; c["a6m5"] != 4 || c["d4y"] != 4 || c["b6n"] != 4 {
+		t.Fatalf("信浓航空队 %v，期望 4/4/4", c)
+	}
+	for _, id := range []string{"jp-cvl-01", "jp-cvl-02", "jp-cvl-03"} {
+		if c := jpCounts[id]; c["a6m5"] != 3 || c["d4y"] != 2 || c["b6n"] != 2 {
+			t.Fatalf("%s 航空队 %v，期望 3/2/2", id, c)
 		}
 	}
 
@@ -113,6 +147,9 @@ func TestMarianasLandingGroups(t *testing.T) {
 	}
 	if zone := deployZoneForFleet(state.DeployZones, "B", "KURITA"); zone == nil || zone.Anchor != "1226" {
 		t.Fatalf("KURITA 应该出生在硫磺岛西南：%+v", zone)
+	}
+	if zone := deployZoneForFleet(state.DeployZones, "B", "TG4"); zone == nil || zone.Anchor != "1226" {
+		t.Fatalf("丁部队应该跟栗田同区出生：%+v", zone)
 	}
 	if zone := deployZoneForFleet(state.DeployZones, "A", "TF58.1"); zone == nil || zone.Anchor != "2353" {
 		t.Fatalf("美军部署区锚点不对：%+v", zone)

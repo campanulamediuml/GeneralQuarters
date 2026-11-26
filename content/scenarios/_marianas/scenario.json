@@ -1,7 +1,7 @@
 {
  "id": "_marianas",
  "version": 1,
- "name": "马里亚纳 · 1944年6月（架空：8 埃塞克斯 vs 三支机动部队）",
+ "name": "马里亚纳 · 1944年6月（架空：8 埃塞克斯 vs 四支机动部队）",
  "map": "_marianas",
  "units": "marianas",
  "year": 1944,
@@ -22,7 +22,7 @@
   "launch_start": "05:30",
   "recover_by": "19:40"
  },
- "description": "架空历史：1944 年 6 月，美军第 58 特混舰队杀入马里亚纳。第 58.1/58.2 特混大队各 4 艘舰队航母（7 艘埃塞克斯级 + 企业号），配 4 艘快速战列舰、4 艘重巡、5 艘轻巡和 12 艘驱逐舰，每队 29 艘；第 58.3 大队是 4 艘独立级轻航母 + 8 艘驱逐舰；另有 4 个护航航母群（每群 4 艘护航航母 + 8 艘驱逐舰）和第 52 特混舰队的 8 艘老式战列舰（田纳西、加利福尼亚、马里兰、科罗拉多、新墨西哥、爱达荷、密西西比、宾夕法尼亚）担任火力支援。日军以小泽的三个机动部队（甲/乙/丙，各 3 艘航母 + 2 艘重巡 + 1 艘轻巡 + 4 艘驱逐）迎战，栗田健男的第一游击部队（大和、武藏、长门、金刚、榛名，以及架空复活的两艘金刚级比叡、雾岛）在硫磺岛西南待机，诸岛另有岸基航空兵和三个水上飞机基地。全图 60×60（25 海里/hex），共 249 艘舰船，舰队上限 45 艘（两支特混大队可以合并成一支大舰队），适合跑大编队的甲板/升降机/CAP 循环压力测试。八座陆上机场（塞班、天宁、关岛、罗塔、雅浦、帕劳、特鲁克、硫磺岛）各 6 点岸炮，硫磺岛驻 4 架零战 52 + 2 架一式陆攻、特鲁克驻 2 架零战 + 2 架一式陆攻。另有三个登陆运输队（每队 12 艘大型慢速运输船 + 12 艘弗莱彻级），任务是在塞班、天宁、关岛各投送 40 点物资：运输队要在敌方机场格停留满 3 回合才能开始卸货，每艘船每回合卸 1 点，卸下的物资会直接瘫痪机场跑道；三个目标各值 40 VP，回合上限时没完成的判给日军。马里亚纳群岛位于地图中间偏右，开局美军在塞班东北偏东约 300 海里的海域展开，日军机动部队在帕劳以北；特鲁克和硫磺岛作为日军基地出现在图上，菲律宾海岸线不画。",
+ "description": "架空历史：1944 年 6 月，美军第 58 特混舰队杀入马里亚纳。第 58.1/58.2 特混大队各 4 艘舰队航母（7 艘埃塞克斯级 + 企业号），配 4 艘快速战列舰、4 艘重巡、5 艘轻巡和 12 艘驱逐舰，每队 29 艘；第 58.3 大队是 4 艘独立级轻航母 + 8 艘驱逐舰；另有 4 个护航航母群（每群 4 艘护航航母 + 8 艘驱逐舰）和第 52 特混舰队的 8 艘老式战列舰（田纳西、加利福尼亚、马里兰、科罗拉多、新墨西哥、爱达荷、密西西比、宾夕法尼亚）担任火力支援。日军这次把联合舰队的家底都带上了：四个机动部队——甲（大凤、翔鹤、瑞鹤）、乙（隼鹰、飞鹰、龙凤）、丙（云龙、天城、葛城）各 3 艘航母 + 2 重巡 + 1 轻巡 + 4 驱逐；丁部队是新编的第四支，信浓（装甲甲板、27 节、15 个机库）带千岁、千代田、瑞凤三艘轻航母，再加高雄级全家（高雄、爱宕、摩耶、鸟海）和轻巡阿贺野、4 艘驱逐，共 13 艘。栗田健男的第一游击部队在硫磺岛西南集结了 11 艘战列舰（大和、武藏、长门、金刚、榛名、比叡、雾岛、扶桑、山城、伊势、日向）加那智、足柄、最上三艘重巡，神通、川内两艘轻巡、6 艘驱逐，共 22 艘，作为水面决战兵力。全图 60×60（25 海里/hex），共 271 艘舰船，舰队上限 45 艘（两个特混大队乃至整支机动部队都可以合并成一支大舰队）。八座陆上机场（塞班、天宁、关岛、罗塔、雅浦、帕劳、特鲁克、硫磺岛）各 6 点岸炮，硫磺岛驻 4 架零战 52 + 2 架一式陆攻、特鲁克驻 2 架零战 + 2 架一式陆攻。另有三个登陆运输队（每队 12 艘大型慢速运输船 + 12 艘弗莱彻级），任务是在塞班、天宁、关岛各投送 40 点物资：运输队要在敌方机场格停留满 3 回合才能开始卸货，每艘船每回合卸 1 点，卸下的物资会直接瘫痪机场跑道；三个目标各值 40 VP，回合上限时没完成的判给日军。马里亚纳群岛位于地图中间偏右，开局美军在塞班东北偏东约 300 海里的海域展开，日军三个快航母部队在帕劳以北，丁部队和栗田的第一游击部队在硫磺岛西南；特鲁克和硫磺岛作为日军基地出现在图上，菲律宾海岸线不画。",
  "deploy_zones": [
   {
    "faction": "A",
@@ -44,7 +44,8 @@
    "anchor": "1226",
    "radius": 6,
    "fleets": [
-    "KURITA"
+    "KURITA",
+    "TG4"
    ]
   }
  ],
@@ -464,22 +465,6 @@
    "fleet_id": "KURITA",
    "fleet_name": "第一游击部队（栗田）",
    "ship": "jp-bb-03"
-  },
-  {
-   "id": "jp-ca-03",
-   "faction": "B",
-   "name": "高雄",
-   "fleet_id": "TG2",
-   "fleet_name": "乙部队",
-   "ship": "jp-ca-03"
-  },
-  {
-   "id": "jp-ca-04",
-   "faction": "B",
-   "name": "爱宕",
-   "fleet_id": "TG2",
-   "fleet_name": "乙部队",
-   "ship": "jp-ca-04"
   },
   {
    "id": "jp-cl-02",
@@ -2040,6 +2025,198 @@
    "fleet_id": "KURITA",
    "fleet_name": "第一游击部队（栗田）",
    "ship": "jp-bb-07"
+  },
+  {
+   "id": "jp-ca-11",
+   "faction": "B",
+   "name": "铃谷",
+   "fleet_id": "TG2",
+   "fleet_name": "乙部队",
+   "ship": "jp-ca-11"
+  },
+  {
+   "id": "jp-ca-12",
+   "faction": "B",
+   "name": "熊野",
+   "fleet_id": "TG2",
+   "fleet_name": "乙部队",
+   "ship": "jp-ca-12"
+  },
+  {
+   "id": "jp-cv-10",
+   "faction": "B",
+   "name": "信浓",
+   "fleet_id": "TG4",
+   "fleet_name": "丁部队",
+   "ship": "jp-cv-10"
+  },
+  {
+   "id": "jp-cvl-01",
+   "faction": "B",
+   "name": "千岁",
+   "fleet_id": "TG4",
+   "fleet_name": "丁部队",
+   "ship": "jp-cvl-01"
+  },
+  {
+   "id": "jp-cvl-02",
+   "faction": "B",
+   "name": "千代田",
+   "fleet_id": "TG4",
+   "fleet_name": "丁部队",
+   "ship": "jp-cvl-02"
+  },
+  {
+   "id": "jp-cvl-03",
+   "faction": "B",
+   "name": "瑞凤",
+   "fleet_id": "TG4",
+   "fleet_name": "丁部队",
+   "ship": "jp-cvl-03"
+  },
+  {
+   "id": "jp-ca-03",
+   "faction": "B",
+   "name": "高雄",
+   "fleet_id": "TG4",
+   "fleet_name": "丁部队",
+   "ship": "jp-ca-03"
+  },
+  {
+   "id": "jp-ca-04",
+   "faction": "B",
+   "name": "爱宕",
+   "fleet_id": "TG4",
+   "fleet_name": "丁部队",
+   "ship": "jp-ca-04"
+  },
+  {
+   "id": "jp-ca-07",
+   "faction": "B",
+   "name": "摩耶",
+   "fleet_id": "TG4",
+   "fleet_name": "丁部队",
+   "ship": "jp-ca-07"
+  },
+  {
+   "id": "jp-ca-08",
+   "faction": "B",
+   "name": "鸟海",
+   "fleet_id": "TG4",
+   "fleet_name": "丁部队",
+   "ship": "jp-ca-08"
+  },
+  {
+   "id": "jp-cl-04",
+   "faction": "B",
+   "name": "阿贺野",
+   "fleet_id": "TG4",
+   "fleet_name": "丁部队",
+   "ship": "jp-cl-04"
+  },
+  {
+   "id": "jp-dd-19",
+   "faction": "B",
+   "name": "驱逐舰19",
+   "fleet_id": "TG4",
+   "fleet_name": "丁部队",
+   "ship": "jp-dd-19"
+  },
+  {
+   "id": "jp-dd-20",
+   "faction": "B",
+   "name": "驱逐舰20",
+   "fleet_id": "TG4",
+   "fleet_name": "丁部队",
+   "ship": "jp-dd-20"
+  },
+  {
+   "id": "jp-dd-21",
+   "faction": "B",
+   "name": "驱逐舰21",
+   "fleet_id": "TG4",
+   "fleet_name": "丁部队",
+   "ship": "jp-dd-21"
+  },
+  {
+   "id": "jp-dd-22",
+   "faction": "B",
+   "name": "驱逐舰22",
+   "fleet_id": "TG4",
+   "fleet_name": "丁部队",
+   "ship": "jp-dd-22"
+  },
+  {
+   "id": "jp-bb-08",
+   "faction": "B",
+   "name": "扶桑",
+   "fleet_id": "KURITA",
+   "fleet_name": "第一游击部队（栗田）",
+   "ship": "jp-bb-08"
+  },
+  {
+   "id": "jp-bb-09",
+   "faction": "B",
+   "name": "山城",
+   "fleet_id": "KURITA",
+   "fleet_name": "第一游击部队（栗田）",
+   "ship": "jp-bb-09"
+  },
+  {
+   "id": "jp-bb-10",
+   "faction": "B",
+   "name": "伊势",
+   "fleet_id": "KURITA",
+   "fleet_name": "第一游击部队（栗田）",
+   "ship": "jp-bb-10"
+  },
+  {
+   "id": "jp-bb-11",
+   "faction": "B",
+   "name": "日向",
+   "fleet_id": "KURITA",
+   "fleet_name": "第一游击部队（栗田）",
+   "ship": "jp-bb-11"
+  },
+  {
+   "id": "jp-ca-09",
+   "faction": "B",
+   "name": "那智",
+   "fleet_id": "KURITA",
+   "fleet_name": "第一游击部队（栗田）",
+   "ship": "jp-ca-09"
+  },
+  {
+   "id": "jp-ca-10",
+   "faction": "B",
+   "name": "足柄",
+   "fleet_id": "KURITA",
+   "fleet_name": "第一游击部队（栗田）",
+   "ship": "jp-ca-10"
+  },
+  {
+   "id": "jp-ca-13",
+   "faction": "B",
+   "name": "最上",
+   "fleet_id": "KURITA",
+   "fleet_name": "第一游击部队（栗田）",
+   "ship": "jp-ca-13"
+  },
+  {
+   "id": "jp-cl-05",
+   "faction": "B",
+   "name": "神通",
+   "fleet_id": "KURITA",
+   "fleet_name": "第一游击部队（栗田）",
+   "ship": "jp-cl-05"
+  },
+  {
+   "id": "jp-cl-06",
+   "faction": "B",
+   "name": "川内",
+   "fleet_id": "KURITA",
+   "fleet_name": "第一游击部队（栗田）",
+   "ship": "jp-cl-06"
   }
  ],
  "air_deployments": [
@@ -5042,6 +5219,204 @@
    "unit": "os2u",
    "carrier": "us-ca-08",
    "skill": "regular"
+  },
+  {
+   "id": "jp-cv-10-a6m5-x1",
+   "unit": "a6m5",
+   "carrier": "jp-cv-10",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cv-10-a6m5-x2",
+   "unit": "a6m5",
+   "carrier": "jp-cv-10",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cv-10-a6m5-x3",
+   "unit": "a6m5",
+   "carrier": "jp-cv-10",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cv-10-a6m5-x4",
+   "unit": "a6m5",
+   "carrier": "jp-cv-10",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cv-10-d4y-x1",
+   "unit": "d4y",
+   "carrier": "jp-cv-10",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cv-10-d4y-x2",
+   "unit": "d4y",
+   "carrier": "jp-cv-10",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cv-10-d4y-x3",
+   "unit": "d4y",
+   "carrier": "jp-cv-10",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cv-10-d4y-x4",
+   "unit": "d4y",
+   "carrier": "jp-cv-10",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cv-10-b6n-x1",
+   "unit": "b6n",
+   "carrier": "jp-cv-10",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cv-10-b6n-x2",
+   "unit": "b6n",
+   "carrier": "jp-cv-10",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cv-10-b6n-x3",
+   "unit": "b6n",
+   "carrier": "jp-cv-10",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cv-10-b6n-x4",
+   "unit": "b6n",
+   "carrier": "jp-cv-10",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cvl-01-a6m5-x1",
+   "unit": "a6m5",
+   "carrier": "jp-cvl-01",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cvl-01-a6m5-x2",
+   "unit": "a6m5",
+   "carrier": "jp-cvl-01",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cvl-01-a6m5-x3",
+   "unit": "a6m5",
+   "carrier": "jp-cvl-01",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cvl-01-d4y-x1",
+   "unit": "d4y",
+   "carrier": "jp-cvl-01",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cvl-01-d4y-x2",
+   "unit": "d4y",
+   "carrier": "jp-cvl-01",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cvl-01-b6n-x1",
+   "unit": "b6n",
+   "carrier": "jp-cvl-01",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cvl-01-b6n-x2",
+   "unit": "b6n",
+   "carrier": "jp-cvl-01",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cvl-02-a6m5-x1",
+   "unit": "a6m5",
+   "carrier": "jp-cvl-02",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cvl-02-a6m5-x2",
+   "unit": "a6m5",
+   "carrier": "jp-cvl-02",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cvl-02-a6m5-x3",
+   "unit": "a6m5",
+   "carrier": "jp-cvl-02",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cvl-02-d4y-x1",
+   "unit": "d4y",
+   "carrier": "jp-cvl-02",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cvl-02-d4y-x2",
+   "unit": "d4y",
+   "carrier": "jp-cvl-02",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cvl-02-b6n-x1",
+   "unit": "b6n",
+   "carrier": "jp-cvl-02",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cvl-02-b6n-x2",
+   "unit": "b6n",
+   "carrier": "jp-cvl-02",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cvl-03-a6m5-x1",
+   "unit": "a6m5",
+   "carrier": "jp-cvl-03",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cvl-03-a6m5-x2",
+   "unit": "a6m5",
+   "carrier": "jp-cvl-03",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cvl-03-a6m5-x3",
+   "unit": "a6m5",
+   "carrier": "jp-cvl-03",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cvl-03-d4y-x1",
+   "unit": "d4y",
+   "carrier": "jp-cvl-03",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cvl-03-d4y-x2",
+   "unit": "d4y",
+   "carrier": "jp-cvl-03",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cvl-03-b6n-x1",
+   "unit": "b6n",
+   "carrier": "jp-cvl-03",
+   "skill": "rookie"
+  },
+  {
+   "id": "jp-cvl-03-b6n-x2",
+   "unit": "b6n",
+   "carrier": "jp-cvl-03",
+   "skill": "rookie"
   }
  ],
  "airfields": [
