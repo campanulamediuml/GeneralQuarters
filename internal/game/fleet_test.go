@@ -2,12 +2,12 @@ package game
 
 import "testing"
 
-// 规则书 392–400 行：损失 80% 生命值 / 失去动力 / 起火燃烧 = 重创，
+// 规则书 392–400 行：损失 80% 生命值 / 失去动力 / 起火燃烧 = 重创（进水、倾斜不算），
 // 重创舰带走一艘护航舰（DD → CL → CA → BB）脱离主队，航向地图边缘。
 func TestCrippledShipDetachesWithEscort(t *testing.T) {
 	state := sandboxState(t)
 	damaged := state.Units["a-bb-01"]
-	damaged.Strength = 1 // MaxStrength 6，损失 5/6 ≥ 80%
+	EnsureDamage(damaged).Disabled = true // 失去动力
 	for _, unit := range state.Units {
 		if FleetKey(unit) == "TG-A" && unit.Faction == "A" && unit.ID != damaged.ID && unit.Type != "DD" {
 			continue
@@ -234,7 +234,7 @@ func addTransport(t *testing.T, state *State, id, coord string) {
 func TestCrippledShipDetachesOnlyOnce(t *testing.T) {
 	state := sandboxState(t)
 	unit := state.Units["a-bb-01"]
-	unit.Strength = 1 // 重创
+	EnsureDamage(unit).Disabled = true // 失去动力
 	resolveDetachments(&state)
 	firstFleet := state.Units["a-bb-01"].FleetID
 	if !state.Units["a-bb-01"].Withdrawing {

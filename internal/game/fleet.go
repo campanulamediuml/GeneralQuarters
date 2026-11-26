@@ -9,7 +9,10 @@ import (
 
 // —— 重创脱离（规则书 392–403 行）——
 
-// unitCrippled 判断一艘船是否被重创：已损失生命值达到初始生命值的 80% 或更多、失去动力、起火燃烧。
+// unitCrippled 判断一艘船是否被重创：损失 80% 以上生命值、失去动力、起火燃烧三条之一。
+//
+// 进水层数与倾斜不单独参与判定——它们每回合都能修（修完自动恢复航速档位），
+// 只有"进水层数超过损管值"那一下已经把动力打没了，才会通过 Disabled 这条触发。
 //
 // "起火燃烧"(burning) 和 "小型火灾"(small) 是两种不同的损伤，不能混为一谈：
 //   - 小型火灾只封锁本回合的航空作业、岸轰和卸载，回合开始时自动扑灭（规则书 432 行）；
@@ -29,10 +32,7 @@ func unitCrippled(unit *Unit) bool {
 		return true
 	}
 	damage := EnsureDamage(unit)
-	if damage.Disabled || len(damage.Flooding) > unit.Card.DamageControl {
-		return true
-	}
-	return damage.Fire == "burning"
+	return damage.Disabled || damage.Fire == "burning"
 }
 
 // escortPriority 是重创舰带走护航舰的选择顺序：DD → CL → CA → BB，同一类型里多艘由控制方选择。
