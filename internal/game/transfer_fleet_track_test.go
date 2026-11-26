@@ -127,3 +127,71 @@ func TestFriendlyFleetLookupHelpers(t *testing.T) {
 		t.Fatal("不存在的舰队不该有坐标")
 	}
 }
+
+// carrierTransferFixture 造一个"列克星敦上的 F4F 转场到约克城"的舰载机场景。
+func carrierTransferFixture() (State, *AirUnit) {
+	state := State{
+		Map:      MapDefinition{Rows: 12, Cols: 12},
+		Units:    map[string]*Unit{},
+		Aircraft: map[string]*AirUnit{},
+	}
+	state.Units["cv1"] = &Unit{ID: "cv1", Name: "列克星敦", Faction: "A", Type: "CV", Coord: "0102", FleetID: "TF11",
+		Card: ShipCard{HangarCapacity: 24, Aircraft: 10}, Deck: &FlightDeck{Length: 8}}
+	state.Units["cv2"] = &Unit{ID: "cv2", Name: "约克城", Faction: "A", Type: "CV", Coord: "0105", FleetID: "TF17",
+		Card: ShipCard{HangarCapacity: 24, Aircraft: 10}, Deck: &FlightDeck{Length: 8}}
+	plane := &AirUnit{
+		ID: "p", Faction: "A", Model: "F4F 野猫", Kind: "fighter", CarrierID: "cv1",
+		Status: "transfer", TaskID: "t1", TaskKind: "transfer",
+		Coord: "0102", TargetCoord: "0105", TargetFleetID: "TF17",
+		Fuel: Fuel{Internal: 20}, RemainingRange: 20,
+	}
+	state.Aircraft["p"] = plane
+	return state, plane
+}
+
+// TestCarrierTransferTracksMovingFleet 校验舰载机转场到别的舰队时也按舰队当前位置追。
+func TestCarrierTransferTracksMovingFleet(t *testing.T) {
+	state, plane := carrierTransferFixture()
+	state.Units["cv2"].Coord = "0108"
+
+	events := advanceTransfer(&state, plane)
+	if eventType(events, "transfer_aborted") || eventType(events, "transfer_rtb") {
+		t.Fatalf("舰队只是移动，不该中止：%+v", events)
+	}
+	if plane.TargetCoord != "0108" {
+		t.Fatalf("目标 hex 没有跟到舰队当前位置：%s", plane.TargetCoord)
+	}
+	if plane.Coord != "0103" {
+		t.Fatalf("编队没有朝新目标飞：%s", plane.Coord)
+	}
+}
+
+// TestCarrierTransferAbortsWhenFleetGone 校验要落的舰队没了就回自己的母舰，而不是对着空 hex 烧油。
+func TestCarrierTransferAbortsWhenFleetGone(t *testing.T) {
+	state, plane := carrierTransferFixture()
+	delete(state.Units, "cv2")
+
+	events := advanceTransfer(&state, plane)
+	if !eventType(events, "transfer_aborted") {
+		t.Fatalf("舰队没了却没有中止：%+v", events)
+	}
+	if !plane.Returning || plane.TargetFleetID != "" {
+		t.Fatalf("中止后没有掉头返航：%+v", plane)
+	}
+}
+
+// TestCarrierTransferAbortsOnEmptyHex 校验停在没有航母的格子上时中止，而不是一直喊"机库已满"。
+func TestCarrierTransferAbortsOnEmptyHex(t *testing.T) {
+	state, plane := carrierTransferFixture()
+	plane.Coord = "0107"
+	plane.TargetCoord = "0107"
+	plane.TargetFleetID = ""
+
+	events := advanceTransfer(&state, plane)
+	if !eventType(events, "transfer_aborted") {
+		t.Fatalf("空 hex 上应当中止转场：%+v", events)
+	}
+	if !plane.Returning {
+		t.Fatalf("中止后应当返航：%+v", plane)
+	}
+}

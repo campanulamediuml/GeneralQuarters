@@ -1351,6 +1351,17 @@ func ApplyGroundAirOrder(state *State, order Order) []EngineEvent {
 			case MissionTransfer:
 				aircraft.TargetCoord = order.Coord
 				aircraft.Returning = false
+				aircraft.TargetFleetID = ""
+				if order.Coord != "" {
+					// 目标是舰队时记下舰队 ID，下一回合开始就按舰队当前位置追。
+					if id := order.TargetFleetID; id != "" {
+						if _, ok := friendlyFleetCoord(*state, airfield.Faction, id); ok {
+							aircraft.TargetFleetID = id
+						}
+					} else if friendlyAirfieldAtCoord(*state, airfield.Faction, order.Coord) == nil {
+						aircraft.TargetFleetID = friendlyFleetIDAt(*state, airfield.Faction, order.Coord)
+					}
+				}
 			default:
 				// CAP 同样是指定目标：不填就守本机场上空。
 				target := order.Coord

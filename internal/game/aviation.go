@@ -874,6 +874,17 @@ func configureAirTask(state *State, aircraftList []*AirUnit, order Order) {
 			aircraft.CoverUnitID = friendlyUnitIDAt(*state, aircraft.Faction, order.Coord)
 		case MissionTransfer:
 			assignTransferMission(aircraft, order.Coord)
+			aircraft.TargetFleetID = ""
+			if order.Coord != "" {
+				// 目标是舰队时记下舰队 ID，飞行途中按舰队当前位置追。
+				if id := order.TargetFleetID; id != "" {
+					if _, ok := friendlyFleetCoord(*state, aircraft.Faction, id); ok {
+						aircraft.TargetFleetID = id
+					}
+				} else {
+					aircraft.TargetFleetID = friendlyFleetIDAt(*state, aircraft.Faction, order.Coord)
+				}
+			}
 		default:
 			// CAP：巡逻点留空表示"跟着母舰走"，capCoord 逐回合回落到母舰当前 hex。
 			assignCapMission(aircraft, aircraft.PatrolCoord)
@@ -1177,8 +1188,20 @@ func ApplyAirOrder(state *State, order Order) []EngineEvent {
 			aircraft.TargetCoord = order.Coord
 			aircraft.CannotLand = false
 			aircraft.Returning = false
-			if kind == "cover" {
+			aircraft.TargetFleetID = ""
+			switch kind {
+			case "cover":
 				aircraft.CoverUnitID = friendlyUnitIDAt(*state, carrier.Faction, order.Coord)
+			case "transfer":
+				// 转场到舰队时记住舰队 ID：只认 hex 的话，舰队开出去一格，
+				// 编队就停在空海面上刷"机库已满"，一路烧油到航程 -5 被销毁。
+				if id := order.TargetFleetID; id != "" {
+					if _, ok := friendlyFleetCoord(*state, carrier.Faction, id); ok {
+						aircraft.TargetFleetID = id
+					}
+				} else {
+					aircraft.TargetFleetID = friendlyFleetIDAt(*state, carrier.Faction, order.Coord)
+				}
 			}
 		}
 		events := []EngineEvent{{Type: "strike_target_set", Audience: carrier.Faction, Text: fmt.Sprintf("编队目标设为%s", order.Coord)}}

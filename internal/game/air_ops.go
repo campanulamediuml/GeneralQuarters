@@ -63,7 +63,27 @@ func advanceCover(state *State, aircraft *AirUnit) []EngineEvent {
 // advanceTransfer 处理转场：飞到目标舰队，降落在那支舰队里有空位的航母上。
 // 舰队机库放不下时算子挂在天上（CannotLand），由玩家手动改转场目标。
 func advanceTransfer(state *State, aircraft *AirUnit) []EngineEvent {
+	if aircraft.Returning {
+		// 已经放弃转场、或者被夜里召回：走统一的返航逻辑，别再往目的地飞。
+		return advanceAircraftReturn(state, aircraft)
+	}
+	// 转场到舰队时目标 hex 只是下命令那一刻舰队所在的位置，舰队一开走就只剩空海。
+	// 认了舰队 ID 就每回合按它的当前位置校正，别让编队对着空 hex 烧油。
+	if aircraft.TargetFleetID != "" {
+		if coord, ok := friendlyFleetCoord(*state, aircraft.Faction, aircraft.TargetFleetID); ok {
+			aircraft.TargetCoord = coord
+		} else {
+			aircraft.TargetFleetID = ""
+			aircraft.Returning = true
+			return []EngineEvent{{Type: "transfer_aborted", Audience: aircraft.Faction, Text: fmt.Sprintf("%s要转场去的舰队已经不在，编队返航母舰", aircraft.Model)}}
+		}
+	}
 	if aircraft.Coord != aircraft.TargetCoord {
+		// 追着舰队飞可能越追越远：剩的油连目标格都够不着就放弃，别烧到航程 -5 被销毁。
+		if aircraft.Range() < Distance(aircraft.Coord, aircraft.TargetCoord) {
+			aircraft.Returning = true
+			return []EngineEvent{{Type: "transfer_rtb", Audience: aircraft.Faction, Text: fmt.Sprintf("%s剩余航程%d够不到%s，放弃转场返航母舰", aircraft.Model, aircraft.Range(), aircraft.TargetCoord)}}
+		}
 		// 规则书 209 行：直接转场的飞机每回合只移动 1 hex。
 		for steps := 0; steps < 1 && aircraft.Coord != aircraft.TargetCoord; steps++ {
 			next := nextFlightCoord(*state, aircraft, aircraft.TargetCoord)
@@ -80,6 +100,13 @@ func advanceTransfer(state *State, aircraft *AirUnit) []EngineEvent {
 	}
 	host := transferHost(*state, aircraft)
 	if host == nil {
+		// 目标 hex 上连己方航母都没有：这不是"机库满"，是目的地没了（舰队沉了/开走了），
+		// 再挂在天上等只会一路烧油到航程 -5 被销毁。
+		if !friendlyCarrierAt(*state, aircraft.Faction, aircraft.TargetCoord) {
+			aircraft.TargetFleetID = ""
+			aircraft.Returning = true
+			return []EngineEvent{{Type: "transfer_aborted", Audience: aircraft.Faction, Text: fmt.Sprintf("%s抵达%s，但这里没有己方航母，转场中止返航母舰", aircraft.Model, aircraft.TargetCoord)}}
+		}
 		// 只在刚发现降不下去的那一回合报警，避免每回合刷同一条事件。
 		firstTime := !aircraft.CannotLand
 		aircraft.CannotLand = true
@@ -94,6 +121,17 @@ func advanceTransfer(state *State, aircraft *AirUnit) []EngineEvent {
 	aircraft.Returning = true
 	LandAircraft(state, aircraft, host)
 	return []EngineEvent{{Type: "transfer_landed", Audience: aircraft.Faction, Text: fmt.Sprintf("%s转场降落在%s", aircraft.Model, host.Name)}}
+}
+
+// friendlyCarrierAt 判断指定 hex 上有没有己方航母（不看机库还有没有空位）。
+func friendlyCarrierAt(state State, faction, coord string) bool {
+	for _, id := range sortedUnitIDs(state.Units) {
+		unit := state.Units[id]
+		if unit != nil && unit.Faction == faction && unit.Coord == coord && IsCarrier(unit) {
+			return true
+		}
+	}
+	return false
 }
 
 // transferHost 在目标 hex 的友军舰队里挑一艘还有机库空位的航母。
