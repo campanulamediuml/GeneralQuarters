@@ -216,6 +216,13 @@ const mapAirTaskTarget = computed(() => {
   const label = strikeTargets.value.find((target) => target.coord === task.target_coord)?.label
   return label || task.target_coord
 })
+// 起飞位置：任务卡上要能回答"这队飞机是从哪儿起飞的"。
+// 以前只给当前坐标和目标，航母上起飞的 CAP/掩护看在眼里就是"坐标 = 母舰"，不知道出发点。
+const mapAirTaskOrigin = computed(() => {
+  const task = mapAirTask.value
+  if (!task) return ''
+  return task.origin_coord || '—'
+})
 const mapAirTaskRange = computed(() => {
   const task = mapAirTask.value
   if (!task) return 0
@@ -952,6 +959,7 @@ onUnmounted(() => {
                     <div><dt>机型</dt><dd>{{ mapAirTaskModels }}</dd></div>
                     <div><dt>状态</dt><dd>{{ mapAirTaskPhase }}</dd></div>
                     <div><dt>目标</dt><dd>{{ mapAirTaskTarget }}</dd></div>
+                    <div><dt>起飞</dt><dd>{{ mapAirTaskOrigin }}</dd></div>
                     <div><dt>剩余航程</dt><dd>{{ mapAirTaskRange }}</dd></div>
                   </dl>
                   <p v-if="mapAirTask.night_safe === false" class="air-task-night-warning" role="alert">距天黑 {{ state.clock?.night_in_turns }} 回合，返航要 {{ mapAirTask.return_turns }} 回合——这波回不来</p>

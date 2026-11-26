@@ -412,9 +412,9 @@ components:
         airborne_count: {type: integer, description: 已升空算子数，攻击编队全部到齐后才能离场}
         priority: {type: integer, description: 1为最高优先级，参与升降机调度}
         queue_position: {type: integer, description: 服务端排序后的连续队列位置}
-        origin_coord: {type: string}
-        current_coord: {type: string}
-        target_coord: {type: string, description: 攻击编队目标hex，新建时由服务端校验已侦测目标}
+        origin_coord: {type: string, description: 本次出海的起飞顶点（航母/机场坐标）}
+        current_coord: {type: string, description: 编队当前位置}
+        target_coord: {type: string, description: 打击=目标hex；掩护/转场=目的地；CAP=值班空域；侦察为空}
         heading: {type: string, enum: [E, SE, SW, W, NW, NE]}
         sector_width: {type: integer, enum: [60, 120]}
         recon_radius: {type: integer}

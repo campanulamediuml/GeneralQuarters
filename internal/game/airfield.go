@@ -2107,6 +2107,13 @@ func GroundAviationView(state State, faction string) AviationView {
 		if task.AirborneCount > 0 {
 			task.Phase = "active"
 		}
+		// 起飞顶点：任务卡要写"目标 / 起飞位置"。机场编队的起飞顶点就是机场坐标，
+		// 但转场/循环回来的算子 OriginCoord 可能是旧值，所以优先用当前机场。
+		if airfield := airfieldFor(&state, leader.AirfieldID); airfield != nil {
+			task.OriginCoord = airfield.Coord
+		} else if leader.OriginCoord != "" {
+			task.OriginCoord = leader.OriginCoord
+		}
 		if leader.TaskKind == "attack" {
 			task.TargetCoord = leader.TargetCoord
 			task.Disperse = leader.Disperse
@@ -2148,6 +2155,7 @@ func GroundAviationView(state State, faction string) AviationView {
 				task.ReconSectors = append(task.ReconSectors, projectGroundReconSector(state, member))
 			}
 			if len(task.ReconSectors) > 0 {
+				// 扇面顶点是"这次出海"的起飞点（转场过来之后就是新机场），以它为准。
 				task.OriginCoord = task.ReconSectors[0].OriginCoord
 				task.SectorHexes = task.ReconSectors[0].SectorHexes
 				task.CurrentRingHexes = task.ReconSectors[0].CurrentRingHexes

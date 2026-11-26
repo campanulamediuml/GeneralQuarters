@@ -663,8 +663,10 @@
         '<em>' + escapeHTML(row.loadout || '') + '</em></div></div>';
     }).join('');
     var meta = '<span>兵力 <b>' + (group.count || (group.aircraft || []).length) + '</b> 架</span>' +
-      '<span>坐标 <b>' + escapeHTML(group.coord || '—') + '</b></span>' +
+      '<span>当前 <b>' + escapeHTML(group.coord || '—') + '</b></span>' +
       '<span>任务 <b>' + escapeHTML(group.mission || '空中') + '</b></span>' +
+      '<span>目标 <b>' + escapeHTML(group.target || '未设置') + '</b></span>' +
+      '<span>起飞 <b>' + escapeHTML(group.origin || '—') + '</b></span>' +
       '<span>阵营 <b>' + (group.faction === 'A' ? '美军' : '日军') + '</b></span>';
     openDetail('AIR GROUP · ' + (group.faction === 'A' ? '美军' : '日军'), (group.mission || '空中编队') + ' · ' + (group.count || 0) + ' 架', meta, cards);
   }
@@ -869,10 +871,15 @@
           mission: mission,
           count: 0,
           aircraft: [],
+          // 起飞顶点和任务目标：详情卡上要写清"这队飞机从哪儿起飞、要去哪儿"。
+          origin: '',
+          target: '',
           heading: String(aircraft.heading || aircraft.search_heading || '').toUpperCase()
         };
       }
       airGroups[key].count++;
+      if (!airGroups[key].origin && aircraft.origin_coord) airGroups[key].origin = aircraft.origin_coord;
+      if (!airGroups[key].target && aircraft.target_coord) airGroups[key].target = aircraft.target_coord;
       airGroups[key].aircraft.push(aircraft);
     }
     ((data.aviation && data.aviation.carriers) || []).forEach(function (carrier) {
@@ -921,7 +928,7 @@
       var point = center(task.current_coord);
       var color = COLOR[task.faction] || '#d7bb7b';
       var group = el('g', { class: 'watch-air', 'data-detail': 'air', transform: 'translate(' + point.x + ',' + (point.y - 26) + ')' });
-      group.addEventListener('click', function (event) { event.stopPropagation(); selectDistance(task.current_coord); showAirDetail({ faction: task.faction, coord: task.current_coord, mission: missionLabel(task.kind), count: task.airborne_count, aircraft: task.aircraft || [] }); });
+      group.addEventListener('click', function (event) { event.stopPropagation(); selectDistance(task.current_coord); showAirDetail({ faction: task.faction, coord: task.current_coord, mission: missionLabel(task.kind), origin: task.origin_coord || '', target: task.target_coord || '', count: task.airborne_count, aircraft: task.aircraft || [] }); });
       group.appendChild(el('circle', { r: 7, fill: color, 'fill-opacity': 0.92, stroke: '#071417', 'stroke-width': 1 }));
       group.appendChild(text(0, 3, task.airborne_count > 1 ? '×' + task.airborne_count : '1', '#071417', 8, 700, 'middle'));
       var label = text(11, 3, missionLabel(task.kind), color, 9, 700);

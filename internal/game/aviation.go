@@ -949,8 +949,10 @@ func launchAirTask(state *State, aircraftList []*AirUnit) []EngineEvent {
 			}
 			aircraft.ElevatorID = ""
 			carrier.Card.Aircraft--
+			// 起飞顶点一律记下来：任务卡要显示"目标 / 起飞位置"，以前只有侦察和攻击记，
+			// CAP、掩护、转场的任务卡就只剩一个当前坐标，玩家分不清它是从哪条船起飞的。
+			aircraft.OriginCoord = carrier.Coord
 			if aircraft.TaskKind == "recon" || aircraft.TaskKind == "attack" {
-				aircraft.OriginCoord = carrier.Coord
 				aircraft.Coord = carrier.Coord
 				aircraft.ReconDistance = 0
 				aircraft.Returning = false
@@ -2286,8 +2288,20 @@ func VisibleAviation(state State, faction string) AviationView {
 		switch kind {
 		case "cap":
 			task.Name = "CAP · " + leader.Model
+			task.OriginCoord = leader.OriginCoord
+			// CAP 的"目标"就是它值班的空域：随母舰走的写母舰位置，前出拦截的写前出点。
+			task.TargetCoord = leader.PatrolCoord
+			if task.TargetCoord == "" {
+				task.TargetCoord = leader.ForwardCoord
+			}
 			if carrier != nil {
 				task.CurrentCoord = carrier.Coord
+				if task.OriginCoord == "" {
+					task.OriginCoord = carrier.Coord
+				}
+				if task.TargetCoord == "" {
+					task.TargetCoord = carrier.Coord
+				}
 			}
 		case "attack":
 			task.Name = "攻击编队 · " + leader.Model
@@ -2300,11 +2314,19 @@ func VisibleAviation(state State, faction string) AviationView {
 			task.Returning = leader.Returning
 		case "cover":
 			task.Name = "空中掩护 · " + leader.Model
+			task.OriginCoord = leader.OriginCoord
+			if task.OriginCoord == "" && carrier != nil {
+				task.OriginCoord = carrier.Coord
+			}
 			task.CurrentCoord = leader.Coord
 			task.TargetCoord = leader.TargetCoord
 			task.Returning = leader.Returning
 		case "transfer":
 			task.Name = "转场 · " + leader.Model
+			task.OriginCoord = leader.OriginCoord
+			if task.OriginCoord == "" && carrier != nil {
+				task.OriginCoord = carrier.Coord
+			}
 			task.CurrentCoord = leader.Coord
 			task.TargetCoord = leader.TargetCoord
 			task.Returning = leader.Returning
