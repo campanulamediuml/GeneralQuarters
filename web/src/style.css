@@ -431,6 +431,11 @@ path.hex-wind{pointer-events:none;fill:none;stroke:#7fa6b0;stroke-width:1.3;stro
 .map-flight-task.attack.faction-a>rect,.map-ground-task.attack.faction-a>rect{fill:#3f7f96;stroke:#a9dcea}
 .map-flight-task.attack.faction-b>rect,.map-ground-task.attack.faction-b>rect{fill:#b06a66;stroke:#f2b8b0}
 .map-flight-task.attack .flight-task-picture,.map-ground-task.attack .flight-task-picture{pointer-events:none}
+/* 拆组之后同一格会并存"攻击"和"返航"两张牌：返航牌换成虚线暗底，
+   和执行任务的实线牌一眼分得开（点击仍是各点各的编队）。 */
+.map-flight-task.attack.returning>rect,.map-flight-task.transfer.returning>rect,.map-ground-task.attack.returning>rect{fill:#4a4433;stroke:#e8d79a;stroke-dasharray:4 2}
+.map-flight-task.returning text{fill:#f0e2b4}
+.map-flight-task.returning .flight-task-range{fill:#d7bb7b}
 .map-enemy-air.kind-attack.faction-a rect{fill:#3f7f96;stroke:#a9dcea}
 .map-enemy-air.kind-attack.faction-b rect{fill:#b06a66;stroke:#f2b8b0}
 .map-enemy-air.kind-attack .enemy-air-picture{pointer-events:none}

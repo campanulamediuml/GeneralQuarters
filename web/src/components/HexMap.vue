@@ -193,9 +193,23 @@ function flightTasksAt(coord: string) {
   return flightTaskByCoord.value.get(coord) || []
 }
 
+// 同一格里可能同时有"还在执行任务"和"已经掉头返航"两支编队（拆组，之后还会继续拆），
+// 一次超远程打击能连着拆出好几张牌。以前按 30px 横向偏移排，
+// 两张 48px 宽的牌几乎完全重叠，点选会串到别的编队上。
+// 现在改成竖排阶梯：牌面高 30，行距 34 正好不重叠，点击各归各的。
 function flightPosition(coord: string, index: number, total: number) {
   const point = center(coord)
-  return { x: point.x + (index - (total - 1) / 2) * 30, y: point.y - 52 - index * 8 }
+  if (total <= 1) {
+    return { x: point.x, y: point.y - 52 }
+  }
+  return { x: point.x, y: point.y - 52 - index * 34 }
+}
+
+// 编队牌写任务状态而不是型号：拆组之后同一格会并存"攻击"和"返航"两张牌，
+// 玩家得一眼看出哪张还在打、哪张已经往家飞。
+function flightLabel(task: AirTask) {
+  const base = task.kind === 'attack' ? '攻击' : task.kind === 'cover' ? '掩护' : '转场'
+  return task.returning ? '返航·' + base : base
 }
 
 function flightRange(task: AirTask) {
@@ -1015,7 +1029,7 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         v-for="(task, index) in flightTasksAt(coord)"
         :key="task.id"
         class="map-flight-task"
-        :class="[task.kind, `faction-${playerFaction.toLowerCase()}`, { selected: selectedAirTaskId === task.id }]"
+        :class="[task.kind, `faction-${playerFaction.toLowerCase()}`, { selected: selectedAirTaskId === task.id, returning: task.returning }]"
         :data-flight-task-id="task.id"
         :data-task-kind="task.kind"
         :data-task-faction="playerFaction"
@@ -1027,10 +1041,10 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         <rect x="-24" y="-15" width="48" height="30" rx="3" />
         <image v-if="task.kind === 'attack'" class="flight-task-picture" :href="strikeFormationPicture(playerFaction)" x="-21" y="-13" width="42" height="26" preserveAspectRatio="xMidYMid meet" :data-aircraft-picture="STRIKE_FORMATION_PICTURES[playerFaction === 'B' ? 'B' : 'A']" />
         <path v-else class="flight-task-symbol" :data-task-kind="task.kind" :d="task.kind === 'cover' ? aircraftSilhouette('fighter') : aircraftSilhouette('recon')" transform="translate(-14 -16) scale(.46)" />
-        <text x="30" y="-3">{{ task.kind === 'attack' ? '攻击' : task.kind === 'cover' ? '掩护' : '转场' }} {{ task.airborne_count }}/{{ task.aircraft_ids.length }}{{ task.cannot_land ? ' ⚠' : '' }}</text>
+        <text x="30" y="-3">{{ flightLabel(task) }} {{ task.airborne_count }}/{{ task.aircraft_ids.length }}{{ task.cannot_land ? ' ⚠' : '' }}</text>
         <text class="flight-task-range" x="30" y="10">航程 {{ flightRange(task) }}</text>
-        <text class="flight-task-coord" y="27">{{ task.current_coord }} → {{ task.target_coord || '等待目标' }}</text>
-        <title>{{ flightModels(task) }} · {{ task.airborne_count }}/{{ task.aircraft_ids.length }} 已升空 · 当前 {{ task.current_coord }} · 目标 {{ task.target_coord || '未设置' }} · 剩余航程 {{ flightRange(task) }}</title>
+        <text v-if="flightTasksAt(coord).length === 1" class="flight-task-coord" y="27">{{ task.current_coord }} → {{ task.target_coord || '等待目标' }}</text>
+        <title>{{ flightModels(task) }} · {{ flightLabel(task) }} · {{ task.airborne_count }}/{{ task.aircraft_ids.length }} 已升空 · 当前 {{ task.current_coord }} · 目标 {{ task.target_coord || '未设置' }} · 剩余航程 {{ flightRange(task) }}</title>
       </g>
     </g>
     <g v-for="coord in capCoords" :key="`cap-${coord}`">
@@ -1071,7 +1085,7 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         v-for="(task, index) in groundFlightAt(coord)"
         :key="task.id"
         class="map-ground-task"
-        :class="[task.kind, `faction-${playerFaction.toLowerCase()}`, { selected: selectedAirTaskId === task.id }]"
+        :class="[task.kind, `faction-${playerFaction.toLowerCase()}`, { selected: selectedAirTaskId === task.id, returning: task.returning }]"
         :data-ground-task-id="task.id"
         :data-task-faction="playerFaction"
         :transform="`translate(${flightPosition(coord, index, groundFlightAt(coord).length).x}, ${flightPosition(coord, index, groundFlightAt(coord).length).y})`"
@@ -1080,9 +1094,9 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         <rect x="-22" y="-13" width="44" height="26" rx="3" />
         <image v-if="task.kind === 'attack'" class="flight-task-picture" :href="strikeFormationPicture(playerFaction)" x="-19" y="-11" width="38" height="22" preserveAspectRatio="xMidYMid meet" :data-aircraft-picture="STRIKE_FORMATION_PICTURES[playerFaction === 'B' ? 'B' : 'A']" />
         <path v-else class="flight-task-symbol" :d="aircraftSilhouette('recon')" transform="translate(-13 -11) scale(.5)" />
-        <text class="ground-task-label" x="14" y="-2">{{ task.kind === 'attack' ? '攻击' : '转场' }} {{ task.airborne_count }}</text>
+        <text class="ground-task-label" x="14" y="-2">{{ flightLabel(task) }} {{ task.airborne_count }}</text>
         <text class="ground-task-coord" y="10">{{ task.current_coord }}</text>
-        <title>{{ flightModels(task) }} · 来自机场 · {{ task.current_coord }}{{ task.target_coord ? ' → ' + task.target_coord : '' }}</title>
+        <title>{{ flightModels(task) }} · {{ flightLabel(task) }} · 来自机场 · {{ task.current_coord }}{{ task.target_coord ? ' → ' + task.target_coord : '' }}</title>
       </g>
       <g
         v-for="(task, index) in groundPatrolAt(coord)"

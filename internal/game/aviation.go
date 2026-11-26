@@ -844,6 +844,18 @@ func airborne(aircraft *AirUnit) bool {
 	return false
 }
 
+// firstAirborneMember 挑出组里第一个还在空中的算子（列表已按 ID 排序）。
+// 编队牌的位置、"返航中"状态都要以它为准：ID 最小的那一架可能已经落地/回到甲板，
+// 拿它当坐标源会让整支还在天上的编队挂到地面格子上，甚至和返航队显示成同一种状态。
+func firstAirborneMember(list []*AirUnit) *AirUnit {
+	for _, aircraft := range list {
+		if airborne(aircraft) {
+			return aircraft
+		}
+	}
+	return nil
+}
+
 func updateAttackFormation(state *State, taskID string) []EngineEvent {
 	members := taskAircraft(*state, taskID)
 	if len(members) == 0 {
@@ -2386,12 +2398,21 @@ func VisibleAviation(state State, faction string) AviationView {
 		case "attack":
 			task.Name = "攻击编队 · " + leader.Model
 			task.OriginCoord = leader.OriginCoord
-			task.CurrentCoord = leader.Coord
-			task.TargetCoord = leader.TargetCoord
+			// 坐标和状态都取"还在空中的第一架"：同一任务里 ID 最小的可能已经落地，
+			// 用它会把这支还在天上的编队画在地面格子上。
+			source := leader
+			if flying := firstAirborneMember(aircraftList); flying != nil {
+				source = flying
+			}
+			task.CurrentCoord = source.Coord
+			task.TargetCoord = source.TargetCoord
+			if task.TargetCoord == "" {
+				task.TargetCoord = leader.TargetCoord
+			}
 			task.Disperse = leader.Disperse
 			// 返航中的打击编队要让地图上的编队牌写明"返航中"，
 			// 否则召回到家之前它看起来还是"任务执行中"。
-			task.Returning = leader.Returning
+			task.Returning = source.Returning
 			if task.TargetCoord != "" {
 				toTarget, toLanded := EstimateCarrierStrike(state, aircraftList, carrier)
 				fillStrikeETA(state, &task, toTarget, toLanded)
@@ -2411,9 +2432,16 @@ func VisibleAviation(state State, faction string) AviationView {
 			if task.OriginCoord == "" && carrier != nil {
 				task.OriginCoord = carrier.Coord
 			}
-			task.CurrentCoord = leader.Coord
-			task.TargetCoord = leader.TargetCoord
-			task.Returning = leader.Returning
+			transferSource := leader
+			if flying := firstAirborneMember(aircraftList); flying != nil {
+				transferSource = flying
+			}
+			task.CurrentCoord = transferSource.Coord
+			task.TargetCoord = transferSource.TargetCoord
+			if task.TargetCoord == "" {
+				task.TargetCoord = leader.TargetCoord
+			}
+			task.Returning = transferSource.Returning
 			// 到了目标却降不下去：前端据此在机队上打红色感叹号。
 			for _, aircraft := range aircraftList {
 				if aircraft.CannotLand {

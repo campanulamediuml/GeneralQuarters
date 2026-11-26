@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"sort"
+	"strings"
 )
 
 // splitCarrierReturningMembers 把已经掉头返航的舰载机从打击编队里拆出去，单独成一组。
@@ -43,7 +44,7 @@ func splitCarrierReturningMembers(state *State) []EngineEvent {
 		for _, aircraft := range returning[taskID] {
 			aircraft.TaskID = rtbID
 		}
-		events = append(events, EngineEvent{Type: "attack_member_rtb", Audience: returning[taskID][0].Faction, Text: fmt.Sprintf("%d个算子燃油不足，脱离攻击编队单独返航", len(returning[taskID]))})
+		events = append(events, EngineEvent{Type: "attack_member_rtb", Audience: returning[taskID][0].Faction, Text: fmt.Sprintf("%s燃油不足，脱离攻击编队单独返航（%d个算子）", formationComposition(carrierModels(returning[taskID])), len(returning[taskID]))})
 	}
 	return events
 }
@@ -81,7 +82,42 @@ func splitGroundReturningMembers(state *State) []EngineEvent {
 		for _, aircraft := range returning[taskID] {
 			aircraft.TaskID = rtbID
 		}
-		events = append(events, EngineEvent{Type: "attack_member_rtb", Audience: returning[taskID][0].Faction, Text: fmt.Sprintf("%d个机场算子脱离攻击编队单独返航", len(returning[taskID]))})
+		events = append(events, EngineEvent{Type: "attack_member_rtb", Audience: returning[taskID][0].Faction, Text: fmt.Sprintf("%s燃油不足，脱离打击编队单独返航（%d个机场算子）", formationComposition(groundModels(returning[taskID])), len(returning[taskID]))})
 	}
 	return events
+}
+
+// formationComposition 把成员按机型汇总成"SBD×2 / F4F×1"：
+// 战报只说"3个算子"玩家没法核对，拆走的是哪几架得写清楚。
+func formationComposition(models []string) string {
+	counts := map[string]int{}
+	order := []string{}
+	for _, model := range models {
+		if counts[model] == 0 {
+			order = append(order, model)
+		}
+		counts[model]++
+	}
+	sort.Strings(order)
+	parts := make([]string, 0, len(order))
+	for _, model := range order {
+		parts = append(parts, fmt.Sprintf("%s×%d", model, counts[model]))
+	}
+	return strings.Join(parts, " / ")
+}
+
+func carrierModels(members []*AirUnit) []string {
+	models := make([]string, 0, len(members))
+	for _, member := range members {
+		models = append(models, member.Model)
+	}
+	return models
+}
+
+func groundModels(members []*AirfieldAirUnit) []string {
+	models := make([]string, 0, len(members))
+	for _, member := range members {
+		models = append(models, member.Model)
+	}
+	return models
 }

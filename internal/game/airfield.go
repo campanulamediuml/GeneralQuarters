@@ -305,6 +305,17 @@ func airfieldAirborne(aircraft *AirfieldAirUnit) bool {
 	return false
 }
 
+// firstAirborneGroundMember 是机场侧的同一套取值：编队牌的位置与"返航中"状态
+// 必须看还在天上的那一架，而不是 ID 最小的那一架（它可能已经落回跑道）。
+func firstAirborneGroundMember(list []*AirfieldAirUnit) *AirfieldAirUnit {
+	for _, aircraft := range list {
+		if airfieldAirborne(aircraft) {
+			return aircraft
+		}
+	}
+	return nil
+}
+
 // friendlyAirfieldAtCoord 找到落在某个 hex 上的己方机场；转场目的地就是它。
 func friendlyAirfieldAtCoord(state State, faction, coord string) *Airfield {
 	if coord == "" {
@@ -1608,8 +1619,12 @@ func advanceGroundAttack(state *State, aircraft *AirfieldAirUnit) []EngineEvent 
 			probe := *member
 			probe.Coord = next
 			probe.SetRange(member.Range() - 1)
-			if airfieldFor(state, member.AirfieldID) != nil && probe.Range() <= airfieldRtbDistance(*state, &probe) {
+			// 抵达目标的那一步不做返航预判（与舰载机一致）：到了目标上空就算完成任务，
+			// 否则编队会在离目标 1 hex 的地方掉头，永远打不到。
+			if next != member.TargetCoord && airfieldFor(state, member.AirfieldID) != nil && probe.Range() <= airfieldRtbDistance(*state, &probe) {
+				need := airfieldRtbDistance(*state, member)
 				member.Returning = true
+				events = append(events, EngineEvent{Type: "attack_rtb", Audience: member.Faction, Text: fmt.Sprintf("%s剩余航程%d，只够返航（需%d），脱离打击编队返航", member.Model, member.Range(), need)})
 				break
 			}
 			member.Coord = next
@@ -2164,10 +2179,19 @@ func GroundAviationView(state State, faction string) AviationView {
 			task.OriginCoord = leader.OriginCoord
 		}
 		if leader.TaskKind == "attack" {
-			task.TargetCoord = leader.TargetCoord
+			// 位置和状态取还在天上的那一架：ID 最小的可能已经落回跑道，
+			// 拿它当坐标源会让空中编队挂到机场格子上、返航队显示成执行中。
+			strikeSource := leader
+			if flying := firstAirborneGroundMember(members); flying != nil {
+				strikeSource = flying
+			}
+			task.TargetCoord = strikeSource.TargetCoord
+			if task.TargetCoord == "" {
+				task.TargetCoord = leader.TargetCoord
+			}
 			task.Disperse = leader.Disperse
-			task.CurrentCoord = leader.Coord
-			task.Returning = leader.Returning
+			task.CurrentCoord = strikeSource.Coord
+			task.Returning = strikeSource.Returning
 			task.Name = "攻击编队 · " + leader.Model
 			if task.TargetCoord != "" {
 				if home := airfieldFor(&state, leader.AirfieldID); home != nil {

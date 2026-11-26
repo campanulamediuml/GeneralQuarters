@@ -337,6 +337,202 @@ func TestGroundStrikeJoinRejectedAfterDeparture(t *testing.T) {
 	}
 }
 
+// 超远程打击里航程不足的算子是"一路上陆续脱离"的：每次脱离都拆出一张新牌。
+// 极端情况下一次出动能连着拆出好几支返航编队，而不是等到最后一起掉头。
+func TestLongRangeStrikeDetachesNewFormationEachTurn(t *testing.T) {
+	state := sandboxState(t)
+	ids := []string{"b-cv-01-dive_bomber-x1", "b-cv-01-dive_bomber-x2", "b-cv-01-dive_bomber-x3"}
+	const mainTask = "task-long-range"
+	for _, id := range ids {
+		aircraft := state.Aircraft[id]
+		aircraft.TaskID = mainTask
+		aircraft.TaskKind = "attack"
+		aircraft.Status = "attack"
+		aircraft.Launched = true
+		aircraft.Coord = "0101"
+		aircraft.TargetCoord = "0505"
+	}
+	// 第一回合：x1 航程不够，掉头。
+	state.Aircraft[ids[0]].Returning = true
+	splitCarrierReturningMembers(&state)
+	first := state.Aircraft[ids[0]].TaskID
+	if first == mainTask {
+		t.Fatal("第一次脱离应拆出新的返航编队")
+	}
+	if _, ok := state.Aircraft[ids[0]]; !ok {
+		t.Fatal("状态里找不到刚拆出的算子")
+	}
+	// 第二回合：x2 也到返航下限，应该再拆出另一张牌，而不是并到第一支返航队里。
+	state.Aircraft[ids[1]].Returning = true
+	splitCarrierReturningMembers(&state)
+	second := state.Aircraft[ids[1]].TaskID
+	if second == mainTask {
+		t.Fatal("第二次脱离也应拆出新的返航编队")
+	}
+	if second == first {
+		t.Fatalf("两次脱离应该是两支不同的返航编队，实际都是 %s", second)
+	}
+	if got := state.Aircraft[ids[2]].TaskID; got != mainTask {
+		t.Fatalf("还在执行任务的成员不该被改任务号，实际 %s", got)
+	}
+}
+
+// 机场侧同样是每次脱离拆一张新牌。
+func TestGroundLongRangeStrikeDetachesNewFormationEachTurn(t *testing.T) {
+	state := coralCombatState(t)
+	ids := []string{"af-b-rabaul-g4m-1", "af-b-rabaul-g4m-2", "af-b-rabaul-g4m-3"}
+	const mainTask = "af-long-range"
+	for _, id := range ids {
+		plane := state.GroundAir[id]
+		plane.TaskID = mainTask
+		plane.TaskKind = "attack"
+		plane.Status = "attack"
+		plane.Coord = "0606"
+		plane.TargetCoord = "1611"
+	}
+	state.GroundAir[ids[0]].Returning = true
+	splitGroundReturningMembers(&state)
+	first := state.GroundAir[ids[0]].TaskID
+	if first == mainTask {
+		t.Fatal("第一次脱离应拆出新的返航编队")
+	}
+	state.GroundAir[ids[1]].Returning = true
+	splitGroundReturningMembers(&state)
+	second := state.GroundAir[ids[1]].TaskID
+	if second == mainTask || second == first {
+		t.Fatalf("第二次脱离应拆出另一支返航编队，实际 %s", second)
+	}
+	if got := state.GroundAir[ids[2]].TaskID; got != mainTask {
+		t.Fatalf("还在执行任务的机场算子不该被改任务号，实际 %s", got)
+	}
+}
+
+// 拆组之后航空面板/地图上必须看到两张牌：一张还在执行任务、一张返航中，
+// 各自带自己的坐标和架数，而不是并成一张"返航中 + 攻击中"的混合卡。
+func TestAviationViewShowsExecutingAndReturningFormations(t *testing.T) {
+	state := sandboxState(t)
+	aircraft := []*AirUnit{state.Aircraft["b-cv-01-dive_bomber-x1"], state.Aircraft["b-cv-01-dive_bomber-x2"]}
+	for _, plane := range aircraft {
+		plane.TaskID = "task-view"
+		plane.TaskKind = "attack"
+		plane.Status = "attack"
+		plane.Launched = true
+		plane.TargetCoord = "0505"
+	}
+	aircraft[0].Coord = "0102"
+	aircraft[1].Coord = "0103"
+	aircraft[1].Returning = true
+	splitCarrierReturningMembers(&state)
+
+	view := VisibleAviation(state, "B")
+	var executing, returning *AirTask
+	for i := range view.Tasks {
+		task := &view.Tasks[i]
+		if task.Kind != "attack" {
+			continue
+		}
+		if task.Returning {
+			returning = task
+		} else {
+			executing = task
+		}
+	}
+	if executing == nil || returning == nil {
+		t.Fatalf("拆组后应同时存在执行中和返航中的编队：%+v", view.Tasks)
+	}
+	if executing.ID == returning.ID {
+		t.Fatal("执行中和返航中必须是两张不同的牌")
+	}
+	if executing.CurrentCoord != "0102" || executing.AirborneCount != 1 {
+		t.Fatalf("执行中编队的坐标/架数不对：%s %d", executing.CurrentCoord, executing.AirborneCount)
+	}
+	if returning.CurrentCoord != "0103" || returning.AirborneCount != 1 {
+		t.Fatalf("返航编队的坐标/架数不对：%s %d", returning.CurrentCoord, returning.AirborneCount)
+	}
+}
+
+// 机场侧拆组后同样是两张牌：执行中的留在原任务号、返航的单独一张。
+func TestGroundAviationViewShowsExecutingAndReturningFormations(t *testing.T) {
+	state := coralCombatState(t)
+	executing := state.GroundAir["af-b-rabaul-g4m-1"]
+	returning := state.GroundAir["af-b-rabaul-g4m-2"]
+	for _, plane := range []*AirfieldAirUnit{executing, returning} {
+		plane.TaskID = "af-view"
+		plane.TaskKind = "attack"
+		plane.Status = "attack"
+		plane.TargetCoord = "1611"
+	}
+	executing.Coord = "0606"
+	returning.Coord = "0607"
+	returning.Returning = true
+	splitGroundReturningMembers(&state)
+
+	view := GroundAviationView(state, "B")
+	var executingTask, returningTask *AirTask
+	for i := range view.Tasks {
+		task := &view.Tasks[i]
+		if task.Kind != "attack" {
+			continue
+		}
+		if task.Returning {
+			returningTask = task
+		} else {
+			executingTask = task
+		}
+	}
+	if executingTask == nil || returningTask == nil {
+		t.Fatalf("机场侧拆组后应同时有执行中和返航中的编队：%+v", view.Tasks)
+	}
+	if executingTask.ID == returningTask.ID {
+		t.Fatal("机场侧执行中和返航中也必须是两张不同的牌")
+	}
+	if executingTask.CurrentCoord != "0606" || returningTask.CurrentCoord != "0607" {
+		t.Fatalf("两张牌的坐标不对：%s / %s", executingTask.CurrentCoord, returningTask.CurrentCoord)
+	}
+}
+
+// 编队牌的位置和状态取"还在天上的那一架"：ID 最小的成员可能还停在甲板上，
+// 用它当坐标源会把整支空中编队画在地面格子上。
+func TestStrikeCardUsesAirborneMemberPosition(t *testing.T) {
+	state := sandboxState(t)
+	grounded := state.Aircraft["b-cv-01-dive_bomber-x1"]
+	flying := state.Aircraft["b-cv-01-dive_bomber-x2"]
+	carrier := state.Units[grounded.CarrierID]
+	for _, plane := range []*AirUnit{grounded, flying} {
+		plane.TaskID = "task-mixed"
+		plane.TaskKind = "attack"
+		plane.TargetCoord = "0505"
+	}
+	grounded.Status = "deck"
+	grounded.Coord = carrier.Coord
+	flying.Status = "attack_holding"
+	flying.Coord = "0303"
+
+	task := findViewTask(t, VisibleAviation(state, "B"), "task-mixed")
+	if task.CurrentCoord != "0303" {
+		t.Fatalf("空中编队的坐标应取空中的成员，实际 %s", task.CurrentCoord)
+	}
+	if task.Returning {
+		t.Fatal("空中的成员还在执行任务，牌面不该写返航中")
+	}
+	flying.Returning = true
+	task = findViewTask(t, VisibleAviation(state, "B"), "task-mixed")
+	if !task.Returning {
+		t.Fatal("空中的成员返航后，牌面应写返航中")
+	}
+}
+
+func findViewTask(t *testing.T, view AviationView, taskID string) *AirTask {
+	t.Helper()
+	for i := range view.Tasks {
+		if view.Tasks[i].ID == taskID {
+			return &view.Tasks[i]
+		}
+	}
+	t.Fatalf("视图里找不到任务 %s", taskID)
+	return nil
+}
+
 // 等集结的飞机也会烧油：剩的航程只够回家就自己脱队返航，不能烧到油尽坠毁。
 func TestHoldingAttackersDetachWhenFuelLow(t *testing.T) {
 	state := sandboxState(t)
