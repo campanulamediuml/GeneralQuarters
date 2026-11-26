@@ -22,7 +22,6 @@
   "cargo": 0,
   "armored_carrier": false,
   "hangar_capacity": 18,
-  "gunnery": 0,
-  "open_hangar": true
+  "gunnery": 0
  }
 }

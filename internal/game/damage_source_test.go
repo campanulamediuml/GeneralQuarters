@@ -166,7 +166,7 @@ func TestHangarDCTAdvantageByCard(t *testing.T) {
 	trials := 400
 	failRate := func(openHangar bool) float64 {
 		state := &State{RNGState: 1}
-		unit := &Unit{ID: "cv", Type: "CV", Faction: "A", Card: ShipCard{DamageControl: 5, OpenHangar: openHangar}}
+		unit := &Unit{ID: "cv", Type: "CV", Faction: "A", Card: ShipCard{DamageControl: 5, HangarAdvantage: openHangar}}
 		failures := 0
 		for i := 0; i < trials; i++ {
 			if hangarDCTRoll(state, unit) > unit.Card.DamageControl {
@@ -189,7 +189,7 @@ func TestHangarDCTAdvantageByCard(t *testing.T) {
 }
 
 // 部署覆盖能按单舰改机库形式（剧本里微调不需要复制整张卡）。
-func TestOpenHangarDeploymentOverride(t *testing.T) {
+func TestHangarAdvantageInScenario(t *testing.T) {
 	scenario, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")
 	if err != nil {
 		t.Fatal(err)
@@ -200,11 +200,19 @@ func TestOpenHangarDeploymentOverride(t *testing.T) {
 	}
 	openCount := 0
 	for _, unit := range state.Units {
-		if unit.Card.OpenHangar {
+		if unit.Card.HangarAdvantage {
 			openCount++
 		}
 	}
 	if openCount == 0 {
-		t.Fatal("珊瑚海剧本里应该有开放式机库的航母（翔鹤、瑞鹤）")
+		t.Fatal("珊瑚海剧本里应该有取优势的航母（约克城）")
+	}
+	for _, unit := range state.Units {
+		if unit.DefinitionID == "lexington" && unit.Card.HangarAdvantage {
+			t.Fatal("列克星敦级没有机库优势")
+		}
+		if unit.DefinitionID == "shokaku" && unit.Card.HangarAdvantage {
+			t.Fatal("翔鹤级没有机库优势")
+		}
 	}
 }

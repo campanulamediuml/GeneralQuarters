@@ -71,19 +71,19 @@ type DeployBox struct {
 
 // DeploymentOverrides 是单舰属性覆盖。全部用指针，nil 表示"沿用单位库"。
 type DeploymentOverrides struct {
-	Strength       *int     `json:"strength,omitempty"`
-	DeckLength     *int     `json:"deck_length,omitempty"`
-	HangarCapacity *int     `json:"hangar_capacity,omitempty"`
-	ElevatorCount  *int     `json:"elevator_count,omitempty"`
-	HeavyAA        *float64 `json:"heavy_aa,omitempty"`
-	LightAA        *float64 `json:"light_aa,omitempty"`
-	MainGunCount   *int     `json:"main_gun_count,omitempty"`
-	MainGunCaliber *int     `json:"main_gun_caliber,omitempty"`
-	DamageControl  *int     `json:"damage_control,omitempty"`
-	SpeedClass     *string  `json:"speed_class,omitempty"`
-	Gunnery        *int     `json:"gunnery,omitempty"`
-	ArmoredCarrier *bool    `json:"armored_carrier,omitempty"`
-	OpenHangar     *bool    `json:"open_hangar,omitempty"`
+	Strength        *int     `json:"strength,omitempty"`
+	DeckLength      *int     `json:"deck_length,omitempty"`
+	HangarCapacity  *int     `json:"hangar_capacity,omitempty"`
+	ElevatorCount   *int     `json:"elevator_count,omitempty"`
+	HeavyAA         *float64 `json:"heavy_aa,omitempty"`
+	LightAA         *float64 `json:"light_aa,omitempty"`
+	MainGunCount    *int     `json:"main_gun_count,omitempty"`
+	MainGunCaliber  *int     `json:"main_gun_caliber,omitempty"`
+	DamageControl   *int     `json:"damage_control,omitempty"`
+	SpeedClass      *string  `json:"speed_class,omitempty"`
+	Gunnery         *int     `json:"gunnery,omitempty"`
+	ArmoredCarrier  *bool    `json:"armored_carrier,omitempty"`
+	HangarAdvantage *bool    `json:"hangar_advantage,omitempty"`
 }
 
 type AirDeployment struct {
@@ -157,10 +157,10 @@ type ShipCard struct {
 	DepthCharges   int     `json:"depth_charges"`
 	Cargo          int     `json:"cargo"`
 	ArmoredCarrier bool    `json:"armored_carrier"`
-	// OpenHangar 表示开放式机库：机库侧面有大量卷帘开口，油气不容易积聚，
-	// 被炸弹引爆的机库 DCT 取优势（两投取小）。封闭式机库反过来取劣势。
-	OpenHangar     bool   `json:"open_hangar,omitempty"`
-	HistoricalLoss string `json:"historical_loss,omitempty"`
+	// HangarAdvantage 表示这艘航母的机库被炸弹引爆时 DCT 取优势（投两次取小）。
+	// 这是单舰属性，和国籍无关：多数美军航母有，列克星敦级没有，日军航母几乎没有。
+	HangarAdvantage bool   `json:"hangar_advantage,omitempty"`
+	HistoricalLoss  string `json:"historical_loss,omitempty"`
 }
 
 type AircraftDefinition struct {

@@ -285,8 +285,8 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 			if o.ArmoredCarrier != nil {
 				card.ArmoredCarrier = *o.ArmoredCarrier
 			}
-			if o.OpenHangar != nil {
-				card.OpenHangar = *o.OpenHangar
+			if o.HangarAdvantage != nil {
+				card.HangarAdvantage = *o.HangarAdvantage
 			}
 		}
 		state.Units[deployment.ID] = &Unit{
