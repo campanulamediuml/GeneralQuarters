@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { adoptPushedView, api, attachRoomSocket, handleRoomSocketMessage, onPushedState } from '../api'
 import type { AirCombatReport, AirTask, GameView, Order, ReconHeading, StrikeTarget, Unit } from '../types'
 import { contactCapitalsLabel, contactIntelLabel, contactSizeLabel, groupFleets, type FleetGroup } from '../fleet'
 import { airfieldContactStatus } from '../airfields'
+import { shipDamageBadges, shipDamageDetailLabels } from '../shipDamage'
 import HexMap from '../components/HexMap.vue'
 import AirfieldCounter from '../components/AirfieldCounter.vue'
 import ShipCard from '../components/ShipCard.vue'
@@ -99,6 +100,15 @@ function enemyIntelNote(fleet: FleetGroup) {
 }
 
 const inspectedFleet = computed(() => fleets.value.find((fleet) => fleet.faction !== state.value?.you.faction && (fleet.id === selectedID.value || fleet.members.some((unit) => unit.id === selectedID.value))))
+// 敌军面板的"查看损伤"开关：只有 4 级情报有意义（编成和舰况都已知）。
+const enemyDamageOpen = ref(false)
+watch(() => inspectedFleet.value?.fleet_id, () => { enemyDamageOpen.value = false })
+const enemyDamageRows = computed(() => (inspectedFleet.value?.members || []).map((member) => ({
+  member,
+  badges: shipDamageBadges(member),
+  details: shipDamageDetailLabels(member),
+  health: Math.max(0, Math.min(100, (member.strength / Math.max(1, member.max_strength)) * 100)),
+})))
 const canOpenAviation = computed(() => Boolean(selectedFleet.value?.members.some((unit) => unit.card.hangar_capacity > 0)) || Boolean(selectedAirfield.value))
 // 地图上可见的机场（己方全部 + 已侦察发现的敌方机场）
 const airfields = computed(() => state.value?.airfields || [])
@@ -485,6 +495,12 @@ function selectFleetMember(unit: Unit) {
   inspectedAirfieldID.value = ''
   shipDetailOpen.value = false
   selectedID.value = unit.id
+  if (unit.faction && unit.faction !== state.value?.you.faction) {
+    // 敌方算子是只读情报：不管是不是航母都只开角色卡。以前点敌方航母会拿敌方
+    // fleet_id 去开"航空作业"，面板打开是个空壳，还把己方选中的机场/编队带偏。
+    shipDetailOpen.value = true
+    return
+  }
   const isCarrier = ['CV', 'CVL', 'CVE'].includes(unit.type)
   if (isCarrier || unit.card.hangar_capacity > 0) {
     aviationFocusID.value = unit.id
@@ -986,8 +1002,19 @@ onUnmounted(() => {
                 <div v-show="!fleetCardsCollapsed" class="fleet-counter-grid"><button v-for="member in selectedFleet.members" :key="member.id" class="fleet-counter-button" :class="{ active: selectedUnit?.id === member.id }" :data-ship-id="member.id" @click="selectFleetMember(member)"><ShipCounter :unit="member" :side="counterSide" /></button></div>
               </section>
               <section v-if="inspectedFleet" class="fleet-workbench enemy-fleet-workbench" :data-fleet-id="inspectedFleet.fleet_id">
-                <header><div><span class="section-kicker">ENEMY CONTACT · {{ inspectedFleet.coord }}</span><h2>{{ contactIntelLabel(inspectedFleet) }}</h2><small>情报{{ inspectedFleet.contact_level || 0 }}级{{ (inspectedFleet.contact_level || 0) >= 4 ? ' · 编成与状态已知 · 点击舰船查看角色卡' : ' · 只能确认这一级的信息' }}</small></div><div class="fleet-workbench-actions"><button v-if="(inspectedFleet.contact_level || 0) >= 4" @click="counterSide = counterSide === 'front' ? 'back' : 'front'">{{ counterSide === 'front' ? '查看兵牌背面' : '查看兵牌正面' }}</button><button aria-label="关闭" @click="selectedID = ''">×</button></div></header>
-                <div v-if="(inspectedFleet.contact_level || 0) >= 4" class="fleet-counter-grid"><button v-for="member in inspectedFleet.members" :key="member.id" class="fleet-counter-button" :class="{ active: selectedUnit?.id === member.id }" :data-ship-id="member.id" @click="selectFleetMember(member)"><ShipCounter :unit="member" :side="counterSide" /></button></div>
+                <header><div><span class="section-kicker">ENEMY CONTACT · {{ inspectedFleet.coord }}</span><h2>{{ contactIntelLabel(inspectedFleet) }}</h2><small>情报{{ inspectedFleet.contact_level || 0 }}级{{ (inspectedFleet.contact_level || 0) >= 4 ? (enemyDamageOpen ? ' · 各舰舰况与损伤 · 点击一行查看角色卡' : ' · 编成与状态已知 · 点击舰船查看角色卡') : ' · 只能确认这一级的信息' }}</small></div><div class="fleet-workbench-actions"><button v-if="(inspectedFleet.contact_level || 0) >= 4" class="enemy-damage-toggle" :aria-pressed="enemyDamageOpen" @click="enemyDamageOpen = !enemyDamageOpen">{{ enemyDamageOpen ? '查看编成' : '查看损伤' }}</button><button v-if="(inspectedFleet.contact_level || 0) >= 4 && !enemyDamageOpen" @click="counterSide = counterSide === 'front' ? 'back' : 'front'">{{ counterSide === 'front' ? '查看兵牌背面' : '查看兵牌正面' }}</button><button aria-label="关闭" @click="selectedID = ''">×</button></div></header>
+                <div v-if="(inspectedFleet.contact_level || 0) >= 4 && !enemyDamageOpen" class="fleet-counter-grid"><button v-for="member in inspectedFleet.members" :key="member.id" class="fleet-counter-button" :class="{ active: selectedUnit?.id === member.id }" :data-ship-id="member.id" @click="selectFleetMember(member)"><ShipCounter :unit="member" :side="counterSide" /></button></div>
+                <div v-else-if="(inspectedFleet.contact_level || 0) >= 4" class="enemy-damage-list">
+                  <button v-for="row in enemyDamageRows" :key="row.member.id" class="enemy-damage-row" :class="{ active: selectedUnit?.id === row.member.id, wrecked: row.member.strength <= 0 }" :data-ship-id="row.member.id" :title="row.details.length ? row.details.join('、') : '无损伤'" @click="selectFleetMember(row.member)">
+                    <span class="enemy-damage-name"><b>{{ row.member.name }}</b><code>{{ row.member.type }}</code></span>
+                    <span class="enemy-damage-hp" :class="{ critical: row.health <= 34 }"><i :style="{ width: row.health + '%' }"></i></span>
+                    <strong class="enemy-damage-value">{{ row.member.strength }}<small>/{{ row.member.max_strength }}</small></strong>
+                    <span class="enemy-damage-badges">
+                      <span v-for="badge in row.badges" :key="badge.label" class="damage-badge" :class="badge.kind">{{ badge.label }}</span>
+                      <span v-if="!row.badges.length" class="damage-badge intact">完好</span>
+                    </span>
+                  </button>
+                </div>
                 <div v-else class="enemy-intel-note"><p>{{ enemyIntelNote(inspectedFleet) }}</p></div>
               </section>
               <section v-if="inspectedAirfield" class="fleet-workbench enemy-fleet-workbench airfield-intel-workbench" :data-airfield-id="inspectedAirfield.id">

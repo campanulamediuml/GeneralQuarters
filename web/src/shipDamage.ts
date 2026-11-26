@@ -75,6 +75,48 @@ export function damageTitles(unit: Unit): string[] {
   return titles
 }
 
+// 卡片和敌军损伤清单共用同一套徽标：两处各写一份的结果就是图标上看得见、列表里却没有。
+export type DamageBadgeKind = 'fire' | 'deny' | 'disabled' | 'slow'
+
+export interface DamageBadge {
+  label: string
+  kind: DamageBadgeKind
+}
+
+export function shipDamageBadges(unit: Unit): DamageBadge[] {
+  const markers = shipDamageMarkers(unit)
+  const badges: DamageBadge[] = []
+  if (markers.sunk) badges.push({ label: '沉没', kind: 'deny' })
+  if (markers.fire) badges.push({ label: markers.fireLabel, kind: 'fire' })
+  if (markers.deck) badges.push({ label: markers.deckDestroyed ? '飞行甲板摧毁' : '飞行甲板损伤', kind: 'deny' })
+  if (markers.tilt) badges.push({ label: '进水倾斜', kind: 'deny' })
+  if (markers.disabled) badges.push({ label: '失去动力', kind: 'disabled' })
+  else if (markers.slow) badges.push({ label: markers.slowLabel, kind: 'slow' })
+  if (markers.oilLeak) badges.push({ label: '漏油', kind: 'fire' })
+  return badges
+}
+
+// 徽标只看最要紧的几项；逐条的损伤说明（雷达、声呐、鱼雷管、升降机）用这个。
+export function shipDamageDetailLabels(unit: Unit): string[] {
+  const damage: ShipDamage = unit.damage || {}
+  const labels: string[] = []
+  if (damage.fire === 'small') labels.push('小型火灾')
+  if (damage.fire === 'burning') labels.push('起火燃烧')
+  if (damage.flooding?.length) labels.push(`进水 ${damage.flooding.length} 层`)
+  if (damage.disabled) labels.push('失去动力')
+  if (damage.tilt) labels.push('倾斜')
+  if (damage.oil_leak) labels.push('漏油')
+  if (damage.deck_destroyed) labels.push('飞行甲板摧毁')
+  else if (damage.deck_damaged) labels.push('飞行甲板损伤')
+  if (damage.elevator_damage) labels.push(`升降机损坏 ${damage.elevator_damage} 部`)
+  if (damage.torpedo_disabled) labels.push('鱼雷发射器毁坏')
+  if (damage.fire_control_radar_disabled) labels.push('火控雷达损坏')
+  if (damage.surface_radar_disabled) labels.push('对海搜索雷达损坏')
+  if (damage.air_radar_disabled) labels.push('对空雷达损坏')
+  if (damage.sonar_disabled) labels.push('声呐损坏')
+  return labels
+}
+
 // 兵牌 CSS 类名：给 counter 加整体底色/边框变化。
 export function counterDamageClass(unit: Unit): Record<string, boolean> {
   const markers = shipDamageMarkers(unit)
