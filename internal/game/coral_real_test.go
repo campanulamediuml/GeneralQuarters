@@ -2,8 +2,9 @@ package game
 
 import "testing"
 
-// 珊瑚海 · 真实比例：双方在各自的矩形出生区里随机出现，时间线按 20 分钟一回合配置。
-func TestCoralRealSpawnsInBoxes(t *testing.T) {
+// 珊瑚海 · 真实比例：美军在 3250 周围 8 hex、日军在 0831 周围 8 hex 的部署区里随机出生，
+// 时间线按 20 分钟一回合配置。
+func TestCoralRealSpawnsInDeployZones(t *testing.T) {
 	scenario, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")
 	if err != nil {
 		t.Fatal(err)
@@ -22,28 +23,43 @@ func TestCoralRealSpawnsInBoxes(t *testing.T) {
 	if scenario.TurnsPerDay != 72 || scenario.DayHours != 0 {
 		t.Fatalf("20 分钟一回合应配 72 回合/天、00:00 开局：%d / %.1f", scenario.TurnsPerDay, scenario.DayHours)
 	}
-	inBox := func(depBox DeployBox, coord string) bool {
-		row, col, err := ParseCoord(coord)
-		if err != nil {
-			return false
-		}
-		return row >= depBox.RowMin && row <= depBox.RowMax && col >= depBox.ColMin && col <= depBox.ColMax
+	zones := map[string]DeployZone{}
+	for _, zone := range scenario.DeployZones {
+		zones[zone.Faction] = zone
 	}
-	// 每个舰队各自一个出生框（MO 航母本队和第六战队分开部署）。
-	// TF44 不写死框，改成贴着 TF17 西北 10 hex 内出生，后面单独校验。
-	boxes := map[string]DeployBox{}
-	for _, deployment := range scenario.Deployments {
-		if deployment.Box == nil {
-			if deployment.Near == nil {
-				t.Fatalf("部署%s缺少出生区", deployment.ID)
-			}
-			continue
+	if zones["A"].Anchor != "3250" || zones["A"].Radius != 8 {
+		t.Fatalf("美军部署区配置错误：%+v", zones["A"])
+	}
+	if zones["B"].Anchor != "0831" || zones["B"].Radius != 8 {
+		t.Fatalf("日军部署区配置错误：%+v", zones["B"])
+	}
+	state, err := NewState(scenario, gameMap, catalog, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.Phase != PhaseDeploy {
+		t.Fatalf("配了部署区的剧本新局应先进部署阶段，实际 %q", state.Phase)
+	}
+	for _, unit := range state.Units {
+		zone, ok := zones[unit.Faction]
+		if !ok {
+			t.Fatalf("%s(%s) 没有部署区", unit.Name, unit.Faction)
 		}
-		key := deployment.Faction + "/" + deployment.FleetID
-		if existing, ok := boxes[key]; ok && existing != *deployment.Box {
-			t.Fatalf("同舰队出生区不一致：%+v / %+v", existing, *deployment.Box)
+		if Distance(unit.Coord, zone.Anchor) > zone.Radius {
+			t.Fatalf("%s出生在部署区外：%s（锚点%s 半径%d）", unit.Name, unit.Coord, zone.Anchor, zone.Radius)
 		}
-		boxes[key] = *deployment.Box
+		carrier := IsCarrier(unit) || FleetHasCarrier(state, FleetKey(unit))
+		if !fleetTerrainAllowsEntry(state.Map, unit.Coord, carrier, false) {
+			t.Fatalf("%s出生在不可通行的格子：%s", unit.Name, unit.Coord)
+		}
+	}
+}
+
+// 出生点要随机，但同一阵营的两支舰队不能叠在同一格：开局就叠在一起等于逼玩家先拆队。
+func TestCoralRealFleetSpawnsAreRandomAndSeparate(t *testing.T) {
+	scenario, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")
+	if err != nil {
+		t.Fatal(err)
 	}
 	spots := map[string]map[string]bool{"A": {}, "B": {}}
 	for seed := uint64(1); seed <= 20; seed++ {
@@ -51,40 +67,31 @@ func TestCoralRealSpawnsInBoxes(t *testing.T) {
 		if err != nil {
 			t.Fatalf("种子%d部署失败：%v", seed, err)
 		}
-		coords := map[string]string{}
 		fleetCoords := map[string]string{}
 		for _, unit := range state.Units {
 			key := unit.Faction + "/" + unit.FleetID
-			if box, ok := boxes[key]; ok && !inBox(box, unit.Coord) {
-				t.Fatalf("种子%d %s落到了出生区外：%s", seed, key, unit.Coord)
-			}
 			if existing, ok := fleetCoords[key]; ok && existing != unit.Coord {
 				t.Fatalf("同一舰队的舰船没有落在同一个 hex：%s / %s", existing, unit.Coord)
 			}
 			fleetCoords[key] = unit.Coord
-			if unit.FleetID == "TF17" || unit.FleetID == "MO" {
-				coords[unit.Faction] = unit.Coord
+		}
+		seen := map[string]map[string]bool{}
+		for key, coord := range fleetCoords {
+			faction := key[:1]
+			if seen[faction] == nil {
+				seen[faction] = map[string]bool{}
 			}
+			if seen[faction][coord] {
+				t.Fatalf("种子%d %s 两支舰队叠在 %s", seed, faction, coord)
+			}
+			seen[faction][coord] = true
+			spots[faction][coord] = true
 		}
-		tf17, tf44 := fleetCoords["A/TF17"], fleetCoords["A/TF44"]
-		if tf17 == "" || tf44 == "" {
-			t.Fatalf("种子%d TF17/TF44 没有出生：%q / %q", seed, tf17, tf44)
-		}
-		if d := Distance(tf17, tf44); d < 4 || d > 10 {
-			t.Fatalf("种子%d TF44 应在 TF17 的 4-10 hex 内，实际 %d hex", seed, d)
-		}
-		if heading := headingBetween(tf17, tf44); heading != "NW" {
-			t.Fatalf("种子%d TF44 应在 TF17 西北，实际方位 %s", seed, heading)
-		}
-		distance := Distance(coords["A"], coords["B"])
-		if distance < 12 || distance > 45 {
-			t.Fatalf("种子%d双方出生距离异常：%d hex", seed, distance)
-		}
-		spots["A"][coords["A"]] = true
-		spots["B"][coords["B"]] = true
 	}
-	if len(spots["A"]) < 3 || len(spots["B"]) < 3 {
-		t.Fatalf("出生点没有随机化：%v", spots)
+	for faction, set := range spots {
+		if len(set) < 3 {
+			t.Fatalf("%s出生点没有随机化：%v", faction, set)
+		}
 	}
 }
 
@@ -206,38 +213,6 @@ func TestCoralRealUSTaskForces(t *testing.T) {
 	}
 	if state.Units["a-ca-07"].Card.Nation != "australia" || state.Units["a-cl-01"].Card.Nation != "australia" {
 		t.Fatal("澳大利亚与霍巴特应带 australia 国别标识")
-	}
-}
-
-// 双方每个舰队都在自己的区域里随机出生：位置够分散，且不同舰队不会叠在同一个 hex。
-func TestCoralRealFleetSpawnsAreRandomAndSeparate(t *testing.T) {
-	scenario, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")
-	if err != nil {
-		t.Fatal(err)
-	}
-	spots := map[string]map[string]bool{}
-	for seed := uint64(1); seed <= 40; seed++ {
-		state, err := NewState(scenario, gameMap, catalog, seed)
-		if err != nil {
-			t.Fatalf("种子%d部署失败：%v", seed, err)
-		}
-		occupied := map[string]string{}
-		for _, unit := range state.Units {
-			key := unit.Faction + "/" + unit.FleetID
-			if spots[key] == nil {
-				spots[key] = map[string]bool{}
-			}
-			spots[key][unit.Coord] = true
-			if other, exists := occupied[unit.Coord]; exists && other != key {
-				t.Fatalf("种子%d 两个舰队叠在 %s：%s / %s", seed, unit.Coord, other, key)
-			}
-			occupied[unit.Coord] = key
-		}
-	}
-	for fleet, coords := range spots {
-		if len(coords) < 5 {
-			t.Fatalf("%s 的出生点不够随机：40 个种子只有 %d 个位置", fleet, len(coords))
-		}
 	}
 }
 

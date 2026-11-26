@@ -33,6 +33,8 @@ func TestTwoPlayerRoomRejectsLoneReady(t *testing.T) {
 	}
 	var bState testView
 	_ = b.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &bState)
+	// 新剧本开局在部署阶段：双方各点一次「部署完毕」进入第 1 回合，之后 ready 才是回合结算。
+	settleDeployment(t, created.RoomID, a, b)
 	var readyView testView
 	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &readyView); status != http.StatusOK {
 		t.Fatalf("两人都在时应能 ready：%d", status)
@@ -61,6 +63,8 @@ func TestSoloRoomResolvesAlone(t *testing.T) {
 	if !initial.Solo {
 		t.Fatal("单人房应把 solo 标记返回给前端")
 	}
+	// 部署阶段先开战：这一下只结束部署，不推进回合。
+	settleDeployment(t, created.RoomID, a)
 	var readyView testView
 	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &readyView); status != http.StatusOK {
 		t.Fatalf("单人房 ready 失败：%d", status)

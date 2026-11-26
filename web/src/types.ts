@@ -463,6 +463,12 @@ export interface GameClock {
   night_in_turns: number
 }
 
+export interface DeployZone {
+  anchor: string
+  radius: number
+  cells: string
+}
+
 export interface GameView {
   room_id: string
   status: string
@@ -485,6 +491,9 @@ export interface GameView {
   enemy_shore_supplies?: Record<string, number>
   /** 逐格天气：行优先、每格一个字符 '0'..'3'（晴/多云/降雨/风暴） */
   weather_cells?: string
+  // phase = 'deploy' 时双方还在部署区摆船；deploy_zone 是己方部署区（锚点/半径/格位串）。
+  phase?: string
+  deploy_zone?: DeployZone
   wind?: {
     wind: string
     /** 逐格风向：行优先、每格一个字符，'0'..'5' 对应 NE/E/SE/SW/W/NW */

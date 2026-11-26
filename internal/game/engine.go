@@ -113,6 +113,12 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 	if scenario.Timeline != nil && scenario.Timeline.TurnMinutes > 0 {
 		state.TurnsPerDay = 1440 / scenario.Timeline.TurnMinutes
 	}
+	// 开局部署阶段：剧本配了部署区就先进部署，双方都点"部署完毕"才进第 1 回合。
+	state.Phase = PhaseBattle
+	if len(scenario.DeployZones) > 0 {
+		state.Phase = PhaseDeploy
+		state.DeployZones = append([]DeployZone(nil), scenario.DeployZones...)
+	}
 	// 开局天色必须按时钟算，不能沿用剧本里那个静态 night 字段。
 	// 以前状态里 Night 初始是 false，而珊瑚海开局是 00:00——第一回合结算时
 	// 引擎以为"刚入夜"，于是播了一条假的"夜幕降临"，顺手把玩家这一刻下的
@@ -149,6 +155,9 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		}
 	}
 	fleetHomes := map[string]Deployment{}
+	// 开局随机摆船时避免同阵营两支舰队落在同一个 hex：叠在一起看起来像同一支编队，
+	// 玩家还没开始就得先拆开。拖动阶段当然允许叠（那是玩家自己的选择）。
+	spawnUsed := map[string]bool{}
 	for _, deployment := range scenario.Deployments {
 		if deployment.Faction != "A" && deployment.Faction != "B" {
 			return state, fmt.Errorf("部署%s阵营无效", deployment.ID)
@@ -184,10 +193,31 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		// 出生点：写了 coord 就用固定点位；写了 coords 就在候选区里按种子随机，
 		// 同一舰队的所有舰船必须落在同一个 hex。
 		carrierFleet := fleetCarrier[fleetID]
+		// 部署区优先：剧本划了区，整片区就是候选格，box / near 那套旧写法直接让位。
+		// 这样同一个剧本的舰队会散在区内，而不是各自按矩形或相对位置出生。
+		var zoneCandidates []string
+		if zone := deployZoneOf(scenario.DeployZones, deployment.Faction); zone != nil {
+			zoneCandidates = zoneCoords(gameMap, *zone, carrierFleet, airfieldCoords)
+			if len(zoneCandidates) == 0 {
+				return state, fmt.Errorf("部署区%s周围%d hex 内没有可用海格", zone.Anchor, zone.Radius)
+			}
+		}
 		coord := deployment.Coord
 		if coord == "" {
 			if home, exists := fleetHomes[fleetID]; exists && home.Coord != "" {
 				coord = home.Coord
+			} else if len(zoneCandidates) > 0 {
+				available := make([]string, 0, len(zoneCandidates))
+				for _, candidate := range zoneCandidates {
+					if !spawnUsed[candidate] {
+						available = append(available, candidate)
+					}
+				}
+				if len(available) == 0 {
+					available = zoneCandidates
+				}
+				coord = available[nextUint64(&state.RNGState)%uint64(len(available))]
+				spawnUsed[coord] = true
 			} else if deployment.Near != nil {
 				anchor, ok := fleetHomes[deployment.Near.FleetID]
 				if !ok || anchor.Coord == "" {
@@ -602,6 +632,10 @@ func LegalMoves(state State, unit *Unit) []string {
 	if unit == nil {
 		return nil
 	}
+	// 部署阶段：整片部署区都是可落点，不要求相邻、也不看冷却。
+	if InDeployPhase(state) {
+		return DeployMoves(state, unit)
+	}
 	if MovementBlocked(state, unit) {
 		return []string{}
 	}
@@ -741,6 +775,10 @@ func groundAirView(aircraft *AirUnit) *AirfieldAirUnit {
 }
 
 func ValidateOrder(state State, faction string, order Order) error {
+	// 部署阶段只摆船：开火、侦察、起降、设航向这些都要等开战。
+	if InDeployPhase(state) && !deployOrderAllowed(order.Type) {
+		return fmt.Errorf("部署阶段只能移动和整编舰队")
+	}
 	// 无线电命令按任务 ID 挂载、也带 TaskID，必须在航空命令分派之前拦下来，
 	// 否则会掉进 ValidateAirOrder 的 default 分支。
 	if isRadioOrder(order.Type) {
@@ -789,6 +827,15 @@ func ValidateOrder(state State, faction string, order Order) error {
 	case "CLEAR_MOVE":
 		return nil
 	case "SET_MOVE":
+		if InDeployPhase(state) {
+			// 部署阶段允许跨格拖到区内任意位置，只要地形能进。
+			for _, coord := range DeployMoves(state, unit) {
+				if coord == order.Coord {
+					return nil
+				}
+			}
+			return fmt.Errorf("部署阶段只能把舰队放在部署区内")
+		}
 		if MovementBlocked(state, unit) {
 			return fmt.Errorf("该舰队本回合已经移动或仍在冷却")
 		}
@@ -941,7 +988,10 @@ func applyReorganization(state *State, order Order) (string, bool) {
 		}
 		unit.FleetID = fleetID
 		unit.FleetName = name
-		LockFleetMovement(state, fleetID, 3)
+		// 部署阶段整编不该锁 3 回合：开局还没打，锁上了第一回合就动不了。
+		if !InDeployPhase(*state) {
+			LockFleetMovement(state, fleetID, 3)
+		}
 	}
 	return faction, true
 }
@@ -993,7 +1043,9 @@ func ApplyImmediateOrganization(state *State, order Order) []EngineEvent {
 				unit.FleetID = fleetID
 			}
 		}
-		LockFleetMovement(state, fleetID, 3)
+		if !InDeployPhase(*state) {
+			LockFleetMovement(state, fleetID, 3)
+		}
 		return []EngineEvent{{Type: "fleet_merged", Audience: source.Faction, Text: fmt.Sprintf("%s与%s在%s完成整编，3回合内无法移动", source.Name, target.Name, source.Coord)}}
 	}
 	return nil

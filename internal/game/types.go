@@ -29,6 +29,14 @@ type MapDefinition struct {
 	board *board
 }
 
+// DeployZone 是一个阵营的开局部署区：锚点 hex + 半径（六边形距离）。
+// 区内的格子按地形过滤（暗礁/陆地/机场格按舰种规则排除），舰队在这些格子里随机出生。
+type DeployZone struct {
+	Faction string `json:"faction"`
+	Anchor  string `json:"anchor"`
+	Radius  int    `json:"radius"`
+}
+
 type Deployment struct {
 	ID   string `json:"id"`
 	Unit string `json:"unit"`
@@ -112,8 +120,11 @@ type ScenarioDefinition struct {
 	TurnsPerDay int     `json:"turns_per_day"`
 	Wind        string  `json:"wind"`
 	// WeatherTurns 是天气刷新间隔（0 = 静态天气）。
-	WeatherTurns   int                  `json:"weather_turns"`
-	Doctrines      map[string]string    `json:"doctrines"`
+	WeatherTurns int               `json:"weather_turns"`
+	Doctrines    map[string]string `json:"doctrines"`
+	// DeployZones 是开局部署区：每个阵营一个锚点 + 半径，舰队在区内随机出生，
+	// 部署阶段也只能在区内调整。没有配部署区的剧本直接进第 1 回合。
+	DeployZones    []DeployZone         `json:"deploy_zones"`
 	Deployments    []Deployment         `json:"deployments"`
 	AirDeployments []AirDeployment      `json:"air_deployments"`
 	Airfields      []AirfieldDefinition `json:"airfields"`
@@ -922,6 +933,11 @@ type State struct {
 	AirContacts map[string]map[string]*AirContact `json:"air_contacts"`
 	// 初始舰船数（按阵营），用于"击沉 N 艘"这类目标。
 	InitialShipCounts map[string]int `json:"initial_ship_counts"`
+	// Phase 是开局阶段标记："deploy" 表示还在部署（双方都在区内摆船，没人打完），
+	// "battle"（或老存档的空值）表示正常对局。部署阶段不结算回合，双方都点部署完毕才进第 1 回合。
+	Phase string `json:"phase"`
+	// DeployZones 是双方的开局部署区（锚点 + 半径），布局验证和地图高亮都靠它。
+	DeployZones []DeployZone `json:"deploy_zones"`
 	// Outcome 是当前对局结果：为空表示仍在进行。
 	Outcome     *GameOutcome      `json:"outcome"`
 	RNGState    uint64            `json:"rng_state"`

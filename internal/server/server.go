@@ -577,7 +577,9 @@ func (s *Server) doCommand(msg roomMsg) roomReply {
 	// 就绪即冻结：点"完成部署"那一刻本回合的操作就锁死了，之后服务端拒绝任何修改。
 	// 以前这里会自动把 ready 撤回再接受命令，等于"准备"完全没有约束力：
 	// 玩家点了准备还能继续改，对手以为局面定了，结算出来的却是改过的版本。
-	if player.Ready {
+	deployPhase := game.InDeployPhase(room.State)
+	// 部署阶段的"部署完毕"是可撤回的：还没开战，改主意就应该能再拖一次。
+	if player.Ready && !deployPhase {
 		return roomError(http.StatusConflict, "本回合已就绪，操作已锁定：双方就绪后由服务器统一结算，下一回合才能再操作")
 	}
 	// 同回合内的操作本来就该互相覆盖：订单按 (room, turn, player, unit) 落库，后写的顶掉先写的。
@@ -612,6 +614,11 @@ func (s *Server) doCommand(msg roomMsg) roomReply {
 		case "SET_ENGAGEMENT":
 			events = game.ApplyEngagementOrder(&room.State, order)
 		case "SET_MOVE":
+			if deployPhase {
+				// 部署阶段是自由摆放：整支舰队立刻挪过去，不排进本回合计划。
+				events = game.ApplyDeployMove(&room.State, order)
+				break
+			}
 			// 移动命令走下面 SaveOrder 的"本回合规划"通道，真正的位移在回合结算里执行。
 			return s.savePlannedOrder(ctx, actor, msg, request, order)
 		case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_COVER", "LAUNCH_TRANSFER", "PREPARE_AIR", "RETURN_TO_HANGAR", "RECOVER_AIR", "PRIORITIZE_AIR_TASK", "SET_STRIKE_TARGET", "SET_STRIKE_DISPERSION", "ARM_AIR", "SET_AIR_CYCLE":
@@ -632,6 +639,10 @@ func (s *Server) doCommand(msg roomMsg) roomReply {
 			return roomError(http.StatusConflict, "命令结算失败："+err.Error())
 		}
 		actor.room = room
+		if deployPhase {
+			// 动了部署就等于撤回"部署完毕"：ApplyImmediate 已经在库里清了 ready，这里同步内存。
+			actor.setReady(player.ID, false)
+		}
 		s.publishRoom(roomID)
 		return roomReply{status: http.StatusOK, body: response}
 	}
@@ -738,6 +749,19 @@ func (s *Server) doSettle(msg roomMsg) {
 			return
 		}
 	}
+	if game.InDeployPhase(room.State) {
+		// 部署阶段就卡在这里：双方都点了部署完毕、但触发的那条请求丢了（比如重启）。
+		events := game.StartBattle(&room.State)
+		started, err := s.store.StartBattle(ctx, room, room.State, events)
+		if err != nil {
+			return
+		}
+		actor.room = started
+		actor.clearReady()
+		log.Printf("房间 %s 双方已点部署完毕但没开战，巡检已开始第 1 回合", roomID)
+		s.publishRoom(roomID)
+		return
+	}
 	records, err := s.store.Orders(ctx, roomID, room.Turn, "")
 	if err != nil {
 		return
@@ -776,9 +800,11 @@ func (s *Server) doReady(msg roomMsg) roomReply {
 	if request.BaseTurn > 0 && request.BaseTurn != room.Turn {
 		return roomError(http.StatusConflict, "本回合已经结算：请基于当前回合重新操作")
 	}
+	deployPhase := game.InDeployPhase(room.State)
 	// 就绪必须不可逆：ready 之后不能再改主意，也不能用 ready:false 解锁。
 	// 需要改部署就等本回合结算。前端已经没有撤销按钮，脚本也必须遵守同一规则。
-	if !request.Ready {
+	// 部署阶段是例外：还没开战，"部署完毕"必须能撤回，否则改个阵型就卡死了。
+	if !request.Ready && !deployPhase {
 		return roomError(http.StatusBadRequest, "ready 一旦提交不可撤销；请等待本回合结算")
 	}
 	if room.State.Outcome != nil {
@@ -798,6 +824,18 @@ func (s *Server) doReady(msg roomMsg) roomReply {
 	allReady := len(actor.players) > 0
 	for _, item := range actor.players {
 		allReady = allReady && item.Ready
+	}
+	if allReady && deployPhase {
+		// 双方都点过"部署完毕"：结束部署，进入第 1 回合。部署不算回合，回合号保持 1。
+		events := game.StartBattle(&room.State)
+		started, err := s.store.StartBattle(ctx, room, room.State, events)
+		if err != nil {
+			return roomError(http.StatusConflict, "开战失败："+err.Error())
+		}
+		actor.room = started
+		actor.clearReady()
+		s.publishRoom(roomID)
+		return roomJSON(http.StatusOK, map[string]any{"accepted": true, "phase": started.State.Phase, "turn": started.Turn})
 	}
 	if allReady {
 		records, err := s.store.Orders(ctx, roomID, room.Turn, "")
@@ -914,10 +952,13 @@ func (s *Server) privateView(ctx context.Context, room store.Room, players []sto
 		"wind":                 game.VisibleWind(room.State, player.Faction),
 		// weather_cells：行优先、每格一个字符 '0'..'3'（晴/多云/降雨/风暴）。
 		"weather_cells": room.State.Map.Clouds,
-		"night":         room.State.Night,
-		"clock":         game.Clock(room.State),
-		"enemy_air":     game.VisibleEnemyAir(room.State, player.Faction),
-		"losses":        game.VisibleLosses(room.State, player.Faction),
+		// phase = "deploy" 时双方还在部署区摆船；deploy_zone 是己方的部署区（锚点/半径/格位串）。
+		"phase":       room.State.Phase,
+		"deploy_zone": game.DeployZoneView(room.State, player.Faction),
+		"night":       room.State.Night,
+		"clock":       game.Clock(room.State),
+		"enemy_air":   game.VisibleEnemyAir(room.State, player.Faction),
+		"losses":      game.VisibleLosses(room.State, player.Faction),
 		// scores 是战果分：击沉/击落 + 已完成的投送目标；剧本用 score 目标时按它判定。
 		"scores":     game.VictoryPoints(room.State),
 		"outcome":    room.State.Outcome,

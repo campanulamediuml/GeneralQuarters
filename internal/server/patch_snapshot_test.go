@@ -25,6 +25,8 @@ func TestPatchMergeMatchesSnapshot(t *testing.T) {
 	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_coral_real", "solo": true}, &created); status != http.StatusCreated {
 		t.Fatalf("create room status %d", status)
 	}
+	// 新剧本开局在部署阶段：先把第 1 回合开起来，再测"回合结算"的补丁。
+	settleDeployment(t, created.RoomID, host)
 	conn := dialTestWS(t, host, "/ws?room_id="+created.RoomID)
 	seedPlayerView(t, conn, created.RoomID)
 
@@ -54,6 +56,7 @@ func TestPatchMergeMatchesSnapshotTwoPlayers(t *testing.T) {
 	if status := guest.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]any{"token": created.JoinToken, "name": "B"}, &joined); status != http.StatusOK {
 		t.Fatalf("join status %d", status)
 	}
+	settleDeployment(t, created.RoomID, host, guest)
 	usConn := dialTestWS(t, host, "/ws?room_id="+created.RoomID)
 	jpConn := dialTestWS(t, guest, "/ws?room_id="+created.RoomID)
 	seedPlayerView(t, usConn, created.RoomID)

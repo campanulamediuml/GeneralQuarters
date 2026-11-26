@@ -236,10 +236,15 @@ const waitingForOpponent = computed(() => {
   return Boolean(view) && !view!.solo && (view!.players?.length || 0) < 2
 })
 
+// 部署阶段：双方在部署区内摆船，都点【部署完毕】才进第 1 回合。
+// 这一阶段没有回合结算，ready 也可以撤回，所以它和"就绪即冻结"是两套语义。
+const deploying = computed(() => state.value?.phase === 'deploy')
+
 // 就绪即冻结：点"完成部署"那一刻，本回合的操作就锁死了（服务端同样拒绝任何命令），
 // 界面只保留"看"：能选舰队、开角色卡、开日志，但拖不动、放不了飞机、改不了目标。
 // 以前这里还能继续改（服务端会顺手把 ready 撤回），等于"准备"根本不算数。
-const locked = computed(() => Boolean(state.value?.you.ready))
+// 部署阶段例外：拖动会自动把"部署完毕"撤回，所以不锁操作。
+const locked = computed(() => Boolean(state.value?.you.ready) && !deploying.value)
 
 // 地图交互提示不再弹横幅（玩家嫌吵）：冷却回合数在舰队面板里已经写明，
 // 拖动失败时最多在控制台留一条，不影响界面。
@@ -787,11 +792,14 @@ async function airCommand(type: 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' 
 // 就绪是单向的：点了就锁定，不再提供"取消就绪"。
 // 手滑点错也能救——再发一条命令，服务端会自动把 ready 撤回（那条路径保留）。
 async function toggleReady() {
-  if (!state.value || actionBusy.value || state.value.you.ready) return
+  if (!state.value || actionBusy.value) return
+  // 部署阶段允许撤回"部署完毕"；开战之后 ready 仍然不可逆。
+  const ready = deploying.value ? !state.value.you.ready : true
+  if (!deploying.value && state.value.you.ready) return
   actionBusy.value = true
   try {
     // 只发"我要 ready"。响应只是一条回执：ready 标记、回合结算、战报都走推送。
-    await api.ready(props.roomID, state.value.turn, true)
+    await api.ready(props.roomID, state.value.turn, ready)
     selectedID.value = ''
     selectedAirTaskID.value = ''
     menuCoord.value = ''
@@ -861,7 +869,7 @@ onUnmounted(() => {
       </div>
       <div v-if="hasScoreObjective" class="rail-vp"><span>当前 VP</span><strong>{{ formatVP(scoreBoard.mine) }} : {{ formatVP(scoreBoard.enemy) }}</strong><small>我方 : 敌方</small></div>
       <div v-else class="rail-vp"><span>当前 VP</span><strong>0 : 0</strong><small>本剧本不计分</small></div>
-      <button class="rail-next" :class="{ locked: state?.you.ready || waitingForOpponent }" :disabled="!state || actionBusy || waitingForOpponent || state.you.ready" @click="toggleReady"><span>{{ waitingForOpponent ? '等待对手' : state?.you.ready ? '准备完成' : '下一回合' }}</span><b>▶</b></button>
+      <button class="rail-next" :class="{ locked: state?.you.ready || waitingForOpponent }" :disabled="!state || actionBusy || waitingForOpponent || (!deploying && state.you.ready)" @click="toggleReady"><span>{{ waitingForOpponent ? '等待对手' : deploying ? (state?.you.ready ? '已部署完毕' : '部署完毕') : state?.you.ready ? '准备完成' : '下一回合' }}</span><b>▶</b></button>
     </aside>
 
     <div class="command-main">
@@ -874,13 +882,18 @@ onUnmounted(() => {
       <div v-if="loading" class="loading-screen"><span class="loader"></span>正在载入海图与战局…</div>
       <template v-else-if="state">
         <div class="turn-strip">
-          <div><span class="turn-label">TURN</span><strong>{{ String(state.turn).padStart(2, '0') }}</strong><span class="turn-sub">{{ waitingForOpponent ? '等待对手进房' : '等待双方命令' }}</span></div>
+          <div><span class="turn-label">{{ deploying ? 'DEPLOY' : 'TURN' }}</span><strong>{{ deploying ? '部署' : String(state.turn).padStart(2, '0') }}</strong><span class="turn-sub">{{ deploying ? '双方在部署区摆船' : waitingForOpponent ? '等待对手进房' : '等待双方命令' }}</span></div>
           <div v-if="state.clock" class="turn-clock" :class="{ night: state.clock.night }" :data-clock="state.clock.time">
             <span class="clock-day">DAY {{ state.clock.day }}</span>
             <strong>{{ state.clock.time }}</strong>
             <span class="clock-window">{{ clockWindowLabel }}</span>
           </div>
-          <div class="turn-actions"><span class="ready-count">{{ readyCount }} / {{ state.players.length }} 已就绪</span><button class="ready-button" :class="{ locked: state.you.ready }" :disabled="actionBusy || waitingForOpponent || state.you.ready" :title="waitingForOpponent ? '对手还没进房：把房间 token 发给他，两名玩家都到齐后回合才会推进' : state.you.ready ? '已就绪，等对方完成部署后本回合结算' : ''" @click="toggleReady">{{ waitingForOpponent ? '等待对手进房' : state.you.ready ? '已就绪 · 等待对方' : '完成部署，结束回合' }}</button></div>
+          <div class="turn-actions"><span class="ready-count">{{ readyCount }} / {{ state.players.length }} 已就绪</span><button class="ready-button" :class="{ locked: state.you.ready }" :disabled="actionBusy || waitingForOpponent || (!deploying && state.you.ready)" :title="deploying ? (state.you.ready ? '你已经点过部署完毕：继续拖舰队会自动撤回，等对手也点完就开战' : '双方都把舰队摆好后各点一次：进第 1 回合，部署不算回合') : waitingForOpponent ? '对手还没进房：把房间 token 发给他，两名玩家都到齐后回合才会推进' : state.you.ready ? '已就绪，等对方完成部署后本回合结算' : ''" @click="toggleReady">{{ waitingForOpponent ? '等待对手进房' : deploying ? (state.you.ready ? '已部署完毕 · 等待对手' : '部署完毕') : state.you.ready ? '已就绪 · 等待对方' : '完成部署，结束回合' }}</button></div>
+        </div>
+        <!-- 部署阶段横幅：说明可拖的范围和"部署不算回合"，避免玩家到处找回合按钮。 -->
+        <div v-if="deploying" class="deploy-strip">
+          <span>部署阶段：把舰队拖到高亮区内（锚点 {{ state.deploy_zone?.anchor }} · 半径 {{ state.deploy_zone?.radius }} 格），可以整编、拆分、合并。</span>
+          <b>{{ readyCount }} / {{ state.players.length }} 已部署完毕 · 双方都点完才进第 1 回合</b>
         </div>
         <!-- 房主在等对手时，邀请 token 必须摆在明面上：它原本藏在"战局 / 房间"折叠面板里，
              进房看不到、也不知道该把什么发给对方。 -->
@@ -908,7 +921,7 @@ onUnmounted(() => {
                   <em v-if="selectedFleetWind.has_carrier" :class="selectedFleetWind.deck_modifier > 0 ? 'gain' : selectedFleetWind.deck_modifier < 0 ? 'loss' : ''">{{ windRelations[selectedFleetWind.relation] || selectedFleetWind.relation }} {{ selectedFleetWind.deck_modifier > 0 ? '+' : '' }}{{ selectedFleetWind.deck_modifier }} 甲板</em>
                   <em v-else class="wind-neutral">{{ windRelations[selectedFleetWind.relation] || selectedFleetWind.relation }}（无航母，甲板不受风向影响）</em>
                   <span class="heading-picker" :class="{ spent: selectedFleetWind.changed }">
-                    <button v-for="h in headingChoices" :key="h" :disabled="selectedFleetWind.changed || actionBusy || locked" :title="locked ? '本回合已就绪，操作已锁定' : `转向${h}`" @click.stop="setFleetHeading(h)">{{ h }}</button>
+                    <button v-for="h in headingChoices" :key="h" :disabled="selectedFleetWind.changed || actionBusy || locked || deploying" :title="locked ? '本回合已就绪，操作已锁定' : `转向${h}`" @click.stop="setFleetHeading(h)">{{ h }}</button>
                   </span>
                 </template>
               </div><div v-if="strikeTargetTaskID" class="strike-map-target"><span>{{ strikeTargetSelection.verb }}：{{ strikeTargetLabel }} · {{ strikeTargetSelection.hint }}</span><button @click="cancelStrikeTarget">取消</button></div><div class="map-legend"><span><i class="legend-a"></i>A 阵营</span><span><i class="legend-b"></i>B 阵营</span><span><i class="legend-move"></i>可移动</span><span><i class="legend-wind"></i>格底箭头=风吹向</span><span><svg class="legend-wx" viewBox="-10 -10 20 20" aria-hidden="true"><circle cx="-5.4" cy="1.4" r="3.4" /><circle cx="-0.6" cy="-1.2" r="4.8" /><circle cx="3.6" cy="1.2" r="3.2" /><rect x="-8.6" y="1.2" width="12.8" height="3.6" rx="1.8" /></svg>多云</span><span><svg class="legend-wx" viewBox="-10 -10 20 20" aria-hidden="true"><path d="M0 -7.4c0 0 3.2 4.8 3.2 7a3.2 3.2 0 0 1-6.4 0c0-2.2 3.2-7 3.2-7Z" /><path transform="translate(-7.6 4.2) scale(.76)" d="M0 -7.4c0 0 3.2 4.8 3.2 7a3.2 3.2 0 0 1-6.4 0c0-2.2 3.2-7 3.2-7Z" /><path transform="translate(7.6 4.2) scale(.76)" d="M0 -7.4c0 0 3.2 4.8 3.2 7a3.2 3.2 0 0 1-6.4 0c0-2.2 3.2-7 3.2-7Z" /></svg>降雨</span><span><svg class="legend-wx" viewBox="-10 -10 20 20" aria-hidden="true"><path d="M1.6 -9.6 L-5.6 0.9 H-1.4 L-2.4 9.6 L6 -1.2 H1.4 L4.8 -9.6 Z" /></svg>风暴</span></div></div>
@@ -945,11 +958,11 @@ onUnmounted(() => {
                   <div class="fleet-nav" :data-destination="selectedFleet.destination || ''">
                     <span class="nav-status">{{ selectedFleet.destination ? `自动航行 → ${selectedFleet.destination}` : '未设置自动航行' }}</span>
                     <!-- 同一个按钮来回切：有目的地时它是"取消航行"，没有时它是"设置目的地"。 -->
-                    <button :class="{ active: navTargeting, cancel: Boolean(selectedFleet.destination) && !navTargeting }" :disabled="actionBusy || locked" :title="locked ? '本回合已就绪，操作已锁定' : ''" @click.stop="selectedFleet.destination ? clearAutoNav() : startNavTargeting()">{{ navTargeting ? '点击地图选择目的地…' : selectedFleet.destination ? '取消航行' : '设置目的地' }}</button>
+                    <button :class="{ active: navTargeting, cancel: Boolean(selectedFleet.destination) && !navTargeting }" :disabled="actionBusy || locked || deploying" :title="locked ? '本回合已就绪，操作已锁定' : ''" @click.stop="selectedFleet.destination ? clearAutoNav() : startNavTargeting()">{{ navTargeting ? '点击地图选择目的地…' : selectedFleet.destination ? '取消航行' : '设置目的地' }}</button>
                     <span class="nav-engagement">
-                      <button v-for="(label, value) in engagementLabels" :key="value" :class="{ active: selectedEngagement === value }" :disabled="actionBusy || locked" :title="locked ? '本回合已就绪，操作已锁定' : ''" @click.stop="setEngagement(value as 'aggressive' | 'advantage' | 'avoid')">{{ label }}</button>
+                      <button v-for="(label, value) in engagementLabels" :key="value" :class="{ active: selectedEngagement === value }" :disabled="actionBusy || locked || deploying" :title="locked ? '本回合已就绪，操作已锁定' : ''" @click.stop="setEngagement(value as 'aggressive' | 'advantage' | 'avoid')">{{ label }}</button>
                     </span>
-                  </div></div><div class="fleet-workbench-actions"><button @click="counterSide = counterSide === 'front' ? 'back' : 'front'">{{ counterSide === 'front' ? '查看兵牌背面' : '查看兵牌正面' }}</button><button :disabled="locked" :title="locked ? '本回合已就绪，操作已锁定' : ''" @click="openManager(selectedFleet.coord)">舰队整编</button><button v-if="selectedFleet.members.some((unit) => ['CV', 'CVL', 'CVE'].includes(unit.type))" @click="openAviation(selectedFleet.fleet_id)">航空作业</button><button class="fleet-toggle-cards" :aria-pressed="fleetCardsCollapsed" @click="fleetCardsCollapsed = !fleetCardsCollapsed">{{ fleetCardsCollapsed ? '展开兵牌' : '收起兵牌' }}</button><button aria-label="关闭舰队详情" @click="selectedID = ''">×</button></div></header>
+                  </div></div><div class="fleet-workbench-actions"><button @click="counterSide = counterSide === 'front' ? 'back' : 'front'">{{ counterSide === 'front' ? '查看兵牌背面' : '查看兵牌正面' }}</button><button :disabled="locked" :title="locked ? '本回合已就绪，操作已锁定' : ''" @click="openManager(selectedFleet.coord)">舰队整编</button><button v-if="selectedFleet.members.some((unit) => ['CV', 'CVL', 'CVE'].includes(unit.type))" :disabled="deploying" :title="deploying ? '部署阶段先摆船，开战后再安排航空作业' : ''" @click="openAviation(selectedFleet.fleet_id)">航空作业</button><button class="fleet-toggle-cards" :aria-pressed="fleetCardsCollapsed" @click="fleetCardsCollapsed = !fleetCardsCollapsed">{{ fleetCardsCollapsed ? '展开兵牌' : '收起兵牌' }}</button><button aria-label="关闭舰队详情" @click="selectedID = ''">×</button></div></header>
                 <div v-show="!fleetCardsCollapsed" class="fleet-counter-grid"><button v-for="member in selectedFleet.members" :key="member.id" class="fleet-counter-button" :class="{ active: selectedUnit?.id === member.id }" :data-ship-id="member.id" @click="selectFleetMember(member)"><ShipCounter :unit="member" :side="counterSide" /></button></div>
               </section>
               <section v-if="inspectedFleet" class="fleet-workbench enemy-fleet-workbench" :data-fleet-id="inspectedFleet.fleet_id">

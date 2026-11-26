@@ -770,7 +770,7 @@ function finishDrag(event: PointerEvent) {
       emit('move', coord)
     } else if (coord) {
       // 落在不可移动的格子上必须说话，否则玩家以为是拖拽坏了。
-      emit('notice', `${draggedUnit.value.name}不能移动到 ${coord}：只能拖到绿色标记的相邻 hex`)
+      emit('notice', `${draggedUnit.value.name}不能移动到 ${coord}：只能拖到绿色标记的格子`)
     }
     dragDebug('drop', { from: draggedUnit.value.coord, to: coord, legal: draggedUnit.value.legal_moves, accepted: Boolean(draggedUnit.value.legal_moves?.includes(coord)) })
   }

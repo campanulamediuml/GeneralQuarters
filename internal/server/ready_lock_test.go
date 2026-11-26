@@ -22,6 +22,8 @@ func TestReadyFreezesCommands(t *testing.T) {
 	}
 	var initial testView
 	_ = a.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &initial)
+	// 先生效部署阶段，再验证"就绪即冻结"这条对局规则。
+	settleDeployment(t, created.RoomID, a, b)
 
 	// ready 只回一条回执，就绪标记要从状态里读。
 	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, nil); status != http.StatusOK {

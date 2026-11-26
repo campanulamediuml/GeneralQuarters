@@ -517,6 +517,46 @@ func (s *Store) Resolve(ctx context.Context, room Room, newState game.State, eve
 	return room, nil
 }
 
+// StartBattle 结束开局部署阶段：写回状态、清掉双方 ready，但不动回合号——
+// 部署不是一个回合，开战后的第一回合仍然是第 1 回合。
+func (s *Store) StartBattle(ctx context.Context, room Room, newState game.State, events []game.EngineEvent) (Room, error) {
+	data, err := encodeState(newState)
+	if err != nil {
+		return room, err
+	}
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return room, err
+	}
+	defer tx.Rollback()
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	newVersion := room.Version + 1
+	result, err := tx.ExecContext(ctx, `UPDATE rooms SET state_blob=?,version=?,updated_at=? WHERE id=? AND version=?`, data, newVersion, now, room.ID, room.Version)
+	if err != nil {
+		return room, err
+	}
+	if affected, _ := result.RowsAffected(); affected != 1 {
+		return room, fmt.Errorf("房间版本冲突")
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE players SET ready=0 WHERE room_id=?`, room.ID); err != nil {
+		return room, err
+	}
+	// 部署阶段没有真正结算过回合，这里只把当回合快照刷新成开战状态。
+	if _, err := tx.ExecContext(ctx, `UPDATE turns SET version=?,state_blob=? WHERE room_id=? AND turn=?`, newVersion, data, room.ID, room.Turn); err != nil {
+		return room, err
+	}
+	for sequence, event := range events {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO events(room_id,turn,sequence,type,text,audience,created_at) VALUES(?,?,?,?,?,?,?)`, room.ID, room.Turn, sequence, event.Type, event.Text, event.Audience, now); err != nil {
+			return room, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return room, err
+	}
+	room.Version, room.State = newVersion, newState
+	return room, nil
+}
+
 // AllEvents 是观战视角的战报：不按 audience 过滤，双方阵营的内部事件都能看到。
 func (s *Store) AllEvents(ctx context.Context, roomID string) ([]Event, error) {
 	return s.recentEvents(ctx, `SELECT id,turn,sequence,type,text,created_at FROM events WHERE room_id=? ORDER BY id DESC LIMIT 200`, roomID)

@@ -14,6 +14,7 @@ func TestGroundAircraftCanChangeLoadout(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	StartBattle(&state)
 	const id = "af-b-rabaul-g4m-1"
 	ground := state.GroundAir[id]
 	if ground == nil {

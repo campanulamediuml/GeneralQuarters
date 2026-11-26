@@ -225,6 +225,8 @@ func coralCombatState(t *testing.T) State {
 	// 把两种攻击一起压到命中下限，那样比不出机种差异。
 	state.WeatherTurns = 0
 	state.Map.Clouds = ""
+	// 战斗用例要的是开战后的状态：直接跳过开局部署阶段。
+	StartBattle(&state)
 	return state
 }
 
