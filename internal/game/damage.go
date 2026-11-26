@@ -270,7 +270,7 @@ func applySevereDamageResult(state *State, unit *Unit, result string) []EngineEv
 			damage.ElevatorDamage++
 		}
 	case "tilt":
-		damage.Tilt = true
+		events = append(events, applyTilt(state, unit)...)
 	case "hangar_damage":
 		ids := []string{}
 		for id, aircraft := range state.Aircraft {
@@ -431,6 +431,18 @@ func deckDamageChance(cause HitCause, target *Unit) float64 {
 	return 75
 }
 
+// applyTilt 施加倾斜。已经处在倾斜状态（还没修好）又中一次时，不再重复记倾斜：
+// 这次判定转为"多一层进水 + 生命值 -1"（规则书 435 行）。
+func applyTilt(state *State, unit *Unit) []EngineEvent {
+	damage := EnsureDamage(unit)
+	if damage.Tilt {
+		damage.Flooding = append(damage.Flooding, 1)
+		return damageStrength(state, unit, 1)
+	}
+	damage.Tilt = true
+	return nil
+}
+
 func applyTorpedoHit(state *State, hit Hit) []EngineEvent {
 	target := state.Units[hit.TargetID]
 	if target == nil {
@@ -441,7 +453,7 @@ func applyTorpedoHit(state *State, hit Hit) []EngineEvent {
 		return events
 	}
 	if d10(state) > dctValue(state, target, hit.Warned) {
-		EnsureDamage(target).Tilt = true
+		events = append(events, applyTilt(state, target)...)
 	}
 	if d10(state) > dctValue(state, target, hit.Warned) {
 		damage := EnsureDamage(target)

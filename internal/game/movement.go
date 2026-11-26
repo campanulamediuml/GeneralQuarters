@@ -22,7 +22,11 @@ func EffectiveSpeedClass(unit *Unit) string {
 	if _, ok := map[string]bool{"fast": true, "normal": true, "slow": true, "very_slow": true}[unit.Card.SpeedClass]; !ok {
 		rank = 2
 	}
+	// 进水的每一层降一档；倾斜本身也降一档（规则书 435 行），修好之后自动恢复。
 	rank -= len(damage.Flooding)
+	if damage.Tilt {
+		rank--
+	}
 	if rank <= 0 {
 		return "very_slow"
 	}
