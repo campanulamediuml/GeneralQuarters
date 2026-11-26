@@ -48,8 +48,8 @@ func TestSpecialFleetSpeedsAndFlooding(t *testing.T) {
 	if interval := FleetMoveInterval(state, destroyer); interval != 2 {
 		t.Fatalf("纯高速驱逐舰间隔应为2：%d", interval)
 	}
-	// 2 回合的前提是"全队都是 DD 且全是 fast"。纯 DD 但只是 normal 的，照样 3 回合：
-	// 这个特例看的是驱逐舰的高速，不是"是不是驱逐舰"。
+	// 2 回合只给"整队都是 DD 且全是 fast"的舰队；标 normal 的纯驱逐舰队照样 3 回合。
+	// 特例看的是高速档，不是"是不是驱逐舰"。
 	plainDD := &Unit{ID: "dd2", FleetID: "dd2", Type: "DD", Card: ShipCard{SpeedClass: "normal", DamageControl: 5}}
 	plainState := State{Units: map[string]*Unit{"dd2": plainDD}}
 	if interval := FleetMoveInterval(plainState, plainDD); interval != 3 {
