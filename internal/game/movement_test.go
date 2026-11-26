@@ -54,12 +54,12 @@ func TestSpecialFleetSpeedsAndFlooding(t *testing.T) {
 		t.Fatalf("混入普通舰后间隔应为3：%d", interval)
 	}
 	battleship.Card.SpeedClass = "slow"
-	if interval := FleetMoveInterval(state, destroyer); interval != 5 {
-		t.Fatalf("慢速舰队间隔应为5：%d", interval)
+	if interval := FleetMoveInterval(state, destroyer); interval != 6 {
+		t.Fatalf("慢速舰队间隔应为6：%d", interval)
 	}
 	battleship.Card.SpeedClass = "very_slow"
-	if interval := FleetMoveInterval(state, destroyer); interval != 10 {
-		t.Fatalf("极慢舰队间隔应为10：%d", interval)
+	if interval := FleetMoveInterval(state, destroyer); interval != 9 {
+		t.Fatalf("极慢舰队间隔应为9：%d", interval)
 	}
 	EnsureDamage(battleship).Disabled = true
 	if interval := FleetMoveInterval(state, destroyer); interval != 24 {

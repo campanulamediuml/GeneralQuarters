@@ -37,8 +37,8 @@ func TestVerySlowSpeedClassIsItsOwnTier(t *testing.T) {
 		t.Fatalf("极慢舰船应为 very_slow，实际 %s", got)
 	}
 	fleet := State{Units: map[string]*Unit{"x": {ID: "x", FleetID: "x", Type: "BB", Card: ShipCard{SpeedClass: "very_slow"}}}}
-	if got := FleetMoveInterval(fleet, fleet.Units["x"]); got != 10 {
-		t.Fatalf("极慢舰队移动间隔应为 10，实际 %d", got)
+	if got := FleetMoveInterval(fleet, fleet.Units["x"]); got != 9 {
+		t.Fatalf("极慢舰队移动间隔应为 9，实际 %d", got)
 	}
 	slow := &Unit{ID: "s", FleetID: "s", Card: ShipCard{SpeedClass: "slow", DamageControl: 5}, Damage: &ShipDamage{Flooding: []int{1}}}
 	if got := EffectiveSpeedClass(slow); got != "very_slow" {

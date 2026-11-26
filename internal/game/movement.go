@@ -41,7 +41,9 @@ func FleetMoveInterval(state State, unit *Unit) int {
 			continue
 		}
 		speed := EffectiveSpeedClass(member)
-		memberInterval := map[string]int{"normal": 3, "fast": 3, "slow": 5, "very_slow": 10, "disabled": 24}[speed]
+		// 25 海里/hex、20 分钟/回合换算：normal 3 回合≈25 节，slow 6 回合≈12.5 节，
+		// very_slow 9 回合≈8.3 节，disabled 24 回合≈基本停在原地。
+		memberInterval := map[string]int{"normal": 3, "fast": 3, "slow": 6, "very_slow": 9, "disabled": 24}[speed]
 		if memberInterval > interval {
 			interval = memberInterval
 		}
