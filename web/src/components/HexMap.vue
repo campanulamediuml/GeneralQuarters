@@ -450,6 +450,22 @@ function weatherIndexAt(coord: string): number {
   const code = cells.charCodeAt(index) - 48
   return code >= 0 && code <= 3 ? code : 0
 }
+// 天气不再是给格子刷底色，而是把云朵/水滴/闪电图案盖在格子上（单独一层压在最上层）。
+// 图案比色块好认：色块只说明“这格有东西”，图案直接说明“多云/降雨/风暴”。
+// 符号按 hex 半径 17 的坐标系画，本图半径 43，所以整体放大 size/17。
+const weatherSymbolScale = size / 17
+const weatherSymbolFor = ['', 'cloud', 'rain', 'storm']
+const weatherHexes = computed(() => {
+  const cells = props.weatherCells || ''
+  if (!cells) return []
+  const list: { coord: string; x: number; y: number; level: number; symbol: string }[] = []
+  for (const hex of hexes.value) {
+    const level = weatherIndexAt(hex.coord)
+    if (level <= 0) continue
+    list.push({ coord: hex.coord, x: hex.x, y: hex.y, level, symbol: weatherSymbolFor[level] || 'cloud' })
+  }
+  return list
+})
 function windRotation(coord: string): number | undefined {
   const index = windIndexAt(coord)
   if (index < 0) return undefined
@@ -618,11 +634,9 @@ const hexSigs = computed(() => {
   const reconCurrent = reconCurrentCells.value
   const empty = 'g' + hexGeneration
   const windCells = props.windCells || ''
-  const weatherCells = props.weatherCells || ''
   for (let index = 0; index < list.length; index++) {
     const hex = list[index]
     const windChar = windCells ? windCells[index] || '' : ''
-    const weatherChar = weatherCells ? weatherCells[index] || '' : ''
     const planned = plannedFleetsAt(hex.coord)
     const navDest = navDestinationAt(hex.coord)
     const reconAir = reconCurrentAircraftAt(hex.coord)
@@ -632,12 +646,12 @@ const hexSigs = computed(() => {
     const inRecon = recon.has(hex.coord)
     const inCurrent = reconCurrent.has(hex.coord)
     const hovered = dropHover.value === hex.coord
-    if (!planned.length && !navDest.length && !reconAir && !airfieldHere && distance < 0 && !isLegal && !inRecon && !inCurrent && !hovered && !windChar && !weatherChar) {
+    if (!planned.length && !navDest.length && !reconAir && !airfieldHere && distance < 0 && !isLegal && !inRecon && !inCurrent && !hovered && !windChar) {
       sigs[index] = empty
       continue
     }
     sigs[index] = [
-      hex.terrain, hex.name, windChar, weatherChar,
+      hex.terrain, hex.name, windChar,
       Number(isLegal), Number(hovered), Number(inRecon), Number(inCurrent),
       distance, reconAir, Number(airfieldHere),
       planned.join(','),
@@ -854,14 +868,36 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
   <!-- 摄像机层：+ / − 只改 viewBox，拖动地图改 viewBox 原点；滚轮不再改变缩放。 -->
   <div class="map-scroll">
   <svg ref="mapElement" class="hex-map" :class="{ panning: mapPanning }" :viewBox="viewBox" :data-zoom="zoom.toFixed(1)" role="img" aria-label="沙盒海图" @pointerdown="startMapPan" @click.capture="onMapClickCapture">
+  <defs>
+    <!-- 天气图案符号：云朵 / 水滴 / 闪电。按 hex 半径 17 的坐标系画，使用时整体缩放。 -->
+    <symbol id="wx-cloud" overflow="visible">
+      <g class="wx-cloud">
+        <circle cx="-5.4" cy="1.4" r="3.4" />
+        <circle cx="-0.6" cy="-1.2" r="4.8" />
+        <circle cx="3.6" cy="1.2" r="3.2" />
+        <rect x="-8.6" y="1.2" width="12.8" height="3.6" rx="1.8" />
+      </g>
+      <g class="wx-cloud wx-cloud-small">
+        <circle cx="7.2" cy="-5.8" r="2.4" />
+        <circle cx="9.8" cy="-4.6" r="1.8" />
+        <rect x="4.6" y="-4.6" width="5.8" height="2.4" rx="1.2" />
+      </g>
+    </symbol>
+    <symbol id="wx-rain" overflow="visible">
+      <path d="M0 -7.4c0 0 3.2 4.8 3.2 7a3.2 3.2 0 0 1-6.4 0c0-2.2 3.2-7 3.2-7Z" />
+      <path transform="translate(-7.6 4.2) scale(.76)" d="M0 -7.4c0 0 3.2 4.8 3.2 7a3.2 3.2 0 0 1-6.4 0c0-2.2 3.2-7 3.2-7Z" />
+      <path transform="translate(7.6 4.2) scale(.76)" d="M0 -7.4c0 0 3.2 4.8 3.2 7a3.2 3.2 0 0 1-6.4 0c0-2.2 3.2-7 3.2-7Z" />
+    </symbol>
+    <symbol id="wx-storm" overflow="visible">
+      <path d="M1.6 -9.6 L-5.6 0.9 H-1.4 L-2.4 9.6 L6 -1.2 H1.4 L4.8 -9.6 Z" />
+    </symbol>
+  </defs>
     <g v-for="(hex, index) in hexes" :key="hex.coord" v-memo="[hexSigs[index]]" class="hex-cell" :data-coord="hex.coord" :data-distance="distanceAt(hex.coord) >= 0 ? distanceAt(hex.coord) : undefined" :data-recon-current-aircraft="reconCurrentAircraftAt(hex.coord) || undefined" :class="[`terrain-${hex.terrain}`, { legal: selectedMoves.has(hex.coord), 'drop-hover': dropHover === hex.coord, 'recon-sector': reconCells.has(hex.coord), 'recon-current': reconCurrentCells.has(hex.coord) }]" @click="clickHex(hex.coord)">
       <polygon :points="points(hex.x, hex.y)" />
       <!-- 侦察覆盖必须是叠在地形上的独立一层：直接改地块 polygon 的 fill 会把海水/岛屿
            整个替换掉，扇面就变成一块盖住地形的色块，观感非常刺眼。 -->
       <polygon v-if="reconCells.has(hex.coord)" class="recon-tint" :points="points(hex.x, hex.y)" />
       <polygon v-if="reconCurrentCells.has(hex.coord)" class="recon-current-tint" :points="points(hex.x, hex.y)" />
-      <!-- 云层天气：1 层多云、2 层降雨、3 层风暴 -->
-      <polygon v-if="weatherIndexAt(hex.coord) > 0" :class="'weather-tint weather-' + weatherIndexAt(hex.coord)" :points="points(hex.x, hex.y)" />
       <text class="coord-label" :x="hex.x" :y="hex.y - 23">{{ hex.coord }}</text>
       <!-- 机场格的地名由机场算子自己写，地形标签再写一遍会变成上下两个"拉包尔"。 -->
       <text v-if="hex.name && !airfieldsAt(hex.coord).length" class="terrain-label" :x="hex.x" :y="hex.y + 18">{{ hex.name }}</text>
@@ -1096,6 +1132,19 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
       <text class="unit-strength" x="-20" y="-7">{{ draggedUnit.count }}</text>
       <text class="unit-heading" :transform="`rotate(${headingAngle(draggedUnit.heading)} 19 -7)`" x="19" y="-7">▲</text>
     </g>
+    <!-- 天气图案层：云朵=多云、水滴=降雨、闪电=风暴。只盖图案，不给格子刷底色；
+         单独一层压在所有元素之上，并关掉 pointer-events，点击照常落在下面的格子/兵牌上。 -->
+    <g class="weather-overlay" aria-hidden="true">
+      <use
+        v-for="wx in weatherHexes"
+        :key="'wx-' + wx.coord"
+        class="wx-icon"
+        :data-weather="wx.level"
+        :href="'#wx-' + wx.symbol"
+        :transform="'translate(' + wx.x + ' ' + wx.y + ') scale(' + weatherSymbolScale + ')'"
+      />
+    </g>
   </svg>
   </div>
 </template>
+

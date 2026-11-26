@@ -7,16 +7,14 @@
 .hex-map,.hex-map text{user-select:none;-webkit-user-select:none}
 /* 每格底部的风向小箭头：只做提示，不参与命中测试（否则整张图没法点格子）。 */
 path.hex-wind{pointer-events:none;fill:none;stroke:#7fa6b0;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round;opacity:.6}
-/* 云层天气：1 层多云、2 层降雨、3 层风暴。只做底色，不挡格子的命中测试。 */
-.weather-tint{pointer-events:none}
-.weather-tint.weather-1{fill:#cfe0e8;fill-opacity:.10}
-.weather-tint.weather-2{fill:#5b83c4;fill-opacity:.22}
-.weather-tint.weather-3{fill:#3b3f66;fill-opacity:.36}
+/* 天气图案层：云朵=多云、水滴=降雨、闪电=风暴。压在所有元素之上，但关掉命中测试，
+   点击照样落在下面的格子/兵牌上。只用图案说明天气，不再给整个 hex 刷一层底色。 */
+.weather-overlay{pointer-events:none}
+.wx-icon{fill:#cfe0e8;fill-opacity:.40}
+.wx-icon[data-weather="2"]{fill-opacity:.52}
+.wx-icon[data-weather="3"]{fill-opacity:.58}
 .map-legend .legend-wind{position:relative;background:none;border:none}
-.map-legend .legend-weather{opacity:.85}
-.map-legend .legend-cloud{background:#cfe0e8}
-.map-legend .legend-rain{background:#5b83c4}
-.map-legend .legend-storm{background:#3b3f66}
+.map-legend .legend-wx{width:13px;height:13px;flex:none;fill:#cfe0e8;fill-opacity:.8}
 .map-legend .legend-wind:before{content:'→';display:block;color:#7fa6b0;font-size:11px;line-height:9px}.map-unit{touch-action:none;user-select:none;-webkit-user-select:none}.map-unit.draggable{cursor:grab}.map-unit.draggable:active{cursor:grabbing}.map-unit.drag-source{opacity:.3}.map-unit.drag-ghost{pointer-events:none;opacity:.9;filter:drop-shadow(0 7px 7px #0008)}.hex-cell.drop-hover polygon{fill:#32775b;stroke:#b0efc6;stroke-width:3}
 
 .map-unit.planned rect{stroke:#e3c87e;stroke-width:2;stroke-dasharray:5 2}.map-unit.planned .unit-order{fill:#efd28c;font-weight:600}

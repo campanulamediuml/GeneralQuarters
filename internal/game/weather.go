@@ -10,7 +10,8 @@ import (
 //
 // 天气不再是"每格自己随机游走"，而是真实的云层：地图上每个 hex 记 0–3 层云，
 //   0 层 = 晴，1 层 = 多云，2 层 = 降雨，3 层 = 风暴。
-// 初始按 70% / 20% / 10% 三层独立撒点（每个 hex 每层各自掷一次，最多叠三层）。
+// 初始撒点：10% 的 hex 是多云（1 层）、5% 是降雨（2 层）、1% 是风暴（3 层），
+// 其余 84% 晴朗。云本来就该稀，雨带和风暴区主要靠云层随风叠出来，而不是开局就铺满。
 // 之后每 3 回合所有云一起移动一格：75% 顺着当地风（吹向），25% 随机方向；
 // 云叠在一起就变成雨、再叠出第三层就是风暴。移动用的是哈希出来的伪随机数，
 // 不消耗 RNGState——天气不应该影响炮击/命中的随机序列。
@@ -50,18 +51,17 @@ func EnsureWeather(state *State) {
 	}
 	cells := make([]byte, rows*cols)
 	for index := range cells {
+		// 一次掷骰定档：1% 风暴、5% 降雨、10% 多云，剩下 84% 晴。
+		// 档位直接对应云层数，所以下雨/风暴的格子照样是"叠了三层云"，会被风一起吹走。
+		roll := cloudRoll(state.RNGState, 0, index, 0) % 100
 		layers := 0
-		if cloudRoll(state.RNGState, 0, index, 0)%100 < 70 {
-			layers++
-		}
-		if cloudRoll(state.RNGState, 0, index, 1)%100 < 20 {
-			layers++
-		}
-		if cloudRoll(state.RNGState, 0, index, 2)%100 < 10 {
-			layers++
-		}
-		if layers > weatherMaxLayers {
-			layers = weatherMaxLayers
+		switch {
+		case roll < 1:
+			layers = 3
+		case roll < 6:
+			layers = 2
+		case roll < 16:
+			layers = 1
 		}
 		cells[index] = byte('0' + layers)
 	}

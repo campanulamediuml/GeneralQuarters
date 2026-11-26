@@ -50,11 +50,13 @@
   .fleet-ship,.fleet-label,.watch-air{cursor:pointer}
   @media(max-width:600px){.detail-cards{grid-template-columns:1fr}.detail-panel{top:38px}}
   .hex{fill:#102830;stroke:#34505a;stroke-width:.7}
-  /* 云层：1 层多云（淡白）、2 层降雨（蓝）、3 层风暴（深紫）。 */
-  .weather{pointer-events:none}
-  .weather-1{fill:#cfe0e8;fill-opacity:.10}
-  .weather-2{fill:#5b83c4;fill-opacity:.22}
-  .weather-3{fill:#3b3f66;fill-opacity:.36}
+  /* 天气图案：云朵=多云、水滴=降雨、闪电=风暴。压在最上层，但不吃点击。 */
+  .wx-icon{fill:#cfe0e8;fill-opacity:.40;pointer-events:none}
+  .wx-icon.weather-2{fill-opacity:.52}
+  .wx-icon.weather-3{fill-opacity:.58}
+  .map-legend{position:absolute;left:12px;bottom:26px;display:flex;gap:12px;align-items:center;z-index:5;color:#7f9aa0;font-size:10px;pointer-events:none}
+  .map-legend span{display:flex;align-items:center;gap:4px}
+  .map-legend svg{width:13px;height:13px;fill:#cfe0e8;fill-opacity:.75}
   /* 格底风向箭头：指向"风吹向"，只做提示。 */
   .wind-arrow{fill:none;stroke:#7fa6b0;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;opacity:.55;pointer-events:none}
   .hex.island{fill:#34463e;stroke:#6b8066}
@@ -110,6 +112,11 @@
       <button id="zoom-out" type="button" title="缩小" aria-label="缩小地图">−</button>
       <button id="zoom-value" type="button" title="复位到全图" aria-label="地图缩放复位">100%</button>
       <button id="zoom-in" type="button" title="放大" aria-label="放大地图">+</button>
+    </div>
+    <div class="map-legend">
+      <span><svg viewBox="-10 -10 20 20" aria-hidden="true"><circle cx="-5.4" cy="1.4" r="3.4" /><circle cx="-0.6" cy="-1.2" r="4.8" /><circle cx="3.6" cy="1.2" r="3.2" /><rect x="-8.6" y="1.2" width="12.8" height="3.6" rx="1.8" /></svg>多云</span>
+      <span><svg viewBox="-10 -10 20 20" aria-hidden="true"><path d="M0 -7.4c0 0 3.2 4.8 3.2 7a3.2 3.2 0 0 1-6.4 0c0-2.2 3.2-7 3.2-7Z" /><path transform="translate(-7.6 4.2) scale(.76)" d="M0 -7.4c0 0 3.2 4.8 3.2 7a3.2 3.2 0 0 1-6.4 0c0-2.2 3.2-7 3.2-7Z" /><path transform="translate(7.6 4.2) scale(.76)" d="M0 -7.4c0 0 3.2 4.8 3.2 7a3.2 3.2 0 0 1-6.4 0c0-2.2 3.2-7 3.2-7Z" /></svg>降雨</span>
+      <span><svg viewBox="-10 -10 20 20" aria-hidden="true"><path d="M1.6 -9.6 L-5.6 0.9 H-1.4 L-2.4 9.6 L6 -1.2 H1.4 L4.8 -9.6 Z" /></svg>风暴</span>
     </div>
     <div class="map-hint">拖动地图平移 · ＋/－缩放 · 点兵牌看编成/距离 · Esc 清除</div>
     <div id="detail-panel" class="detail-panel" hidden>
@@ -298,6 +305,12 @@
     applyView();
     updateZoomLabel();
     svg.innerHTML = '';
+    // 天气图案符号：云朵 / 水滴 / 闪电，按 hex 半径 17 的坐标系画，格子里 1:1 使用。
+    var defs = el('defs');
+    defs.innerHTML = '<symbol id="wx-cloud" overflow="visible"><g><circle cx="-5.4" cy="1.4" r="3.4" /><circle cx="-0.6" cy="-1.2" r="4.8" /><circle cx="3.6" cy="1.2" r="3.2" /><rect x="-8.6" y="1.2" width="12.8" height="3.6" rx="1.8" /></g><g><circle cx="7.2" cy="-5.8" r="2.4" /><circle cx="9.8" cy="-4.6" r="1.8" /><rect x="4.6" y="-4.6" width="5.8" height="2.4" rx="1.2" /></g></symbol>'
+      + '<symbol id="wx-rain" overflow="visible"><path d="M0 -7.4c0 0 3.2 4.8 3.2 7a3.2 3.2 0 0 1-6.4 0c0-2.2 3.2-7 3.2-7Z" /><path transform="translate(-7.6 4.2) scale(.76)" d="M0 -7.4c0 0 3.2 4.8 3.2 7a3.2 3.2 0 0 1-6.4 0c0-2.2 3.2-7 3.2-7Z" /><path transform="translate(7.6 4.2) scale(.76)" d="M0 -7.4c0 0 3.2 4.8 3.2 7a3.2 3.2 0 0 1-6.4 0c0-2.2 3.2-7 3.2-7Z" /></symbol>'
+      + '<symbol id="wx-storm" overflow="visible"><path d="M1.6 -9.6 L-5.6 0.9 H-1.4 L-2.4 9.6 L6 -1.2 H1.4 L4.8 -9.6 Z" /></symbol>';
+    svg.appendChild(defs);
     var terrain = {};
     (map.cells || []).forEach(function (cell) { terrain[cell.coord] = cell.terrain; });
     var layer = el('g');
@@ -309,13 +322,13 @@
       }
     }
     svg.appendChild(layer);
-    // 天气色块在格子之上、标注之下；风向箭头再压一层。
-    svg.appendChild(el('g', { id: 'weather' }));
     svg.appendChild(el('g', { id: 'hexlabels' }));
     svg.appendChild(el('g', { id: 'hexdeco' }));
     svg.appendChild(el('g', { id: 'distance' }));
     svg.appendChild(el('g', { id: 'marks' }));
     svg.appendChild(el('g', { id: 'distance-labels', 'pointer-events': 'none' }));
+    // 天气图案压在最上层：只盖云/雨/闪电图案，不给格子刷底色，也不吃点击。
+    svg.appendChild(el('g', { id: 'weather', 'pointer-events': 'none' }));
     // 每格的编号（hex id）是静态的：建图时画一次，之后不随推送重建。
     var labels = document.getElementById('hexlabels');
     for (var labelRow = 1; labelRow <= map.rows; labelRow++) {
@@ -329,7 +342,7 @@
     hexDecoSig = '';
   }
 
-  // 逐格风向箭头 + 天气色块：只在风向场 / 天气层变化时重建，平时推送不动这三千多个节点。
+  // 逐格风向箭头 + 天气图案：只在风向场 / 天气层变化时重建，平时推送不动这三千多个节点。
   var hexDecoSig = '';
   function renderHexDeco(data) {
     var wind = data.wind_cells || '';
@@ -362,8 +375,13 @@
         }
         if (weather) {
           var layers = weather.charCodeAt(index) - 48;
-          if (layers > 0 && layers <= 3) {
-            tints.appendChild(el('polygon', { points: hexPoints(point.x, point.y), class: 'weather weather-' + layers }));
+          if (layers >= 1 && layers <= 3) {
+            tints.appendChild(el('use', {
+              class: 'wx-icon weather-' + layers,
+              'data-weather': layers,
+              href: layers === 1 ? '#wx-cloud' : layers === 2 ? '#wx-rain' : '#wx-storm',
+              transform: 'translate(' + point.x + ' ' + point.y + ')'
+            }));
           }
         }
       }

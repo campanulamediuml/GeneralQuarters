@@ -17,7 +17,7 @@ func TestWeatherStaticWithoutCycle(t *testing.T) {
 	}
 }
 
-// 初始撒云：70% 一层、20% 再加一层、10% 再加一层，叠成雨和风暴。
+// 初始撒云：10% 多云、5% 降雨、1% 风暴，其余晴朗；云层数就是档位。
 func TestCloudSeedingDistribution(t *testing.T) {
 	state := State{WeatherTurns: 6, RNGState: 42, Map: MapDefinition{Rows: 52, Cols: 64}}
 	EnsureWeather(&state)
@@ -33,20 +33,21 @@ func TestCloudSeedingDistribution(t *testing.T) {
 		counts[layers]++
 	}
 	total := float64(len(state.Map.Clouds))
-	clear := float64(counts[0]) / total
+	cloud := float64(counts[1]) / total
 	rain := float64(counts[2]) / total
 	storm := float64(counts[3]) / total
-	if clear < 0.15 || clear > 0.30 {
-		t.Fatalf("晴天比例应接近 22%%，实际 %.1f%%", clear*100)
+	clear := float64(counts[0]) / total
+	if cloud < 0.06 || cloud > 0.14 {
+		t.Fatalf("多云比例应接近 10%%，实际 %.1f%%", cloud*100)
 	}
-	if rain < 0.10 || rain > 0.28 {
-		t.Fatalf("降雨比例应接近 19%%，实际 %.1f%%", rain*100)
+	if rain < 0.02 || rain > 0.09 {
+		t.Fatalf("降雨比例应接近 5%%，实际 %.1f%%", rain*100)
 	}
-	if storm <= 0 || storm > 0.05 {
-		t.Fatalf("风暴比例应接近 1.4%%，实际 %.1f%%", storm*100)
+	if storm < 0.001 || storm > 0.03 {
+		t.Fatalf("风暴比例应接近 1%%，实际 %.2f%%", storm*100)
 	}
-	if counts[1] == 0 {
-		t.Fatal("应该有多云格")
+	if clear < 0.78 || clear > 0.90 {
+		t.Fatalf("晴天比例应接近 84%%，实际 %.1f%%", clear*100)
 	}
 }
 
