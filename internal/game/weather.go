@@ -15,6 +15,9 @@ import (
 // 之后每 3 回合所有云一起移动一格：75% 顺着当地风（吹向），25% 随机方向；
 // 云叠在一起就变成雨、再叠出第三层就是风暴。移动用的是哈希出来的伪随机数，
 // 不消耗 RNGState——天气不应该影响炮击/命中的随机序列。
+//
+// 地图按环绕处理：云从一边飘出去，就从对面那一列/一行进来。以前只在图内挑邻格，
+// 边上的云无处可去只能留在原地，看着就像"云卡在边上慢慢聚成一坨"。
 
 // WeatherKind 是三种会影响判定的天气。
 const (
@@ -130,38 +133,80 @@ func moveClouds(state *State) int {
 	return moved
 }
 
+// cloudNeighborCells 返回六个邻格的行列号，其中可能已经有格飘到地图外：
+// 错位规则和 Neighbors 一致（偶数行左上/左下，奇数行右上/右下）。
+// 这里刻意不裁掉图外格——云先按真实方向往外飘，再由 wrapCell 折回图内。
+func cloudNeighborCells(row, col int) [][2]int {
+	deltas := [][2]int{{0, -1}, {0, 1}, {-1, 0}, {1, 0}}
+	if row%2 == 0 {
+		deltas = append(deltas, [2]int{-1, -1}, [2]int{1, -1})
+	} else {
+		deltas = append(deltas, [2]int{-1, 1}, [2]int{1, 1})
+	}
+	cells := make([][2]int, 0, len(deltas))
+	for _, delta := range deltas {
+		cells = append(cells, [2]int{row + delta[0], col + delta[1]})
+	}
+	return cells
+}
+
+// wrapCell 把飘出地图的一格折回图内：从一边出去，就从对面进来。
+// 行列各自按 1..N 循环，所以斜着飘出去会同时换行和换列。
+func wrapCell(row, col, rows, cols int) (int, int) {
+	wrap := func(value, size int) int {
+		if size <= 0 {
+			return value
+		}
+		// Go 的取模跟着被除数走号，负一格要自己补回去。1..size 原样返回。
+		mod := value % size
+		if mod <= 0 {
+			mod += size
+		}
+		return mod
+	}
+	return wrap(row, rows), wrap(col, cols)
+}
+
 // cloudTarget 选这层云要挪到哪个相邻格：75% 顺风、25% 随机。
-// 返回目标格的行优先下标；-1 表示没有可去的地方。
+// 目标先按"地图无限大"算出来，再环绕折算回图内；返回目标格的行优先下标，
+// -1 表示地图尺寸不合法、连一个邻格都算不出来。
 func cloudTarget(state *State, row, col, index, layer int) int {
-	coord := Coord(row, col)
-	neighbors := Neighbors(coord)
-	valid := make([]int, 0, len(neighbors))
-	for _, neighbor := range neighbors {
-		nrow, ncol, err := ParseCoord(neighbor)
-		if err != nil || nrow < 1 || nrow > state.Map.Rows || ncol < 1 || ncol > state.Map.Cols {
+	rows, cols := state.Map.Rows, state.Map.Cols
+	type candidate struct {
+		row, col int // 没折回的坐标：算方位用它，方向才是真的
+		index    int // 折回后的下标：云最终落在这里
+	}
+	candidates := make([]candidate, 0, 6)
+	seen := make(map[int]bool, 6)
+	for _, cell := range cloudNeighborCells(row, col) {
+		wrappedRow, wrappedCol := wrapCell(cell[0], cell[1], rows, cols)
+		target := (wrappedRow-1)*cols + (wrappedCol - 1)
+		// 小地图/角落上两个方向可能折回同一格，去重，免得那一格权重翻倍。
+		if seen[target] {
 			continue
 		}
-		valid = append(valid, (nrow-1)*state.Map.Cols+(ncol-1))
+		seen[target] = true
+		candidates = append(candidates, candidate{row: cell[0], col: cell[1], index: target})
 	}
-	if len(valid) == 0 {
+	if len(candidates) == 0 {
 		return -1
 	}
 	roll := cloudRoll(state.RNGState, uint64(state.Turn), index, layer)
 	if roll%100 < 75 {
 		// 顺着当地风：先取来向，再算吹向，然后挑最接近这个方位的邻格。
+		// 方位必须按没折回的坐标算：东边要飘出去的云，方向仍然是东，
+		// 折回后它落在西边——要是拿折回后的位置算方位，它会掉头往西飘。
 		blow := 0.0
-		if name, ok := state.WindDirectionAt(coord); ok {
+		if name, ok := state.WindDirectionAt(Coord(row, col)); ok {
 			if from, okFrom := compassDegrees(name); okFrom {
 				blow = float64((from + 180) % 360)
 			}
 		}
 		x, y := hexCenter(row, col)
-		best := valid[0]
+		best := candidates[0].index
 		bestDiff := 360.0
-		for _, candidate := range valid {
-			crow := candidate/state.Map.Cols + 1
-			ccol := candidate%state.Map.Cols + 1
-			nx, ny := hexCenter(crow, ccol)
+		for _, candidate := range candidates {
+			nx, ny := hexCenter(candidate.row, candidate.col)
 			bearing := math.Atan2(nx-x, -(ny-y)) * 180 / math.Pi
 			for bearing < 0 {
 				bearing += 360
@@ -171,12 +216,12 @@ func cloudTarget(state *State, row, col, index, layer int) int {
 				diff = 360 - diff
 			}
 			if diff < bestDiff {
-				bestDiff, best = diff, candidate
+				bestDiff, best = diff, candidate.index
 			}
 		}
 		return best
 	}
-	return valid[int((roll>>8)%uint64(len(valid)))]
+	return candidates[int((roll>>8)%uint64(len(candidates)))].index
 }
 
 // StepWeather 在需要时推进一次天气。返回产生的事件。
