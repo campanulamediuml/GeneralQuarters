@@ -372,6 +372,8 @@ type commandRequest struct {
 	Assignments   map[string]string `json:"assignments"`
 	TaskKind      string            `json:"task_kind"`
 	Loadout       string            `json:"loadout"`
+	// Lane：新建打击/侦察编队时前端想放进面板的第几栏（1 起），可选的偏好。
+	Lane int `json:"lane"`
 	// Disperse：SET_STRIKE_DISPERSION 用（true=分散攻击）。
 	Disperse bool `json:"disperse"`
 	// Cycle：SET_AIR_CYCLE 用（true=开启自动任务循环，false=取消）。
@@ -640,7 +642,7 @@ func (s *Server) doCommand(msg roomMsg) roomReply {
 	if request.BaseTurn > 0 && request.BaseTurn != room.Turn {
 		return roomError(http.StatusConflict, "本回合已经结算：请基于当前回合重新操作")
 	}
-	order := game.Order{Type: request.Type, UnitID: request.UnitID, TargetUnitID: request.TargetUnitID, AircraftID: request.AircraftID, AircraftIDs: request.AircraftIDs, TaskID: request.TaskID, Coord: game.NormalizeToken(request.Coord), TargetFleetID: request.TargetFleetID, Heading: strings.ToUpper(request.Heading), SectorWidth: request.SectorWidth, Assignments: request.Assignments, TaskKind: strings.ToLower(request.TaskKind), Loadout: strings.ToLower(request.Loadout), Disperse: request.Disperse, Engagement: strings.ToLower(request.Engagement), Cycle: request.Cycle}
+	order := game.Order{Type: request.Type, UnitID: request.UnitID, TargetUnitID: request.TargetUnitID, AircraftID: request.AircraftID, AircraftIDs: request.AircraftIDs, TaskID: request.TaskID, Coord: game.NormalizeToken(request.Coord), TargetFleetID: request.TargetFleetID, Heading: strings.ToUpper(request.Heading), SectorWidth: request.SectorWidth, Assignments: request.Assignments, TaskKind: strings.ToLower(request.TaskKind), Loadout: strings.ToLower(request.Loadout), Lane: request.Lane, Disperse: request.Disperse, Engagement: strings.ToLower(request.Engagement), Cycle: request.Cycle}
 	if err := game.ValidateOrder(room.State, player.Faction, order); err != nil {
 		return roomError(http.StatusBadRequest, err.Error())
 	}

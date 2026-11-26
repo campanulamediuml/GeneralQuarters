@@ -706,6 +706,8 @@ func clearAirTask(aircraft *AirUnit) {
 	aircraft.Priority = 0
 	aircraft.TaskID = ""
 	aircraft.TaskKind = ""
+	// 栏位属于这次组队，任务结束就交还，下一支新编队可以重新拿回 I。
+	aircraft.TaskLane = 0
 	aircraft.OriginCoord = ""
 	aircraft.Coord = ""
 	aircraft.TargetCoord = ""
@@ -722,6 +724,80 @@ func clearAirTask(aircraft *AirUnit) {
 	aircraft.Engaged = false
 	aircraft.SearchTurns = 0
 	aircraft.SearchHeading = ""
+}
+
+// taskLaneCount 是面板里同类任务分栏的数量：打击任务 I、II（侦察也分两栏）。
+const taskLaneCount = 2
+
+// freeTaskLane 从占用表里挑栏位（1 起）：玩家指定了空栏就照他的来（拖进 II 就放 II），
+// 没指定或者那一栏已经被占，就挑最小空位。
+// "占用"只算还在组队的编队：编队全部升空以后栏位就空出来，下一支新编队重新拿到 I。
+// 两栏都占着时退回 1——面板那一栏会并列列出两支编队，总比把新编队藏起来强。
+func freeTaskLane(occupied map[int]bool, prefer int) int {
+	if prefer >= 1 && prefer <= taskLaneCount && !occupied[prefer] {
+		return prefer
+	}
+	for lane := 1; lane <= taskLaneCount; lane++ {
+		if !occupied[lane] {
+			return lane
+		}
+	}
+	return 1
+}
+
+// aircraftFleetKey 取舰载机所在舰队的 key。
+func aircraftFleetKey(state State, aircraft *AirUnit) string {
+	if aircraft == nil {
+		return ""
+	}
+	if carrier := state.Units[aircraft.CarrierID]; carrier != nil {
+		return FleetKey(carrier)
+	}
+	return ""
+}
+
+// carrierTaskLanes 汇总同一支舰队里还在组队的同类任务占的栏位。
+func carrierTaskLanes(state State, fleetID, kind string) map[int]bool {
+	occupied := map[int]bool{}
+	if fleetID == "" {
+		return occupied
+	}
+	for _, aircraft := range state.Aircraft {
+		if aircraft.TaskLane <= 0 || aircraft.TaskID == "" || aircraft.TaskKind != kind {
+			continue
+		}
+		// 已经在天上的不占栏位：编队离场之后面板该把这一栏空出来。
+		if airborne(aircraft) {
+			continue
+		}
+		if aircraftFleetKey(state, aircraft) != fleetID {
+			continue
+		}
+		occupied[aircraft.TaskLane] = true
+	}
+	return occupied
+}
+
+// assignCarrierTaskLane 给一组舰载机定栏位：新编队拿最小空位，加入已有编队沿用原栏位。
+// 老存档里没记过栏位（0）的编队现场补一个并同步给全组，避免成员之间对不上。
+func assignCarrierTaskLane(state *State, aircraftList []*AirUnit, existingTask []*AirUnit, kind string, prefer int) int {
+	lane := 0
+	if len(existingTask) > 0 && existingTask[0].TaskLane > 0 {
+		lane = existingTask[0].TaskLane
+	} else {
+		scope := aircraftList[0]
+		if len(existingTask) > 0 {
+			scope = existingTask[0]
+		}
+		lane = freeTaskLane(carrierTaskLanes(*state, aircraftFleetKey(*state, scope), kind), prefer)
+		for _, member := range existingTask {
+			member.TaskLane = lane
+		}
+	}
+	for _, aircraft := range aircraftList {
+		aircraft.TaskLane = lane
+	}
+	return lane
 }
 
 func configureAirTask(state *State, aircraftList []*AirUnit, order Order) {
@@ -777,6 +853,7 @@ func configureAirTask(state *State, aircraftList []*AirUnit, order Order) {
 	if kind == MissionStrike && len(existingTask) > 0 {
 		order.Coord = existingTask[0].TargetCoord
 	}
+
 	for _, aircraft := range aircraftList {
 		beginAirMission(aircraft, taskID, kind, priority)
 		switch kind {
@@ -806,6 +883,10 @@ func configureAirTask(state *State, aircraftList []*AirUnit, order Order) {
 		applyLoadout(*state, aircraft)
 
 	}
+	// 栏位要在 beginAirMission 之后写：它内部会 clearAirTask，而清任务会把栏位交还。
+	// 面板栏位（打击任务 I/II）跟着编队走，不按任务在列表里的位置轮排——
+	// 位置会随"已出发的编队还挂在列表里"和随机 tag 的排序一起漂。
+	assignCarrierTaskLane(state, aircraftList, existingTask, string(kind), order.Lane)
 }
 
 // reconGroupActive 判断一个侦察组还在不在"用"：有飞机在天上，或者还在整备/甲板上等起飞。
@@ -2342,7 +2423,7 @@ func VisibleAviation(state State, faction string) AviationView {
 			}
 		}
 		phase := taskPhase(aircraftList)
-		task := AirTask{ID: taskID, Kind: kind, Phase: phase, CarrierID: leader.CarrierID, CarrierIDs: []string{}, AircraftIDs: []string{}, Aircraft: []AirUnit{}, Priority: leader.Priority, Faction: leader.Faction}
+		task := AirTask{ID: taskID, Kind: kind, Phase: phase, CarrierID: leader.CarrierID, CarrierIDs: []string{}, AircraftIDs: []string{}, Aircraft: []AirUnit{}, Priority: leader.Priority, Lane: leader.TaskLane, Faction: leader.Faction}
 		carrierSet := map[string]bool{}
 		for _, aircraft := range aircraftList {
 			task.AircraftIDs = append(task.AircraftIDs, aircraft.ID)

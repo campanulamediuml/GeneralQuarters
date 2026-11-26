@@ -337,10 +337,12 @@ type AirfieldAirUnit struct {
 	// HighAltitudeBomber：挂炸弹攻击舰船时按高空轰炸结算。
 	HighAltitudeBomber bool `json:"high_altitude_bomber"`
 	// Seaplane：带浮筒或飞行艇，只能从水上飞机基地起降。
-	Seaplane    bool   `json:"seaplane"`
-	TaskID      string `json:"task_id"`
-	TaskKind    string `json:"task_kind"`
-	Priority    int    `json:"priority"`
+	Seaplane bool   `json:"seaplane"`
+	TaskID   string `json:"task_id"`
+	TaskKind string `json:"task_kind"`
+	Priority int    `json:"priority"`
+	// TaskLane 见 AirUnit.TaskLane：机场编队同样按栏位组队，飞走就空出栏位。
+	TaskLane    int    `json:"task_lane"`
 	Coord       string `json:"coord"`
 	OriginCoord string `json:"origin_coord"`
 	TargetCoord string `json:"target_coord"`
@@ -609,9 +611,13 @@ type AirUnit struct {
 	Priority           int    `json:"priority"`
 	TaskID             string `json:"task_id"`
 	TaskKind           string `json:"task_kind"`
-	OriginCoord        string `json:"origin_coord"`
-	Coord              string `json:"coord"`
-	TargetCoord        string `json:"target_coord"`
+	// TaskLane 是编队在航空面板里占的栏位（1 起；0 = 老存档没记过）。
+	// 栏位只表示"正在组队的位置"：编队全部升空之后栏位就空出来，
+	// 下一支新编队重新拿到 I，编号不会随着列表里挂着的已出发编队往后漂。
+	TaskLane    int    `json:"task_lane"`
+	OriginCoord string `json:"origin_coord"`
+	Coord       string `json:"coord"`
+	TargetCoord string `json:"target_coord"`
 	// TargetFleetID 是打击编队认领的敌方舰队：目标 hex 打空之后靠它去追最新情报位置。
 	TargetFleetID string `json:"target_fleet_id"`
 	// CoverUnitID 是空中掩护跟随的友军单位：目标 hex 里有己方舰队时自动认领，
@@ -711,10 +717,12 @@ type AirTask struct {
 	Aircraft      []AirUnit `json:"aircraft"`
 	AirborneCount int       `json:"airborne_count"`
 	Priority      int       `json:"priority"`
-	QueuePosition int       `json:"queue_position"`
-	OriginCoord   string    `json:"origin_coord"`
-	CurrentCoord  string    `json:"current_coord"`
-	TargetCoord   string    `json:"target_coord"`
+	// Lane 是这支编队在面板里占的栏位（1 起；0 = 老存档没记过，前端按位置兜底）。
+	Lane          int    `json:"lane"`
+	QueuePosition int    `json:"queue_position"`
+	OriginCoord   string `json:"origin_coord"`
+	CurrentCoord  string `json:"current_coord"`
+	TargetCoord   string `json:"target_coord"`
 	// Disperse 是攻击编队的攻击方式（规则书 624–631 行）。
 	Disperse         bool     `json:"disperse"`
 	Faction          string   `json:"faction"`
@@ -990,6 +998,9 @@ type Order struct {
 	TaskKind string `json:"task_kind"`
 	// Loadout 只用于换挂载命令（SET_LOADOUT）。
 	Loadout string `json:"loadout"`
+	// Lane 只在新建打击/侦察编队时用：前端想把它放进面板的第几栏（1 起）。
+	// 为空或那一栏已经被占时由服务端挑最小空位，所以这个字段是可选的偏好，不是约束。
+	Lane int `json:"lane"`
 	// Disperse 用于攻击编队目标分配（SET_STRIKE_DISPERSION）：true = 分散攻击，
 	// 每个算子均匀随机选择编队中的任意一艘船；false = 集中攻击，按目标权重表选择（规则书 624–631 行）。
 	Disperse bool `json:"disperse"`

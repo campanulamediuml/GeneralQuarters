@@ -288,6 +288,8 @@ func boardGroundAircraftOnCarrier(state *State, aircraft *AirfieldAirUnit, carri
 	unit.Launched = false
 	unit.TaskID = ""
 	unit.TaskKind = ""
+	// 栏位属于原来的组队：上舰之后重新组队要重新拿一个空位。
+	unit.TaskLane = 0
 	unit.TargetCoord = ""
 	unit.Coord = carrier.Coord
 	copied := unit
@@ -1192,6 +1194,43 @@ func sameTaskAssignmentGround(list []*AirfieldAirUnit, order Order) bool {
 	return len(list) > 0
 }
 
+// groundTaskLanes 汇总同一机场里还在组队的同类任务占的栏位。
+func groundTaskLanes(state State, airfieldID, kind string) map[int]bool {
+	occupied := map[int]bool{}
+	for _, aircraft := range state.GroundAir {
+		if aircraft.TaskLane <= 0 || aircraft.TaskID == "" || aircraft.TaskKind != kind {
+			continue
+		}
+		if aircraft.AirfieldID != airfieldID {
+			continue
+		}
+		// 已经离场的不占栏位：编队飞走之后面板该把那一栏交出来。
+		if airfieldAirborne(aircraft) {
+			continue
+		}
+		occupied[aircraft.TaskLane] = true
+	}
+	return occupied
+}
+
+// assignGroundTaskLane 同舰载机那套：新编队拿最小空位，加入已有编队沿用原栏位，
+// 老存档里没记过栏位的编队现场补一个并同步给全组。
+func assignGroundTaskLane(state *State, aircraftList []*AirfieldAirUnit, existing []*AirfieldAirUnit, airfieldID, kind string, prefer int) int {
+	lane := 0
+	if len(existing) > 0 && existing[0].TaskLane > 0 {
+		lane = existing[0].TaskLane
+	} else {
+		lane = freeTaskLane(groundTaskLanes(*state, airfieldID, kind), prefer)
+		for _, member := range existing {
+			member.TaskLane = lane
+		}
+	}
+	for _, aircraft := range aircraftList {
+		aircraft.TaskLane = lane
+	}
+	return lane
+}
+
 // ApplyGroundAirOrder 执行机场航空命令。与舰载机保持同一套阶段语义，只是升降机换成滑行到跑道。
 func ApplyGroundAirOrder(state *State, order Order) []EngineEvent {
 	ids := airOrderIDs(order)
@@ -1238,6 +1277,8 @@ func ApplyGroundAirOrder(state *State, order Order) []EngineEvent {
 				}
 			}
 		}
+		// 栏位跟着编队走：新编队拿当前空着的最小栏位，加入已有编队沿用它的栏位。
+		assignGroundTaskLane(state, list, groundTaskAircraft(*state, taskID), airfield.ID, string(kind), order.Lane)
 		events := []EngineEvent{}
 		for _, aircraft := range list {
 			beginGroundMission(aircraft, taskID, kind, priority)
@@ -1350,6 +1391,7 @@ func ApplyGroundAirOrder(state *State, order Order) []EngineEvent {
 			disarmGroundTaskCycle(aircraft)
 			aircraft.TaskID = ""
 			aircraft.TaskKind = ""
+			aircraft.TaskLane = 0
 			aircraft.TargetCoord = ""
 			aircraft.TargetFleetID = ""
 			aircraft.Heading = ""
@@ -1363,6 +1405,7 @@ func ApplyGroundAirOrder(state *State, order Order) []EngineEvent {
 			disarmGroundTaskCycle(aircraft)
 			aircraft.TaskID = ""
 			aircraft.TaskKind = ""
+			aircraft.TaskLane = 0
 		}
 		return []EngineEvent{{Type: "air_recovered", Audience: airfield.Faction, Text: "机场CAP算子开始返航"}}
 	case "SET_AIR_CYCLE":
@@ -1852,6 +1895,8 @@ func landGroundAircraft(state *State, aircraft *AirfieldAirUnit, airfield *Airfi
 	rememberGroundCycleParams(aircraft, aircraft.TaskKind)
 	aircraft.TaskID = ""
 	aircraft.TaskKind = ""
+	// 落地就退出这次的组队栏位，重新整备时再拿空位。
+	aircraft.TaskLane = 0
 	aircraft.TargetCoord = ""
 	aircraft.TargetFleetID = ""
 	// 无跑道着陆：60% 概率迫降失败进入损伤状态
@@ -2266,7 +2311,9 @@ func GroundAviationView(state State, faction string) AviationView {
 		members := groups[taskID]
 		sort.Slice(members, func(i, j int) bool { return members[i].ID < members[j].ID })
 		leader := members[0]
-		task := AirTask{ID: taskID, Kind: leader.TaskKind, Name: leader.Model, Priority: leader.Priority, AircraftIDs: []string{}, Aircraft: []AirUnit{}, CarrierIDs: []string{leader.AirfieldID}, CarrierID: leader.AirfieldID}
+		// Lane 来自编队本身（组队时分配），不是按任务在列表里的位置轮排：
+		// 位置会随"已出发的编队还挂在列表里"和随机 tag 的排序一起漂。
+		task := AirTask{ID: taskID, Kind: leader.TaskKind, Name: leader.Model, Priority: leader.Priority, Lane: leader.TaskLane, AircraftIDs: []string{}, Aircraft: []AirUnit{}, CarrierIDs: []string{leader.AirfieldID}, CarrierID: leader.AirfieldID}
 		for _, member := range members {
 			// 任务卡上的对地/对舰要跟着挂载走：切重型炸弹就得当场 +2。
 			unit := withLoadoutAttack(groundAirUnit(state, member))

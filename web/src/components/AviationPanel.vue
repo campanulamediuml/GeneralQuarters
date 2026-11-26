@@ -7,7 +7,7 @@ import AirfieldCounter from './AirfieldCounter.vue'
 import ShipCounter from './ShipCounter.vue'
 
 type AirCommandType = 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' | 'LAUNCH_COVER' | 'LAUNCH_TRANSFER' | 'RETURN_TO_HANGAR' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK' | 'SET_AIR_CYCLE' | 'RECALL_AIR' | 'RETASK_AIR' | 'RETARGET_AIR' | 'SET_STRIKE_DISPERSION'
-type CommandOptions = { heading?: ReconHeading; sector_width?: 60 | 120; task_id?: string; coord?: string; task_kind?: string; loadout?: string; disperse?: boolean; cycle?: boolean }
+type CommandOptions = { heading?: ReconHeading; sector_width?: 60 | 120; task_id?: string; coord?: string; task_kind?: string; loadout?: string; disperse?: boolean; cycle?: boolean; lane?: number }
 type TaskLane = { id: string; name: string; kind: string; slot?: number }
 type AirZone = 'hangar' | 'deck'
 
@@ -276,7 +276,9 @@ function assignTarget(target: string, taskID = '') {
   else if (target.startsWith('strike-')) {
     const lane = lanes.find((item) => item.id === target)
     const existing = taskID ? tasks.value.find((task) => task.id === taskID) : lane ? laneTasks(lane).find((task) => !['launching', 'active'].includes(task.phase)) : undefined
-    emitBatch('LAUNCH_STRIKE', ids, existing ? { task_id: existing.id } : undefined)
+    // 新建编队时把"拖进了哪一栏"一起发过去：服务端按它分配栏位，
+    // 免得拖进 II 的新编队被"最小空位"规则又塞回 I。
+    emitBatch('LAUNCH_STRIKE', ids, existing ? { task_id: existing.id } : { lane: (lane?.slot ?? 0) + 1 })
   }
   else if (target.startsWith('recon-')) {
     const lane = lanes.find((item) => item.id === target)
@@ -429,26 +431,32 @@ function reconGroupAlive(task: AirTask) {
 // 详情、改目标、召回都在大地图那张编队牌上做。
 const departedPhases = ['launching', 'active', 'recovering']
 
+// 栏位由服务端分配（task.lane，1 起）：编队组队时占一个空栏，全部升空之后栏位交还，
+// 下一支新编队重新拿回 I。以前按"任务在列表里的位置 % 2"分栏，已出发的编队还挂在列表里
+// 也照样占着一个位置，于是新编队总是落到 II，两支都在天上时编号越排越乱。
+// 老存档的编队没有 lane（0），退回按未分配编队的位置轮排。
 function laneTasks(lane: TaskLane) {
   const matching = tasks.value.filter((task) => task.kind === lane.kind)
   if (lane.slot === undefined) return matching
   // 只有"两栏一组"的任务才按槽位切：侦察两组、打击两栏。
   // 转场和空中掩护各自只有一栏，以前也被 index%2 切掉一半——
   // 图卢维尔4支转场编队只显示2支，被藏起来的那两支连撤回按钮都点不到。
-  if (lane.kind === 'recon') return matching.filter((_, index) => index === lane.slot)
+  // 收窄成局部常量：闭包里读 lane.slot 时 TS 不再认前面的 undefined 判断。
+  const slot = lane.slot
+  if (lane.kind === 'recon') return matching.filter((_, index) => index === slot)
   if (lane.kind !== 'attack') return matching
-  return matching
-    .filter((_, index) => index % 2 === lane.slot)
-    .filter((task) => !departedPhases.includes(task.phase))
+  const pending = matching.filter((task) => !departedPhases.includes(task.phase))
+  const assigned = pending.filter((task) => task.lane === slot + 1)
+  const legacy = pending.filter((task) => !task.lane)
+  return assigned.concat(legacy.filter((_, index) => index % 2 === slot))
 }
 
-// 已经从这一栏出发、正在天上飞或者正在回收的编队数。
-// 空栏里要留一句"去地图上点编队牌"，否则玩家看到编队凭空消失会以为丢了。
+// 已经在天上的打击编队数。它们的栏位已经交还，所以不挂在具体哪一栏上：
+// 统一写在第 I 栏下面一句"去地图上点编队牌"，否则玩家看到编队凭空消失会以为丢了。
 function departedCount(lane: TaskLane) {
-  if (lane.kind !== 'attack' || lane.slot === undefined) return 0
+  if (lane.kind !== 'attack' || lane.slot !== 0) return 0
   return tasks.value
     .filter((task) => task.kind === 'attack')
-    .filter((_, index) => index % 2 === lane.slot)
     .filter((task) => departedPhases.includes(task.phase)).length
 }
 

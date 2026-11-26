@@ -201,6 +201,8 @@ export interface AirTask {
   aircraft: AirUnit[]
   airborne_count: number
   priority: number
+  /** 编队在航空面板里占的栏位（1 起；0 = 老存档没记过，前端按位置兜底） */
+  lane?: number
   queue_position: number
   origin_coord?: string
   current_coord?: string
