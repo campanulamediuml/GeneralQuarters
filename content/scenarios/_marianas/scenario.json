@@ -5042,7 +5042,7 @@
    "radar": true,
    "heavy_aa": 8.0,
    "light_aa": 12.0,
-   "coastal": 0,
+   "coastal": 6,
    "aircraft": [
     "af-b-saipan-a6m5-1",
     "af-b-saipan-a6m5-2",
@@ -5072,7 +5072,7 @@
    "radar": false,
    "heavy_aa": 6.0,
    "light_aa": 10.0,
-   "coastal": 0,
+   "coastal": 6,
    "aircraft": [
     "af-b-tinian-a6m5-1",
     "af-b-tinian-a6m5-2",
@@ -5100,7 +5100,7 @@
    "radar": true,
    "heavy_aa": 8.0,
    "light_aa": 14.0,
-   "coastal": 0,
+   "coastal": 6,
    "aircraft": [
     "af-b-guam-a6m5-1",
     "af-b-guam-a6m5-2",
@@ -5126,7 +5126,7 @@
    "radar": false,
    "heavy_aa": 2.0,
    "light_aa": 4.0,
-   "coastal": 0,
+   "coastal": 6,
    "aircraft": [
     "af-b-rota-a6m5-rookie-1",
     "af-b-rota-a6m5-rookie-2",
@@ -5146,7 +5146,7 @@
    "radar": false,
    "heavy_aa": 4.0,
    "light_aa": 6.0,
-   "coastal": 0,
+   "coastal": 6,
    "aircraft": [
     "af-b-yap-a6m5-rookie-1",
     "af-b-yap-a6m5-rookie-2",
@@ -5170,7 +5170,7 @@
    "radar": false,
    "heavy_aa": 4.0,
    "light_aa": 8.0,
-   "coastal": 0,
+   "coastal": 6,
    "aircraft": [
     "af-b-palau-a6m5-1",
     "af-b-palau-a6m5-2",

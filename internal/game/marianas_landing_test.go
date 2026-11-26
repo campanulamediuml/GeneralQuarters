@@ -82,6 +82,18 @@ func TestMarianasLandingGroups(t *testing.T) {
 		}
 	}
 
+	// 六座岛屿机场各 6 点岸炮，水上飞机基地不带岸炮。
+	for _, id := range []string{"af-b-saipan", "af-b-tinian", "af-b-guam", "af-b-rota", "af-b-yap", "af-b-palau"} {
+		if airfield := state.Airfields[id]; airfield == nil || airfield.Coastal != 6 {
+			t.Fatalf("%s 岸炮不是 6：%+v", id, airfield)
+		}
+	}
+	for _, id := range []string{"af-b-saipan-sea", "af-b-guam-sea", "af-b-palau-sea"} {
+		if airfield := state.Airfields[id]; airfield == nil || airfield.Coastal != 0 {
+			t.Fatalf("%s 水上基地不该有岸炮：%+v", id, airfield)
+		}
+	}
+
 	supplyTargets := map[string]bool{}
 	for _, objective := range state.Objectives {
 		if objective.Kind == ObjectiveSupplies && objective.Faction == "A" && objective.Value == 40 {
