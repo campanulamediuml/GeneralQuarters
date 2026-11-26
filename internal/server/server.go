@@ -41,10 +41,21 @@ type roomJob struct {
 type roomActor struct {
 	jobs  chan roomJob
 	start sync.Once
+	// views 是这个房间上一次推给每个玩家、以及观战者的视图。
+	// 只由 worker 自己读写（所有变更和推送都在同一个 goroutine 里先后发生），
+	// 所以不需要锁：这也是补丁顺序天然正确的原因。
+	views roomViews
+}
+
+// roomViews 按玩家 / 观战分别缓存上一份推出去的视图，用来算下一次的补丁。
+// 同一玩家开两个窗口共享一份：补丁相对"他这一侧上次看到的"，而不是相对每条连接。
+type roomViews struct {
+	players  map[string]map[string]any
+	spectate map[string]any
 }
 
 func newRoomActor() *roomActor {
-	return &roomActor{jobs: make(chan roomJob, 128)}
+	return &roomActor{jobs: make(chan roomJob, 128), views: roomViews{players: map[string]map[string]any{}}}
 }
 
 func (a *roomActor) run() {
@@ -249,7 +260,7 @@ func (s *Server) joinRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.setSessionCookie(w, session)
-	s.hub.notify(player.RoomID)
+	s.publishRoom(player.RoomID)
 	writeJSON(w, http.StatusOK, roomResponse{RoomID: player.RoomID, PlayerID: player.ID})
 }
 
@@ -357,7 +368,7 @@ func (s *Server) handleCommand(w http.ResponseWriter, r *http.Request, roomID st
 			writeError(w, http.StatusConflict, "命令结算失败："+err.Error())
 			return
 		}
-		s.hub.notify(roomID)
+		s.publishRoom(roomID)
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(response)
 		return
@@ -367,7 +378,7 @@ func (s *Server) handleCommand(w http.ResponseWriter, r *http.Request, roomID st
 		writeError(w, http.StatusInternalServerError, "保存命令失败")
 		return
 	}
-	s.hub.notify(roomID)
+	s.publishRoom(roomID)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(response)
 }
@@ -400,7 +411,7 @@ func (s *Server) savePlannedOrder(w http.ResponseWriter, r *http.Request, room s
 		writeError(w, http.StatusInternalServerError, "保存命令失败")
 		return
 	}
-	s.hub.notify(roomID)
+	s.publishRoom(roomID)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write(response)
 }
@@ -480,7 +491,7 @@ func (s *Server) resolveStalledRoom(ctx context.Context, roomID string) {
 		return
 	}
 	log.Printf("房间 %s 双方已 ready 但停在第 %d 回合，巡检已自动结算", roomID, room.Turn)
-	s.hub.notify(roomID)
+	s.publishRoom(roomID)
 }
 func (s *Server) handleReady(w http.ResponseWriter, r *http.Request, roomID string, player store.Player) {
 	var request readyRequest
@@ -551,7 +562,7 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request, roomID stri
 			}
 		}
 	}
-	s.hub.notify(roomID)
+	s.publishRoom(roomID)
 	// ready 的响应只是一条回执：状态由推送下发，不用为改一个标记回 150 KB 全量。
 	writeJSON(w, http.StatusOK, map[string]any{"accepted": true, "turn": room.Turn})
 }
@@ -659,10 +670,64 @@ func (s *Server) setSessionCookie(w http.ResponseWriter, session string) {
 	http.SetCookie(w, &http.Cookie{Name: "gq_session", Value: session, Path: "/", HttpOnly: true, SameSite: http.SameSiteLaxMode, Secure: s.secure, MaxAge: 30 * 24 * 3600})
 }
 
-func (s *Server) submitRoom(roomID string, run func()) {
+// roomActor 取（必要时创建）房间的 worker。房间状态只由它的 goroutine 改。
+func (s *Server) roomActor(roomID string) *roomActor {
 	value, _ := s.actors.LoadOrStore(roomID, newRoomActor())
 	actor := value.(*roomActor)
 	actor.start.Do(func() { go actor.run() })
+	return actor
+}
+
+// publishRoom 在房间 worker 里调用：把这次变更投影成每个玩家 / 观战者的可见视图，
+// 和上一次推出去的那份做 diff，只把变了的部分发出去。
+//
+// 必须在 worker 里跑——它读权威状态、写每个玩家/观战者的上一版缓存，和命令处理
+// 在同一个 goroutine 里前后发生，所以"先入队的全量、后入队的补丁"这个顺序天然成立，
+// 不需要版本号、不需要合并窗口、也不需要在推送侧再协调一次时序。
+func (s *Server) publishRoom(roomID string) {
+	ctx := context.Background()
+	room, err := s.store.Room(ctx, roomID)
+	if err != nil {
+		return
+	}
+	players, err := s.store.Players(ctx, roomID)
+	if err != nil {
+		return
+	}
+	actor := s.roomActor(roomID)
+	for _, player := range players {
+		view, err := s.privateView(ctx, room, players, player)
+		if err != nil {
+			continue
+		}
+		previous, exists := actor.views.players[player.ID]
+		if !exists {
+			// 这个玩家还没有底座（客户端刚连上、还没拉全量）。那一拉会把它记下来。
+			continue
+		}
+		if patch := diffView(previous, view); patch != any(patchNone) {
+			if frame, err := json.Marshal(map[string]any{"type": "state", "patch": patch}); err == nil {
+				s.hub.deliverPlayer(roomID, player.ID, frame)
+			}
+		}
+		actor.views.players[player.ID] = view
+	}
+	view, err := s.spectateView(ctx, room)
+	if err != nil {
+		return
+	}
+	if previous := actor.views.spectate; previous != nil {
+		if patch := diffView(previous, view); patch != any(patchNone) {
+			if frame, err := json.Marshal(map[string]any{"type": "snapshot", "patch": patch}); err == nil {
+				s.hub.deliverSpectators(roomID, frame)
+			}
+		}
+	}
+	actor.views.spectate = view
+}
+
+func (s *Server) submitRoom(roomID string, run func()) {
+	actor := s.roomActor(roomID)
 	job := roomJob{run: run, done: make(chan struct{})}
 	actor.jobs <- job
 	<-job.done
@@ -738,22 +803,16 @@ type hub struct {
 	clients map[string]map[*wsClient]bool
 }
 
+// wsClient 是一条连接的全部状态：一个出口 chan、一个身份。
+// readLoop 只管读，writeLoop 只管写，中间只有这个 chan。
 type wsClient struct {
 	conn *websocket.Conn
-	// send 走必须送达的帧：RPC 响应、错误、玩家的事件通知。顺序有意义，写不进去就断线重连。
-	send chan []byte
-	// wake 只是"这个房间有变化"的合并信号，容量 1：处理不过来时后来的信号被丢掉，
-	// 因为推出去的是完整视图——与其排队推中间态，不如等一等只算最后一版。
-	wake chan struct{}
-	// lastView 是上一次真正推给这条连接的视图。下一次推送拿新投影和它做 diff：
-	// 差异就是补丁，空补丁就不发。这也是"这条连接现在看到的是什么"的唯一记录。
-	lastView map[string]any
-	// pendingSeed 是"已经生成、但还没写到这条连接上"的全量（GET state 的响应）。
-	// 只有它真的写出去之后才算底座：否则服务端可能先算补丁、而客户端手里还没有底座。
-	pendingSeed map[string]any
-	roomID      string
-	playerID    string
-	spectator   bool
+	// send 里放要写到这条连接的帧：RPC 响应、补丁、错误。
+	// 顺序由房间 worker 的先后决定；写失败或塞不进去就断开这条连接，让他重连拉全量。
+	send      chan []byte
+	roomID    string
+	playerID  string
+	spectator bool
 }
 
 type wsRequest struct {
@@ -791,25 +850,35 @@ func (h *hub) remove(client *wsClient) {
 	}
 }
 
-// notify 只是"这个房间变了"的信号，它不携带内容。
+// deliver 把一帧丢给房间里符合条件的连接。
 //
-// 以前这里下发一条只有类型和版本号的失效提示，客户端收到再自己发 RPC 去拉完整视图：
-// 一次变更就是一个来回，玩家看到的每次都还是上一版。现在服务端自己投影、自己推，
-// 每条连接各自把这一批变更合并成一次投影（观战是合并视图，玩家是阵营私有视图）。
-func (h *hub) notify(roomID string) {
+// 塞不进去说明这条连接已经跟不上（对端不读了），直接断开：它重连时会重新拉一份
+// 全量，比让它收一半补丁、拿着错的底座继续跑要好。绝不能在这里阻塞——worker
+// 一阻塞，整个房间（另一个玩家的命令、结算、巡检）就全停了。
+func (h *hub) deliver(roomID string, match func(*wsClient) bool, frame []byte) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	for client := range h.clients[roomID] {
-		client.poke()
+		if !match(client) {
+			continue
+		}
+		select {
+		case client.send <- frame:
+		default:
+			_ = client.conn.Close()
+		}
 	}
 }
 
-// poke 通知写泵"状态变了"。信号本身就是幂等的，重复戳只留一下。
-func (c *wsClient) poke() {
-	select {
-	case c.wake <- struct{}{}:
-	default:
-	}
+// deliverPlayer 只给某个玩家的连接；deliverSpectators 只给观战连接。
+func (h *hub) deliverPlayer(roomID, playerID string, frame []byte) {
+	h.deliver(roomID, func(client *wsClient) bool {
+		return !client.spectator && client.playerID == playerID
+	}, frame)
+}
+
+func (h *hub) deliverSpectators(roomID string, frame []byte) {
+	h.deliver(roomID, func(client *wsClient) bool { return client.spectator }, frame)
 }
 
 func (s *Server) dispatchWebSocketRPC(client *wsClient, handshake *http.Request, player store.Player, request wsRequest) wsResponse {
@@ -841,9 +910,6 @@ func (s *Server) dispatchWebSocketRPC(client *wsClient, handshake *http.Request,
 		if err != nil {
 			return wsResponse{Type: "rpc_response", ID: request.ID, Status: http.StatusInternalServerError, Body: json.RawMessage(`{"error":"状态编码失败"}`)}
 		}
-		// 这里不能直接认底座——响应还在 send 队列里，客户端还没拿到。
-		// 交给写泵：等这一帧真的写出去了再认。
-		client.pendingSeed = view
 		return wsResponse{Type: "rpc_response", ID: request.ID, Status: http.StatusOK, Body: encoded}
 	}
 	allowed := (request.Method == http.MethodGet && action == "events") || (request.Method == http.MethodPost && (action == "commands" || action == "ready"))
@@ -896,7 +962,7 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	conn.SetReadLimit(1 << 20)
-	client := &wsClient{conn: conn, send: make(chan []byte, 32), wake: make(chan struct{}, 1)}
+	client := &wsClient{conn: conn, send: make(chan []byte, 32)}
 	if playerAuthed {
 		client.roomID, client.playerID = player.RoomID, player.ID
 	} else {
@@ -939,10 +1005,17 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 	conn.SetPongHandler(func(string) error { return conn.SetReadDeadline(time.Now().Add(90 * time.Second)) })
 	s.hub.add(client)
 	if !client.spectator {
-		s.submitRoom(client.roomID, func() { _ = s.store.SetConnected(context.Background(), client.playerID, true) })
+		// 玩家：在线状态变了要推给对手；自己的底座等他发 GET state 时再记。
+		s.submitRoom(client.roomID, func() {
+			_ = s.store.SetConnected(context.Background(), client.playerID, true)
+			s.publishRoom(client.roomID)
+		})
+	} else if err := s.sendSpectatorFull(client); err != nil {
+		s.hub.remove(client)
+		_ = conn.WriteJSON(map[string]any{"type": "error", "error": err.Error()})
+		_ = conn.Close()
+		return
 	}
-	// 首帧和后续更新走同一条路径：写泵收到信号就投影当前状态并推出去。
-	s.hub.notify(client.roomID)
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -972,44 +1045,21 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 		ticker.Stop()
 		s.hub.remove(client)
 		if !client.spectator {
-			s.submitRoom(client.roomID, func() { _ = s.store.SetConnected(context.Background(), client.playerID, false) })
-			s.hub.notify(client.roomID)
+			s.submitRoom(client.roomID, func() {
+				_ = s.store.SetConnected(context.Background(), client.playerID, false)
+				s.publishRoom(client.roomID)
+			})
 		}
 		_ = conn.Close()
 	}()
-	// 合并窗口用定时器而不是在写泵里 sleep：投影要几十毫秒，期间 RPC 响应
-	// 也得照常写出去，不然玩家点一下命令，回执要等这次投影算完。
-	debounce := time.NewTimer(time.Hour)
-	debounce.Stop()
-	pending := false
-	defer debounce.Stop()
+	// writeLoop 只做一件事：把 chan 里的帧按序写出去。
+	// 写失败、连接断了，就直接返回——客户端会重连并重新拉一份全量，
+	// 所以这里不需要任何"跳过这一帧继续"的分支。
 	for {
 		select {
 		case message := <-client.send:
 			_ = conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {
-				return
-			}
-			// 全量响应真的写出去之后，这条连接才算有底座；之后算出来的补丁必然排在它后面。
-			if client.pendingSeed != nil {
-				client.lastView = client.pendingSeed
-				client.pendingSeed = nil
-			}
-		case <-client.wake:
-			if !pending {
-				pending = true
-				debounce.Reset(pushDebounce)
-			}
-		case <-debounce.C:
-			if client.lastView == nil && !client.spectator {
-				// 底座还没落地（GET state 的响应还在队列里）：这批变更现在算不出补丁。
-				// 再挂一次，等底座到了再推——不能在这里直接返回，否则这批变更被静默吞掉，
-				// 而之后要是没有新的变更，客户端就永远停在这之前那一版。
-				debounce.Reset(pushDebounce)
-				continue
-			}
-			pending = false
-			if err := s.pushFrame(client); err != nil {
 				return
 			}
 		case <-ticker.C:
@@ -1023,12 +1073,35 @@ func (s *Server) webSocket(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// pushView 取这条连接当前应该看到的视图：观战是合并视图，玩家是阵营私有视图。
-func (s *Server) pushView(client *wsClient) (map[string]any, error) {
-	if client.spectator {
-		return s.spectateViewOf(client.roomID)
-	}
-	return s.stateViewOf(client.roomID, client.playerID)
+// sendSpectatorFull 给一个新接入的观战连接推一份完整快照，并把它记成观战的底座。
+// 观战不走 RPC 拉取，所以首帧必须由服务端给。
+func (s *Server) sendSpectatorFull(client *wsClient) error {
+	var failure error
+	s.submitRoom(client.roomID, func() {
+		ctx := context.Background()
+		room, err := s.store.Room(ctx, client.roomID)
+		if err != nil {
+			failure = err
+			return
+		}
+		view, err := s.spectateView(ctx, room)
+		if err != nil {
+			failure = err
+			return
+		}
+		frame, err := json.Marshal(map[string]any{"type": "snapshot", "view": view})
+		if err != nil {
+			failure = err
+			return
+		}
+		s.roomActor(client.roomID).views.spectate = view
+		select {
+		case client.send <- frame:
+		default:
+			_ = client.conn.Close()
+		}
+	})
+	return failure
 }
 
 // stateViewOf 投影某个玩家的私有视图。
@@ -1068,6 +1141,9 @@ func (s *Server) stateViewOf(roomID, playerID string) (map[string]any, error) {
 			return
 		}
 		view = projected
+		// 这份全量就是这名玩家这一侧的底座，之后的变更相对它算补丁。
+		// 和响应入队在同一个任务里先后发生，所以补丁不可能排在它前面。
+		s.roomActor(roomID).views.players[playerID] = projected
 	})
 	if failure != nil {
 		return nil, failure
@@ -1082,58 +1158,6 @@ func (s *Server) webSocketPlayer(r *http.Request) (store.Player, bool) {
 	}
 	player, err := s.store.PlayerBySession(r.Context(), hashToken(cookie.Value))
 	return player, err == nil
-}
-
-// pushDebounce 是一次变更风暴的合并窗口：一次回合结算会连着触发好几条通知
-// （玩家就绪、结算、战报），等这一小会儿再投影，就只算最后那一版。
-//
-// 这一小会儿是纯延迟：一条命令从发出到界面上动起来，除了它没有别的等待。
-// 同一批广播是紧挨着发出的（同一个房间任务内，间隔 <1ms），8ms 足够合并，
-// 再多就是白白让玩家多等。实测这条链路上"回执 2ms + 补丁 11ms"。
-const pushDebounce = 8 * time.Millisecond
-
-// pushFrame 把这个房间这一批变更合并成一次投影，下发给这条连接。
-//
-// 观战拿合并后的上帝视角，玩家拿自己阵营的私有视图——投影本身还是那套
-// （spectateFrame / stateFrame），区别只在于推给谁。以前这三件事是分开的：
-// 观战在写泵里重算、玩家收到一条失效提示再自己发 RPC 拉。现在统一由服务端推。
-func (s *Server) pushFrame(client *wsClient) error {
-	view, err := s.pushView(client)
-	if err != nil {
-		if body, marshalErr := json.Marshal(map[string]any{"type": "error", "error": err.Error()}); marshalErr == nil {
-			_ = client.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			_ = client.conn.WriteMessage(websocket.TextMessage, body)
-		}
-		return err
-	}
-	frame := map[string]any{"type": "state"}
-	if client.spectator {
-		frame["type"] = "snapshot"
-	}
-	if client.lastView == nil {
-		if !client.spectator {
-			// 玩家连接刚建立（或刚重连）时这里还没有底座：客户端自己会发一条
-			// GET state 把全量拿走，服务端在那一步把视图记成底座。重连只传一份全量。
-			return nil
-		}
-		// 观战不做 RPC 拉取，首帧直接给全量。
-		frame["view"] = view
-	} else {
-		patch := diffView(client.lastView, view)
-		if patch == any(patchNone) {
-			// 这一批写操作没有改变这条连接的视图：命令落库、对手下命令这类，
-			// 在他自己的视野里根本没动过任何东西。以前这时也会白推一份全量。
-			return nil
-		}
-		frame["patch"] = patch
-	}
-	client.lastView = view
-	payload, err := json.Marshal(frame)
-	if err != nil {
-		return err
-	}
-	_ = client.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-	return client.conn.WriteMessage(websocket.TextMessage, payload)
 }
 
 var errNotFound = errors.New("not found")

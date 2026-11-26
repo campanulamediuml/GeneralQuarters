@@ -217,9 +217,8 @@ func TestWebSocketCommandPushesState(t *testing.T) {
 	conn := dialTestWS(t, host, "/ws?room_id="+created.RoomID)
 	seedPlayerView(t, conn, created.RoomID)
 	_ = conn.WriteJSON(wsRequest{Type: "rpc_request", ID: "move", Method: http.MethodPost, Path: "/api/v1/rooms/" + created.RoomID + "/commands", Body: json.RawMessage(`{"command_id":"ws-move","type":"SET_MOVE","unit_id":"a-bb-01","coord":"0203"}`)})
-	if response := readWSResponse(t, conn, "move"); response.Status != http.StatusOK {
-		t.Fatalf("command status=%d body=%s", response.Status, response.Body)
-	}
+	// 注意：补丁是在响应之前入队的（服务端先落库、先推、再写回执），
+	// 所以这里不能再调 readWSResponse 去等回执——它会把补丁当无关帧丢掉。
 	merged := readStateViewWhere(t, conn, func(view map[string]any) bool {
 		orders, ok := view["orders"].([]any)
 		if !ok || len(orders) != 1 {
