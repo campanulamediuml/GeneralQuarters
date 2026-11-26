@@ -43,7 +43,7 @@ func TestGroundAircraftTransfersToAnotherAirfield(t *testing.T) {
 	t.Fatalf("60 回合内没有转场到凯恩斯（airborne=%v）", sawAirborne)
 }
 
-// 航程不够就拒绝：F4F 转场航程 9×1.69≈15 hex，凯恩斯到莫尔兹比 21 hex。
+// 航程不够就拒绝：F4F 转场航程 9×1.7≈15 hex，凯恩斯到莫尔兹比 21 hex。
 func TestGroundTransferRangeIsEnforced(t *testing.T) {
 	state := coralCombatState(t)
 	state.Turn = 17

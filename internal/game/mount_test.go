@@ -2,13 +2,17 @@ package game
 
 import "testing"
 
-// 规则书 59 行：转场航程 = base × 1.3 × 1.3，例如基础 9 → 15。
+// 规则书 59 行：转场航程 = base × 1.7，例如基础 9 → 15、10 → 17。
 func TestTransferRangeAddsThirtyPercentTwice(t *testing.T) {
 	if got := SortieBaseRange(9, LoadoutTransfer); got != 15 {
 		t.Fatalf("转场航程错误：%d（期望15）", got)
 	}
 	if got := SortieBaseRange(10, LoadoutTransfer); got != 17 {
 		t.Fatalf("转场航程错误：%d（期望17）", got)
+	}
+	// 1.69 会给 25、1.7 给 26：卡住系数，别让"顺手改回 1.69"混过去。
+	if got := SortieBaseRange(15, LoadoutTransfer); got != 26 {
+		t.Fatalf("转场系数应当按 1.7 计算：15 → 26，实际 %d", got)
 	}
 }
 

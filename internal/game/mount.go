@@ -299,7 +299,7 @@ func ValidateLoadoutFor(kind string, seaplane bool, antiGround, antiShip int, lo
 
 // SortieBaseRange 返回某种挂载下的"正常航程"（不含备用油）。
 //
-//   - 转场：base × 1.3（副油箱）× 1.3（转场加成），规则书 59 行；
+//   - 转场：base × 1.7（副油箱 1.3 与转场加成合并，规则书 59 行）；
 //   - 重型炸弹（炸弹且不挂副油箱）：base × 0.7，规则书 82 行；
 //   - 其余：挂了副油箱就是 base × 1.3，没挂就是 base。
 func SortieBaseRange(base int, loadout Loadout) int {
@@ -307,9 +307,10 @@ func SortieBaseRange(base int, loadout Loadout) int {
 		base = 0
 	}
 	if loadout == LoadoutTransfer {
+		// 转场系数 1.7：副油箱 1.3 × 转场加成 1.3 = 1.69，规则书取整到 1.7。
 		// 规则书只要求最终结果四舍五入，中间不取整，
-		// 否则 9×1.3×1.3 会被两步取整抬成 16，而规则书给的是 15。
-		return roundRatio(base, 169, 100)
+		// 否则 9×1.7 分两步取整会被抬成 16，而规则书给的是 15。
+		return roundRatio(base, 17, 10)
 	}
 	if loadout.IsHeavyBomb() {
 		return roundRatio(base, 7, 10)
@@ -378,7 +379,7 @@ func applyLoadout(state State, aircraft *AirUnit) {
 	}
 	// 规则书 59 行：转场不携带任何武器，只挂副油箱再吃那 30% 转场加成。
 	// 手动挂载在转场任务里必须让位：以前被 LoadoutManual 一挡，
-	// 校验按 1.69× 放行、飞机实际只带 1.3× 的油，飞到半路就透支。
+	// 校验按 1.7× 放行、飞机实际只带 1.3× 的油，飞到半路就透支。
 	manual := aircraft.LoadoutManual
 	if manual && aircraft.TaskKind != "transfer" {
 		return

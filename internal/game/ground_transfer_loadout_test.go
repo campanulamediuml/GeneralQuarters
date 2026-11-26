@@ -2,7 +2,7 @@ package game
 
 import "testing"
 
-// 陆基机同样如此：转场任务把手动挂载换成副油箱，否则校验按 1.69× 放行、
+// 陆基机同样如此：转场任务把手动挂载换成副油箱，否则校验按 1.7× 放行、
 // 飞机实际只带 1.3× 的油，飞到半路就透支。
 func TestGroundTransferDropsManualLoadout(t *testing.T) {
 	scenario, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")
