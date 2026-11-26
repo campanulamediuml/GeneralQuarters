@@ -153,33 +153,58 @@ func TestPatchKeyFromCachedMeta(t *testing.T) {
 	}
 }
 
-// 快照会按 omitempty 省掉零值字段，补丁必须把"这个键没了"表达成 null，
-// 否则客户端合并出来的视图永远比快照多几个字段（补丁只能发值，发不出删除）。
-func TestPatchDeleteMarksFieldsTheSnapshotOmits(t *testing.T) {
+// 视图是严格状态同步：零值、空数组、nil 都要显式给出来，补丁里也一样。
+// 既不能省略（省略了客户端就留着上个值），也不能用 null 表示"删掉"——null 就是 nil。
+func TestPatchSendsExplicitZeroAndNilValues(t *testing.T) {
 	type fuel struct {
-		Tank int `json:"tank,omitempty"`
+		Tank int `json:"tank"`
 	}
 	type unit struct {
 		ID       string   `json:"id"`
-		Cooldown int      `json:"cooldown,omitempty"`
-		Moves    []string `json:"moves,omitempty"`
+		Cooldown int      `json:"cooldown"`
+		Moves    []string `json:"moves"`
 		Fuel     fuel     `json:"fuel"`
-		// Keep 没有 omitempty：归零也必须显式下发 0，不能删键。
-		Keep int `json:"keep"`
+		Deck     *string  `json:"deck"`
 	}
-	before := unit{ID: "u1", Cooldown: 3, Moves: []string{"0101"}, Fuel: fuel{Tank: 2}, Keep: 1}
+	before := unit{ID: "u1", Cooldown: 3, Moves: []string{"0101"}, Fuel: fuel{Tank: 2}}
+	deck := "5"
+	before.Deck = &deck
 	after := unit{ID: "u1"}
 	patch := diffView(before, after)
 	encoded, err := json.Marshal(patch)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, needle := range []string{`"cooldown":null`, `"moves":null`, `"tank":null`, `"keep":0`} {
+	for _, needle := range []string{`"cooldown":0`, `"moves":null`, `"tank":0`, `"deck":null`} {
 		if !containsString(string(encoded), needle) {
 			t.Fatalf("补丁里没有 %s：%s", needle, encoded)
 		}
 	}
-	// 客户端 null = 删键，合并结果必须和"重新拉一份快照"完全一致。
+	// 客户端直接覆盖（null 就是 null），合并结果必须和"重新拉一份快照"完全一致。
+	beforeJSON := viewFromJSON(t, string(mustJSON(t, before)))
+	afterJSON := viewFromJSON(t, string(mustJSON(t, after)))
+	merged := applyTestPatch(beforeJSON, viewFromJSON(t, string(encoded)))
+	if !reflect.DeepEqual(merged, afterJSON) {
+		t.Fatalf("合并结果和快照不一致：得到 %#v，期望 %#v", merged, afterJSON)
+	}
+}
+
+// 字符串键 map 里删掉一个键，JSON 对象本身表达不了。补丁给 set/remove，
+// 客户端合并后必须和快照一致（否则本地会一直留着服务端已经没有的键）。
+func TestPatchMapDropsRemovedKeys(t *testing.T) {
+	type view struct {
+		FleetStays map[string]string `json:"fleet_stays"`
+	}
+	before := view{FleetStays: map[string]string{"f1": "0101", "f2": "0202"}}
+	after := view{FleetStays: map[string]string{"f1": "0101"}}
+	patch := diffView(before, after)
+	encoded, err := json.Marshal(patch)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsString(string(encoded), `"remove":["f2"]`) {
+		t.Fatalf("删掉的键必须显式给 remove：%s", encoded)
+	}
 	beforeJSON := viewFromJSON(t, string(mustJSON(t, before)))
 	afterJSON := viewFromJSON(t, string(mustJSON(t, after)))
 	merged := applyTestPatch(beforeJSON, viewFromJSON(t, string(encoded)))

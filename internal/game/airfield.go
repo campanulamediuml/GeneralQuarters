@@ -13,7 +13,7 @@ type AirfieldContact struct {
 	Faction     string       `json:"faction"`
 	Coord       string       `json:"coord"`
 	Type        AirfieldType `json:"type"`
-	Picture     string       `json:"picture,omitempty"`
+	Picture     string       `json:"picture"`
 	Runways     int          `json:"runways"`
 	MaxRunways  int          `json:"max_runways"`
 	Strength    int          `json:"strength"`
@@ -24,7 +24,7 @@ type AirfieldContact struct {
 	Coastal     int          `json:"coastal"`
 	HangarUsed  int          `json:"hangar_used"`
 	// EnemySupplies 是敌方卸在这个机场上的滩头物资：只要有货，机场就处于被压制状态。
-	EnemySupplies int `json:"enemy_supplies,omitempty"`
+	EnemySupplies int `json:"enemy_supplies"`
 	ContactLevel  int `json:"contact_level"`
 }
 

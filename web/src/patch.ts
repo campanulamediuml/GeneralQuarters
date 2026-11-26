@@ -24,6 +24,15 @@ function isCollectionPatch(patch: unknown): patch is { upsert?: Record<string, u
   return 'upsert' in (patch as Record<string, unknown>) || 'remove' in (patch as Record<string, unknown>)
 }
 
+// isMapPatch 认字符串键 map 的补丁：{"set":{变化的键},"remove":[消失的键]}。
+// 只有真的删了键才会出现这个形状，平时 map 补丁还是普通对象。
+function isMapPatch(patch: unknown): patch is { set?: Record<string, unknown>; remove?: string[] } {
+  if (!patch || typeof patch !== 'object' || Array.isArray(patch)) return false
+  const record = patch as Record<string, unknown>
+  const hasSet = Boolean(record.set) && typeof record.set === 'object' && !Array.isArray(record.set)
+  return hasSet || Array.isArray(record.remove)
+}
+
 // applyViewPatch 把补丁就地合进 target，返回同一个对象。
 export function applyViewPatch<T>(target: T, patch: ViewPatch): T {
   merge(target, patch)
@@ -31,9 +40,10 @@ export function applyViewPatch<T>(target: T, patch: ViewPatch): T {
 }
 
 function merge(target: unknown, patch: unknown): unknown {
+  const mapPatch = isMapPatch(patch)
   // 合并不上就抛，不要静默降级成一个错误的结果：那种"不报错但慢一版"的状态
   // 比崩溃更难查——界面看起来正常，只是永远比服务端旧一点，直到下次重连。
-  if (isCollectionPatch(patch) && !Array.isArray(target)) {
+  if (!mapPatch && isCollectionPatch(patch) && !Array.isArray(target)) {
     throw new Error('补丁要求按主键合并，但底座不是数组：' + JSON.stringify(target)?.slice(0, 80))
   }
   if (!Array.isArray(patch) && patch !== null && typeof patch === 'object'
@@ -64,14 +74,14 @@ function merge(target: unknown, patch: unknown): unknown {
     }
     return target
   }
+  if (mapPatch && target && typeof target === 'object' && !Array.isArray(target)) {
+    const targetRecord = target as Record<string, unknown>
+    if (patch.set) merge(targetRecord, patch.set)
+    for (const key of patch.remove || []) delete targetRecord[key]
+    return target
+  }
   if (patch && typeof patch === 'object' && !Array.isArray(patch) && target && typeof target === 'object' && !Array.isArray(target)) {
     for (const [key, value] of Object.entries(patch as Record<string, unknown>)) {
-      // null = "这一支在新快照里被 omitempty 省略了"，删键而不是留一个快照里不存在的值。
-      // 全量快照里没有这个键，补丁合并后也不该有，否则本地视图会永远比服务端多几个空字段。
-      if (value === null) {
-        delete (target as Record<string, unknown>)[key]
-        continue
-      }
       const current = (target as Record<string, unknown>)[key]
       if (typeof value === 'object' && current && typeof current === 'object' && !Array.isArray(current)) merge(current, value)
       else (target as Record<string, unknown>)[key] = value

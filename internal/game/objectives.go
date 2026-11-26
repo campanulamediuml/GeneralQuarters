@@ -42,27 +42,27 @@ const (
 // Objective 是一条剧本胜利条件。
 type Objective struct {
 	ID    string        `json:"id"`
-	Text  string        `json:"text,omitempty"`
+	Text  string        `json:"text"`
 	Kind  ObjectiveKind `json:"kind"`
-	Coord string        `json:"coord,omitempty"`
+	Coord string        `json:"coord"`
 	// Faction 为空表示"任何一方"都能去完成它。
-	Faction string `json:"faction,omitempty"`
-	Value   int    `json:"value,omitempty"`
-	Points  int    `json:"points,omitempty"`
+	Faction string `json:"faction"`
+	Value   int    `json:"value"`
+	Points  int    `json:"points"`
 	// Decisive 只用于没有 score 目标的老剧本："一达成即结束对局"。
 	// 声明 score 的 VP 剧本忽略它，统一到回合上限结算。
-	Decisive bool `json:"decisive,omitempty"`
+	Decisive bool `json:"decisive"`
 }
 
 // GameOutcome 是对局结果。
 type GameOutcome struct {
 	// Winner 为空表示平局。Level 是 VP 比值给出的等级（draw/tactical/strategic）。
-	Winner  string             `json:"winner,omitempty"`
-	Level   VictoryLevel       `json:"level,omitempty"`
+	Winner  string             `json:"winner"`
+	Level   VictoryLevel       `json:"level"`
 	Reason  string             `json:"reason"`
 	Scores  map[string]float64 `json:"scores"`
 	Turn    int                `json:"turn"`
-	TurnCap bool               `json:"turn_cap,omitempty"`
+	TurnCap bool               `json:"turn_cap"`
 }
 
 // OppositeFaction 返回对手阵营：A↔B。剧本只允许两个阵营，

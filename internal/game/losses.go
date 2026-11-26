@@ -11,10 +11,10 @@ import "sort"
 // ShipLoss 是一艘沉没舰船的记录。
 type ShipLoss struct {
 	Turn  int    `json:"turn"`
-	ID    string `json:"id,omitempty"`
+	ID    string `json:"id"`
 	Name  string `json:"name"`
 	Type  string `json:"type"`
-	Fleet string `json:"fleet,omitempty"`
+	Fleet string `json:"fleet"`
 	// Card 是沉没那一刻的舰船卡：战果页面要按原样画兵牌，
 	// 不能拿一张全零的占位卡拉倒（会显示成 0 强度、0-0 防空）。
 	Card ShipCard `json:"card"`
@@ -29,10 +29,10 @@ type AircraftLoss struct {
 
 // LossLedger 是一个阵营的战果账。
 type LossLedger struct {
-	Ships         []ShipLoss     `json:"ships,omitempty"`
-	Aircraft      []AircraftLoss `json:"aircraft,omitempty"`
-	ShipTotal     int            `json:"ship_total,omitempty"`
-	AircraftTotal int            `json:"aircraft_total,omitempty"`
+	Ships         []ShipLoss     `json:"ships"`
+	Aircraft      []AircraftLoss `json:"aircraft"`
+	ShipTotal     int            `json:"ship_total"`
+	AircraftTotal int            `json:"aircraft_total"`
 }
 
 func ensureLosses(state *State) map[string]*LossLedger {

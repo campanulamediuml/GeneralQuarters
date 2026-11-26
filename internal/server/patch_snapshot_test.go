@@ -13,10 +13,11 @@ import (
 
 // 补丁协议的地基：客户端把补丁合并回底座之后，结果必须和"重新拉一份全量快照"逐字段相同。
 //
-// 补丁是"和上一帧的差异"，快照是同一份投影按 JSON tag（含 omitempty）序列化的结果。
-// 两边一旦对不上，客户端本地视图就会永远比服务端多出或少掉一些字段，直到强制重连才
-// 恢复。这不是理论问题：事件数组以前在快照里是倒序、而补丁只能往数组尾部追加，
-// 每回合合并出来的事件列表顺序都会漂一次。
+// 补丁是"和上一帧的差异"，快照是同一份投影的完整序列化。两边一旦对不上，客户端本地
+// 视图就会永远比服务端多出或少掉一些字段，直到强制重连才恢复。这不是理论问题：
+// 事件数组以前在快照里是倒序、而补丁只能往数组尾部追加，每回合合并出来的事件列表
+// 顺序都会漂一次；视图类型以前带 omitempty，归零的字段在快照里直接消失、在补丁里
+// 却以 0 出现，两边形状永远不一致。
 func TestPatchMergeMatchesSnapshot(t *testing.T) {
 	host, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
@@ -262,7 +263,7 @@ func collectViewDiffs(diffs *[]string, path string, merged, snapshot any) {
 			wantValue, inSnapshot := want[key]
 			gotValue, inMerged := got[key]
 			if !inSnapshot {
-				*diffs = append(*diffs, fmt.Sprintf("%s.%s: 合并结果多出字段（快照按 omitempty 省略了），值=%v", path, key, gotValue))
+				*diffs = append(*diffs, fmt.Sprintf("%s.%s: 合并结果多出字段（快照里没有），值=%v", path, key, gotValue))
 				continue
 			}
 			if !inMerged {

@@ -25,12 +25,12 @@ type AirContact struct {
 	Models        []string `json:"models"`
 	Count         int      `json:"count"`
 	Coord         string   `json:"coord"`
-	Heading       string   `json:"heading,omitempty"`
-	TargetCoord   string   `json:"target_coord,omitempty"`
+	Heading       string   `json:"heading"`
+	TargetCoord   string   `json:"target_coord"`
 	DetectedBy    string   `json:"detected_by"` // radar / recon / visual
 	Turn          int      `json:"turn"`
-	Returning     bool     `json:"returning,omitempty"`
-	AttackHolding bool     `json:"attack_holding,omitempty"`
+	Returning     bool     `json:"returning"`
+	AttackHolding bool     `json:"attack_holding"`
 }
 
 // markAirContact 记录"观察者阵营已经发现该编队"。

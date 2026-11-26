@@ -15,9 +15,9 @@ const ReserveRange = 4
 
 // Fuel 是一架飞机的燃料账本。零值表示没有燃料。
 type Fuel struct {
-	Tank     int `json:"tank,omitempty"`     // 副油箱里程（优先消耗）
-	Internal int `json:"internal,omitempty"` // 机内油里程
-	Reserve  int `json:"reserve,omitempty"`  // 备用航程
+	Tank     int `json:"tank"`     // 副油箱里程（优先消耗）
+	Internal int `json:"internal"` // 机内油里程
+	Reserve  int `json:"reserve"`  // 备用航程
 }
 
 // Total 返回当前还能飞的里程（含备用油）。

@@ -59,7 +59,9 @@ export function airfieldContactStatus(airfield: AirfieldContact): GroundAirStatu
     coord: airfield.coord,
     strength: airfield.strength ?? 0,
     max_strength: airfield.max_strength ?? 0,
-    max_runways: airfield.max_runways ?? airfield.runways,
+    // max_runways 现在是显式字段（0 也会下发），所以用 || 而不是 ??：
+    // 旧存档/投影里缺这个值时回退到当前跑道数。
+    max_runways: airfield.max_runways || airfield.runways,
     runways: airfield.runways,
     radar: Boolean(airfield.radar),
     heavy_aa: airfield.heavy_aa ?? 0,

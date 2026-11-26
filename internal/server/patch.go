@@ -4,7 +4,6 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
-	"strings"
 )
 
 // 视图补丁：拿两份投影做 diff，算出"和上一帧相比变了哪些东西"。
@@ -23,18 +22,6 @@ import (
 type patchNoneType struct{}
 
 var patchNone patchNoneType
-
-// patchDelete 表示"这个字段在新快照里被 omitempty 省略了，客户端把本地这一支删掉"。
-//
-// 没有它，补丁和快照就是两种形状：补丁只能发值（字段从 3 变成 0 就发 0），而快照
-// 会直接把 0 省略掉。客户端按 JSON 合并，本地视图就永远比服务端多几个"归零但没删"
-// 的键；反过来，如果服务端不发这个 0，客户端又会留着过期值（移动冷却一直显示 3）。
-// 所以补丁里用 null 明确表达"这一支没了"，合并语义是 delete。
-type patchDeleteType struct{}
-
-var patchDelete patchDeleteType
-
-func (patchDeleteType) MarshalJSON() ([]byte, error) { return []byte("null"), nil }
 
 // patchKeyFields 是主键候选字段，按顺序认第一个非空的。
 // 客户端（web/src/patch.ts、watch.html）必须用同一套顺序。
@@ -111,8 +98,6 @@ type structMeta struct {
 type structField struct {
 	index int
 	name  string
-	// omitempty：tag 带 omitempty 的字段在零值时会从快照里消失，补丁得跟着表达"删掉"。
-	omitempty bool
 }
 
 type structKeyField struct {
@@ -149,7 +134,7 @@ func buildStructMeta(t reflect.Type) *structMeta {
 		if skip {
 			continue
 		}
-		meta.fields = append(meta.fields, structField{index: index, name: name, omitempty: hasJSONOption(field.Tag.Get("json"), "omitempty")})
+		meta.fields = append(meta.fields, structField{index: index, name: name})
 	}
 	for _, candidate := range patchKeyFields {
 		found, ok := t.FieldByNameFunc(func(name string) bool {
@@ -258,17 +243,10 @@ func diffAny(cache diffCache, prev, next reflect.Value) any {
 		}
 		patch := map[string]any{}
 		for _, field := range meta.fields {
-			nextField := next.Field(field.index)
-			change := diffAny(cache, prev.Field(field.index), nextField)
-			if change == any(patchNone) {
-				continue
+			change := diffAny(cache, prev.Field(field.index), next.Field(field.index))
+			if change != any(patchNone) {
+				patch[field.name] = change
 			}
-			if field.omitempty && isEmptyJSONValue(nextField) {
-				// 新值会被 omitempty 吃掉：让客户端删键，而不是留一个快照里不存在的零值。
-				patch[field.name] = patchDelete
-				continue
-			}
-			patch[field.name] = change
 		}
 		if len(patch) == 0 {
 			return patchNone
@@ -296,37 +274,6 @@ func structFieldJSONName(field reflect.StructField) (string, bool) {
 		return field.Name, false
 	}
 	return name, false
-}
-
-// hasJSONOption 判断 json tag 里有没有某个选项（目前只关心 omitempty）。
-func hasJSONOption(tag, option string) bool {
-	parts := strings.Split(tag, ",")
-	for _, part := range parts[1:] {
-		if part == option {
-			return true
-		}
-	}
-	return false
-}
-
-// isEmptyJSONValue 和 encoding/json 的 omitempty 判定保持一致：nil、false、0、
-// 空字符串、空数组、空 map 会被省略；结构体永远不省略（哪怕每个字段都是零值）。
-func isEmptyJSONValue(value reflect.Value) bool {
-	switch value.Kind() {
-	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
-		return value.Len() == 0
-	case reflect.Bool:
-		return !value.Bool()
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return value.Int() == 0
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return value.Uint() == 0
-	case reflect.Float32, reflect.Float64:
-		return value.Float() == 0
-	case reflect.Interface, reflect.Pointer:
-		return value.IsNil()
-	}
-	return false
 }
 
 func indexComma(tag string) int {
@@ -358,13 +305,18 @@ func diffMap(cache diffCache, prev, next reflect.Value) any {
 			patch[name] = change
 		}
 	}
+	removed := make([]string, 0)
 	for _, key := range prev.MapKeys() {
-		name := key.String()
 		if !next.MapIndex(key).IsValid() {
-			// 键消失了（舰队撤出 fleet_stays、岸头物资耗光）：客户端的合并不会自己删键，
-			// 用 null 明确让它删，否则本地永远留着一条服务端已经没有的记录。
-			patch[name] = patchDelete
+			removed = append(removed, key.String())
 		}
+	}
+	if len(removed) > 0 {
+		// 客户端是逐键合并，JSON 对象没法表达"这个键没了"。键消失时给
+		// {"set":{变化的键},"remove":[消失的键]}，语义和实体数组的 upsert/remove 一致。
+		// 平时还是普通对象（合并进去就行），别给每个 map 都套一层。
+		sort.Strings(removed)
+		return map[string]any{"set": patch, "remove": removed}
 	}
 	if len(patch) == 0 {
 		return patchNone

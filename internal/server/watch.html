@@ -956,7 +956,21 @@
     }
     return '';
   }
+  // 字符串键 map 删键时服务端给 {"set":{变化的键},"remove":[消失的键]}：
+  // JSON 对象本身没法表达"键没了"，和实体数组的 upsert/remove 是同一套语义。
+  function isMapPatch(patch) {
+    if (!patch || typeof patch !== 'object' || Array.isArray(patch)) return false;
+    var hasSet = patch.set && typeof patch.set === 'object' && !Array.isArray(patch.set);
+    return Boolean(hasSet) || Array.isArray(patch.remove);
+  }
   function mergeValue(base, patch) {
+    if (isMapPatch(patch) && base && typeof base === 'object' && !Array.isArray(base)) {
+      var mapOut = {};
+      for (var mapKey in base) if (Object.prototype.hasOwnProperty.call(base, mapKey)) mapOut[mapKey] = base[mapKey];
+      if (patch.set) mapOut = mergeValue(mapOut, patch.set);
+      (patch.remove || []).forEach(function (key) { delete mapOut[key]; });
+      return mapOut;
+    }
     if (Array.isArray(base) && patch && typeof patch === 'object' && !Array.isArray(patch) && ('upsert' in patch || 'remove' in patch)) {
       var merged = base.slice();
       var position = {};
@@ -976,11 +990,7 @@
     if (patch && typeof patch === 'object' && !Array.isArray(patch) && base && typeof base === 'object' && !Array.isArray(base)) {
       var out = {};
       for (var key in base) if (Object.prototype.hasOwnProperty.call(base, key)) out[key] = base[key];
-      // null = 这一支在新快照里被 omitempty 省略了，客户端要删键
-      for (var name in patch) if (Object.prototype.hasOwnProperty.call(patch, name)) {
-        if (patch[name] === null) { delete out[name]; continue; }
-        out[name] = mergeValue(base[name], patch[name]);
-      }
+      for (var name in patch) if (Object.prototype.hasOwnProperty.call(patch, name)) out[name] = mergeValue(base[name], patch[name]);
       return out;
     }
     return patch;

@@ -59,12 +59,19 @@ func applyTestPatch(base, patch any) any {
 		for key, value := range baseMap {
 			merged[key] = value
 		}
-		for key, value := range typed {
-			// null = 这个字段在新快照里被 omitempty 省略了，本地要删键（见 patch.go 的 patchDelete）。
-			if value == any(patchDelete) || value == nil {
-				delete(merged, key)
-				continue
+		// 字符串键 map 删键：{"set":{变化的键},"remove":[消失的键]}。
+		remove := testPatchStringList(typed["remove"])
+		set, _ := typed["set"].(map[string]any)
+		if set != nil || len(remove) > 0 {
+			for key, value := range set {
+				merged[key] = applyTestPatch(baseMap[key], value)
 			}
+			for _, key := range remove {
+				delete(merged, key)
+			}
+			return merged
+		}
+		for key, value := range typed {
 			merged[key] = applyTestPatch(baseMap[key], value)
 		}
 		return merged
