@@ -158,8 +158,8 @@ func tryEngage(state *State, aircraft *AirUnit, coord string) []EngineEvent {
 	}
 	// 接敌成功：情报直逼 4，并记录下一回合进入目标上空
 	members := fleetMembers(state, fleetID)
-	for level := recordContact(state, aircraft.Faction, fleetID, members); level < 4; level = recordContact(state, aircraft.Faction, fleetID, members) {
-	}
+	// 接敌成功：情报直接 4 级（规则书 624 行），同样不进每回合 +1 的节奏。
+	raiseContactToMax(state, aircraft.Faction, fleetID, members)
 	for _, attacker := range attacks {
 		attacker.Engaged = true
 		attacker.TargetFleetID = fleetID

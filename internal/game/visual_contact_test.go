@@ -17,6 +17,7 @@ func TestVisualContactMakesFleetStrikeable(t *testing.T) {
 	}
 	// 目视接触按正常节奏升级：每回合 +1，不直接刷到情报 4。
 	for round := 1; round <= intelMaxLevel; round++ {
+		advanceTurnStart(&state)
 		detectVisualContacts(&state)
 		contact := state.Contacts["A"]["B1"]
 		if contact == nil || contact.Level != round {

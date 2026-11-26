@@ -921,6 +921,9 @@ type State struct {
 	HeadingChanged map[string]bool `json:"heading_changed"`
 	// IntelFresh 记录本回合是否获得过某舰队的新情报（键为 "观察者|舰队"），用于情报过时判定
 	IntelFresh map[string]bool `json:"intel_fresh"`
+	// IntelRaised 记录本回合哪些"观察者|舰队"已经升过级：同回合目视/雷达/搜索/跟踪
+	// 可能同时命中，等级只能 +1，靠它去重。
+	IntelRaised map[string]bool `json:"intel_raised"`
 	// IntelStaleTurns 累计"脱离接触"的回合数：白天 12 回合、夜间 4 回合到期直接归零
 	IntelStaleTurns map[string]int `json:"intel_stale_turns"`
 	// Losses 是战果台账：每方沉没的舰船与按机型聚合的飞机损失（战果页面用）

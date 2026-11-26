@@ -15,8 +15,10 @@ func TestIntelDisplayCoordDoesNotMoveWhenIntelDecays(t *testing.T) {
 	if fleetID == "" || len(members) == 0 {
 		t.Fatal("沙盒剧本应有敌方舰队")
 	}
+	// 情报一次只升一级：连续四个回合发现才到 4 级（同回合多个侦查手段也只升一级）。
 	for level := 0; level < 4; level++ {
 		recordContact(&state, "A", fleetID, members)
+		advanceTurnStart(&state)
 	}
 	contact := state.Contacts["A"][fleetID]
 	if contact.Level != 4 {

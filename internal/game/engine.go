@@ -1289,6 +1289,8 @@ func advanceTurnStart(state *State) {
 	state.HeadingChanged = map[string]bool{}
 	// 新回合开始，尚未获得任何新情报。
 	resetIntelFresh(state)
+	// 情报升级记录同样按回合清空：同一回合多个侦查手段命中只升一级。
+	state.IntelRaised = map[string]bool{}
 	// 接敌判定每回合每编队一次。
 	state.EngageTried = map[string]bool{}
 }

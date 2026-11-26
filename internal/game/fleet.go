@@ -337,8 +337,8 @@ func enemyFactionOf(faction string) string {
 // 三点实现约定：
 //  1. 直接写满级而不是走 recordContact 的 +1 累加——炮击本身就该一次给到 4 级；
 //  2. 满级情报含真实位置与完整编成，Coord / DisplayCoord / Members 一起刷新，不给误差；
-//  3. 打上 IntelFresh 并清掉过时计数，否则回合末的 decayContactIntel 会在同一回合
-//     就把这条刚暴露的情报降一级（岸轰结算在衰减之前）。
+//  3. 打上 IntelFresh 并清掉过时计数，否则回合末的过时判定会在同一回合就把这条
+//     刚暴露的情报当"没刷新"处理（岸轰结算在过时判定之前）。
 //
 // 已经满级时不重复发事件，但位置/编成仍会刷新：同一回合先岸轰后卸载的舰队只报一次。
 func exposeFleetAtMaxIntel(state *State, fleetID, reason string) []EngineEvent {
@@ -350,41 +350,11 @@ func exposeFleetAtMaxIntel(state *State, fleetID, reason string) []EngineEvent {
 	if observer == "" {
 		return nil
 	}
-	if state.Contacts == nil {
-		state.Contacts = map[string]map[string]*FleetContact{}
+	wasLevel := 0
+	if contact := state.Contacts[observer][fleetID]; contact != nil {
+		wasLevel = contact.Level
 	}
-	if state.Contacts[observer] == nil {
-		state.Contacts[observer] = map[string]*FleetContact{}
-	}
-	contact := state.Contacts[observer][fleetID]
-	if contact == nil {
-		contact = &FleetContact{FleetID: fleetID}
-		state.Contacts[observer][fleetID] = contact
-	}
-	wasLevel := contact.Level
-	contact.Faction = members[0].Faction
-	contact.Level = intelMaxLevel
-	contact.Coord = members[0].Coord
-	// 满级情报的位置就是真实位置：误差为 0，显示位置也只能跟着真实坐标走。
-	contact.DisplayCoord = members[0].Coord
-	contact.Heading = members[0].Heading
-	contact.Count = len(members)
-	contact.Members = make([]Unit, len(members))
-	copy(contact.Members, members)
-	for index := range contact.Members {
-		contact.Members[index].LegalMoves = nil
-	}
-	// 本回合新情报：回合末的情报衰减跳过这一条（规则书 535 行的暴露不会同回合掉级）。
-	if state.IntelFresh == nil {
-		state.IntelFresh = map[string]bool{}
-	}
-	key := observer + "|" + fleetID
-	state.IntelFresh[key] = true
-	if state.IntelStaleTurns != nil {
-		delete(state.IntelStaleTurns, key)
-	}
-	// 情报刚刷新：结构化字段也要归零，否则快照里会留着上一轮的过期计数。
-	contact.StaleTurns = 0
+	raiseContactToMax(state, observer, fleetID, members)
 	if wasLevel >= intelMaxLevel {
 		return nil
 	}

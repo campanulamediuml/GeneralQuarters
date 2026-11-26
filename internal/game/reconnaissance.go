@@ -763,7 +763,10 @@ func fleetTrackedByOther(state *State, aircraft *AirUnit, fleetID string) bool {
 	return false
 }
 
-func recordContact(state *State, observer, fleetID string, members []Unit) int {
+// upsertContact 拿到（必要时创建）一条情报记录，并把位置、编成、新鲜度刷新到最新。
+// 等级由调用方决定：recordContact 每回合最多 +1，raiseContactToMax 直接拉满。
+// 这里不动 DisplayCoord —— 显示位置的误差取决于等级，必须等调用方把等级定下来再算。
+func upsertContact(state *State, observer, fleetID string, members []Unit) *FleetContact {
 	if state.Contacts == nil {
 		state.Contacts = map[string]map[string]*FleetContact{}
 	}
@@ -775,29 +778,65 @@ func recordContact(state *State, observer, fleetID string, members []Unit) int {
 		contact = &FleetContact{FleetID: fleetID}
 		state.Contacts[observer][fleetID] = contact
 	}
-	if contact.Level < 4 {
-		contact.Level++
-	}
 	// 本回合拿到新情报，情报过时计数清零（规则书 589 行）。
 	if state.IntelFresh == nil {
 		state.IntelFresh = map[string]bool{}
+	}
+	if state.IntelRaised == nil {
+		state.IntelRaised = map[string]bool{}
 	}
 	key := observer + "|" + fleetID
 	state.IntelFresh[key] = true
 	if state.IntelStaleTurns != nil {
 		delete(state.IntelStaleTurns, key)
 	}
+	contact.StaleTurns = 0
 	contact.Faction = members[0].Faction
 	contact.Coord = members[0].Coord
 	contact.Heading = members[0].Heading
-	// 有新情报才重新落定显示位置：等级提高时向真实位置收敛，坐标更新时跟着最后一次目击走。
-	contact.DisplayCoord = projectedIntelCoord(*contact)
 	contact.Count = len(members)
 	contact.Members = make([]Unit, len(members))
 	copy(contact.Members, members)
 	for index := range contact.Members {
 		contact.Members[index].LegalMoves = nil
 	}
+	return contact
+}
+
+// recordContact 记一次"看见"：位置与编成刷新，情报等级每回合只 +1。
+//
+// 目视、舰队雷达、航空搜索、持续跟踪在同一回合可能同时成立（珊瑚海实测：一支舰队
+// 贴近后 163 回合 1 级、164 回合 2 级、165 两源叠加直接到 4 级）。规则书 566 行的
+// +1 是按回合算的，不是按"命中了几个侦查手段"累加，所以同一回合第二次以后的命中
+// 只刷新位置、不再涨级——等级必须是 1-2-3-4 一级一级走。
+func recordContact(state *State, observer, fleetID string, members []Unit) int {
+	if len(members) == 0 {
+		return 0
+	}
+	contact := upsertContact(state, observer, fleetID, members)
+	key := observer + "|" + fleetID
+	if !state.IntelRaised[key] {
+		state.IntelRaised[key] = true
+		if contact.Level < intelMaxLevel {
+			contact.Level++
+		}
+	}
+	// 有新情报才重新落定显示位置：等级提高时向真实位置收敛，坐标更新时跟着最后一次目击走。
+	contact.DisplayCoord = projectedIntelCoord(*contact)
+	return contact.Level
+}
+
+// raiseContactToMax 把情报直接拉满：空袭接敌、岸轰/卸载暴露这类事件不走 +1 的节奏。
+// 必须直接写 4，不能循环调用 recordContact —— 后者每回合只升一级，循环会空转。
+func raiseContactToMax(state *State, observer, fleetID string, members []Unit) int {
+	if len(members) == 0 {
+		return 0
+	}
+	contact := upsertContact(state, observer, fleetID, members)
+	contact.Level = intelMaxLevel
+	state.IntelRaised[observer+"|"+fleetID] = true
+	// 满级情报误差为 0：显示位置就是真实位置。
+	contact.DisplayCoord = members[0].Coord
 	return contact.Level
 }
 

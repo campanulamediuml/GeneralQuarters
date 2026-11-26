@@ -974,8 +974,9 @@ func resolveAirStrike(state *State, taskID, coord string) []EngineEvent {
 		return nil
 	}
 	fleetID := FleetKey(&ships[0])
-	for level := recordContact(state, faction, fleetID, ships); level < 4; level = recordContact(state, faction, fleetID, ships) {
-	}
+	// 空袭成功接敌时情报直接拉到 4（规则书 624 行）：这条不是"看见一次 +1"的节奏，
+	// 用 raiseContactToMax 一次写满，不能循环调 recordContact（后者每回合只升一级）。
+	raiseContactToMax(state, faction, fleetID, ships)
 	// 陆基 CAP / 空中掩护住在 state.GroundAir 里，防守判定只扫 state.Aircraft，
 	// 不投影进来就会出现"机场战斗机看着舰队挨炸"。
 	restoreDefenders := projectDefendingGroundAir(state, ships[0].Faction, coord, 1)
