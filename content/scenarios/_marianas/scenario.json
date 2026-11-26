@@ -21,7 +21,7 @@
   "launch_start": "05:30",
   "recover_by": "19:40"
  },
- "description": "架空历史：1944 年 6 月，美军第 58 特混舰队以 8 艘埃塞克斯级航母（两个特混大队）杀入马里亚纳，另有第 52 特混舰队的 8 艘老式战列舰（田纳西、加利福尼亚、马里兰、科罗拉多、新墨西哥、爱达荷、密西西比、宾夕法尼亚）担任火力支援，4 个护航航母群（每群 4 艘 CVE + 4 艘驱逐舰）负责反潜与登陆掩护；日军以小泽的三个机动部队（甲/乙/丙，各 3 艘航母）迎战，另在马里亚纳与帕劳诸岛布署岸基航空兵和水上飞机基地。地图 99×99（25 海里/hex），岛礁散布，适合跑大编队的甲板/升降机/CAP 循环压力测试，也适合用护航航母群和慢速战列舰当\"送分题\"验证防空与空袭结算。",
+ "description": "架空历史：1944 年 6 月，美军第 58 特混舰队以 8 艘埃塞克斯级航母（两个特混大队）、4 艘独立级轻航母（第 58.3 特混大队）、4 个护航航母群（每群 4 艘 CVE + 4 艘驱逐舰）杀入马里亚纳，另有第 52 特混舰队的 8 艘老式战列舰（田纳西、加利福尼亚、马里兰、科罗拉多、新墨西哥、爱达荷、密西西比、宾夕法尼亚）担任火力支援；日军以小泽的三个机动部队（甲/乙/丙，各 3 艘航母）迎战，另在马里亚纳与帕劳诸岛布署岸基航空兵和水上飞机基地。地图 99×99（25 海里/hex），岛礁散布，适合跑大编队的甲板/升降机/CAP 循环压力测试。",
  "deploy_zones": [
   {
    "faction": "A",
@@ -922,6 +922,134 @@
    "fleet_id": "CVE4",
    "fleet_name": "护航航母群4",
    "ship": "us-dd-28"
+  },
+  {
+   "id": "us-cvl-01",
+   "faction": "A",
+   "name": "独立",
+   "fleet_id": "TF58.3",
+   "fleet_name": "第58.3特混大队（轻航母）",
+   "ship": "us-cvl-01"
+  },
+  {
+   "id": "us-cvl-02",
+   "faction": "A",
+   "name": "普林斯顿",
+   "fleet_id": "TF58.3",
+   "fleet_name": "第58.3特混大队（轻航母）",
+   "ship": "us-cvl-02"
+  },
+  {
+   "id": "us-cvl-03",
+   "faction": "A",
+   "name": "贝劳伍德",
+   "fleet_id": "TF58.3",
+   "fleet_name": "第58.3特混大队（轻航母）",
+   "ship": "us-cvl-03"
+  },
+  {
+   "id": "us-cvl-04",
+   "faction": "A",
+   "name": "考彭斯",
+   "fleet_id": "TF58.3",
+   "fleet_name": "第58.3特混大队（轻航母）",
+   "ship": "us-cvl-04"
+  },
+  {
+   "id": "us-dd-29",
+   "faction": "A",
+   "name": "弗莱彻号29",
+   "fleet_id": "TF58.3",
+   "fleet_name": "第58.3特混大队（轻航母）",
+   "ship": "us-dd-29"
+  },
+  {
+   "id": "us-dd-30",
+   "faction": "A",
+   "name": "弗莱彻号30",
+   "fleet_id": "TF58.3",
+   "fleet_name": "第58.3特混大队（轻航母）",
+   "ship": "us-dd-30"
+  },
+  {
+   "id": "us-dd-31",
+   "faction": "A",
+   "name": "弗莱彻号31",
+   "fleet_id": "TF58.3",
+   "fleet_name": "第58.3特混大队（轻航母）",
+   "ship": "us-dd-31"
+  },
+  {
+   "id": "us-dd-32",
+   "faction": "A",
+   "name": "弗莱彻号32",
+   "fleet_id": "TF58.3",
+   "fleet_name": "第58.3特混大队（轻航母）",
+   "ship": "us-dd-32"
+  },
+  {
+   "id": "us-bb-01",
+   "faction": "A",
+   "name": "北卡罗来纳",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-bb-01"
+  },
+  {
+   "id": "us-bb-02",
+   "faction": "A",
+   "name": "华盛顿",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-bb-02"
+  },
+  {
+   "id": "us-bb-03",
+   "faction": "A",
+   "name": "南达科他",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-bb-03"
+  },
+  {
+   "id": "us-bb-04",
+   "faction": "A",
+   "name": "印第安纳",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-bb-04"
+  },
+  {
+   "id": "us-bb-13",
+   "faction": "A",
+   "name": "新泽西",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-bb-13"
+  },
+  {
+   "id": "us-bb-14",
+   "faction": "A",
+   "name": "依阿华",
+   "fleet_id": "TF58.1",
+   "fleet_name": "第58.1特混大队",
+   "ship": "us-bb-14"
+  },
+  {
+   "id": "us-bb-15",
+   "faction": "A",
+   "name": "马萨诸塞",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-bb-15"
+  },
+  {
+   "id": "us-bb-16",
+   "faction": "A",
+   "name": "阿拉巴马",
+   "fleet_id": "TF58.2",
+   "fleet_name": "第58.2特混大队",
+   "ship": "us-bb-16"
   }
  ],
  "air_deployments": [
@@ -2076,102 +2204,6 @@
    "unit": "tbf",
    "carrier": "us-cv-08",
    "skill": "veteran"
-  },
-  {
-   "id": "us-bb-01-soc-x1",
-   "unit": "soc",
-   "carrier": "us-bb-01",
-   "skill": "regular"
-  },
-  {
-   "id": "us-bb-01-soc-x2",
-   "unit": "soc",
-   "carrier": "us-bb-01",
-   "skill": "regular"
-  },
-  {
-   "id": "us-bb-02-soc-x1",
-   "unit": "soc",
-   "carrier": "us-bb-02",
-   "skill": "regular"
-  },
-  {
-   "id": "us-bb-02-soc-x2",
-   "unit": "soc",
-   "carrier": "us-bb-02",
-   "skill": "regular"
-  },
-  {
-   "id": "us-bb-03-soc-x1",
-   "unit": "soc",
-   "carrier": "us-bb-03",
-   "skill": "regular"
-  },
-  {
-   "id": "us-bb-03-soc-x2",
-   "unit": "soc",
-   "carrier": "us-bb-03",
-   "skill": "regular"
-  },
-  {
-   "id": "us-bb-04-soc-x1",
-   "unit": "soc",
-   "carrier": "us-bb-04",
-   "skill": "regular"
-  },
-  {
-   "id": "us-bb-04-soc-x2",
-   "unit": "soc",
-   "carrier": "us-bb-04",
-   "skill": "regular"
-  },
-  {
-   "id": "us-ca-01-soc-x1",
-   "unit": "soc",
-   "carrier": "us-ca-01",
-   "skill": "regular"
-  },
-  {
-   "id": "us-ca-01-soc-x2",
-   "unit": "soc",
-   "carrier": "us-ca-01",
-   "skill": "regular"
-  },
-  {
-   "id": "us-ca-02-soc-x1",
-   "unit": "soc",
-   "carrier": "us-ca-02",
-   "skill": "regular"
-  },
-  {
-   "id": "us-ca-02-soc-x2",
-   "unit": "soc",
-   "carrier": "us-ca-02",
-   "skill": "regular"
-  },
-  {
-   "id": "us-ca-03-soc-x1",
-   "unit": "soc",
-   "carrier": "us-ca-03",
-   "skill": "regular"
-  },
-  {
-   "id": "us-ca-03-soc-x2",
-   "unit": "soc",
-   "carrier": "us-ca-03",
-   "skill": "regular"
-  },
-  {
-   "id": "us-ca-04-soc-x1",
-   "unit": "soc",
-   "carrier": "us-ca-04",
-   "skill": "regular"
-  },
-  {
-   "id": "us-ca-04-soc-x2",
-   "unit": "soc",
-   "carrier": "us-ca-04",
-   "skill": "regular"
   },
   {
    "id": "jp-cv-01-a6m5-x1",
@@ -3756,6 +3788,246 @@
    "unit": "os2u",
    "carrier": "us-bb-16",
    "skill": "regular"
+  },
+  {
+   "id": "us-ca-01-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-ca-01",
+   "skill": "regular"
+  },
+  {
+   "id": "us-ca-02-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-ca-02",
+   "skill": "regular"
+  },
+  {
+   "id": "us-ca-03-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-ca-03",
+   "skill": "regular"
+  },
+  {
+   "id": "us-ca-04-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-ca-04",
+   "skill": "regular"
+  },
+  {
+   "id": "us-cvl-01-f6f-x1",
+   "unit": "f6f",
+   "carrier": "us-cvl-01",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-01-f6f-x2",
+   "unit": "f6f",
+   "carrier": "us-cvl-01",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-01-f6f-x3",
+   "unit": "f6f",
+   "carrier": "us-cvl-01",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-01-f6f-x4",
+   "unit": "f6f",
+   "carrier": "us-cvl-01",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-01-tbf-x1",
+   "unit": "tbf",
+   "carrier": "us-cvl-01",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-01-tbf-x2",
+   "unit": "tbf",
+   "carrier": "us-cvl-01",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-01-tbf-x3",
+   "unit": "tbf",
+   "carrier": "us-cvl-01",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-01-tbf-x4",
+   "unit": "tbf",
+   "carrier": "us-cvl-01",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-01-tbf-x5",
+   "unit": "tbf",
+   "carrier": "us-cvl-01",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-02-f6f-x1",
+   "unit": "f6f",
+   "carrier": "us-cvl-02",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-02-f6f-x2",
+   "unit": "f6f",
+   "carrier": "us-cvl-02",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-02-f6f-x3",
+   "unit": "f6f",
+   "carrier": "us-cvl-02",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-02-f6f-x4",
+   "unit": "f6f",
+   "carrier": "us-cvl-02",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-02-tbf-x1",
+   "unit": "tbf",
+   "carrier": "us-cvl-02",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-02-tbf-x2",
+   "unit": "tbf",
+   "carrier": "us-cvl-02",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-02-tbf-x3",
+   "unit": "tbf",
+   "carrier": "us-cvl-02",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-02-tbf-x4",
+   "unit": "tbf",
+   "carrier": "us-cvl-02",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-02-tbf-x5",
+   "unit": "tbf",
+   "carrier": "us-cvl-02",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-03-f6f-x1",
+   "unit": "f6f",
+   "carrier": "us-cvl-03",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-03-f6f-x2",
+   "unit": "f6f",
+   "carrier": "us-cvl-03",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-03-f6f-x3",
+   "unit": "f6f",
+   "carrier": "us-cvl-03",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-03-f6f-x4",
+   "unit": "f6f",
+   "carrier": "us-cvl-03",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-03-tbf-x1",
+   "unit": "tbf",
+   "carrier": "us-cvl-03",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-03-tbf-x2",
+   "unit": "tbf",
+   "carrier": "us-cvl-03",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-03-tbf-x3",
+   "unit": "tbf",
+   "carrier": "us-cvl-03",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-03-tbf-x4",
+   "unit": "tbf",
+   "carrier": "us-cvl-03",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-03-tbf-x5",
+   "unit": "tbf",
+   "carrier": "us-cvl-03",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-04-f6f-x1",
+   "unit": "f6f",
+   "carrier": "us-cvl-04",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-04-f6f-x2",
+   "unit": "f6f",
+   "carrier": "us-cvl-04",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-04-f6f-x3",
+   "unit": "f6f",
+   "carrier": "us-cvl-04",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-04-f6f-x4",
+   "unit": "f6f",
+   "carrier": "us-cvl-04",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-04-tbf-x1",
+   "unit": "tbf",
+   "carrier": "us-cvl-04",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-04-tbf-x2",
+   "unit": "tbf",
+   "carrier": "us-cvl-04",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-04-tbf-x3",
+   "unit": "tbf",
+   "carrier": "us-cvl-04",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-04-tbf-x4",
+   "unit": "tbf",
+   "carrier": "us-cvl-04",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-04-tbf-x5",
+   "unit": "tbf",
+   "carrier": "us-cvl-04",
+   "skill": "veteran"
   }
  ],
  "airfields": [
