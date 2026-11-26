@@ -161,7 +161,7 @@ type roomActor struct {
 	// 只由 worker 自己读写，所以不需要锁：这也是补丁顺序天然正确的原因。
 	views roomViews
 	// room / players 是这个房间在内存里的真值。worker 是唯一的写者，
-	// 所以读一律读这里，只有写才过库：以前每条消息都要把 146KB 的 state_json
+	// 所以读一律读这里，只有写才过库：以前每条消息都要把 146KB 的 state_blob
 	// 从 SQLite 读回来重新解析一遍，读到的却是它自己上一次刚写进去的东西。
 	room    store.Room
 	players []store.Player

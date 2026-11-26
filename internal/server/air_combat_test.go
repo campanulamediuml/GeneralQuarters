@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -54,11 +53,8 @@ func TestAirCombatResolutionThroughREST(t *testing.T) {
 	}
 	room.State.Units["b-cv-01"].Coord = "0608"
 	room.State.RNGState = 42
-	stateJSON, err := json.Marshal(room.State)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := database.DB.ExecContext(context.Background(), "update rooms set state_json=? where id=?", stateJSON, created.RoomID); err != nil {
+	// 存档是 gzip blob，测试不该自己拼格式：用 store 提供的写入口把状态换掉。
+	if err := database.ReplaceState(context.Background(), created.RoomID, room.State); err != nil {
 		t.Fatal(err)
 	}
 	// ready 只回一条回执，结算后的状态要另外拉。

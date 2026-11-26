@@ -8,7 +8,7 @@
 - 后端：Go模块化单体，唯一权威状态与随机判定来源。
 - 联机：创建/加入房间使用HTTP；进入房间后玩家状态、命令与ready经WebSocket RPC，变更事件触发私有快照同步。观战也使用WebSocket订阅完整视图。房间内不做HTTP轮询，断线由前端指数退避重连。
 - 持久化：SQLite与可编辑内容包均位于服务器`~/GeneralQuarterData`。
-- 部署：单个容器提供前端、API和WebSocket，现有Compose仅追加独立服务。运行配置由`internal/config`统一加载，优先级是默认值 < 配置文件 < 环境变量：配置文件路径按`-config`参数、`GQ_CONFIG`、工作目录下的`generalquarters.json`依次查找，读到的字段再被`GQ_DATA_DIR`/`GQ_DB_PATH`/`GQ_LISTEN`/`PORT`/`GQ_SECURE_COOKIE`/`GQ_BACKUP_KEEP`/`GQ_TURN_COMPRESS_*`覆盖；配置文件用严格JSON解码，字段名拼错直接启动失败，不会静默跑默认值。数据目录、库文件路径、监听地址、备份保留份数、回合快照压缩的批间隔与批量都在这里配，换部署环境只改一份JSON（`generalquarters.example.json`是完整样例，`generalquarters.docker.json`给Compose用）。
+- 部署：单个容器提供前端、API和WebSocket，现有Compose仅追加独立服务。运行配置由`internal/config`统一加载，优先级是默认值 < 配置文件 < 环境变量：配置文件路径按`-config`参数、`GQ_CONFIG`、工作目录下的`generalquarters.json`依次查找，读到的字段再被`GQ_DATA_DIR`/`GQ_DB_PATH`/`GQ_LISTEN`/`PORT`/`GQ_SECURE_COOKIE`/`GQ_BACKUP_KEEP`覆盖；配置文件用严格JSON解码，字段名拼错直接启动失败，不会静默跑默认值。数据目录、库文件路径、监听地址、备份保留份数都在这里配，换部署环境只改一份JSON（`generalquarters.example.json`是完整样例，`generalquarters.docker.json`给Compose用）。
 - 规模：单实例、个位数在线用户；不在第一阶段引入微服务或外部数据库。
 
 ## 总体结构
@@ -176,7 +176,7 @@ VP 剧本只有**回合上限（360 回合）一个强制结算点**。投送完
 
 启用WAL、外键、单写入连接和事务。单实例不使用多个容器共同写入该数据库。
 
-回合快照的写入与压缩是分开的：`CreateRoom`/`Resolve` 只写原样 JSON（`compressed=0`），后台 worker（`StartTurnCompressor`）每几秒把**已经结束的回合**（`turn < 房间当前回合`）压成 gzip 再写回，`compressed=1`。压缩永远不进回合结算的关键路径，正在进行的那一行也永远不碰，所以回放读到的总是完整状态。这份 JSON 的键名和坐标重复度极高，gzip 后约剩 8%~12%（3 MB 的状态约 300 KB），历史库能小一个数量级。读取端 `LoadTurnState` 按 `compressed` 自动解压，调用方不需要关心压没压过。
+房间状态和回合快照都以 gzip 压缩后的 JSON blob 存在库里的 `state_blob` 列（`rooms.state_blob` / `turns.state_blob`）：`encodeState` 在写库这一步做完 marshal + gzip，没有后台压缩 worker、没有 `compressed` 标记，也就不存在"标记和内容对不上"的中间行。这份 JSON 的键名和坐标重复度极高，gzip 后约剩 5%（300 KB 的状态约十几 KB），每回合两条写入加起来也就十几 KB。读取端 `decodeState` 按 gzip 魔数判断：老库里的明文 JSON 行照样能读，升级不强制迁移数据。
 
 ## 内容持久化与启动
 

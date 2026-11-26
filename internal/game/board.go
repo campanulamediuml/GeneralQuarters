@@ -91,7 +91,7 @@ func (gameMap MapDefinition) terrain(hex Hex) Terrain {
 
 // UnmarshalJSON 解完地图顺手把地形表编译出来。
 //
-// 放在这里是因为 State 是整份塞进 state_json 的：房间每次从库里读出来都会
+// 放在这里是因为 State 是整份塞进 state_blob 的：房间每次从库里读出来都会
 // 解一次地图，编译也就跟着发生一次，不用在 store 里再手动重建一遍缓存。
 // 手搭的 MapDefinition 字面量没有这一步，走 terrain 的扫描兜底。
 func (gameMap *MapDefinition) UnmarshalJSON(data []byte) error {

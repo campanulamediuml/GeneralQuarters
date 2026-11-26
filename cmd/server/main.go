@@ -63,8 +63,6 @@ func main() {
 	runCtx, stopRun := context.WithCancel(context.Background())
 	defer stopRun()
 	app.StartTurnReconciler(runCtx)
-	// 回放用的回合快照在后台压缩：写入路径只写原样 JSON，worker 负责把已结束的回合压成 gzip。
-	database.StartTurnCompressor(runCtx, time.Duration(cfg.TurnCompressIntervalSeconds)*time.Second, cfg.TurnCompressBatch)
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{"status":"ok"}`))

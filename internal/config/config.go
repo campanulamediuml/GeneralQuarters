@@ -29,10 +29,6 @@ type Config struct {
 	SecureCookie bool `json:"secure_cookie"`
 	// BackupKeep 是启动备份保留份数。
 	BackupKeep int `json:"backup_keep"`
-	// TurnCompressIntervalSeconds 是后台回合快照压缩的批间隔。
-	TurnCompressIntervalSeconds int `json:"turn_compress_interval_seconds"`
-	// TurnCompressBatch 是每批压缩多少行。
-	TurnCompressBatch int `json:"turn_compress_batch"`
 	// Source 记录实际读到的配置文件路径（空表示只用默认值 + 环境变量），仅用于启动日志。
 	Source string `json:"-"`
 }
@@ -40,11 +36,9 @@ type Config struct {
 // Default 返回不带任何外部输入时的配置。
 func Default() Config {
 	return Config{
-		DataDir:                     "./data",
-		Listen:                      ":8080",
-		BackupKeep:                  3,
-		TurnCompressIntervalSeconds: 3,
-		TurnCompressBatch:           8,
+		DataDir:    "./data",
+		Listen:     ":8080",
+		BackupKeep: 3,
 	}
 }
 
@@ -75,12 +69,6 @@ func Load(path string) (Config, error) {
 	applyEnv(&cfg)
 	if cfg.DBPath == "" {
 		cfg.DBPath = filepath.Join(cfg.DataDir, "generalquarters.db")
-	}
-	if cfg.TurnCompressIntervalSeconds < 1 {
-		cfg.TurnCompressIntervalSeconds = 1
-	}
-	if cfg.TurnCompressBatch < 1 {
-		cfg.TurnCompressBatch = 1
 	}
 	// backup_keep = 0 表示不备份（容器里数据目录本身是卷，可能不需要额外快照）；负数按 0 处理。
 	if cfg.BackupKeep < 0 {
@@ -118,16 +106,6 @@ func applyEnv(cfg *Config) {
 	if value := os.Getenv("GQ_BACKUP_KEEP"); value != "" {
 		if number, err := strconv.Atoi(value); err == nil {
 			cfg.BackupKeep = number
-		}
-	}
-	if value := os.Getenv("GQ_TURN_COMPRESS_INTERVAL"); value != "" {
-		if number, err := strconv.Atoi(value); err == nil {
-			cfg.TurnCompressIntervalSeconds = number
-		}
-	}
-	if value := os.Getenv("GQ_TURN_COMPRESS_BATCH"); value != "" {
-		if number, err := strconv.Atoi(value); err == nil {
-			cfg.TurnCompressBatch = number
 		}
 	}
 }

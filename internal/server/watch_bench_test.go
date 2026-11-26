@@ -79,7 +79,7 @@ func BenchmarkSpectateSnapshot(b *testing.B) {
 		}
 	})
 
-	// 3) 从库里读房间（含 state_json 反序列化）。
+	// 3) 从库里读房间（含 state_blob 解压和反序列化）。
 	b.Run("load_room", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {

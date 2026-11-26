@@ -74,7 +74,7 @@ func (s *Store) migrate() error {
 CREATE TABLE IF NOT EXISTS rooms (
  id TEXT PRIMARY KEY, join_token TEXT NOT NULL UNIQUE, scenario_id TEXT NOT NULL,
  status TEXT NOT NULL, turn INTEGER NOT NULL, version INTEGER NOT NULL,
- state_json TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+ state_blob BLOB NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
  solo INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS players (
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS orders (
  order_json TEXT NOT NULL, PRIMARY KEY(room_id, turn, player_id, unit_id)
 );
 CREATE TABLE IF NOT EXISTS turns (
- room_id TEXT NOT NULL, turn INTEGER NOT NULL, version INTEGER NOT NULL, state_json TEXT NOT NULL,
+ room_id TEXT NOT NULL, turn INTEGER NOT NULL, version INTEGER NOT NULL, state_blob BLOB NOT NULL,
  created_at TEXT NOT NULL, PRIMARY KEY(room_id, turn)
 );
 CREATE TABLE IF NOT EXISTS events (
@@ -121,15 +121,20 @@ CREATE INDEX IF NOT EXISTS idx_events_room ON events(room_id, id);
 			return err
 		}
 	}
-	// turns 的历史快照由后台 worker 压缩（见 turns.go）：compressed=0 表示还是原样 JSON。
-	// 老库补列时全部记成 0，worker 会按"已结束回合"的规则慢慢把它们压掉。
-	if !s.hasColumn("turns", "compressed") {
-		if _, err := s.DB.Exec(`ALTER TABLE turns ADD COLUMN compressed INTEGER NOT NULL DEFAULT 0`); err != nil {
+	// 存档从明文 JSON 换成 gzip blob：老库的列还叫 state_json、内容也还是文本，
+	// 改名即可（读取按 gzip 魔数判断，老行不用迁移）。turns 上那个"待压缩"部分索引
+	// 也一起删掉——压缩已经挪到写库这一步，没有后台 worker 了。
+	if s.hasColumn("rooms", "state_json") && !s.hasColumn("rooms", "state_blob") {
+		if _, err := s.DB.Exec(`ALTER TABLE rooms RENAME COLUMN state_json TO state_blob`); err != nil {
 			return err
 		}
 	}
-	// 部分索引：worker 每轮只需要找还没压的行，别整表扫。
-	if _, err := s.DB.Exec(`CREATE INDEX IF NOT EXISTS idx_turns_pending ON turns(turn) WHERE compressed = 0`); err != nil {
+	if s.hasColumn("turns", "state_json") && !s.hasColumn("turns", "state_blob") {
+		if _, err := s.DB.Exec(`ALTER TABLE turns RENAME COLUMN state_json TO state_blob`); err != nil {
+			return err
+		}
+	}
+	if _, err := s.DB.Exec(`DROP INDEX IF EXISTS idx_turns_pending`); err != nil {
 		return err
 	}
 	return nil
@@ -163,7 +168,7 @@ func boolInt(value bool) int {
 }
 
 func (s *Store) CreateRoom(ctx context.Context, room Room, player Player, sessionHash string) error {
-	stateJSON, err := json.Marshal(room.State)
+	stateBlob, err := encodeState(room.State)
 	if err != nil {
 		return err
 	}
@@ -173,7 +178,7 @@ func (s *Store) CreateRoom(ctx context.Context, room Room, player Player, sessio
 	}
 	defer tx.Rollback()
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	_, err = tx.ExecContext(ctx, `INSERT INTO rooms(id,join_token,scenario_id,status,turn,version,state_json,created_at,updated_at,solo) VALUES(?,?,?,?,?,?,?,?,?,?)`, room.ID, room.JoinToken, room.State.ScenarioID, room.Status, room.Turn, room.Version, stateJSON, now, now, boolInt(room.Solo))
+	_, err = tx.ExecContext(ctx, `INSERT INTO rooms(id,join_token,scenario_id,status,turn,version,state_blob,created_at,updated_at,solo) VALUES(?,?,?,?,?,?,?,?,?,?)`, room.ID, room.JoinToken, room.State.ScenarioID, room.Status, room.Turn, room.Version, stateBlob, now, now, boolInt(room.Solo))
 	if err != nil {
 		return err
 	}
@@ -185,7 +190,7 @@ func (s *Store) CreateRoom(ctx context.Context, room Room, player Player, sessio
 	if err != nil {
 		return err
 	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO turns(room_id,turn,version,state_json,created_at,compressed) VALUES(?,?,?,?,?,0)`, room.ID, room.Turn, room.Version, stateJSON, now)
+	_, err = tx.ExecContext(ctx, `INSERT INTO turns(room_id,turn,version,state_blob,created_at) VALUES(?,?,?,?,?)`, room.ID, room.Turn, room.Version, stateBlob, now)
 	if err != nil {
 		return err
 	}
@@ -255,7 +260,7 @@ func (s *Store) RoomIDByToken(ctx context.Context, token string) (string, error)
 }
 
 // RoomJoinToken 只取邀请 token：观战握手要拿它比对，没必要把整份 146KB 的
-// state_json 读回来解析一遍（那一次读比这个查询贵三个数量级）。
+// state_blob 读回来再解压反序列化一遍（那一次读比这个查询贵三个数量级）。
 func (s *Store) RoomJoinToken(ctx context.Context, roomID string) (string, error) {
 	var token string
 	err := s.DB.QueryRowContext(ctx, `SELECT join_token FROM rooms WHERE id=?`, roomID).Scan(&token)
@@ -264,16 +269,18 @@ func (s *Store) RoomJoinToken(ctx context.Context, roomID string) (string, error
 
 func (s *Store) Room(ctx context.Context, roomID string) (Room, error) {
 	var room Room
-	var stateJSON string
+	var stateBlob []byte
 	var solo int
-	err := s.DB.QueryRowContext(ctx, `SELECT id,join_token,status,turn,version,state_json,solo FROM rooms WHERE id=?`, roomID).Scan(&room.ID, &room.JoinToken, &room.Status, &room.Turn, &room.Version, &stateJSON, &solo)
+	err := s.DB.QueryRowContext(ctx, `SELECT id,join_token,status,turn,version,state_blob,solo FROM rooms WHERE id=?`, roomID).Scan(&room.ID, &room.JoinToken, &room.Status, &room.Turn, &room.Version, &stateBlob, &solo)
 	room.Solo = solo != 0
 	if err != nil {
 		return room, err
 	}
-	if err := json.Unmarshal([]byte(stateJSON), &room.State); err != nil {
+	state, err := decodeState(stateBlob)
+	if err != nil {
 		return room, err
 	}
+	room.State = state
 	game.EnsureAviation(&room.State)
 	game.NormalizeFleetNames(&room.State)
 	game.NormalizeAirfieldHangar(&room.State)
@@ -285,7 +292,7 @@ func (s *Store) Room(ctx context.Context, roomID string) (Room, error) {
 // 第二次触发，房间会卡死在同一回合（T108 这次就是这么卡住的）。巡检靠这个把房间捞出来。
 func (s *Store) StalledReadyRooms(ctx context.Context, olderThan time.Duration) ([]Room, error) {
 	cutoff := time.Now().UTC().Add(-olderThan).Format(time.RFC3339Nano)
-	rows, err := s.DB.QueryContext(ctx, "SELECT r.id,r.join_token,r.status,r.turn,r.version,r.state_json,r.solo FROM rooms r WHERE r.status='running' AND r.updated_at < ? AND EXISTS(SELECT 1 FROM players p WHERE p.room_id=r.id) AND NOT EXISTS(SELECT 1 FROM players p WHERE p.room_id=r.id AND p.ready=0)", cutoff)
+	rows, err := s.DB.QueryContext(ctx, "SELECT r.id,r.join_token,r.status,r.turn,r.version,r.state_blob,r.solo FROM rooms r WHERE r.status='running' AND r.updated_at < ? AND EXISTS(SELECT 1 FROM players p WHERE p.room_id=r.id) AND NOT EXISTS(SELECT 1 FROM players p WHERE p.room_id=r.id AND p.ready=0)", cutoff)
 	if err != nil {
 		return nil, err
 	}
@@ -293,15 +300,17 @@ func (s *Store) StalledReadyRooms(ctx context.Context, olderThan time.Duration) 
 	rooms := []Room{}
 	for rows.Next() {
 		var room Room
-		var stateJSON string
+		var stateBlob []byte
 		var solo int
-		if err := rows.Scan(&room.ID, &room.JoinToken, &room.Status, &room.Turn, &room.Version, &stateJSON, &solo); err != nil {
+		if err := rows.Scan(&room.ID, &room.JoinToken, &room.Status, &room.Turn, &room.Version, &stateBlob, &solo); err != nil {
 			return nil, err
 		}
 		room.Solo = solo != 0
-		if err := json.Unmarshal([]byte(stateJSON), &room.State); err != nil {
+		state, err := decodeState(stateBlob)
+		if err != nil {
 			return nil, err
 		}
+		room.State = state
 		game.EnsureAviation(&room.State)
 		game.NormalizeFleetNames(&room.State)
 		game.NormalizeAirfieldHangar(&room.State)
@@ -418,7 +427,7 @@ type OrderRecord struct {
 }
 
 func (s *Store) ApplyImmediate(ctx context.Context, room Room, playerID, commandID, fingerprint, response string, newState game.State, events []game.EngineEvent) (Room, error) {
-	data, err := json.Marshal(newState)
+	data, err := encodeState(newState)
 	if err != nil {
 		return room, err
 	}
@@ -429,7 +438,7 @@ func (s *Store) ApplyImmediate(ctx context.Context, room Room, playerID, command
 	defer tx.Rollback()
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	newVersion := room.Version + 1
-	result, err := tx.ExecContext(ctx, `UPDATE rooms SET state_json=?,version=?,updated_at=? WHERE id=? AND version=?`, data, newVersion, now, room.ID, room.Version)
+	result, err := tx.ExecContext(ctx, `UPDATE rooms SET state_blob=?,version=?,updated_at=? WHERE id=? AND version=?`, data, newVersion, now, room.ID, room.Version)
 	if err != nil {
 		return room, err
 	}
@@ -440,9 +449,7 @@ func (s *Store) ApplyImmediate(ctx context.Context, room Room, playerID, command
 		return room, err
 	}
 	// 回合内的这条 UPDATE 把"当回合快照"更新成玩家当前看到的状态。
-	// compressed 必须显式归零：万一 worker 刚好压过这一行，不重置就会变成
-	// "压缩标志=1、内容是明文"，读的时候按 gzip 解压直接失败。
-	if _, err := tx.ExecContext(ctx, `UPDATE turns SET version=?,state_json=?,compressed=0 WHERE room_id=? AND turn=?`, newVersion, data, room.ID, room.Turn); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE turns SET version=?,state_blob=? WHERE room_id=? AND turn=?`, newVersion, data, room.ID, room.Turn); err != nil {
 		return room, err
 	}
 	if _, err := tx.ExecContext(ctx, `INSERT INTO commands VALUES(?,?,?,?,?)`, playerID, commandID, response, now, fingerprint); err != nil {
@@ -461,7 +468,7 @@ func (s *Store) ApplyImmediate(ctx context.Context, room Room, playerID, command
 }
 
 func (s *Store) Resolve(ctx context.Context, room Room, newState game.State, events []game.EngineEvent) (Room, error) {
-	data, err := json.Marshal(newState)
+	data, err := encodeState(newState)
 	if err != nil {
 		return room, err
 	}
@@ -473,7 +480,7 @@ func (s *Store) Resolve(ctx context.Context, room Room, newState game.State, eve
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	newVersion := room.Version + 1
 	newTurn := room.Turn + 1
-	result, err := tx.ExecContext(ctx, `UPDATE rooms SET state_json=?,turn=?,version=?,updated_at=? WHERE id=? AND version=?`, data, newTurn, newVersion, now, room.ID, room.Version)
+	result, err := tx.ExecContext(ctx, `UPDATE rooms SET state_blob=?,turn=?,version=?,updated_at=? WHERE id=? AND version=?`, data, newTurn, newVersion, now, room.ID, room.Version)
 	if err != nil {
 		return room, err
 	}
@@ -486,7 +493,7 @@ func (s *Store) Resolve(ctx context.Context, room Room, newState game.State, eve
 	if _, err := tx.ExecContext(ctx, `DELETE FROM orders WHERE room_id=? AND turn=?`, room.ID, room.Turn); err != nil {
 		return room, err
 	}
-	if _, err := tx.ExecContext(ctx, `INSERT INTO turns(room_id,turn,version,state_json,created_at,compressed) VALUES(?,?,?,?,?,0)`, room.ID, newTurn, newVersion, data, now); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO turns(room_id,turn,version,state_blob,created_at) VALUES(?,?,?,?,?)`, room.ID, newTurn, newVersion, data, now); err != nil {
 		return room, err
 	}
 	for sequence, event := range events {

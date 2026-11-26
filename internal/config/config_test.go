@@ -24,7 +24,7 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.DataDir != "./data" || cfg.DBPath != "data/generalquarters.db" {
 		t.Fatalf("默认数据目录错误：%+v", cfg)
 	}
-	if cfg.Listen != ":8080" || cfg.BackupKeep != 3 || cfg.TurnCompressIntervalSeconds != 3 || cfg.TurnCompressBatch != 8 {
+	if cfg.Listen != ":8080" || cfg.BackupKeep != 3 {
 		t.Fatalf("默认值错误：%+v", cfg)
 	}
 	if cfg.ContentDir() != filepath.Join("./data", "content") {
@@ -36,12 +36,12 @@ func TestLoadFileThenEnvOverrides(t *testing.T) {
 	clearEnv(t)
 	dir := chdirTemp(t)
 	path := filepath.Join(dir, "gq.json")
-	writeFile(t, path, `{"data_dir":"/srv/gq","listen":"127.0.0.1:9000","backup_keep":5,"secure_cookie":true,"turn_compress_batch":16}`)
+	writeFile(t, path, `{"data_dir":"/srv/gq","listen":"127.0.0.1:9000","backup_keep":5,"secure_cookie":true}`)
 	cfg, err := Load(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.DataDir != "/srv/gq" || cfg.Listen != "127.0.0.1:9000" || cfg.BackupKeep != 5 || !cfg.SecureCookie || cfg.TurnCompressBatch != 16 {
+	if cfg.DataDir != "/srv/gq" || cfg.Listen != "127.0.0.1:9000" || cfg.BackupKeep != 5 || !cfg.SecureCookie {
 		t.Fatalf("配置文件没有生效：%+v", cfg)
 	}
 	if cfg.DBPath != filepath.Join("/srv/gq", "generalquarters.db") {
