@@ -100,3 +100,58 @@ func TestFillStrikeETAMarksNightLanding(t *testing.T) {
 		t.Fatal("13:00 落舰不该标记为夜间")
 	}
 }
+
+// 任务快照必须带上时间表：前端弹窗直接读这三个字段，缺一个就只能显示"——"。
+func TestAviationViewExposesStrikeETA(t *testing.T) {
+	state := sandboxState(t)
+	state.TurnsPerDay = 72
+	state.DayHours = 12
+	carrierID := ""
+	for _, id := range sortedUnitIDs(state.Units) {
+		unit := state.Units[id]
+		if unit.Faction == "B" && unit.Deck != nil && unit.Deck.Length > 0 {
+			carrierID = id
+			break
+		}
+	}
+	if carrierID == "" {
+		t.Fatal("沙盒里应有 B 方航母")
+	}
+	carrier := state.Units[carrierID]
+	var aircraft *AirUnit
+	for _, id := range sortedAirUnitIDs(state) {
+		if state.Aircraft[id].CarrierID == carrierID {
+			aircraft = state.Aircraft[id]
+			break
+		}
+	}
+	if aircraft == nil {
+		t.Fatal("航母上应有舰载机")
+	}
+	aircraft.Status = "attack"
+	aircraft.Launched = true
+	aircraft.TaskID = "strike-eta"
+	aircraft.TaskKind = "attack"
+	aircraft.Coord = carrier.Coord
+	target := stepInDirection(carrier.Coord, 0, 4)
+	aircraft.TargetCoord = target
+	state.Aircraft[aircraft.ID] = aircraft
+
+	view := VisibleAviation(state, "B")
+	var task *AirTask
+	for index := range view.Tasks {
+		if view.Tasks[index].ID == "strike-eta" {
+			task = &view.Tasks[index]
+			break
+		}
+	}
+	if task == nil {
+		t.Fatal("视图里应出现攻击编队")
+	}
+	if task.ETATarget == "" || task.ETALanded == "" {
+		t.Fatalf("攻击编队应带预计时刻：%+v", task)
+	}
+	if task.TurnsToTarget <= 0 || task.TurnsToLanded <= task.TurnsToTarget {
+		t.Fatalf("到点/落舰回合数不合理：target=%d landed=%d", task.TurnsToTarget, task.TurnsToLanded)
+	}
+}
