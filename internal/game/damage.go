@@ -7,10 +7,35 @@ import (
 	"strings"
 )
 
-type ShellHit struct {
+// HitCause 是这次命中的来源。后面按规则分流全靠它：
+// 整装待发飞机的损失是炸弹专属，装甲航母 25% 甲板损坏是炸弹专属，漏油只有鱼雷才可能抽到。
+// HitFire 不是命中，是"起火燃烧每回合的蔓延判定"，和命中分开是因为它能抽到的表也不一样。
+type HitCause uint8
+
+const (
+	HitShell   HitCause = iota // 舰炮、岸轰
+	HitBomb                    // 航空炸弹
+	HitTorpedo                 // 鱼雷（舰载/航空）
+	HitFire                    // 大火失控等非命中来源
+)
+
+func (cause HitCause) String() string {
+	switch cause {
+	case HitBomb:
+		return "炸弹"
+	case HitTorpedo:
+		return "鱼雷"
+	case HitFire:
+		return "火灾"
+	default:
+		return "炮弹"
+	}
+}
+
+type Hit struct {
 	AttackerID string
 	TargetID   string
-	Torpedo    bool
+	Cause      HitCause
 	// Warned 表示本次空袭已被目标方提前发现，DCT 临时 +1（规则书 408 行）
 	Warned bool
 }
@@ -156,16 +181,29 @@ func AdvanceShipConditions(state *State) []EngineEvent {
 			events = append(events, EngineEvent{Type: "fire_out_of_control", Audience: "all", Text: fmt.Sprintf("%s损管失败（%d/%d > %d）", unit.Name, first, second, unit.Card.DamageControl)})
 			events = append(events, sinkUnit(state, unit)...)
 		} else if d10(state) > unit.Card.DamageControl {
-			events = append(events, severeDamage(state, unit)...)
+			events = append(events, severeDamage(state, unit, HitFire)...)
 		}
 	}
 	return events
 }
 
-func severeDamage(state *State, unit *Unit) []EngineEvent {
-	// 全局表只放任何船都可能中的条目；雷达相关的两条都挂在"装备对海雷达"的额外表里，
-	// 否则没有雷达的驱逐舰会白掷到一条毫无效果的"火控雷达损坏"。
-	table := []string{"small_fire", "burning", "flooding", "dc_down", "ammo_explosion", "oil_leak", "severe_flooding", "hull_damage", "aa_loss"}
+// severeDamage 抽一条严重伤害。表按命中来源和船只装备拼（见 severeDamageTable）。
+func severeDamage(state *State, unit *Unit, cause HitCause) []EngineEvent {
+	table := severeDamageTable(cause, unit)
+	result := table[nextUint64(&state.RNGState)%uint64(len(table))]
+	return applySevereDamageResult(state, unit, result)
+}
+
+// severeDamageTable 按命中来源和船只装备拼出这次能抽到的严重伤害表。
+// 全局表只放任何船都可能中的条目；雷达相关的两条都挂在"装备对海雷达"的额外表里，
+// 否则没有雷达的驱逐舰会白掷到一条毫无效果的"火控雷达损坏"。
+// 漏油只有鱼雷命中才可能抽到——别的来源抽到"漏油"等于白给一条结果。
+func severeDamageTable(cause HitCause, unit *Unit) []string {
+	table := []string{"small_fire", "burning", "flooding", "dc_down", "ammo_explosion"}
+	if cause == HitTorpedo {
+		table = append(table, "oil_leak")
+	}
+	table = append(table, "severe_flooding", "hull_damage", "aa_loss")
 	if IsCarrier(unit) {
 		table = append(table, "deck_damage", "deck_destroyed", "elevator_damage", "avgas_explosion", "tilt", "hangar_damage")
 	}
@@ -187,8 +225,7 @@ func severeDamage(state *State, unit *Unit) []EngineEvent {
 	if unit.Type == "TRS" {
 		table = append(table, "cargo_loss")
 	}
-	result := table[nextUint64(&state.RNGState)%uint64(len(table))]
-	return applySevereDamageResult(state, unit, result)
+	return table
 }
 
 // applySevereDamageResult 把一条严重伤害落到船上；抽表和落表拆开，方便逐条测试效果。
@@ -330,7 +367,7 @@ func bombHangarDeckEffect(state *State, target *Unit, warned bool) []EngineEvent
 		}
 		addFire(target, "small")
 		if len(events) > 0 && d10(state) > dctValue(state, target, warned) {
-			events = append(events, severeDamage(state, target)...)
+			events = append(events, severeDamage(state, target, HitBomb)...)
 		}
 	}
 	if len(deck) > 0 {
@@ -342,14 +379,17 @@ func bombHangarDeckEffect(state *State, target *Unit, warned bool) []EngineEvent
 	return events
 }
 
-func applyShellHit(state *State, hit ShellHit) []EngineEvent {
+// applyGunOrBombHit 结算炮弹和炸弹命中：两者共用防空、甲板与 DCT 流程，
+// 差别在装甲航母的甲板损坏概率（炸弹 25%，规则书 490 行），
+// 以及"整装待发飞机被摧毁"只有炸弹才会发生（规则书 421–423 行）。
+func applyGunOrBombHit(state *State, hit Hit) []EngineEvent {
 	target := state.Units[hit.TargetID]
 	if target == nil {
 		return nil
 	}
 	target.Card.HeavyAA *= 0.9
 	target.Card.LightAA *= 0.9
-	if IsCarrier(target) && probabilityRoll(&state.RNGState) < 75 {
+	if IsCarrier(target) && probabilityRoll(&state.RNGState) < deckDamageChance(hit.Cause, target) {
 		damage := EnsureDamage(target)
 		damage.DeckDamaged = true
 		destroyChance := rulesFor(*state, target.Faction).DeckDestroyChance
@@ -360,10 +400,10 @@ func applyShellHit(state *State, hit ShellHit) []EngineEvent {
 	}
 	events := []EngineEvent{}
 	if d10(state) > dctValue(state, target, hit.Warned) {
-		events = append(events, severeDamage(state, target)...)
+		events = append(events, severeDamage(state, target, hit.Cause)...)
 	}
-	// 炸弹命中整装待发飞机的航母（规则书 421–423 行）；装甲航母只结算甲板（规则书 486–489 行）。
-	if IsCarrier(target) && state.Units[target.ID] != nil {
+	// 只有炸弹会打击整装待发的飞机：炮弹打穿机库再点着飞机是另一条规则，这里没有。
+	if hit.Cause == HitBomb && IsCarrier(target) && state.Units[target.ID] != nil {
 		if target.Card.ArmoredCarrier {
 			_, deck := readyAircraft(*state, target.ID)
 			if len(deck) > 0 {
@@ -382,7 +422,16 @@ func applyShellHit(state *State, hit ShellHit) []EngineEvent {
 	return events
 }
 
-func applyTorpedoHit(state *State, hit ShellHit) []EngineEvent {
+// deckDamageChance 返回一次命中损坏飞行甲板的概率（%）。
+// 装甲航母的甲板只对炸弹硬（25%，规则书 490 行）；炮弹命中仍按普通 75% 判。
+func deckDamageChance(cause HitCause, target *Unit) float64 {
+	if cause == HitBomb && target.Card.ArmoredCarrier {
+		return 25
+	}
+	return 75
+}
+
+func applyTorpedoHit(state *State, hit Hit) []EngineEvent {
 	target := state.Units[hit.TargetID]
 	if target == nil {
 		return nil
@@ -402,20 +451,20 @@ func applyTorpedoHit(state *State, hit ShellHit) []EngineEvent {
 	// 固定随机种子的回归测试也就失去可复现性。
 	if probabilityRoll(&state.RNGState) < 50 {
 		if d10(state) > dctValue(state, target, hit.Warned) {
-			events = append(events, severeDamage(state, target)...)
+			events = append(events, severeDamage(state, target, HitTorpedo)...)
 		}
 	}
 	return events
 }
 
-func applyHits(state *State, hits []ShellHit) []EngineEvent {
+func applyHits(state *State, hits []Hit) []EngineEvent {
 	events := []EngineEvent{}
 	for _, hit := range hits {
-		if hit.Torpedo {
+		if hit.Cause == HitTorpedo {
 			events = append(events, applyTorpedoHit(state, hit)...)
-		} else {
-			events = append(events, applyShellHit(state, hit)...)
+			continue
 		}
+		events = append(events, applyGunOrBombHit(state, hit)...)
 	}
 	return events
 }

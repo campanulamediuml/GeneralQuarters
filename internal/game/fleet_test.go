@@ -164,7 +164,7 @@ func TestBombHitDestroysReadyAircraft(t *testing.T) {
 		hangar = append(hangar, aircraft)
 	}
 	before := carrier.Card.Aircraft
-	applyShellHit(&state, ShellHit{TargetID: carrier.ID})
+	applyGunOrBombHit(&state, Hit{TargetID: carrier.ID, Cause: HitBomb})
 	after := carrier.Card.Aircraft
 	lost := before - after
 	if lost < 1 || lost > 2 {

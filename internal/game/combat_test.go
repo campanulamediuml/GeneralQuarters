@@ -73,7 +73,7 @@ func TestSinkingCarrierRemovesAircraft(t *testing.T) {
 		"air-1": {ID: "air-1", CarrierID: "cv"},
 		"air-2": {ID: "air-2", CarrierID: "cv"},
 	}}
-	applyTorpedoHit(&state, ShellHit{TargetID: "cv", Torpedo: true})
+	applyTorpedoHit(&state, Hit{TargetID: "cv", Cause: HitTorpedo})
 	if state.Units["cv"] != nil || len(state.Aircraft) != 0 {
 		t.Fatal("航母沉没后仍残留舰船或航空算子")
 	}

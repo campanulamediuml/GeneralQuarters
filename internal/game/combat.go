@@ -342,8 +342,8 @@ func gunneryChance(state State, attacker, target *Unit, enemies []Unit) float64 
 	return math.Max(0, math.Min(100, chance))
 }
 
-func gunneryVolley(state *State, attackers, enemies []Unit) ([]ShellHit, []EngineEvent) {
-	hits := []ShellHit{}
+func gunneryVolley(state *State, attackers, enemies []Unit) ([]Hit, []EngineEvent) {
+	hits := []Hit{}
 	events := []EngineEvent{}
 	enemies = aliveUnits(state, enemies)
 	if len(enemies) == 0 {
@@ -367,7 +367,7 @@ func gunneryVolley(state *State, attackers, enemies []Unit) ([]ShellHit, []Engin
 		count := 0
 		for shot := 0; shot < weapon.Card.Gunnery; shot++ {
 			if probabilityRoll(&state.RNGState) < chance {
-				hits = append(hits, ShellHit{AttackerID: weapon.ID, TargetID: target.ID})
+				hits = append(hits, Hit{AttackerID: weapon.ID, TargetID: target.ID, Cause: HitShell})
 				count++
 			}
 		}
@@ -401,8 +401,8 @@ func torpedoChance(state State, weapon *Unit, target *Unit) float64 {
 	return math.Max(0, math.Min(100, chance))
 }
 
-func torpedoVolley(state *State, attackers, enemies []Unit) ([]ShellHit, []EngineEvent) {
-	hits := []ShellHit{}
+func torpedoVolley(state *State, attackers, enemies []Unit) ([]Hit, []EngineEvent) {
+	hits := []Hit{}
 	events := []EngineEvent{}
 	enemies = aliveUnits(state, enemies)
 	if len(enemies) == 0 {
@@ -419,7 +419,7 @@ func torpedoVolley(state *State, attackers, enemies []Unit) ([]ShellHit, []Engin
 		count := 0
 		for shot := 0; shot < 4; shot++ {
 			if probabilityRoll(&state.RNGState) < chance {
-				hits = append(hits, ShellHit{AttackerID: weapon.ID, TargetID: target.ID, Torpedo: true})
+				hits = append(hits, Hit{AttackerID: weapon.ID, TargetID: target.ID, Cause: HitTorpedo})
 				count++
 			}
 		}

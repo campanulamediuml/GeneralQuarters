@@ -2504,7 +2504,7 @@ func bombardFleet(state *State, fleetID string, airfield *Airfield) []EngineEven
 				continue
 			}
 			coastalHits++
-			events = append(events, applyHits(state, []ShellHit{{AttackerID: airfield.ID, TargetID: target.ID}})...)
+			events = append(events, applyHits(state, []Hit{{AttackerID: airfield.ID, TargetID: target.ID, Cause: HitShell}})...)
 		}
 	}
 	// 舰队炮击机场：普通舰每次命中 -1 生命值并摧毁至多 1 架地面飞机，战列舰 -2 / 至多 2 架

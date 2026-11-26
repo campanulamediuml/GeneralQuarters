@@ -877,9 +877,9 @@ func resolveBombingOn(state *State, attacker *AirUnit, target *Unit, mixed, capR
 			strengthBefore = unit.Strength
 		}
 		if isTorpedoAttack(attacker) {
-			events = append(events, applyTorpedoHit(state, ShellHit{AttackerID: attacker.ID, TargetID: target.ID, Torpedo: true, Warned: warned})...)
+			events = append(events, applyTorpedoHit(state, Hit{AttackerID: attacker.ID, TargetID: target.ID, Cause: HitTorpedo, Warned: warned})...)
 		} else {
-			events = append(events, applyShellHit(state, ShellHit{AttackerID: attacker.ID, TargetID: target.ID, Warned: warned})...)
+			events = append(events, applyGunOrBombHit(state, Hit{AttackerID: attacker.ID, TargetID: target.ID, Cause: HitBomb, Warned: warned})...)
 		}
 		// 命中 ≠ 损伤：没过损管判定的命中只削弱防空、砸甲板，不掉强度。
 		if unit := state.Units[target.ID]; unit == nil || unit.Strength < strengthBefore {
