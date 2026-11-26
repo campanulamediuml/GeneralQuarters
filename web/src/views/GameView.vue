@@ -366,11 +366,6 @@ const clockWindowLabel = computed(() => {
 // 一次结算可能同时产生"拦截 + 空袭"多份报告：以前只播最后一份，
 // 前面那份（常常是真正的投弹结果）直接被吞掉，玩家以为没打中。
 const combatQueue = ref<AirCombatReport[]>([])
-// 动画开始前玩家在哪个面板：战报播完回那里，而不是一律丢回大地图。
-// 播放期间用户可以随便切面板（动画牌位在面板链最前面，不会被卸载打断），
-// 所以关闭时只在自己的面板还占着位置时才恢复，否则尊重用户后点的面板。
-type PanelName = 'map' | 'rules' | 'settings' | 'aviation' | 'airCombat' | 'log' | 'results'
-const panelBeforeCombat = ref<PanelName>('map')
 
 function checkAirCombat(next: GameView, initial = false) {
   const reports = next.air_combats || []
@@ -396,16 +391,16 @@ function playNextAirCombat() {
   if (!nextReport) {
     // 队列清空后必须把当前报告放掉：否则下一场结算会以为"上一份还在播"而永远排不进队列。
     activeAirCombat.value = null
+    activePanel.value = 'map'
     return
   }
-  if (activePanel.value !== 'airCombat') panelBeforeCombat.value = activePanel.value
   activeAirCombat.value = nextReport
   activePanel.value = 'airCombat'
 }
 
+// 播完（或玩家点关闭）就收尾：还有排队的战报就接着播，没有就回大地图。
+// 动画播完不需要玩家再点一次"返回大地图"。
 function closeAirCombat() {
-  // 播放期间玩家可能已经点了别的面板：那只恢复自己占着的这一格。
-  if (activePanel.value === 'airCombat') activePanel.value = panelBeforeCombat.value || 'map'
   activeAirCombat.value = null
   playNextAirCombat()
 }

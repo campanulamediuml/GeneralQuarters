@@ -51,15 +51,15 @@ const flashes = reactive<Record<string, number>>({})
 
 let advanceTimer: ReturnType<typeof setTimeout> | undefined
 
-// 后面还排着战报（一次结算的"拦截 + 空袭"通常就是两份）时自动翻到下一份：
-// 队列是在播放过程中才变长的（第二份报告晚一帧推过来），所以不能只在挂载时判断一次，
-// 否则第一份停在"结算完成"不动，后面的战报看起来就永远没播。
+// 播放完自动收尾：后面还排着战报就翻下一份（一次结算的"拦截 + 空袭"通常两份），
+// 没有下一份就直接结束、回大地图，不要求玩家再点一次"返回大地图"。
+// 队列是在播放过程中才变长的（第二份报告晚一帧推过来），所以不能只在挂载时判断一次。
 function scheduleAdvance() {
-  if (advanceTimer || !props.hasNext) return
+  if (advanceTimer) return
   advanceTimer = setTimeout(() => {
     advanceTimer = undefined
     emit('close')
-  }, 900)
+  }, props.hasNext ? 900 : 1400)
 }
 
 function run() {
