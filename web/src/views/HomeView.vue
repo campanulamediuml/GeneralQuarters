@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '../api'
 
@@ -7,9 +7,19 @@ const router = useRouter()
 const name = ref(localStorage.getItem('gq_name') || '')
 const scenarioID = ref('_coral_real')
 const scenarios = [
-  { id: '_coral_real', name: '珊瑚海 · 1942年5月（25海里/hex）' },
-  { id: '_marianas', name: '马里亚纳 · 1944年6月（架空，99×99）' },
+  {
+    id: '_coral_real',
+    name: '珊瑚海 · 1942年5月（25海里/hex）',
+    factions: { A: '美军第17特混舰队', B: '日军 MO 机动部队' },
+  },
+  {
+    id: '_marianas',
+    name: '马里亚纳 · 1944年6月（架空，99×99）',
+    factions: { A: '美军第58特混舰队', B: '日军第一机动舰队（小泽·栗田）' },
+  },
 ]
+// 阵营名跟着剧本走：以前写死成"珊瑚海剧本＝…"，开马里亚纳也显示珊瑚海的部队名。
+const factions = computed(() => (scenarios.find((item) => item.id === scenarioID.value) ?? scenarios[0]).factions)
 // 阵营：房主坐哪一边。以前只能坐 A，想当日军只能等别人建房，太别扭。
 const faction = ref<'A' | 'B'>('A')
 // 单人房：一名玩家 ready 就结算，只用于自己摆摊测试。
@@ -89,8 +99,8 @@ async function joinGame() {
         </select>
         <label class="field-label" for="faction">你的阵营</label>
         <select id="faction" v-model="faction" class="text-input">
-          <option value="A">阵营 A（珊瑚海剧本＝美军第17特混舰队）</option>
-          <option value="B">阵营 B（珊瑚海剧本＝日军 MO 机动部队）</option>
+          <option value="A">阵营 A（{{ factions.A }}）</option>
+          <option value="B">阵营 B（{{ factions.B }}）</option>
         </select>
         <label class="field-label" for="commander">指挥官称呼</label>
         <input id="commander" v-model="name" class="text-input" maxlength="32" placeholder="玩家" @keyup.enter="createGame" />

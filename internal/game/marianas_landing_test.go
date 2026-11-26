@@ -63,6 +63,25 @@ func TestMarianasLandingGroups(t *testing.T) {
 		}
 	}
 
+	// 日军：栗田的第一游击部队 7 艘战列舰（含架空复活的比叡/雾岛），三个机动部队各 10 艘。
+	if got := factionFleetSize(state, "KURITA"); got != 13 {
+		t.Fatalf("第一游击部队 %d 艘，期望 13", got)
+	}
+	bb := map[string]bool{}
+	for _, unit := range state.Units {
+		if unit.FleetID == "KURITA" && unit.Type == "BB" {
+			bb[unit.Name] = true
+		}
+	}
+	if len(bb) != 7 || !bb["比叡"] || !bb["雾岛"] {
+		t.Fatalf("栗田部队战列舰 %v，期望 7 艘且含比叡/雾岛", bb)
+	}
+	for _, fleet := range []string{"TG1", "TG2", "TG3"} {
+		if got := factionFleetSize(state, fleet); got != 10 {
+			t.Fatalf("%s %d 艘，期望 10", fleet, got)
+		}
+	}
+
 	supplyTargets := map[string]bool{}
 	for _, objective := range state.Objectives {
 		if objective.Kind == ObjectiveSupplies && objective.Faction == "A" && objective.Value == 40 {
@@ -99,6 +118,16 @@ func TestMarianasLandingGroups(t *testing.T) {
 			}
 		}
 	}
+}
+
+func factionFleetSize(state State, fleetID string) int {
+	count := 0
+	for _, unit := range state.Units {
+		if unit.FleetID == fleetID {
+			count++
+		}
+	}
+	return count
 }
 
 func firstUnitOfFleet(state State, fleetID string) string {

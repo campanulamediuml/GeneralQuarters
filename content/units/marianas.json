@@ -7658,6 +7658,68 @@
     "hangar_advantage": false,
     "historical_loss": ""
    }
+  },
+  {
+   "id": "jp-bb-06",
+   "faction": "B",
+   "type": "BB",
+   "name": "比叡",
+   "strength": 5,
+   "picture": "misc/image/ship/hiei.png",
+   "card": {
+    "picture": "",
+    "nation": "",
+    "gunnery": 14,
+    "damage_control": 6,
+    "main_gun_count": 8,
+    "main_gun_caliber": 14.0,
+    "heavy_aa": 6.0,
+    "light_aa": 6.0,
+    "surface_radar": true,
+    "air_radar": false,
+    "speed_class": "fast",
+    "torpedo_salvos": 0,
+    "aircraft": 2,
+    "hangar_capacity": 2,
+    "deck_capacity": 0,
+    "elevator_count": 0,
+    "depth_charges": 0,
+    "cargo": 0,
+    "armored_carrier": false,
+    "hangar_advantage": false,
+    "historical_loss": ""
+   }
+  },
+  {
+   "id": "jp-bb-07",
+   "faction": "B",
+   "type": "BB",
+   "name": "雾岛",
+   "strength": 5,
+   "picture": "misc/image/ship/kirishima.png",
+   "card": {
+    "picture": "",
+    "nation": "",
+    "gunnery": 14,
+    "damage_control": 6,
+    "main_gun_count": 8,
+    "main_gun_caliber": 14.0,
+    "heavy_aa": 6.0,
+    "light_aa": 6.0,
+    "surface_radar": true,
+    "air_radar": false,
+    "speed_class": "fast",
+    "torpedo_salvos": 0,
+    "aircraft": 2,
+    "hangar_capacity": 2,
+    "deck_capacity": 0,
+    "elevator_count": 0,
+    "depth_charges": 0,
+    "cargo": 0,
+    "armored_carrier": false,
+    "hangar_advantage": false,
+    "historical_loss": ""
+   }
   }
  ],
  "aircraft": [

@@ -22,7 +22,7 @@
   "launch_start": "05:30",
   "recover_by": "19:40"
  },
- "description": "架空历史：1944 年 6 月，美军第 58 特混舰队以 8 艘舰队航母（7 艘埃塞克斯级 + 企业号，分属两个特混大队）、4 艘独立级轻航母（第 58.3 特混大队）、4 个护航航母群（每群 4 艘 CVE + 4 艘驱逐舰）杀入马里亚纳，另有第 52 特混舰队的 8 艘老式战列舰（田纳西、加利福尼亚、马里兰、科罗拉多、新墨西哥、爱达荷、密西西比、宾夕法尼亚）担任火力支援；日军以小泽的三个机动部队（甲/乙/丙，各 3 艘航母）迎战，另在马里亚纳与帕劳诸岛布署岸基航空兵和水上飞机基地。地图 99×99（25 海里/hex），岛礁散布，适合跑大编队的甲板/升降机/CAP 循环压力测试。另有三个登陆运输队（每队 12 艘大型慢速运输船 + 12 艘弗莱彻级护航），任务是分别在塞班、天宁、关岛投送至少 40 点物资——运输队要在敌方机场格停留满 3 回合才能开始卸货，每艘船每回合卸 1 点，卸下的物资会直接瘫痪机场跑道。",
+ "description": "架空历史：1944 年 6 月，美军第 58 特混舰队以 8 艘舰队航母（7 艘埃塞克斯级 + 企业号，分属两个特混大队）、4 艘独立级轻航母（第 58.3 特混大队）、4 个护航航母群（每群 4 艘 CVE + 4 艘驱逐舰）杀入马里亚纳，另有第 52 特混舰队的 8 艘老式战列舰（田纳西、加利福尼亚、马里兰、科罗拉多、新墨西哥、爱达荷、密西西比、宾夕法尼亚）担任火力支援；日军以小泽的三个机动部队（甲/乙/丙，各 3 艘航母）迎战，另在马里亚纳与帕劳诸岛布署岸基航空兵和水上飞机基地。地图 99×99（25 海里/hex），岛礁散布，适合跑大编队的甲板/升降机/CAP 循环压力测试。另有三个登陆运输队（每队 12 艘大型慢速运输船 + 12 艘弗莱彻级护航），任务是分别在塞班、天宁、关岛投送至少 40 点物资——运输队要在敌方机场格停留满 3 回合才能开始卸货，每艘船每回合卸 1 点，卸下的物资会直接瘫痪机场跑道。日军方面另编成栗田健男的第一游击部队（大和、武藏、长门、金刚、榛名，以及架空复活的两艘金刚级比叡、雾岛），作为水面决战兵力。",
  "deploy_zones": [
   {
    "faction": "A",
@@ -336,16 +336,16 @@
    "id": "jp-bb-01",
    "faction": "B",
    "name": "大和",
-   "fleet_id": "TG1",
-   "fleet_name": "甲部队",
+   "fleet_id": "KURITA",
+   "fleet_name": "第一游击部队（栗田）",
    "ship": "jp-bb-01"
   },
   {
    "id": "jp-bb-02",
    "faction": "B",
    "name": "武藏",
-   "fleet_id": "TG1",
-   "fleet_name": "甲部队",
+   "fleet_id": "KURITA",
+   "fleet_name": "第一游击部队（栗田）",
    "ship": "jp-bb-02"
   },
   {
@@ -408,16 +408,16 @@
    "id": "jp-dd-05",
    "faction": "B",
    "name": "驱逐舰05",
-   "fleet_id": "TG1",
-   "fleet_name": "甲部队",
+   "fleet_id": "TG2",
+   "fleet_name": "乙部队",
    "ship": "jp-dd-05"
   },
   {
    "id": "jp-dd-06",
    "faction": "B",
    "name": "驱逐舰06",
-   "fleet_id": "TG1",
-   "fleet_name": "甲部队",
+   "fleet_id": "TG2",
+   "fleet_name": "乙部队",
    "ship": "jp-dd-06"
   },
   {
@@ -448,8 +448,8 @@
    "id": "jp-bb-03",
    "faction": "B",
    "name": "长门",
-   "fleet_id": "TG2",
-   "fleet_name": "乙部队",
+   "fleet_id": "KURITA",
+   "fleet_name": "第一游击部队（栗田）",
    "ship": "jp-bb-03"
   },
   {
@@ -496,32 +496,32 @@
    "id": "jp-dd-09",
    "faction": "B",
    "name": "驱逐舰09",
-   "fleet_id": "TG2",
-   "fleet_name": "乙部队",
+   "fleet_id": "TG3",
+   "fleet_name": "丙部队",
    "ship": "jp-dd-09"
   },
   {
    "id": "jp-dd-10",
    "faction": "B",
    "name": "驱逐舰10",
-   "fleet_id": "TG2",
-   "fleet_name": "乙部队",
+   "fleet_id": "TG3",
+   "fleet_name": "丙部队",
    "ship": "jp-dd-10"
   },
   {
    "id": "jp-dd-11",
    "faction": "B",
    "name": "驱逐舰11",
-   "fleet_id": "TG2",
-   "fleet_name": "乙部队",
+   "fleet_id": "TG3",
+   "fleet_name": "丙部队",
    "ship": "jp-dd-11"
   },
   {
    "id": "jp-dd-12",
    "faction": "B",
    "name": "驱逐舰12",
-   "fleet_id": "TG2",
-   "fleet_name": "乙部队",
+   "fleet_id": "TG3",
+   "fleet_name": "丙部队",
    "ship": "jp-dd-12"
   },
   {
@@ -552,16 +552,16 @@
    "id": "jp-bb-04",
    "faction": "B",
    "name": "金刚",
-   "fleet_id": "TG3",
-   "fleet_name": "丙部队",
+   "fleet_id": "KURITA",
+   "fleet_name": "第一游击部队（栗田）",
    "ship": "jp-bb-04"
   },
   {
    "id": "jp-bb-05",
    "faction": "B",
    "name": "榛名",
-   "fleet_id": "TG3",
-   "fleet_name": "丙部队",
+   "fleet_id": "KURITA",
+   "fleet_name": "第一游击部队（栗田）",
    "ship": "jp-bb-05"
   },
   {
@@ -592,48 +592,48 @@
    "id": "jp-dd-13",
    "faction": "B",
    "name": "驱逐舰13",
-   "fleet_id": "TG3",
-   "fleet_name": "丙部队",
+   "fleet_id": "KURITA",
+   "fleet_name": "第一游击部队（栗田）",
    "ship": "jp-dd-13"
   },
   {
    "id": "jp-dd-14",
    "faction": "B",
    "name": "驱逐舰14",
-   "fleet_id": "TG3",
-   "fleet_name": "丙部队",
+   "fleet_id": "KURITA",
+   "fleet_name": "第一游击部队（栗田）",
    "ship": "jp-dd-14"
   },
   {
    "id": "jp-dd-15",
    "faction": "B",
    "name": "驱逐舰15",
-   "fleet_id": "TG3",
-   "fleet_name": "丙部队",
+   "fleet_id": "KURITA",
+   "fleet_name": "第一游击部队（栗田）",
    "ship": "jp-dd-15"
   },
   {
    "id": "jp-dd-16",
    "faction": "B",
    "name": "驱逐舰16",
-   "fleet_id": "TG3",
-   "fleet_name": "丙部队",
+   "fleet_id": "KURITA",
+   "fleet_name": "第一游击部队（栗田）",
    "ship": "jp-dd-16"
   },
   {
    "id": "jp-dd-17",
    "faction": "B",
    "name": "驱逐舰17",
-   "fleet_id": "TG3",
-   "fleet_name": "丙部队",
+   "fleet_id": "KURITA",
+   "fleet_name": "第一游击部队（栗田）",
    "ship": "jp-dd-17"
   },
   {
    "id": "jp-dd-18",
    "faction": "B",
    "name": "驱逐舰18",
-   "fleet_id": "TG3",
-   "fleet_name": "丙部队",
+   "fleet_id": "KURITA",
+   "fleet_name": "第一游击部队（栗田）",
    "ship": "jp-dd-18"
   },
   {
@@ -2011,6 +2011,22 @@
    "fleet_id": "TRN3",
    "fleet_name": "第3登陆运输队",
    "ship": "us-dd-92"
+  },
+  {
+   "id": "jp-bb-06",
+   "faction": "B",
+   "name": "比叡",
+   "fleet_id": "KURITA",
+   "fleet_name": "第一游击部队（栗田）",
+   "ship": "jp-bb-06"
+  },
+  {
+   "id": "jp-bb-07",
+   "faction": "B",
+   "name": "雾岛",
+   "fleet_id": "KURITA",
+   "fleet_name": "第一游击部队（栗田）",
+   "ship": "jp-bb-07"
   }
  ],
  "air_deployments": [
