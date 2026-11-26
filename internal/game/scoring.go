@@ -1,11 +1,15 @@
 package game
 
+import "fmt"
+
 // —— 战果计分 ——
 //
 // 剧本用 kind="score" 的目标声明"按击沉战果分排名"：一艘航母的价值不是拍脑袋定的常数，
 // 而是它机库能装多少架——打掉翔鹤和打掉一艘护航航母不该是一个价钱。
 // 其余舰种按重量级折算：战列舰/战列巡洋舰 6、重巡 3、轻巡 2、驱逐 1、运输船 1；
 // 每摧毁一个航空算子再加 0.25 分，这样"打光对方的飞机"和"打沉对方的船"都能计到账。
+// 航母还有一条"打瘫不算沉"的计分：飞行甲板被摧毁、结构损失超过 80%、或失去动力，
+// 按机库容量的一半记一次，沉没之后改按整艘算（不重复领）。
 // 沉没记录里的 Type 与 Card 是沉没那一刻的快照，所以历史战果不会被后来的改卡影响。
 const (
 	scoreBattleship   = 6
@@ -40,6 +44,71 @@ func ShipVictoryPoints(shipType string, card ShipCard) int {
 	return 0
 }
 
+// CrippledCarrierVictoryPoints 是航母"丧失作战能力"（甲板摧毁 / 结构损失超过 80% / 失去动力）
+// 折算的战果分：机库容量的一半。
+// 之所以不是打沉的全分，是因为船还浮着——它还有被拖回去、被修好的可能，
+// 只是这一仗打不了了。机库是奇数时保留 0.5（15 机库 = 7.5 分），不四舍五入。
+func CrippledCarrierVictoryPoints(card ShipCard) float64 {
+	hangar := card.HangarCapacity
+	if hangar <= 0 {
+		// 老存档/简化卡没写机库容量：给 1 分，和击沉计分的兜底一致，别让一艘航母白瘫。
+		hangar = 2
+	}
+	return float64(hangar) / 2
+}
+
+// carrierCrippledReason 判断一艘航母是否已经丧失作战能力，返回原因（空串表示还能打）。
+// 三个条件任一成立即可，判定顺序就是规则书的书写顺序。
+func carrierCrippledReason(unit Unit) string {
+	switch upperType(unit.Type) {
+	case "CV", "CVL", "CVE":
+	default:
+		return ""
+	}
+	// 沉没走击沉计分，不在这里重复记一笔。
+	if unit.Strength <= 0 {
+		return ""
+	}
+	if unit.Damage != nil && unit.Damage.DeckDestroyed {
+		return "飞行甲板被摧毁"
+	}
+	// "超过 80%"是严格的：刚好 80% 不算。
+	if unit.MaxStrength > 0 && (unit.MaxStrength-unit.Strength)*5 > unit.MaxStrength*4 {
+		return "结构损失超过80%"
+	}
+	if unit.Damage != nil && unit.Damage.Disabled {
+		return "失去动力"
+	}
+	return ""
+}
+
+// AwardCrippledCarriers 在回合结算末尾把新瘫痪的航母记进战果台账。
+// 只记第一次：损管能把进水/动力修回来，但这一次的战果分不该跟着回退。
+func AwardCrippledCarriers(state *State) []EngineEvent {
+	events := []EngineEvent{}
+	for _, id := range sortedUnitIDs(state.Units) {
+		unit := state.Units[id]
+		if unit == nil {
+			continue
+		}
+		reason := carrierCrippledReason(*unit)
+		if reason == "" {
+			continue
+		}
+		if !RecordCrippledCarrier(state, unit, reason) {
+			continue
+		}
+		// 战果分对双方都是公开的（快照里本来就有比分），所以事件发给全场：
+		// 受害方看得见"我的船废了"，得分方看得见"这分是怎么来的"。
+		events = append(events, EngineEvent{
+			Type:     "carrier_crippled",
+			Audience: "all",
+			Text:     fmt.Sprintf("%s丧失作战能力（%s），战果分 +%s", unit.Name, reason, formatVPScore(CrippledCarrierVictoryPoints(unit.Card))),
+		})
+	}
+	return events
+}
+
 // VictoryPoints 返回双方已经拿到的战果分：击沉/击落对方舰船与航空算子的分数之和，
 // 加上已经完成的投送目标（按其 value 计 VP）。未完成的投送目标不计分；
 // 对局结束时由 FinalVictoryPoints 把这条目标的分数判给阻止方。
@@ -52,6 +121,17 @@ func VictoryPoints(state State) map[string]float64 {
 		enemy := OppositeFaction(side)
 		for _, loss := range ledger.Ships {
 			scores[enemy] += float64(ShipVictoryPoints(loss.Type, loss.Card))
+		}
+		// 瘫痪航母按机库一半计分；但沉没的船改按整艘算，不能让"先瘫后沉"领两次。
+		sunk := make(map[string]bool, len(ledger.Ships))
+		for _, loss := range ledger.Ships {
+			sunk[loss.ID] = true
+		}
+		for _, crippled := range ledger.Crippled {
+			if sunk[crippled.ID] {
+				continue
+			}
+			scores[enemy] += CrippledCarrierVictoryPoints(crippled.Card)
 		}
 		aircraft := ledger.AircraftTotal
 		if aircraft == 0 {

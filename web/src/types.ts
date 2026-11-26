@@ -532,6 +532,17 @@ export interface ShipLoss {
   card?: ShipCard
 }
 
+/** 失去作战能力但没沉的航母：甲板摧毁 / 结构损失超过 80% / 失去动力，按机库一半计战果分。 */
+export interface CrippledCarrier {
+  turn: number
+  id?: string
+  name: string
+  type: string
+  fleet?: string
+  reason: string
+  card?: ShipCard
+}
+
 export interface AircraftLoss {
   model: string
   kind: string
@@ -540,6 +551,7 @@ export interface AircraftLoss {
 
 export interface FactionLosses {
   ships?: ShipLoss[]
+  crippled?: CrippledCarrier[]
   aircraft?: AircraftLoss[]
   ship_total?: number
   aircraft_total?: number

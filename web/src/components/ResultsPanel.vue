@@ -12,6 +12,7 @@ const sides = computed(() => {
   return order.map((faction, index) => {
     const ledger = props.state.losses?.[faction] || {}
     const ships = ledger.ships || []
+    const crippled = ledger.crippled || []
     const aircraft = ledger.aircraft || []
     return {
       faction,
@@ -19,6 +20,7 @@ const sides = computed(() => {
       subtitle: faction === own ? (index === 0 ? '我方' : '') : '敌方',
       own: faction === own,
       ships,
+      crippled,
       aircraft,
       aircraftTotal: ledger.aircraft_total || aircraft.reduce((sum, item) => sum + item.count, 0),
     }
@@ -92,6 +94,19 @@ const verdictTitle = computed(() => {
               <span class="lost-turn">T{{ ship.turn }} · 沉没</span>
             </div>
           </div>
+        </section>
+
+        <section class="results-block">
+          <h3>瘫痪航母</h3>
+          <!-- 瘫痪是"还能浮着但打不了了"：甲板摧毁、结构损失超过 80%、失去动力，
+               战果分按机库容量的一半计，只记一次。 -->
+          <p v-if="!side.crippled.length" class="results-empty">无</p>
+          <ul v-else class="lost-air-list">
+            <li v-for="ship in side.crippled" :key="ship.id || ship.name">
+              <span class="lost-air-model">{{ ship.name }}</span>
+              <span class="lost-air-count">T{{ ship.turn }} · {{ ship.reason }}</span>
+            </li>
+          </ul>
         </section>
 
         <section class="results-block">

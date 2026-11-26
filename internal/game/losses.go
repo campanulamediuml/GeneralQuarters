@@ -20,6 +20,21 @@ type ShipLoss struct {
 	Card ShipCard `json:"card"`
 }
 
+// CrippledCarrier 是一艘"丧失作战能力但还浮着"的航母：
+// 飞行甲板被摧毁、结构损失超过 80%、或失去动力，三者任一成立即算瘫痪。
+// 它不进沉船台账（船还在、还有分数价值），所以单独记一笔，并且只记第一次：
+// 甲板摧毁不可逆，但失去动力和进水会被损管修回来，战果分不能跟着来回跳。
+type CrippledCarrier struct {
+	Turn   int    `json:"turn"`
+	ID     string `json:"id"`
+	Name   string `json:"name"`
+	Type   string `json:"type"`
+	Fleet  string `json:"fleet"`
+	Reason string `json:"reason"`
+	// Card 是瘫痪那一刻的卡面快照：机库容量就是战果分的一半，后面改卡不能改历史分数。
+	Card ShipCard `json:"card"`
+}
+
 // AircraftLoss 是按机型聚合的飞机损失。
 type AircraftLoss struct {
 	Model string `json:"model"`
@@ -29,10 +44,12 @@ type AircraftLoss struct {
 
 // LossLedger 是一个阵营的战果账。
 type LossLedger struct {
-	Ships         []ShipLoss     `json:"ships"`
-	Aircraft      []AircraftLoss `json:"aircraft"`
-	ShipTotal     int            `json:"ship_total"`
-	AircraftTotal int            `json:"aircraft_total"`
+	Ships    []ShipLoss     `json:"ships"`
+	Aircraft []AircraftLoss `json:"aircraft"`
+	// Crippled 是失去作战能力但没沉的航母（按机库容量的一半计战果分）。
+	Crippled      []CrippledCarrier `json:"crippled"`
+	ShipTotal     int               `json:"ship_total"`
+	AircraftTotal int               `json:"aircraft_total"`
 }
 
 func ensureLosses(state *State) map[string]*LossLedger {
@@ -66,6 +83,25 @@ func RecordShipLoss(state *State, unit *Unit) {
 	ledger := ledgerFor(state, unit.Faction)
 	ledger.Ships = append(ledger.Ships, ShipLoss{Turn: turn, ID: unit.ID, Name: unit.Name, Type: unit.Type, Fleet: unit.FleetName, Card: unit.Card})
 	ledger.ShipTotal = len(ledger.Ships)
+}
+
+// RecordCrippledCarrier 把一艘丧失作战能力的航母记进台账；已经记过的返回 false。
+// 调用方负责给出原因（甲板摧毁 / 结构损失超过 80% / 失去动力）。
+func RecordCrippledCarrier(state *State, unit *Unit, reason string) bool {
+	if state == nil || unit == nil || reason == "" {
+		return false
+	}
+	ledger := ledgerFor(state, unit.Faction)
+	for _, existing := range ledger.Crippled {
+		if existing.ID == unit.ID {
+			return false
+		}
+	}
+	ledger.Crippled = append(ledger.Crippled, CrippledCarrier{
+		Turn: state.Turn, ID: unit.ID, Name: unit.Name, Type: unit.Type,
+		Fleet: unit.FleetName, Reason: reason, Card: unit.Card,
+	})
+	return true
 }
 
 // recordAircraftLossEntry 按机型累加一架损失。
@@ -157,6 +193,8 @@ func VisibleLosses(state State, faction string) map[string]LossLedger {
 		copied := LossLedger{ShipTotal: ledger.ShipTotal, AircraftTotal: ledger.AircraftTotal}
 		copied.Ships = append(copied.Ships, ledger.Ships...)
 		copied.Aircraft = append(copied.Aircraft, ledger.Aircraft...)
+		// 瘫痪航母和沉船一样是公开战果（打瘫一艘对方航母瞒不住），敌方也能看见。
+		copied.Crippled = append(copied.Crippled, ledger.Crippled...)
 		if side != faction && !finished {
 			copied.Aircraft = nil
 			copied.AircraftTotal = 0

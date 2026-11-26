@@ -1229,6 +1229,9 @@ func ResolveOrders(state *State, orders []Order) []EngineEvent {
 	settleAircraftLosses(state)
 	// 机库占位以实际在舰算子为准：旧版摔毁路径把计数加回去过，脏数据要能自己修回来。
 	ReconcileCarrierAircraftCounts(state)
+	// 航母瘫痪计分：甲板摧毁 / 结构损失超过 80% / 失去动力，按机库一半记一次战果分。
+	// 必须在胜负判定之前入账，否则"最后一回合打瘫对方航母"的分数来不及影响结局。
+	events = append(events, AwardCrippledCarriers(state)...)
 	return append(events, settleOutcome(state)...)
 }
 
