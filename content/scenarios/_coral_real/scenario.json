@@ -655,6 +655,11 @@
    "carrier": "b-6s-kinugasa"
   },
   {
+   "id": "b-6s-cvl-01-a5m-x1",
+   "unit": "a5m",
+   "carrier": "b-6s-cvl-01"
+  },
+  {
    "id": "b-6s-cvl-01-fighter-x1",
    "unit": "fighter",
    "carrier": "b-6s-cvl-01"
@@ -665,17 +670,7 @@
    "carrier": "b-6s-cvl-01"
   },
   {
-   "id": "b-6s-cvl-01-fighter-x3",
-   "unit": "fighter",
-   "carrier": "b-6s-cvl-01"
-  },
-  {
    "id": "b-6s-cvl-01-torpedo_bomber-x1",
-   "unit": "torpedo_bomber",
-   "carrier": "b-6s-cvl-01"
-  },
-  {
-   "id": "b-6s-cvl-01-torpedo_bomber-x2",
    "unit": "torpedo_bomber",
    "carrier": "b-6s-cvl-01"
   },

@@ -307,3 +307,37 @@ func TestCoralRealUSRadar(t *testing.T) {
 		t.Fatal("没有找到美军舰船")
 	}
 }
+
+// 祥凤的航空队：1 架 A5M 九六舰战、2 架 A6M2 零战、1 架 B5N2 九七舰攻。
+func TestCoralRealShohoAirGroup(t *testing.T) {
+	scenario, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err := NewState(scenario, gameMap, catalog, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	counts := map[string]int{}
+	for _, aircraft := range state.Aircraft {
+		if aircraft.CarrierID == "b-6s-cvl-01" {
+			counts[aircraft.DefinitionID]++
+		}
+	}
+	want := map[string]int{"a5m": 1, "fighter": 2, "torpedo_bomber": 1}
+	for id, count := range want {
+		if counts[id] != count {
+			t.Fatalf("祥凤的 %s 应为 %d 架，实际 %d（全部：%v）", id, count, counts[id], counts)
+		}
+	}
+	total := 0
+	for _, count := range counts {
+		total += count
+	}
+	if total != 4 {
+		t.Fatalf("祥凤应载 4 架，实际 %d（%v）", total, counts)
+	}
+	if shoho := state.Units["b-6s-cvl-01"]; shoho == nil || shoho.Card.Aircraft != 4 {
+		t.Fatalf("祥凤的载机计数应与实际算子一致：%+v", shoho)
+	}
+}
