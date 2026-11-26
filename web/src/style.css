@@ -308,7 +308,7 @@ path.hex-wind{pointer-events:none;fill:none;stroke:#7fa6b0;stroke-width:1.3;stro
 .task-cycle{width:26px;height:26px;padding:0;border:1px solid #3f6472;border-radius:3px;background:#0d2026;color:#5f8b9b;font-size:13px;line-height:1;filter:grayscale(1);opacity:.7}
 .task-cycle.active{border-color:#5db6e8;background:#0b3f63;color:#9fdcff;filter:none;opacity:1;box-shadow:0 0 8px #4aa8e055}
 .task-cycle:hover{opacity:1}
-.task-night-warning{display:block;margin-top:3px;padding:2px 6px;border:1px solid #a4553f;background:#3a1b14;color:#f0a58c;font:11px/1.4 'Noto Sans SC',sans-serif;font-style:normal;border-radius:2px}
+.task-night-warning{display:block;margin-top:3px;padding:2px 6px;border:1px solid #a4553f;background:#3a1b14;color:#f0a58c;font:11px/1.4 'Noto Sans SC',sans-serif;font-style:normal;border-radius:2px;cursor:pointer;text-align:left}.task-night-warning:hover{border-color:#d98b6d;color:#ffd2bf}
 /* 自动航行目的地：舰队到目标的虚线 + 目的地小旗 */
 .hex-map .nav-routes{pointer-events:none}
 .hex-map .nav-routes line{stroke:#d7bb7b;stroke-width:1.6;stroke-dasharray:7 5;opacity:.55}
@@ -401,7 +401,13 @@ path.hex-wind{pointer-events:none;fill:none;stroke:#7fa6b0;stroke-width:1.3;stro
 .air-task-detail dt{color:#7e9799;font-size:10px}
 .air-task-detail dd{margin:0;color:#d3e0dc}
 .air-task-radio-note{margin:0 0 9px;color:#89a3a5;font-size:10px}
-.air-task-night-warning{margin:0 0 9px;padding:5px 7px;border:1px solid #a4553f;background:#2a1512;color:#f0a58c;font-size:10px}
+.air-task-night-warning{margin:0 0 9px;padding:5px 7px;border:1px solid #a4553f;background:#2a1512;color:#f0a58c;font-size:10px;cursor:pointer;text-align:left}.air-task-night-warning:hover{border-color:#d98b6d;color:#ffd2bf}
+.strike-eta-modal{width:min(420px,100%)}
+.strike-eta-rows{margin:18px 0 14px;display:flex;flex-direction:column;gap:8px}
+.strike-eta-rows>div{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:8px 10px;border:1px solid #2a4148;background:#0b1b20}
+.strike-eta-rows dt{font-size:11px;color:#8ba4a6}
+.strike-eta-rows dd{margin:0;font:600 17px/1 'Rajdhani',sans-serif;color:#e5ddc8;letter-spacing:1.5px}
+.strike-eta-night{margin:0 0 16px;padding:8px 10px;border:1px solid #a4553f;background:#2a1512;color:#f0a58c;font-size:11px;line-height:1.7}
 .air-task-detail footer{display:flex;flex-wrap:wrap;gap:6px}
 .air-task-detail footer button{flex:1;min-width:88px;padding:6px 8px;border:1px solid #557078;background:#142a31;color:#b7ccca;font-size:10px}
 .air-task-detail footer button:hover:not(:disabled){border-color:var(--gold);color:var(--gold)}

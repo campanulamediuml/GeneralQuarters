@@ -127,6 +127,7 @@ const emit = defineEmits<{
   command: [type: AirCommandType, aircraftIDs: string[], options?: CommandOptions]
   selectAircraft: [aircraftID: string]
   selectTarget: [taskID: string]
+  nightEta: [taskID: string]
 }>()
 const fleetCarrierIDs = computed(() => new Set(props.units.filter((unit) => (unit.fleet_id || unit.id) === props.fleetId).map((unit) => unit.id)))
 // 机场的 unit_id 就是机场 ID（不在地图舰船投影里），因此先按 unit_id 直接匹配，再回退到"所属舰队"匹配。
@@ -570,7 +571,9 @@ function operationName(carrier: CarrierAirStatus) {
               </div>
             </div>
             <aside class="air-task-content">
-              <div class="air-task-copy"><strong>{{ taskTitle(task) }}</strong><span class="air-task-phase" :class="`phase-${task.phase}`">{{ taskPhase(task) }}</span><small>{{ taskSummary(task) }}</small><em v-if="returnHint(task)" class="task-night-warning" role="alert">{{ returnHint(task) }}</em></div>
+              <!-- 夜间返航不再在卡片里铺一行红字（会把编队牌挤变形）：只留一个小标记，
+                   点开是"抵达/降落预计时间 + 返航时间在夜间"的弹窗，详情看弹窗。 -->
+              <div class="air-task-copy"><strong>{{ taskTitle(task) }}</strong><span class="air-task-phase" :class="`phase-${task.phase}`">{{ taskPhase(task) }}</span><small>{{ taskSummary(task) }}</small><button v-if="returnHint(task)" type="button" class="task-night-warning" :title="returnHint(task)" @click.stop="emit('nightEta', task.id)">！返航时间在夜间</button></div>
               <div v-if="['attack', 'cover', 'transfer'].includes(task.kind)" class="strike-target-control" :class="{ 'cannot-land': task.cannot_land }">
                 <div class="strike-target-card"><span>⬡</span><div><strong>{{ task.target_coord ? targetLabel(task) : '目标 未设置' }}</strong><small>{{ task.target_coord ? `目标 ${task.target_coord}` : '在地图上点选目标' }}</small></div></div>
                 <button :aria-label="task.target_coord ? '更换目标' : '选择目标'" :title="'在地图上点选打击目标'" @click.stop="emit('selectTarget', task.id)">{{ task.target_coord ? '更换' : '选择' }}</button>

@@ -24,6 +24,8 @@ const selectedAirTaskID = ref('')
 const strikeTargetTaskID = ref('')
 // 地图上点开的编队牌：打击/转场编队离场后从整编栏撤走，详情和操作都在这里。
 const mapAirTaskID = ref('')
+// 打击编队的预计时间弹窗：点完目标自动弹，卡片上的"！返航时间在夜间"标记也能把它重新打开。
+const strikeEtaTaskID = ref('')
 const menuCoord = ref('')
 const fleetChoiceCoord = ref('')
 const inspectedAirfieldID = ref('')
@@ -627,7 +629,12 @@ async function setStrikeTarget(coord: string) {
   // 只有空中攻击编队改目标要走无线电；空中掩护/转场用普通命令直接改目标。
   const airborne = Boolean(task && task.airborne_count > 0 && task.kind === 'attack')
   await airCommand(airborne ? 'RETARGET_AIR' : 'SET_STRIKE_TARGET', [strikeTargetTaskID.value], { coord, task_id: strikeTargetTaskID.value })
-  if (!error.value) cancelStrikeTarget()
+  if (!error.value) {
+    // 点完目标先给玩家一张时间表：几点打到、几点全部落回来、会不会摸黑着舰。
+    // 这比在编队牌上挂一行红字有用——起飞前就能决定要不要换目标或者干脆不打。
+    if (task?.kind === 'attack') openStrikeEta(task.id)
+    cancelStrikeTarget()
+  }
 }
 
 function selectHex(coord: string) {
@@ -785,6 +792,30 @@ async function setEngagement(setting: 'aggressive' | 'advantage' | 'avoid') {
   } finally {
     actionBusy.value = false
   }
+}
+
+// —— 攻击编队的预计时间（弹窗）——
+const strikeEtaTask = computed(() => {
+  const id = strikeEtaTaskID.value
+  if (!id) return null
+  return (state.value?.aviation.tasks || []).find((task) => task.id === id)
+    ?? (state.value?.ground_tasks || []).find((task) => task.id === id)
+    ?? null
+})
+// 有预计时刻、或者这波注定摸黑，才值得弹：没有昼夜时间线的剧本里时间字段是空串。
+const strikeEtaOpen = computed(() => {
+  const task = strikeEtaTask.value
+  return Boolean(task && (task.eta_target || task.eta_landed || task.lands_at_night || task.night_safe === false))
+})
+const strikeEtaNightNote = computed(() => {
+  const task = strikeEtaTask.value
+  if (!task) return ''
+  const landed = task.eta_landed ? `预计 ${task.eta_landed} 落舰，` : ''
+  return `！返航时间在夜间（${landed}夜间着舰按摔毁判定结算：航母 70%、机场 20%）`
+})
+function openStrikeEta(taskID: string) {
+  if (!taskID) return
+  strikeEtaTaskID.value = taskID
 }
 
 // —— 攻击编队的攻击方式（规则书 624–631 行）——
@@ -1036,7 +1067,7 @@ onUnmounted(() => {
                     <div><dt>目标</dt><dd>{{ mapAirTaskTarget }}</dd></div>
                     <div><dt>起飞</dt><dd>{{ mapAirTaskOrigin }}</dd></div>
                   </dl>
-                  <p v-if="mapAirTask.night_safe === false" class="air-task-night-warning" role="alert">距天黑 {{ state.clock?.night_in_turns }} 回合，返航要 {{ mapAirTask.return_turns }} 回合——这波回不来</p>
+                  <button v-if="mapAirTask.night_safe === false" type="button" class="air-task-night-warning" :title="`距天黑 ${state.clock?.night_in_turns} 回合，返航要 ${mapAirTask.return_turns} 回合——这波回不来`" @click.stop="openStrikeEta(mapAirTask.id)">！返航时间在夜间 · 查看预计</button>
                   <p class="air-task-radio-note">{{ mapAirTaskPendingText || mapAirTaskRadioTitle }}</p>
                   <footer>
                     <button :disabled="actionBusy || Boolean(mapAirTaskPending) || !mapAirTaskRadio || mapAirTaskRadio.used" :title="mapAirTaskPendingText || mapAirTaskRadioTitle" @click.stop="chooseStrikeTarget(mapAirTask.id)">修改目标</button>
@@ -1124,7 +1155,7 @@ onUnmounted(() => {
           </article>
           <div class="document-grid"><article><h2>当前通信沙盒</h2><p>选择己方舰队，再把舰队拖到相邻绿色hex下达移动命令，点击目标hex不会移动。到达可移动时机后由服务器立即生效，普通/快速舰队移动后等待3回合，纯高速驱逐舰2回合，慢速6回合，极慢9回合；底条黄色表示可移动，蓝色表示已移动或冷却中，右上角箭头表示舰队朝向。</p><p>同一hex存在多个舰队时，点击hex弹出舰队列表。选择舰队可查看成员，选择整编可将任意两个同阵营舰队合并，整编同样由服务器立即生效。</p></article><article><h2>坐标与地形</h2><p>hex使用ABCD坐标，AB为行、CD为列。当前只能拖动至相邻且可通行的hex。暗礁一律不可进入；机场格与浅滩只有含 CV/CVL/CVE 的舰队不能进入，纯水面舰队可以靠岸靠滩并实施岸轰。蓝灰色虚线仅用于距离参考，不代表可移动。</p><p>正式航空、损管与剧本规则位于项目《规则书.md》，将随规则模块逐步接入。</p></article></div></section>
         <section v-else-if="activePanel === 'settings'" class="workspace-page"><span class="section-kicker">SETTINGS</span><h1>作战室设置</h1><div class="settings-grid"><div class="side-card"><h2>当前会话</h2><p>指挥官：{{ state.you.name }}</p><p>阵营：{{ state.you.faction }} · 内部房间 ID：<code>{{ state.room_id }}</code></p><p v-if="state.join_token">房间 token：<code>{{ state.join_token }}</code></p><p v-if="watchPath">观战地址：<a :href="watchPath" target="_blank" rel="noreferrer">{{ watchPath }} ↗</a></p><p>连接方式：{{ socketStatus === 'online' ? 'WebSocket实时同步' : 'WebSocket重连中' }}</p></div><div class="side-card"><h2>地图与资源</h2><p>坐标格式：ABCD（行 + 列）</p><p>地图与剧本从服务器持久化内容目录载入。</p><a class="secondary-link" href="/api/docs" target="_blank">查看API与AI扩展文档 ↗</a></div></div></section>
-        <AviationPanel v-else-if="activePanel === 'aviation'" :key="selectedAirfield ? 'airfield-' + selectedAirfield.unit_id : 'fleet'" :aviation="aviationCarriers ?? state.aviation" :units="ownUnits" :fleet-id="aviationFleetId" :targets="strikeTargets" :player-faction="state.you.faction" :focus-unit-id="aviationFocusID" :selected-aircraft-id="selectedAirTaskID" :busy="actionBusy || locked" :locked="locked" :airfield="selectedAirfield" :radio-tasks="state.radio_tasks" :clock="state.clock" @command="airCommand" @select-aircraft="selectAircraft" @select-target="chooseStrikeTarget" />
+        <AviationPanel v-else-if="activePanel === 'aviation'" :key="selectedAirfield ? 'airfield-' + selectedAirfield.unit_id : 'fleet'" :aviation="aviationCarriers ?? state.aviation" :units="ownUnits" :fleet-id="aviationFleetId" :targets="strikeTargets" :player-faction="state.you.faction" :focus-unit-id="aviationFocusID" :selected-aircraft-id="selectedAirTaskID" :busy="actionBusy || locked" :locked="locked" :airfield="selectedAirfield" :radio-tasks="state.radio_tasks" :clock="state.clock" @command="airCommand" @select-aircraft="selectAircraft" @select-target="chooseStrikeTarget" @night-eta="openStrikeEta" />
         <ResultsPanel v-else-if="activePanel === 'results'" :state="state" />
         <AirCombatPanel v-else-if="activePanel === 'airCombat' && activeAirCombat" :report="activeAirCombat" :has-next="combatQueue.length > 0" @close="closeAirCombat" />
         <section v-else class="workspace-page"><span class="section-kicker">EVENT LOG</span><h1>日志信息</h1><div class="full-log"><div v-for="event in orderedEvents" :key="event.id" class="full-log-row"><span>T{{ String(event.turn).padStart(2, '0') }}</span><code>#{{ event.id }}</code><p>{{ event.text }}</p><time>{{ new Date(event.created_at).toLocaleTimeString() }}</time></div></div></section>
@@ -1171,6 +1202,19 @@ onUnmounted(() => {
         <header><div><span class="section-kicker">COMMAND REJECTED</span><h2>操作未生效</h2></div><button aria-label="关闭" @click="dismissError">×</button></header>
         <p class="error-modal-text">{{ error }}</p>
         <footer class="error-modal-actions"><button class="apply-button" @click="dismissError">知道了</button></footer>
+      </section>
+    </div>
+
+    <!-- 打击编队的时间表：点完目标就弹，出发前先看清"几点打到、几点落回来、会不会摸黑"。 -->
+    <div v-if="strikeEtaOpen" class="fleet-dialog strike-eta-dialog" @click.self="strikeEtaTaskID = ''">
+      <section class="fleet-modal strike-eta-modal" role="dialog" aria-modal="true" aria-label="打击编队预计时间">
+        <header><div><span class="section-kicker">AIR STRIKE · TIMELINE</span><h2>{{ strikeEtaTask?.name }}</h2></div><button aria-label="关闭" @click="strikeEtaTaskID = ''">×</button></header>
+        <dl v-if="strikeEtaTask?.eta_target || strikeEtaTask?.eta_landed" class="strike-eta-rows">
+          <div><dt>抵达目标预计</dt><dd>{{ strikeEtaTask?.eta_target || '——' }}</dd></div>
+          <div><dt>完全降落预计</dt><dd>{{ strikeEtaTask?.eta_landed || '——' }}</dd></div>
+        </dl>
+        <p v-if="strikeEtaTask && (strikeEtaTask.lands_at_night || strikeEtaTask.night_safe === false)" class="strike-eta-night" role="alert">{{ strikeEtaNightNote }}</p>
+        <footer class="error-modal-actions"><button class="apply-button" @click="strikeEtaTaskID = ''">确认</button></footer>
       </section>
     </div>
   </main>

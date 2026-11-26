@@ -2135,6 +2135,12 @@ func GroundAviationView(state State, faction string) AviationView {
 			task.CurrentCoord = leader.Coord
 			task.Returning = leader.Returning
 			task.Name = "攻击编队 · " + leader.Model
+			if task.TargetCoord != "" {
+				if home := airfieldFor(&state, leader.AirfieldID); home != nil {
+					toTarget, toLanded := EstimateGroundStrike(state, members, home)
+					fillStrikeETA(state, &task, toTarget, toLanded)
+				}
+			}
 		} else if leader.TaskKind == "cap" {
 			// CAP 是"指定空域"：位置必须用飞机的实际坐标（它可能正飞往某支舰队上空），
 			// 以前写死机场坐标，地图上的 CAP 牌永远挂在机场上，看不出它到底去哪儿值班。

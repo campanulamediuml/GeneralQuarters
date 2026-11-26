@@ -215,6 +215,16 @@ export interface AirTask {
   turns_to_dark: number
   /** 富余回合数 = turns_to_dark - return_turns，小于 0 就是这波回不来 */
   night_margin: number
+  /** 攻击编队预计再几回合命中目标（从当前回合算起，0 = 本回合结算就打） */
+  turns_to_target?: number
+  /** 攻击编队预计再几回全部落回来（含着舰/跑道排队） */
+  turns_to_landed?: number
+  /** 抵达目标预计时刻 "HH:MM"（剧本没有昼夜时间线时为空串） */
+  eta_target?: string
+  /** 完全降落预计时刻 "HH:MM" */
+  eta_landed?: string
+  /** 按预估，落舰那一刻已经在夜间（夜间着舰航母 70%、机场 20% 摔毁） */
+  lands_at_night?: boolean
   heading?: ReconHeading
   sector_width?: 60 | 120
   recon_radius?: number

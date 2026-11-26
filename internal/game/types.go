@@ -737,8 +737,17 @@ type AirTask struct {
 	NightSafe bool `json:"night_safe"`
 	// TurnsToDark / NightMargin 是给机器玩家算账用的：距天黑还剩几回合、返航后富余几回合。
 	// NightMargin < 0 等于"走完任务再回来就摸黑了"。没有昼夜循环的剧本里 TurnsToDark = -1。
-	TurnsToDark       int                `json:"turns_to_dark"`
-	NightMargin       int                `json:"night_margin"`
+	TurnsToDark int `json:"turns_to_dark"`
+	NightMargin int `json:"night_margin"`
+	// —— 攻击编队的到点/落舰预估（前端弹窗直接显示，见 strike_timeline.go）——
+	// TurnsToTarget：从现在到空袭真正打在目标上的回合数；TurnsToLanded：到最后一架落回来的回合数。
+	TurnsToTarget int `json:"turns_to_target"`
+	TurnsToLanded int `json:"turns_to_landed"`
+	// ETATarget / ETALanded 是同一笔账换算成的当天时刻（"HH:MM"）。没有昼夜循环的剧本里为空串。
+	ETATarget string `json:"eta_target"`
+	ETALanded string `json:"eta_landed"`
+	// LandsAtNight：按预估，落舰那一刻已经在夜间（夜间着舰航母 70%、机场 20% 摔毁）。
+	LandsAtNight      bool               `json:"lands_at_night"`
 	ReconSectors      []ReconSector      `json:"recon_sectors"`
 	DistanceReference *DistanceReference `json:"distance_reference"`
 }

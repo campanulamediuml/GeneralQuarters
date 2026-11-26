@@ -2331,6 +2331,10 @@ func VisibleAviation(state State, faction string) AviationView {
 			// 返航中的打击编队要让地图上的编队牌写明"返航中"，
 			// 否则召回到家之前它看起来还是"任务执行中"。
 			task.Returning = leader.Returning
+			if task.TargetCoord != "" {
+				toTarget, toLanded := EstimateCarrierStrike(state, aircraftList, carrier)
+				fillStrikeETA(state, &task, toTarget, toLanded)
+			}
 		case "cover":
 			task.Name = "空中掩护 · " + leader.Model
 			task.OriginCoord = leader.OriginCoord
