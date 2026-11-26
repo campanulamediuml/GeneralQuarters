@@ -43,8 +43,10 @@ func EnsureAviation(state *State) {
 		}
 		// Card.DeckCapacity 是卡面印刷的基础值，不跟着本回合风向改写；
 		// 当前可用容量看 Deck.Length（航空面板/作业判定都用它）。
+		// 每部可用升降机提供 4 算子的"提升+下降合计容量"（规则书 205、458 行）；
+		// 非航母用吊车，一次 1 个。
 		kind := "elevator"
-		capacity := 2
+		capacity := 4
 		if !IsCarrier(unit) {
 			kind = "crane"
 			capacity = 1
@@ -58,9 +60,9 @@ func EnsureAviation(state *State) {
 			elevator := unit.Deck.Elevators[index]
 			elevator.ID = id
 			elevator.Kind = kind
-			if elevator.Capacity <= 0 {
-				elevator.Capacity = capacity
-			}
+			// 容量是设计值，不随战况变：航母每部 4 个算子、吊车 1 个。
+			// 老存档里可能还是旧的 2，这里统一按规则纠正，否则"坏一部少 4 个名额"对不上。
+			elevator.Capacity = capacity
 			if elevator.Status == "" {
 				elevator.Status = "idle"
 			}
@@ -1342,6 +1344,21 @@ func serviceComplete(aircraft *AirUnit) bool {
 	return aircraft != nil && aircraft.ServiceTurns >= 2 && !aircraft.Damaged && aircraft.Maintenance == 0
 }
 
+// elevatorBudget 是这艘船本回合"提升 + 下降"合计能处理的算子数：
+// 可用升降机每部 4 个，损坏的整部不计入（规则书 205、458 行）。
+func elevatorBudget(unit *Unit) int {
+	if unit == nil || unit.Deck == nil {
+		return 0
+	}
+	budget := 0
+	for _, elevator := range unit.Deck.Elevators {
+		if elevator != nil && elevator.Status != "damaged" {
+			budget += elevator.Capacity
+		}
+	}
+	return budget
+}
+
 func scheduleElevators(state *State) []EngineEvent {
 	events := []EngineEvent{}
 	events = append(events, advanceAircraftService(state)...)
@@ -1357,8 +1374,9 @@ func scheduleElevators(state *State) []EngineEvent {
 		}
 		reserved := 0
 		delayed := false
+		budget := elevatorBudget(carrier)
 		for _, elevator := range carrier.Deck.Elevators {
-			if elevator.Status != "idle" {
+			if elevator.Status != "idle" || budget <= 0 {
 				continue
 			}
 			recovery := []*AirUnit{}
@@ -1370,10 +1388,11 @@ func scheduleElevators(state *State) []EngineEvent {
 			sort.Slice(recovery, func(i, j int) bool { return recovery[i].ID < recovery[j].ID })
 			if len(recovery) > 0 {
 				count := len(recovery)
-				if count > elevator.Capacity {
-					count = elevator.Capacity
+				if count > budget {
+					count = budget
 				}
 				selected := recovery[:count]
+				budget -= len(selected)
 				elevator.Status = "lowering"
 				elevator.TaskID = ""
 				elevator.AircraftIDs = []string{}
@@ -1407,13 +1426,17 @@ func scheduleElevators(state *State) []EngineEvent {
 				continue
 			}
 			count := len(selectedTask)
-			if count > elevator.Capacity {
-				count = elevator.Capacity
+			if count > budget {
+				count = budget
 			}
 			if count > available {
 				count = available
 			}
+			if count <= 0 {
+				continue
+			}
 			selected := selectedTask[:count]
+			budget -= len(selected)
 			elevator.Status = "lifting"
 			elevator.TaskID = selected[0].TaskID
 			elevator.AircraftIDs = []string{}

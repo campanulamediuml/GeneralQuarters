@@ -55,11 +55,11 @@ func addFire(unit *Unit, fire string) {
 		damage.SmallFireHits = 0
 		return
 	}
-	// 小型火灾：同一回合内第 3 次触发才升级为起火燃烧（规则书 432 行"本回合内再次触发"）。
+	// 小型火灾：同一回合内再次触发就升级为起火燃烧（规则书 432 行）。
 	// 回合开始小火自动扑灭并清零计数，所以跨回合的两把小火不会叠加成大火。
 	if damage.Fire == "small" {
 		damage.SmallFireHits++
-		if damage.SmallFireHits >= 3 {
+		if damage.SmallFireHits >= 2 {
 			damage.Fire = "burning"
 			damage.SmallFireHits = 0
 		}
@@ -197,10 +197,10 @@ func severeDamage(state *State, unit *Unit, cause HitCause) []EngineEvent {
 // severeDamageTable 按命中来源和船只装备拼出这次能抽到的严重伤害表。
 // 全局表只放任何船都可能中的条目；雷达相关的两条都挂在"装备对海雷达"的额外表里，
 // 否则没有雷达的驱逐舰会白掷到一条毫无效果的"火控雷达损坏"。
-// 漏油只有鱼雷命中才可能抽到——别的来源抽到"漏油"等于白给一条结果。
+// 漏油只有鱼雷和炮弹命中才可能抽到——炸弹和火灾抽到"漏油"等于白给一条结果。
 func severeDamageTable(cause HitCause, unit *Unit) []string {
 	table := []string{"small_fire", "burning", "flooding", "dc_down", "ammo_explosion"}
-	if cause == HitTorpedo {
+	if cause == HitTorpedo || cause == HitShell {
 		table = append(table, "oil_leak")
 	}
 	table = append(table, "severe_flooding", "hull_damage", "aa_loss")

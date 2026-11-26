@@ -2,9 +2,9 @@ package game
 
 import "testing"
 
-// TestThreeSmallFiresEscalateToBurning 小型火灾同一回合触发三次才升级为起火燃烧（规则书 432 行，
-// 按本方规则把"再次触发"定为第 3 次）。
-func TestThreeSmallFiresEscalateToBurning(t *testing.T) {
+// TestSecondSmallFireEscalatesToBurning 小型火灾在同一回合内再次触发就升级为起火燃烧
+// （规则书 432 行"本回合内再次触发小型火灾时，转为起火燃烧"）。
+func TestSecondSmallFireEscalatesToBurning(t *testing.T) {
 	state := sandboxState(t)
 	unit := state.Units["a-bb-01"]
 	addFire(unit, "small")
@@ -12,12 +12,8 @@ func TestThreeSmallFiresEscalateToBurning(t *testing.T) {
 		t.Fatalf("第一次小型火灾应只点小火：%+v", unit.Damage)
 	}
 	addFire(unit, "small")
-	if unit.Damage.Fire != "small" {
-		t.Fatalf("第二次小型火灾仍是小火，不应升级：%+v", unit.Damage)
-	}
-	addFire(unit, "small")
 	if unit.Damage.Fire != "burning" {
-		t.Fatalf("第三次小型火灾应升级为起火燃烧：%+v", unit.Damage)
+		t.Fatalf("第二次小型火灾应升级为起火燃烧：%+v", unit.Damage)
 	}
 }
 

@@ -439,7 +439,7 @@ type FlightDeck struct {
 
 type ShipDamage struct {
 	Fire string `json:"fire,omitempty"`
-	// SmallFireHits 记录本回合内已经触发过几次小型火灾：第 3 次才升级为起火燃烧（规则书 432 行）。
+	// SmallFireHits 记录本回合内已经触发过几次小型火灾：第二次触发即升级为起火燃烧（规则书 432 行）。
 	// 小型火灾在回合开始时自动扑灭，同时清零这个计数。
 	SmallFireHits   int   `json:"small_fire_hits,omitempty"`
 	Flooding        []int `json:"flooding,omitempty"`

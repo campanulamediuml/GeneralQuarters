@@ -39,7 +39,7 @@ func TestAviationProjectionIncludesIndependentShipDecks(t *testing.T) {
 		t.Fatalf("航母甲板或升降机投影错误：%+v", carrier)
 	}
 	for _, elevator := range carrier.Elevators {
-		if elevator.Status != "idle" || elevator.Capacity != 2 || elevator.Kind != "elevator" {
+		if elevator.Status != "idle" || elevator.Capacity != 4 || elevator.Kind != "elevator" {
 			t.Fatalf("航母升降机初始状态错误：%+v", elevator)
 		}
 	}

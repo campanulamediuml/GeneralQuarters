@@ -9,15 +9,18 @@ import (
 func TestSevereDamageTableBySource(t *testing.T) {
 	carrier := &Unit{ID: "cv", Type: "CV", Card: ShipCard{HangarCapacity: 2}}
 	destroyer := &Unit{ID: "dd", Type: "DD", Card: ShipCard{TorpedoSalvos: 3}}
-	for _, cause := range []HitCause{HitShell, HitBomb, HitFire} {
+	// 漏油来自鱼雷和炮弹；炸弹、火灾不该抽到它。
+	for _, cause := range []HitCause{HitBomb, HitFire} {
 		for _, unit := range []*Unit{carrier, destroyer} {
 			if table := severeDamageTable(cause, unit); containsDamage(table, "oil_leak") {
 				t.Fatalf("%s 命中不该抽到漏油：%v", cause, table)
 			}
 		}
 	}
-	if table := severeDamageTable(HitTorpedo, destroyer); !containsDamage(table, "oil_leak") {
-		t.Fatalf("鱼雷命中必须能抽到漏油：%v", table)
+	for _, cause := range []HitCause{HitTorpedo, HitShell} {
+		if table := severeDamageTable(cause, destroyer); !containsDamage(table, "oil_leak") {
+			t.Fatalf("%s 命中必须能抽到漏油：%v", cause, table)
+		}
 	}
 	// 额外表仍然按船型和装备拼。
 	if table := severeDamageTable(HitBomb, carrier); !containsDamage(table, "hangar_damage") || !containsDamage(table, "deck_destroyed") {
