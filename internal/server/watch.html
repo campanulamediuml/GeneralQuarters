@@ -80,6 +80,16 @@
   .briefing{margin:0 0 8px;border:1px solid #2a4148;background:#0b1c21}
   .briefing summary{padding:7px 9px;color:var(--gold);font-size:11px;cursor:pointer}
   .briefing div{padding:0 10px 9px;color:#a9bcba;font-size:11px;line-height:1.75;white-space:pre-line}
+  /* 得分明细：观战页把双方的每一笔战果分都摊开，点开即看，默认收起不占版面。 */
+  .score-detail{margin:6px 0 8px}
+  .score-detail summary{display:flex;align-items:center;gap:6px}
+  .score-detail .score-lines{padding:0 10px 8px;max-height:250px;overflow:auto;white-space:normal}
+  .score-line{display:flex;align-items:baseline;gap:6px;padding:3px 0;border-top:1px dashed #1d3238;font-size:11px}
+  .score-line:first-child{border-top:0}
+  .score-line .score-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#b9cbc7}
+  .score-line .score-text i{color:#6f8d92;font-style:normal;margin-right:4px}
+  .score-line b{color:var(--gold);font-variant-numeric:tabular-nums;font-weight:600}
+  .score-empty{padding:6px 0;color:#718d91;font-size:11px}
   .outcome-reason{padding:4px 0 2px;color:var(--muted);font-size:10px;line-height:1.55}
   .tag{display:inline-block;min-width:16px;text-align:center;font-size:10px;font-weight:700;color:#0b1b20;border-radius:2px;padding:0 4px}
   .tag.a{background:var(--a)} .tag.b{background:var(--b)}
@@ -1030,6 +1040,27 @@
     var scores = data.scores || {};
     var points = function (value) { return Math.round((Number(value) || 0) * 100) / 100; };
     html += '<div class="row"><span>战果分</span><span><span class="tag a">A</span> ' + points(scores.A) + ' : ' + points(scores.B) + ' <span class="tag b">B</span></span></div>';
+    // 双方得分明细：score_breakdown[阵营] 是"给这个阵营的得分条目"，line.faction 是吃亏的一方。
+    // 观战页没有"己方视角"，所以两条账并排列出来，谁丢了什么、丢的那笔值多少一目了然。
+    var breakdown = data.score_breakdown || {};
+    ['A', 'B'].forEach(function (side) {
+      var lines = breakdown[side] || [];
+      var total = lines.reduce(function (sum, line) { return sum + (Number(line.points) || 0); }, 0);
+      var detail = '<details class="briefing score-detail"><summary><span class="tag ' + side.toLowerCase() + '">' + side + '</span> 得分明细 · 合计 ' + points(total) + ' 分</summary><div class="score-lines">';
+      if (!lines.length) {
+        detail += '<div class="score-empty">暂无战果</div>';
+      } else {
+        lines.forEach(function (line) {
+          var kind = line.kind === 'supply' ? '投送' : line.kind === 'crippled' ? '瘫痪' : line.kind === 'aircraft' ? '航空' : '击沉';
+          var loser = String(line.faction || '').toLowerCase();
+          var text = line.text || '';
+          detail += '<div class="score-line"><span class="tag ' + (loser === 'a' || loser === 'b' ? loser : 'a') + '">' + escapeHTML(String(line.faction || '?')) + '</span>' +
+            '<span class="score-text" title="' + escapeHTML(text) + '"><i>' + kind + '</i>' + escapeHTML(text) + '</span>' +
+            '<b>' + points(line.points) + '</b></div>';
+        });
+      }
+      html += detail + '</div></details>';
+    });
     var losses = data.losses || {};
     ['A', 'B'].forEach(function (side) {
       var ledger = losses[side] || {};

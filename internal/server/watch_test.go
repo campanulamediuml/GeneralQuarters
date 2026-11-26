@@ -19,6 +19,9 @@ type spectateView struct {
 	Events    []store.Event              `json:"events"`
 	Losses    map[string]game.LossLedger `json:"losses"`
 	Spectator bool                       `json:"spectator"`
+	// 观战页要摊开双方的每一笔战果分：这两个字段必须一起下发，明细之和还要等于总分。
+	Scores         map[string]float64          `json:"scores"`
+	ScoreBreakdown map[string][]game.ScoreLine `json:"score_breakdown"`
 }
 
 // TestSpectateMergesBothFactions 校验观战快照：两边各自的合法视图按单位归属合并，
@@ -42,6 +45,15 @@ func TestSpectateMergesBothFactions(t *testing.T) {
 	}
 	if !view.Spectator {
 		t.Fatal("观战快照没有标记 spectator")
+	}
+	// 得分明细：开局还没战果，但两个阵营的账本必须都在，观战页才能画出"双方得分"面板。
+	for _, side := range []string{"A", "B"} {
+		if _, ok := view.Scores[side]; !ok {
+			t.Fatalf("观战快照缺少 %s 的战果分：%v", side, view.Scores)
+		}
+		if _, ok := view.ScoreBreakdown[side]; !ok {
+			t.Fatalf("观战快照缺少 %s 的得分明细：%v", side, view.ScoreBreakdown)
+		}
 	}
 	sides := map[string]bool{}
 	for _, unit := range view.Units {
