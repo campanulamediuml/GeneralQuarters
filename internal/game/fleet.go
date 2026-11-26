@@ -335,10 +335,17 @@ func advanceTowardEdge(state *State) []EngineEvent {
 			events = append(events, removeFleet(state, fleetID, members[0].Faction)...)
 			continue
 		}
+		// 退避队也按舰队航速行动，不是每回合无条件挪一格：慢速运输队和被打瘸的船
+		// 会被追上，这正是"撤离"有风险的地方。间隔取编队里最慢的那艘（进水/倾斜还会再降档）。
+		if FleetMoveCooldown(*state, fleetID) > 0 {
+			continue
+		}
 		next := withdrawStep(*state, leader)
 		if next == "" {
 			continue
 		}
+		interval := FleetMoveInterval(*state, leader)
+		cooldown := movementCooldownAfterMove(interval)
 		for _, member := range members {
 			unit := state.Units[member.ID]
 			if unit == nil {
@@ -347,9 +354,12 @@ func advanceTowardEdge(state *State) []EngineEvent {
 			unit.Heading = headingBetween(unit.Coord, next)
 			unit.Coord = next
 			unit.Moved = true
+			if cooldown > unit.MoveCooldown {
+				unit.MoveCooldown = cooldown
+			}
 		}
 		clearFleetStay(state, fleetID)
-		events = append(events, EngineEvent{Type: "fleet_withdrawing", Audience: leader.Faction, Text: fmt.Sprintf("%s向%s撤离一hex", leader.FleetName, next)})
+		events = append(events, EngineEvent{Type: "fleet_withdrawing", Audience: leader.Faction, Text: fmt.Sprintf("%s向%s撤离一hex（每%d回合移动一次）", leader.FleetName, next, interval)})
 	}
 	return events
 }
