@@ -147,7 +147,7 @@ func restartCycledTask(state *State, aircraft *AirUnit) []EngineEvent {
 	kind := aircraft.CycleKind
 	taskID := aircraft.CycleTaskID
 	if taskID == "" {
-		taskID = newAirTaskID(state, []*AirUnit{aircraft})
+		taskID = nextTaskID(state, MissionKind(kind))
 	}
 	priority := nextAirTaskPriority(state, aircraft.Faction)
 	if members := taskAircraft(*state, taskID); len(members) > 0 && members[0].Priority > 0 {

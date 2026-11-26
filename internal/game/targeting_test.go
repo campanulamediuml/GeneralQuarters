@@ -10,6 +10,7 @@ func TestStrikeTargetValidationAndInheritance(t *testing.T) {
 		t.Fatalf("允许先创建编队再设置目标：%v", err)
 	}
 	ApplyAirOrder(&state, first)
+	strikeTaskID := state.Aircraft["b-cv-01-dive_bomber-x1"].TaskID
 	target := Order{Type: "SET_STRIKE_TARGET", AircraftID: "b-cv-01-dive_bomber-x1", Coord: "0101"}
 	// 没有情报的格子不能作为打击目标：攻击编队必须先由侦察机发现目标才能出击。
 	if err := ValidateAirOrder(state, "B", target); err == nil {
@@ -28,7 +29,7 @@ func TestStrikeTargetValidationAndInheritance(t *testing.T) {
 		t.Fatalf("已知目标未通过校验：%v", err)
 	}
 	ApplyAirOrder(&state, target)
-	join := Order{Type: "LAUNCH_STRIKE", AircraftID: "b-cv-02-dive_bomber-x1", TaskID: "b-cv-01-dive_bomber-x1", Coord: "0101"}
+	join := Order{Type: "LAUNCH_STRIKE", AircraftID: "b-cv-02-dive_bomber-x1", TaskID: strikeTaskID, Coord: "0101"}
 	if err := ValidateAirOrder(state, "B", join); err != nil {
 		t.Fatalf("加入已有编队失败：%v", err)
 	}

@@ -112,8 +112,8 @@ func TestReturningMembersSplitOutOfStrikeTask(t *testing.T) {
 	}
 	state.Aircraft[ids[0]].Returning = true
 	splitCarrierReturningMembers(&state)
-	if got := state.Aircraft[ids[0]].TaskID; got != "strike-split-out"+returningTaskSuffix {
-		t.Fatalf("返航成员应单独成组，实际任务号 %s", got)
+	if got := state.Aircraft[ids[0]].TaskID; got == "strike-split-out" {
+		t.Fatal("返航成员应单独成组，实际还挂在原任务上")
 	}
 	if got := state.Aircraft[ids[1]].TaskID; got != "strike-split-out" {
 		t.Fatalf("还在任务的成员不该改任务号，实际 %s", got)
@@ -141,8 +141,8 @@ func TestGroundReturningMembersSplitOutOfStrikeTask(t *testing.T) {
 	}
 	state.GroundAir[members[0]].Returning = true
 	splitGroundReturningMembers(&state)
-	if got := state.GroundAir[members[0]].TaskID; got != "af-strike-split"+returningTaskSuffix {
-		t.Fatalf("返航的机场算子应单独成组，实际 %s", got)
+	if got := state.GroundAir[members[0]].TaskID; got == "af-strike-split" {
+		t.Fatal("返航的机场算子应单独成组，实际还挂在原任务上")
 	}
 	if got := state.GroundAir[members[1]].TaskID; got != "af-strike-split" {
 		t.Fatalf("还在任务的机场算子不该改任务号，实际 %s", got)
@@ -170,5 +170,33 @@ func TestRadioRetaskSkipsReturningMembers(t *testing.T) {
 	}
 	if state.Aircraft[ids[1]].TaskKind != "attack" {
 		t.Fatalf("没返航的成员应该按改令转成打击：%s", state.Aircraft[ids[1]].TaskKind)
+	}
+}
+
+// 任务号由只增不减的序号生成：同一批飞机第二次出击不会撞上一次的任务号。
+func TestTaskIDsAreUniqueAcrossSorties(t *testing.T) {
+	state := sandboxState(t)
+	ids := []string{"b-cv-01-dive_bomber-x1", "b-cv-01-torpedo_bomber-x1"}
+	first := ""
+	for round := 0; round < 2; round++ {
+		for _, id := range ids {
+			aircraft := state.Aircraft[id]
+			aircraft.Status = "deck"
+			aircraft.Launched = false
+			aircraft.TaskID = ""
+			aircraft.TaskKind = ""
+		}
+		ApplyAirOrder(&state, Order{Type: "LAUNCH_STRIKE", AircraftIDs: ids, Coord: "0202"})
+		taskID := state.Aircraft[ids[0]].TaskID
+		if taskID == "" {
+			t.Fatalf("第 %d 轮没有生成任务号", round+1)
+		}
+		if round == 0 {
+			first = taskID
+			continue
+		}
+		if taskID == first {
+			t.Fatalf("第二次出击复用了同一个任务号 %s", taskID)
+		}
 	}
 }

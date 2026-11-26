@@ -158,7 +158,8 @@ func TestReconSectorsArePerAircraftAndEmbarkedPositionFollowsCarrier(t *testing.
 	firstCarrier.Coord = "0308"
 	firstCarrier.Deck.Operation = ""
 	setAircraftReady(&state, "b-cv-01-torpedo_bomber-x1")
-	second := Order{Type: "LAUNCH_RECON", AircraftID: "b-cv-01-torpedo_bomber-x1", TaskID: "b-cv-01-dive_bomber-x1", Heading: "W", SectorWidth: 60}
+	reconTaskID := state.Aircraft["b-cv-01-dive_bomber-x1"].TaskID
+	second := Order{Type: "LAUNCH_RECON", AircraftID: "b-cv-01-torpedo_bomber-x1", TaskID: reconTaskID, Heading: "W", SectorWidth: 60}
 	ApplyAirOrder(&state, second)
 	ApplyAirOrder(&state, Order{Type: "LAUNCH_RECON", AircraftID: "b-cv-04-dive_bomber-x1", Heading: "W", SectorWidth: 120})
 	movingCarrier := state.Units[state.Aircraft["b-cv-04-dive_bomber-x1"].CarrierID]
@@ -179,7 +180,7 @@ func TestReconSectorsArePerAircraftAndEmbarkedPositionFollowsCarrier(t *testing.
 	var embarked *AirTask
 	for index := range view.Tasks {
 		task := &view.Tasks[index]
-		if task.ID == "b-cv-01-dive_bomber-x1" {
+		if task.ID == reconTaskID {
 			joined = task
 		} else {
 			embarked = task

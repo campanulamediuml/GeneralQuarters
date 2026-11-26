@@ -3,11 +3,7 @@ package game
 import (
 	"fmt"
 	"sort"
-	"strings"
 )
-
-// returningTaskSuffix 是"已经掉头返航"的成员自成一组时用的任务号后缀。
-const returningTaskSuffix = "-rtb"
 
 // splitCarrierReturningMembers 把已经掉头返航的舰载机从打击编队里拆出去，单独成一组。
 //
@@ -23,9 +19,6 @@ func splitCarrierReturningMembers(state *State) []EngineEvent {
 	for _, id := range sortedAirUnitIDs(*state) {
 		aircraft := state.Aircraft[id]
 		if aircraft == nil || aircraft.TaskID == "" || aircraft.TaskKind != "attack" || !aircraft.Returning || !airborne(aircraft) {
-			continue
-		}
-		if strings.HasSuffix(aircraft.TaskID, returningTaskSuffix) {
 			continue
 		}
 		returning[aircraft.TaskID] = append(returning[aircraft.TaskID], aircraft)
@@ -46,7 +39,7 @@ func splitCarrierReturningMembers(state *State) []EngineEvent {
 		if active == 0 {
 			continue
 		}
-		rtbID := taskID + returningTaskSuffix
+		rtbID := nextTaskID(state, MissionStrike)
 		for _, aircraft := range returning[taskID] {
 			aircraft.TaskID = rtbID
 		}
@@ -67,9 +60,6 @@ func splitGroundReturningMembers(state *State) []EngineEvent {
 		if aircraft == nil || aircraft.TaskID == "" || aircraft.TaskKind != "attack" || !aircraft.Returning || !airfieldAirborne(aircraft) {
 			continue
 		}
-		if strings.HasSuffix(aircraft.TaskID, returningTaskSuffix) {
-			continue
-		}
 		returning[aircraft.TaskID] = append(returning[aircraft.TaskID], aircraft)
 	}
 	taskIDs := make([]string, 0, len(returning))
@@ -87,7 +77,7 @@ func splitGroundReturningMembers(state *State) []EngineEvent {
 		if active == 0 {
 			continue
 		}
-		rtbID := taskID + returningTaskSuffix
+		rtbID := nextTaskID(state, MissionStrike)
 		for _, aircraft := range returning[taskID] {
 			aircraft.TaskID = rtbID
 		}

@@ -181,7 +181,7 @@ func TestAssignedTasksUseElevatorsBeforeLaunch(t *testing.T) {
 			t.Fatalf("第二回合没有占用具体升降机：%+v", state.Aircraft[id])
 		}
 	}
-	if state.Units["b-cv-01"].Deck.Elevators[0].Status != "lifting" || state.Units["b-cv-04"].Deck.Elevators[0].TaskID != "b-cv-04-dive_bomber-x1" {
+	if state.Units["b-cv-01"].Deck.Elevators[0].Status != "lifting" || state.Units["b-cv-04"].Deck.Elevators[0].TaskID != state.Aircraft["b-cv-04-dive_bomber-x1"].TaskID {
 		t.Fatal("升降机没有保存正在提升的任务")
 	}
 	for _, task := range VisibleAviation(state, "B").Tasks {
@@ -235,7 +235,7 @@ func TestCapAndReconJoiningLaterKeepIndependentStages(t *testing.T) {
 		{
 			name: "侦察", firstID: "b-cv-01-dive_bomber-x1", secondID: "b-cv-01-torpedo_bomber-x1", airborne: "recon",
 			firstOrder:  Order{Type: "LAUNCH_RECON", AircraftID: "b-cv-01-dive_bomber-x1", Heading: "W", SectorWidth: 60},
-			secondOrder: Order{Type: "LAUNCH_RECON", AircraftID: "b-cv-01-torpedo_bomber-x1", TaskID: "b-cv-01-dive_bomber-x1", Heading: "W", SectorWidth: 60},
+			secondOrder: Order{Type: "LAUNCH_RECON", AircraftID: "b-cv-01-torpedo_bomber-x1", Heading: "W", SectorWidth: 60},
 		},
 	}
 	for _, test := range tests {
@@ -245,6 +245,10 @@ func TestCapAndReconJoiningLaterKeepIndependentStages(t *testing.T) {
 				t.Fatal(err)
 			}
 			ApplyAirOrder(&state, test.firstOrder)
+			// 任务号由服务端发号器生成，组队时拿第一架的任务号去加入。
+			if test.secondOrder.Type == "LAUNCH_RECON" {
+				test.secondOrder.TaskID = state.Aircraft[test.firstID].TaskID
+			}
 			primeService(&state)
 			AdvanceAviation(&state)
 			if state.Aircraft[test.firstID].Status != "elevator" {
@@ -328,7 +332,8 @@ func TestAttackFormationWaitsForOtherCarrier(t *testing.T) {
 		t.Fatal(err)
 	}
 	ApplyAirOrder(&state, first)
-	join := Order{Type: "LAUNCH_STRIKE", AircraftID: "b-cv-02-dive_bomber-x1", TaskID: "b-cv-01-dive_bomber-x1"}
+	strikeTaskID := state.Aircraft["b-cv-01-dive_bomber-x1"].TaskID
+	join := Order{Type: "LAUNCH_STRIKE", AircraftID: "b-cv-02-dive_bomber-x1", TaskID: strikeTaskID}
 	if err := ValidateAirOrder(state, "B", join); err != nil {
 		t.Fatalf("同一舰队另一艘航母不能加入攻击编队：%v", err)
 	}
@@ -358,7 +363,7 @@ func TestAttackFormationWaitsForOtherCarrier(t *testing.T) {
 	if len(tasks) != 1 || tasks[0].Phase != "launching" || len(tasks[0].CarrierIDs) != 2 || tasks[0].AirborneCount != 3 {
 		t.Fatalf("跨舰攻击编队投影错误：%+v", tasks)
 	}
-	if err := ValidateAirOrder(state, "B", Order{Type: "LAUNCH_STRIKE", AircraftID: "b-cv-03-torpedo_bomber-x1", TaskID: "b-cv-01-dive_bomber-x1"}); err == nil {
+	if err := ValidateAirOrder(state, "B", Order{Type: "LAUNCH_STRIKE", AircraftID: "b-cv-03-torpedo_bomber-x1", TaskID: strikeTaskID}); err == nil {
 		t.Fatal("已经离场的攻击编队仍允许加入飞机")
 	}
 }
@@ -398,7 +403,7 @@ func TestRepeatedJoinOfCurrentTaskIsIdempotent(t *testing.T) {
 	ApplyAirOrder(&state, order)
 	before := *state.Aircraft["b-cv-04-dive_bomber-x1"]
 	repeated := order
-	repeated.TaskID = "b-cv-04-dive_bomber-x1"
+	repeated.TaskID = state.Aircraft["b-cv-04-dive_bomber-x1"].TaskID
 	repeated.Heading = "E"
 	repeated.SectorWidth = 120
 	if err := ValidateAirOrder(state, "B", repeated); err != nil {
@@ -422,20 +427,21 @@ func TestReconGroupsAcceptDifferentAircraftAndRepeatedJoins(t *testing.T) {
 		t.Fatal(err)
 	}
 	ApplyAirOrder(&state, first)
-	join := Order{Type: "LAUNCH_RECON", AircraftID: "b-cv-01-torpedo_bomber-x1", TaskID: "b-cv-01-dive_bomber-x1", Heading: "E", SectorWidth: 120}
+	reconTaskID := state.Aircraft["b-cv-01-dive_bomber-x1"].TaskID
+	join := Order{Type: "LAUNCH_RECON", AircraftID: "b-cv-01-torpedo_bomber-x1", TaskID: reconTaskID, Heading: "E", SectorWidth: 120}
 	if err := ValidateAirOrder(state, "B", join); err != nil {
 		t.Fatalf("不同可搜索机型不能加入同一侦察组：%v", err)
 	}
 	ApplyAirOrder(&state, join)
 	// 共享任务 ID；但这次显式写了 E/120，就按玩家写的来（不再被原组参数覆盖）。
 	joined := state.Aircraft["b-cv-01-torpedo_bomber-x1"]
-	if joined.TaskID != "b-cv-01-dive_bomber-x1" || joined.Heading != "E" || joined.SectorWidth != 120 {
+	if joined.TaskID != reconTaskID || joined.Heading != "E" || joined.SectorWidth != 120 {
 		t.Fatalf("加入侦察组时应共享任务ID并采用本次指定参数：%+v", joined)
 	}
 	// 只给 task_id、不写参数时继承原组参数。
 	// 注意原组领队已经升空（航向锁定在起飞那一刻的 W/60），
 	// 所以这里继承到的是领队的 W/60，而不是刚才给新加入那架改的 E/120。
-	bare := Order{Type: "LAUNCH_RECON", AircraftID: "b-cv-04-dive_bomber-x1", TaskID: "b-cv-01-dive_bomber-x1"}
+	bare := Order{Type: "LAUNCH_RECON", AircraftID: "b-cv-04-dive_bomber-x1", TaskID: reconTaskID}
 	if err := ValidateAirOrder(state, "B", bare); err != nil {
 		t.Fatalf("只带 task_id 加入应被接受：%v", err)
 	}
@@ -452,12 +458,12 @@ func TestReconGroupsAcceptDifferentAircraftAndRepeatedJoins(t *testing.T) {
 		t.Fatal("已有两个侦察组时仍允许创建第三组")
 	}
 	AdvanceAviation(&state)
-	joinAirborne := Order{Type: "LAUNCH_RECON", AircraftID: "b-cv-04-dive_bomber-x1", TaskID: "b-cv-01-dive_bomber-x1", Heading: "W", SectorWidth: 60}
+	joinAirborne := Order{Type: "LAUNCH_RECON", AircraftID: "b-cv-04-dive_bomber-x1", TaskID: reconTaskID, Heading: "W", SectorWidth: 60}
 	if err := ValidateAirOrder(state, "B", joinAirborne); err != nil {
 		t.Fatalf("已升空侦察组不能接受后续飞机：%v", err)
 	}
 	ApplyAirOrder(&state, joinAirborne)
-	if state.Aircraft["b-cv-04-dive_bomber-x1"].TaskID != "b-cv-01-dive_bomber-x1" || state.Aircraft["b-cv-04-dive_bomber-x1"].Status != "recon" {
+	if state.Aircraft["b-cv-04-dive_bomber-x1"].TaskID != reconTaskID || state.Aircraft["b-cv-04-dive_bomber-x1"].Status != "recon" {
 		t.Fatalf("后续飞机没有直接加入已升空侦察组：%+v", state.Aircraft["b-cv-04-dive_bomber-x1"])
 	}
 	tasks := VisibleAviation(state, "B").Tasks
@@ -467,7 +473,7 @@ func TestReconGroupsAcceptDifferentAircraftAndRepeatedJoins(t *testing.T) {
 	for _, task := range tasks {
 		// launching / active 都表示"已经在天上"：前者是刚放飞的当回合，后者是之后。
 		airbornePhase := task.Phase == "launching" || task.Phase == "active"
-		if task.ID == "b-cv-01-dive_bomber-x1" && (len(task.Aircraft) != 3 || task.AirborneCount != 3 || !airbornePhase) {
+		if task.ID == reconTaskID && (len(task.Aircraft) != 3 || task.AirborneCount != 3 || !airbornePhase) {
 			t.Fatalf("混合侦察组升空投影错误：%+v", task)
 		}
 	}
