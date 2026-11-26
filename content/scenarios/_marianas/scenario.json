@@ -3724,6 +3724,54 @@
    "unit": "tbf",
    "carrier": "us-cve-16",
    "skill": "veteran"
+  },
+  {
+   "id": "us-bb-05-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-bb-05",
+   "skill": "regular"
+  },
+  {
+   "id": "us-bb-06-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-bb-06",
+   "skill": "regular"
+  },
+  {
+   "id": "us-bb-07-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-bb-07",
+   "skill": "regular"
+  },
+  {
+   "id": "us-bb-08-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-bb-08",
+   "skill": "regular"
+  },
+  {
+   "id": "us-bb-09-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-bb-09",
+   "skill": "regular"
+  },
+  {
+   "id": "us-bb-10-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-bb-10",
+   "skill": "regular"
+  },
+  {
+   "id": "us-bb-11-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-bb-11",
+   "skill": "regular"
+  },
+  {
+   "id": "us-bb-12-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-bb-12",
+   "skill": "regular"
   }
  ],
  "airfields": [
