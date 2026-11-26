@@ -13,15 +13,16 @@ func TestBombingWaveOrderLevelDiveTorpedo(t *testing.T) {
 			Units:    map[string]*Unit{"bb": {ID: "bb", FleetID: "b", Faction: "B", Type: "BB", Coord: "0202", Strength: 6, MaxStrength: 6, Card: ShipCard{DamageControl: 10}}},
 			Aircraft: map[string]*AirUnit{},
 		}
-		mk := func(id, kind, model string) *AirUnit {
-			state.Aircraft[id] = &AirUnit{ID: id, Faction: "A", Kind: kind, Model: model, Status: "attack", Coord: "0202", Strength: 3, AntiShip: 1, Loadout: LoadoutBomb}
+		mk := func(id, kind, model string, loadout Loadout) *AirUnit {
+			state.Aircraft[id] = &AirUnit{ID: id, Faction: "A", Kind: kind, Model: model, Status: "attack", Coord: "0202", Strength: 3, AntiShip: 1, Loadout: loadout}
 			return state.Aircraft[id]
 		}
-		// 故意按 鱼雷 → 俯冲 → 水平 的顺序塞进去，验证结算顺序由机种决定
+		// 故意按 鱼雷 → 俯冲 → 水平 的顺序塞进去，验证结算顺序由挂载+机种决定。
+		// TBF 这里挂的是鱼雷，所以排最后一波；挂炸弹的鱼雷机属于轰炸波，见下面的用例。
 		return state, []*AirUnit{
-			mk("t1", "torpedo_bomber", "TBF"),
-			mk("d1", "dive_bomber", "SBD"),
-			mk("l1", "strategic_bomber", "B-17"),
+			mk("t1", "torpedo_bomber", "TBF", LoadoutTorpedoTank),
+			mk("d1", "dive_bomber", "SBD", LoadoutBomb),
+			mk("l1", "strategic_bomber", "B-17", LoadoutBomb),
 		}
 	}
 	state, bombers := build()

@@ -541,9 +541,15 @@ func airfieldHeavyAA(state *State, attackers []*AirUnit, airfield *Airfield, rep
 	return events
 }
 
-// airfieldLightAA 对单架攻击机执行机场轻型防空，返回命中次数和命中事件。
-// 事件必须返回给调用方，之前直接丢弃，导致机场空袭战报里看不到"被击伤/被驱散"的明细。
-func airfieldLightAA(state *State, attacker *AirUnit, airfield *Airfield, report *AirCombatReport) (int, []EngineEvent) {
+// airfieldLightAAPool 结算机场对"正在攻击本机场的整队飞机"的轻型防空。
+//
+// 规则书 735 行：轻防空的目标池是正在攻击本机场的那几架，一副骰子摊在整队上，
+// 不是每架攻击机各掷一整副。旧实现按单架结算，莫尔兹比港 20 点轻防空碰上 12 架
+// 编队就要掷 240 次，飞机越多防空越强——和打舰路径早就修掉的是同一个毛病。
+func airfieldLightAAPool(state *State, attackers []*AirUnit, airfield *Airfield, report *AirCombatReport) []EngineEvent {
+	if airfield == nil || len(attackers) == 0 {
+		return nil
+	}
 	events := []EngineEvent{}
 	chance := aaHitChance(*state, airfield.Coord, false, airfield.Faction)
 	value := airfield.LightAA
@@ -552,27 +558,32 @@ func airfieldLightAA(state *State, attacker *AirUnit, airfield *Airfield, report
 	if probabilityRoll(&state.RNGState) <= (value - float64(shots)) {
 		shots++
 	}
-	hits := 0
 	for ; shots > 0; shots-- {
-		if !operationalAircraft(state, attacker) {
+		pool := activeAircraft(state, attackers)
+		if len(pool) == 0 {
 			break
 		}
+		plane := pool[nextUint64(&state.RNGState)%uint64(len(pool))]
+		// 高空投弹的轰炸机 25mm 够不着，只有重型防空能打：骰子选中它们时这一发作废，
+		// 骰数本身不变，也不产生混乱判定。
+		if ignoresLightAA(plane) {
+			continue
+		}
 		if probabilityRoll(&state.RNGState) < chance {
-			hits++
 			report.AAHits++
-			outcome, hitEvents := applyAircraftHit(state, attacker)
-			recordAirHit(report, attacker, outcome)
-			recordAircraftLoss(report, attacker, outcome, true)
+			outcome, hitEvents := applyAircraftHit(state, plane)
+			recordAirHit(report, plane, outcome)
+			recordAircraftLoss(report, plane, outcome, true)
 			events = append(events, hitEvents...)
 		} else {
-			confuseRandomAircraft(state, []*AirUnit{attacker})
+			confuseRandomAircraft(state, attackers)
 		}
 	}
-	return hits, events
+	return events
 }
 
 // resolveGroundStrike 按规则书顺序结算对机场的空袭：
-// CAP 拦截 → 重型防空 → 每个攻击机承受机场轻型防空 → 按对地攻击值逐点判定（基础 20%）→ 撤离。
+// CAP 拦截 → 重型防空 → 机场轻防空对整队掷一副骰子 → 按对地攻击值逐点判定（基础 20%）→ 撤离。
 func resolveGroundStrike(state *State, taskID, coord string) []EngineEvent {
 	airfield := strikeAirfieldAt(*state, "", coord)
 	if airfield == nil {
@@ -628,6 +639,9 @@ func resolveGroundStrike(state *State, taskID, coord string) []EngineEvent {
 			break
 		}
 	}
+	// 规则书 735 行：机场轻防空是一副骰子摊在正在攻击本机场的整队飞机上，
+	// 在重防空之后、投弹之前掷一次。高空投弹的轰炸机只吃重防空。
+	events = append(events, airfieldLightAAPool(state, attackers, airfield, &report)...)
 	if report.TargetAllocations == nil {
 		report.TargetAllocations = []StrikeAllocation{}
 	}
@@ -637,8 +651,6 @@ func resolveGroundStrike(state *State, taskID, coord string) []EngineEvent {
 		}
 		allocation := StrikeAllocation{Attacker: aircraft.ID, Model: aircraft.Model, ShipID: airfield.ID, ShipName: airfield.Name}
 		report.TargetAllocations = append(report.TargetAllocations, allocation)
-		_, lightEvents := airfieldLightAA(state, aircraft, airfield, &report)
-		events = append(events, lightEvents...)
 		if !operationalAircraft(state, aircraft) {
 			continue
 		}
@@ -684,11 +696,6 @@ func resolveGroundStrike(state *State, taskID, coord string) []EngineEvent {
 		if aircraft.Kind != "fighter" || aircraft.Loadout.Weapon() == WeaponBomb {
 			continue
 		}
-		if !operationalAircraft(state, aircraft) {
-			continue
-		}
-		_, lightEvents := airfieldLightAA(state, aircraft, airfield, &report)
-		events = append(events, lightEvents...)
 		if !operationalAircraft(state, aircraft) {
 			continue
 		}

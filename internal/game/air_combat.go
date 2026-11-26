@@ -564,10 +564,10 @@ func resolveLightAAPool(state *State, attackers []*AirUnit, target *Unit, mixed 
 			break
 		}
 		plane := pool[nextUint64(&state.RNGState)%uint64(len(pool))]
-		// 规则书 719 行：轻型防空值不影响战略轰炸机——要求在很高高度投弹，小口径炮够不着。
-		// B-26 挂炸弹时按高空轰炸结算，同样免疫；挂鱼雷时走普通鱼雷机判定。
+		// 规则书 734 行：轻型防空值不影响高空投弹的轰炸机——要求在高空投弹，小口径炮够不着。
+		// 战略/重型/中型/水平轰炸机挂炸弹时都算；B-26 挂鱼雷、鱼雷机挂炸弹是低空突击，照打。
 		// 骰子选中它们时这一发作废（也不产生混乱判定），骰数本身不变。
-		if isHighAltitudeBomber(plane) {
+		if ignoresLightAA(plane) {
 			continue
 		}
 		// 规则书 673、712 行：鱼雷机翻倍、复合编队减半，都落在这一颗骰子的命中率上。
@@ -717,21 +717,28 @@ func isStrategicGroundBomber(aircraft *AirfieldAirUnit) bool {
 	return strategicBomberModel(aircraft.Kind, aircraft.Model)
 }
 
-// isTorpedoAttack 识别这一次出击是否按鱼雷机结算：
-// 专用鱼雷机，或带鱼雷挂架的机型（B-26）真正挂了鱼雷。
+// isTorpedoAttack 识别这一次出击是否按鱼雷机结算：只有真正挂着鱼雷才算。
+//
+// 鱼雷机挂炸弹出击时按普通轰炸机结算——不吃鱼雷机的轻防空翻倍，也不按雷击算伤害，
+// 但它仍是低空小轰炸机，轻防空照样打得到（这点和战略/中型轰炸机的高空投弹不同）。
+// B-26 这类带鱼雷挂架的机型同样只在挂鱼雷时算；挂炸弹走高空。
+// 旧存档/构造夹具没有挂载信息（空字符串）时退回机种判定。
 func isTorpedoAttack(aircraft *AirUnit) bool {
 	if aircraft == nil {
 		return false
 	}
-	if aircraft.Kind == "torpedo_bomber" {
-		return true
+	if aircraft.Loadout == "" {
+		return aircraft.Kind == "torpedo_bomber"
 	}
-	return aircraft.TorpedoCapable && aircraft.Loadout.Weapon() == WeaponTorpedo
+	if aircraft.Loadout.Weapon() != WeaponTorpedo {
+		return false
+	}
+	return aircraft.Kind == "torpedo_bomber" || aircraft.TorpedoCapable
 }
 
-// isHighAltitudeBomber 识别高空投弹：战略轰炸机始终算；
-// B-26 这类带 high_altitude_bomber 标记的机型只在挂炸弹时算，挂鱼雷时是鱼雷机。
-// 高空机免疫轻防空，同时对舰命中率吃战略轰炸机的减半惩罚。
+// isHighAltitudeBomber 识别"对舰命中率吃战略轰炸机减半惩罚"的高空机：
+// 战略轰炸机始终算；B-26 这类带 high_altitude_bomber 标记的机型只在挂炸弹时算。
+// 轻防空免疫是另一条判定（更宽，含中型/水平轰炸机），见 ignoresLightAA。
 func isHighAltitudeBomber(aircraft *AirUnit) bool {
 	if aircraft == nil {
 		return false
@@ -740,6 +747,27 @@ func isHighAltitudeBomber(aircraft *AirUnit) bool {
 		return true
 	}
 	return aircraft.HighAltitudeBomber && aircraft.Loadout.Weapon() == WeaponBomb
+}
+
+// ignoresLightAA 判定轻防空打不到的高空投弹机。
+//
+// 战略轰炸机始终算；重型/中型/水平轰炸机（B-25、B-26 这一档）挂炸弹时算——
+// 它们在高空投弹，25mm 这类小口径炮够不着，只有重型防空能打。B-26 挂鱼雷、
+// 鱼雷机挂炸弹都不算：那都是低空突击，轻防空照样打得到。
+//
+// 这里只管轻防空免疫；对舰命中率的折减（战略 ÷2、中型 ×0.75）仍由
+// strikeHitChance 单独判定，两者不绑定。
+func ignoresLightAA(aircraft *AirUnit) bool {
+	if aircraft == nil {
+		return false
+	}
+	if isStrategicBomber(aircraft) {
+		return true
+	}
+	if aircraft.Loadout.Weapon() != WeaponBomb {
+		return false
+	}
+	return aircraft.HighAltitudeBomber || isLevelBomber(aircraft)
 }
 
 // isLevelBomber 识别普通水平轰炸中型/重型轰炸机（B-25 这一档）。

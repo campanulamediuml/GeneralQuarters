@@ -22,8 +22,13 @@ func TestCompositePackageRollsLightAAOncePerSide(t *testing.T) {
 			var planes []*AirUnit
 			for j, kind := range kinds {
 				id := "a" + itoa(j)
+				loadout := LoadoutBomb
+				if kind == "torpedo_bomber" {
+					// 鱼雷机的翻倍只对真正挂鱼雷的出击生效：这里必须挂鱼雷。
+					loadout = LoadoutTorpedoTank
+				}
 				state.Aircraft[id] = &AirUnit{ID: id, Faction: "A", Kind: kind, Model: "X", Status: "attack",
-					Coord: "0202", Strength: 4, AntiShip: 4, Loadout: LoadoutBomb}
+					Coord: "0202", Strength: 4, AntiShip: 4, Loadout: loadout}
 				planes = append(planes, state.Aircraft[id])
 			}
 			report := &AirCombatReport{}
