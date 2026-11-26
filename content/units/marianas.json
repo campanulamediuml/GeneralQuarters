@@ -8,7 +8,7 @@
    "type": "CV",
    "name": "埃塞克斯",
    "strength": 4,
-   "picture": "misc/image/ship/yorktown.png",
+   "picture": "misc/image/ship/essex.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -39,7 +39,7 @@
    "type": "CV",
    "name": "邦克山",
    "strength": 4,
-   "picture": "misc/image/ship/yorktown.png",
+   "picture": "misc/image/ship/essex.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -70,7 +70,7 @@
    "type": "CV",
    "name": "大黄蜂",
    "strength": 4,
-   "picture": "misc/image/ship/yorktown.png",
+   "picture": "misc/image/ship/essex.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -101,7 +101,7 @@
    "type": "CV",
    "name": "约克城",
    "strength": 4,
-   "picture": "misc/image/ship/yorktown.png",
+   "picture": "misc/image/ship/essex.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -132,7 +132,7 @@
    "type": "CV",
    "name": "黄蜂",
    "strength": 4,
-   "picture": "misc/image/ship/yorktown.png",
+   "picture": "misc/image/ship/essex.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -163,7 +163,7 @@
    "type": "CV",
    "name": "富兰克林",
    "strength": 4,
-   "picture": "misc/image/ship/yorktown.png",
+   "picture": "misc/image/ship/essex.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -194,7 +194,7 @@
    "type": "CV",
    "name": "提康德罗加",
    "strength": 4,
-   "picture": "misc/image/ship/yorktown.png",
+   "picture": "misc/image/ship/essex.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -225,7 +225,7 @@
    "type": "CV",
    "name": "汉考克",
    "strength": 4,
-   "picture": "misc/image/ship/yorktown.png",
+   "picture": "misc/image/ship/essex.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -318,7 +318,7 @@
    "type": "BB",
    "name": "南达科他",
    "strength": 6,
-   "picture": "misc/image/ship/north_carolina.png",
+   "picture": "misc/image/ship/south_dakota.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -349,7 +349,7 @@
    "type": "BB",
    "name": "印第安纳",
    "strength": 6,
-   "picture": "misc/image/ship/north_carolina.png",
+   "picture": "misc/image/ship/south_dakota.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -380,7 +380,7 @@
    "type": "CA",
    "name": "巴尔的摩",
    "strength": 4,
-   "picture": "misc/image/ship/new_orleans.png",
+   "picture": "misc/image/ship/baltimore.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -473,7 +473,7 @@
    "type": "CA",
    "name": "昆西",
    "strength": 4,
-   "picture": "misc/image/ship/new_orleans.png",
+   "picture": "misc/image/ship/baltimore.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -504,7 +504,7 @@
    "type": "CL",
    "name": "克利夫兰",
    "strength": 2,
-   "picture": "misc/image/ship/leander.png",
+   "picture": "misc/image/ship/cleveland.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -535,7 +535,7 @@
    "type": "CL",
    "name": "蒙彼利埃",
    "strength": 2,
-   "picture": "misc/image/ship/leander.png",
+   "picture": "misc/image/ship/cleveland.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -566,7 +566,7 @@
    "type": "CL",
    "name": "丹佛",
    "strength": 2,
-   "picture": "misc/image/ship/leander.png",
+   "picture": "misc/image/ship/cleveland.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -597,7 +597,7 @@
    "type": "CL",
    "name": "圣菲",
    "strength": 2,
-   "picture": "misc/image/ship/leander.png",
+   "picture": "misc/image/ship/cleveland.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -628,7 +628,7 @@
    "type": "CL",
    "name": "伯明翰",
    "strength": 2,
-   "picture": "misc/image/ship/leander.png",
+   "picture": "misc/image/ship/cleveland.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -659,7 +659,7 @@
    "type": "CL",
    "name": "莫比尔",
    "strength": 2,
-   "picture": "misc/image/ship/leander.png",
+   "picture": "misc/image/ship/cleveland.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -690,7 +690,7 @@
    "type": "DD",
    "name": "弗莱彻号01",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -721,7 +721,7 @@
    "type": "DD",
    "name": "弗莱彻号02",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -752,7 +752,7 @@
    "type": "DD",
    "name": "弗莱彻号03",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -783,7 +783,7 @@
    "type": "DD",
    "name": "弗莱彻号04",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -814,7 +814,7 @@
    "type": "DD",
    "name": "弗莱彻号05",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -845,7 +845,7 @@
    "type": "DD",
    "name": "弗莱彻号06",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -876,7 +876,7 @@
    "type": "DD",
    "name": "弗莱彻号07",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -907,7 +907,7 @@
    "type": "DD",
    "name": "弗莱彻号08",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -938,7 +938,7 @@
    "type": "DD",
    "name": "弗莱彻号09",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -969,7 +969,7 @@
    "type": "DD",
    "name": "弗莱彻号10",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1000,7 +1000,7 @@
    "type": "DD",
    "name": "弗莱彻号11",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1031,7 +1031,7 @@
    "type": "DD",
    "name": "弗莱彻号12",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1062,7 +1062,7 @@
    "type": "DD",
    "name": "弗莱彻号13",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1093,7 +1093,7 @@
    "type": "DD",
    "name": "弗莱彻号14",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1124,7 +1124,7 @@
    "type": "DD",
    "name": "弗莱彻号15",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1155,7 +1155,7 @@
    "type": "DD",
    "name": "弗莱彻号16",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1186,7 +1186,7 @@
    "type": "CV",
    "name": "大凤",
    "strength": 4,
-   "picture": "misc/image/ship/shokaku.png",
+   "picture": "misc/image/ship/taiho.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1279,7 +1279,7 @@
    "type": "CV",
    "name": "隼鹰",
    "strength": 4,
-   "picture": "misc/image/ship/jap_cvl1.png",
+   "picture": "misc/image/ship/hiyo.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1310,7 +1310,7 @@
    "type": "CV",
    "name": "飞鹰",
    "strength": 4,
-   "picture": "misc/image/ship/jap_cvl1.png",
+   "picture": "misc/image/ship/hiyo.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1341,7 +1341,7 @@
    "type": "CV",
    "name": "龙凤",
    "strength": 2,
-   "picture": "misc/image/ship/jap_cvl1.png",
+   "picture": "misc/image/ship/ryuho.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1372,7 +1372,7 @@
    "type": "CV",
    "name": "云龙",
    "strength": 4,
-   "picture": "misc/image/ship/jap_cvl1.png",
+   "picture": "misc/image/ship/unryu.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1403,7 +1403,7 @@
    "type": "CV",
    "name": "天城",
    "strength": 4,
-   "picture": "misc/image/ship/jap_cvl1.png",
+   "picture": "misc/image/ship/unryu.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1434,7 +1434,7 @@
    "type": "CV",
    "name": "葛城",
    "strength": 4,
-   "picture": "misc/image/ship/jap_cvl1.png",
+   "picture": "misc/image/ship/unryu.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1465,7 +1465,7 @@
    "type": "BB",
    "name": "大和",
    "strength": 8,
-   "picture": "misc/image/ship/nagato.png",
+   "picture": "misc/image/ship/yamato.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1496,7 +1496,7 @@
    "type": "BB",
    "name": "武藏",
    "strength": 8,
-   "picture": "misc/image/ship/nagato.png",
+   "picture": "misc/image/ship/yamato.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1682,7 +1682,7 @@
    "type": "CA",
    "name": "高雄",
    "strength": 3,
-   "picture": "misc/image/ship/myoko.png",
+   "picture": "misc/image/ship/takao.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1713,7 +1713,7 @@
    "type": "CA",
    "name": "爱宕",
    "strength": 3,
-   "picture": "misc/image/ship/myoko.png",
+   "picture": "misc/image/ship/takao.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1744,7 +1744,7 @@
    "type": "CA",
    "name": "利根",
    "strength": 3,
-   "picture": "misc/image/ship/myoko.png",
+   "picture": "misc/image/ship/tone.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1775,7 +1775,7 @@
    "type": "CA",
    "name": "筑摩",
    "strength": 3,
-   "picture": "misc/image/ship/myoko.png",
+   "picture": "misc/image/ship/tone.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1806,7 +1806,7 @@
    "type": "CL",
    "name": "矢矧",
    "strength": 2,
-   "picture": "misc/image/ship/yubari.png",
+   "picture": "misc/image/ship/agano.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1837,7 +1837,7 @@
    "type": "CL",
    "name": "大淀",
    "strength": 2,
-   "picture": "misc/image/ship/yubari.png",
+   "picture": "misc/image/ship/agano.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1868,7 +1868,7 @@
    "type": "CL",
    "name": "能代",
    "strength": 2,
-   "picture": "misc/image/ship/yubari.png",
+   "picture": "misc/image/ship/agano.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1899,7 +1899,7 @@
    "type": "DD",
    "name": "驱逐舰01",
    "strength": 1,
-   "picture": "misc/image/ship/shiratsuyu.png",
+   "picture": "misc/image/ship/jap_dd1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1930,7 +1930,7 @@
    "type": "DD",
    "name": "驱逐舰02",
    "strength": 1,
-   "picture": "misc/image/ship/shiratsuyu.png",
+   "picture": "misc/image/ship/jap_dd1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1961,7 +1961,7 @@
    "type": "DD",
    "name": "驱逐舰03",
    "strength": 1,
-   "picture": "misc/image/ship/shiratsuyu.png",
+   "picture": "misc/image/ship/jap_dd1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1992,7 +1992,7 @@
    "type": "DD",
    "name": "驱逐舰04",
    "strength": 1,
-   "picture": "misc/image/ship/shiratsuyu.png",
+   "picture": "misc/image/ship/jap_dd1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2023,7 +2023,7 @@
    "type": "DD",
    "name": "驱逐舰05",
    "strength": 1,
-   "picture": "misc/image/ship/shiratsuyu.png",
+   "picture": "misc/image/ship/jap_dd1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2054,7 +2054,7 @@
    "type": "DD",
    "name": "驱逐舰06",
    "strength": 1,
-   "picture": "misc/image/ship/shiratsuyu.png",
+   "picture": "misc/image/ship/jap_dd1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2085,7 +2085,7 @@
    "type": "DD",
    "name": "驱逐舰07",
    "strength": 1,
-   "picture": "misc/image/ship/shiratsuyu.png",
+   "picture": "misc/image/ship/jap_dd1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2116,7 +2116,7 @@
    "type": "DD",
    "name": "驱逐舰08",
    "strength": 1,
-   "picture": "misc/image/ship/shiratsuyu.png",
+   "picture": "misc/image/ship/jap_dd1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2147,7 +2147,7 @@
    "type": "DD",
    "name": "驱逐舰09",
    "strength": 1,
-   "picture": "misc/image/ship/shiratsuyu.png",
+   "picture": "misc/image/ship/jap_dd1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2178,7 +2178,7 @@
    "type": "DD",
    "name": "驱逐舰10",
    "strength": 1,
-   "picture": "misc/image/ship/shiratsuyu.png",
+   "picture": "misc/image/ship/jap_dd1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2209,7 +2209,7 @@
    "type": "DD",
    "name": "驱逐舰11",
    "strength": 1,
-   "picture": "misc/image/ship/shiratsuyu.png",
+   "picture": "misc/image/ship/jap_dd1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2240,7 +2240,7 @@
    "type": "DD",
    "name": "驱逐舰12",
    "strength": 1,
-   "picture": "misc/image/ship/shiratsuyu.png",
+   "picture": "misc/image/ship/jap_dd1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2271,7 +2271,7 @@
    "type": "DD",
    "name": "驱逐舰13",
    "strength": 1,
-   "picture": "misc/image/ship/shiratsuyu.png",
+   "picture": "misc/image/ship/jap_dd1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2302,7 +2302,7 @@
    "type": "DD",
    "name": "驱逐舰14",
    "strength": 1,
-   "picture": "misc/image/ship/shiratsuyu.png",
+   "picture": "misc/image/ship/jap_dd1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2333,7 +2333,7 @@
    "type": "DD",
    "name": "驱逐舰15",
    "strength": 1,
-   "picture": "misc/image/ship/shiratsuyu.png",
+   "picture": "misc/image/ship/jap_dd1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2364,7 +2364,7 @@
    "type": "DD",
    "name": "驱逐舰16",
    "strength": 1,
-   "picture": "misc/image/ship/shiratsuyu.png",
+   "picture": "misc/image/ship/jap_dd1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2395,7 +2395,7 @@
    "type": "DD",
    "name": "驱逐舰17",
    "strength": 1,
-   "picture": "misc/image/ship/shiratsuyu.png",
+   "picture": "misc/image/ship/jap_dd1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2426,7 +2426,7 @@
    "type": "DD",
    "name": "驱逐舰18",
    "strength": 1,
-   "picture": "misc/image/ship/shiratsuyu.png",
+   "picture": "misc/image/ship/jap_dd1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2953,7 +2953,7 @@
    "type": "BB",
    "name": "田纳西",
    "strength": 5,
-   "picture": "misc/image/ship/north_carolina.png",
+   "picture": "misc/image/ship/tennessee.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2984,7 +2984,7 @@
    "type": "BB",
    "name": "加利福尼亚",
    "strength": 5,
-   "picture": "misc/image/ship/north_carolina.png",
+   "picture": "misc/image/ship/pennsylvania.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3015,7 +3015,7 @@
    "type": "BB",
    "name": "马里兰",
    "strength": 5,
-   "picture": "misc/image/ship/north_carolina.png",
+   "picture": "misc/image/ship/colorado.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3046,7 +3046,7 @@
    "type": "BB",
    "name": "科罗拉多",
    "strength": 5,
-   "picture": "misc/image/ship/north_carolina.png",
+   "picture": "misc/image/ship/colorado.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3077,7 +3077,7 @@
    "type": "BB",
    "name": "新墨西哥",
    "strength": 5,
-   "picture": "misc/image/ship/north_carolina.png",
+   "picture": "misc/image/ship/new_mexico.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3108,7 +3108,7 @@
    "type": "BB",
    "name": "爱达荷",
    "strength": 5,
-   "picture": "misc/image/ship/north_carolina.png",
+   "picture": "misc/image/ship/new_mexico.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3139,7 +3139,7 @@
    "type": "BB",
    "name": "密西西比",
    "strength": 5,
-   "picture": "misc/image/ship/north_carolina.png",
+   "picture": "misc/image/ship/new_mexico.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3170,7 +3170,7 @@
    "type": "BB",
    "name": "宾夕法尼亚",
    "strength": 5,
-   "picture": "misc/image/ship/north_carolina.png",
+   "picture": "misc/image/ship/pennsylvania.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3201,7 +3201,7 @@
    "type": "BB",
    "name": "新泽西",
    "strength": 7,
-   "picture": "misc/image/ship/north_carolina.png",
+   "picture": "misc/image/ship/iowa.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3232,7 +3232,7 @@
    "type": "BB",
    "name": "依阿华",
    "strength": 7,
-   "picture": "misc/image/ship/north_carolina.png",
+   "picture": "misc/image/ship/iowa.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3263,7 +3263,7 @@
    "type": "BB",
    "name": "马萨诸塞",
    "strength": 6,
-   "picture": "misc/image/ship/north_carolina.png",
+   "picture": "misc/image/ship/south_dakota.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3294,7 +3294,7 @@
    "type": "BB",
    "name": "阿拉巴马",
    "strength": 6,
-   "picture": "misc/image/ship/north_carolina.png",
+   "picture": "misc/image/ship/south_dakota.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3325,7 +3325,7 @@
    "type": "DD",
    "name": "弗莱彻号17",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3356,7 +3356,7 @@
    "type": "DD",
    "name": "弗莱彻号18",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3387,7 +3387,7 @@
    "type": "DD",
    "name": "弗莱彻号19",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3418,7 +3418,7 @@
    "type": "DD",
    "name": "弗莱彻号20",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3449,7 +3449,7 @@
    "type": "DD",
    "name": "弗莱彻号21",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3480,7 +3480,7 @@
    "type": "DD",
    "name": "弗莱彻号22",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3511,7 +3511,7 @@
    "type": "DD",
    "name": "弗莱彻号23",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3542,7 +3542,7 @@
    "type": "DD",
    "name": "弗莱彻号24",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3573,7 +3573,7 @@
    "type": "DD",
    "name": "弗莱彻号25",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3604,7 +3604,7 @@
    "type": "DD",
    "name": "弗莱彻号26",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3635,7 +3635,7 @@
    "type": "DD",
    "name": "弗莱彻号27",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3666,7 +3666,7 @@
    "type": "DD",
    "name": "弗莱彻号28",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3821,7 +3821,7 @@
    "type": "DD",
    "name": "弗莱彻号29",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3852,7 +3852,7 @@
    "type": "DD",
    "name": "弗莱彻号30",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3883,7 +3883,7 @@
    "type": "DD",
    "name": "弗莱彻号31",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3914,7 +3914,7 @@
    "type": "DD",
    "name": "弗莱彻号32",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3945,7 +3945,7 @@
    "type": "DD",
    "name": "弗莱彻号33",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3976,7 +3976,7 @@
    "type": "DD",
    "name": "弗莱彻号34",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4007,7 +4007,7 @@
    "type": "DD",
    "name": "弗莱彻号35",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4038,7 +4038,7 @@
    "type": "DD",
    "name": "弗莱彻号36",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4069,7 +4069,7 @@
    "type": "DD",
    "name": "弗莱彻号37",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4100,7 +4100,7 @@
    "type": "DD",
    "name": "弗莱彻号38",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4131,7 +4131,7 @@
    "type": "DD",
    "name": "弗莱彻号39",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4162,7 +4162,7 @@
    "type": "DD",
    "name": "弗莱彻号40",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4193,7 +4193,7 @@
    "type": "DD",
    "name": "弗莱彻号41",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4224,7 +4224,7 @@
    "type": "DD",
    "name": "弗莱彻号42",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4255,7 +4255,7 @@
    "type": "DD",
    "name": "弗莱彻号43",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4286,7 +4286,7 @@
    "type": "DD",
    "name": "弗莱彻号44",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4317,7 +4317,7 @@
    "type": "DD",
    "name": "弗莱彻号45",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4348,7 +4348,7 @@
    "type": "DD",
    "name": "弗莱彻号46",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4379,7 +4379,7 @@
    "type": "DD",
    "name": "弗莱彻号47",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4410,7 +4410,7 @@
    "type": "DD",
    "name": "弗莱彻号48",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4441,7 +4441,7 @@
    "type": "DD",
    "name": "弗莱彻号49",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4472,7 +4472,7 @@
    "type": "DD",
    "name": "弗莱彻号50",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4503,7 +4503,7 @@
    "type": "DD",
    "name": "弗莱彻号51",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4534,7 +4534,7 @@
    "type": "DD",
    "name": "弗莱彻号52",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4565,7 +4565,7 @@
    "type": "DD",
    "name": "弗莱彻号53",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4596,7 +4596,7 @@
    "type": "DD",
    "name": "弗莱彻号54",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4627,7 +4627,7 @@
    "type": "DD",
    "name": "弗莱彻号55",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4658,7 +4658,7 @@
    "type": "DD",
    "name": "弗莱彻号56",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/fletcher.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4689,7 +4689,7 @@
    "type": "CA",
    "name": "巴尔的摩",
    "strength": 4,
-   "picture": "misc/image/ship/new_orleans.png",
+   "picture": "misc/image/ship/baltimore.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4720,7 +4720,7 @@
    "type": "CA",
    "name": "波士顿",
    "strength": 4,
-   "picture": "misc/image/ship/new_orleans.png",
+   "picture": "misc/image/ship/baltimore.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4751,7 +4751,7 @@
    "type": "CA",
    "name": "芝加哥",
    "strength": 4,
-   "picture": "misc/image/ship/new_orleans.png",
+   "picture": "misc/image/ship/baltimore.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4782,7 +4782,7 @@
    "type": "CA",
    "name": "休斯顿",
    "strength": 4,
-   "picture": "misc/image/ship/new_orleans.png",
+   "picture": "misc/image/ship/baltimore.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4813,7 +4813,7 @@
    "type": "CL",
    "name": "克利夫兰",
    "strength": 2,
-   "picture": "misc/image/ship/leander.png",
+   "picture": "misc/image/ship/cleveland.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4844,7 +4844,7 @@
    "type": "CL",
    "name": "蒙彼利埃",
    "strength": 2,
-   "picture": "misc/image/ship/leander.png",
+   "picture": "misc/image/ship/cleveland.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4875,7 +4875,7 @@
    "type": "CL",
    "name": "丹佛",
    "strength": 2,
-   "picture": "misc/image/ship/leander.png",
+   "picture": "misc/image/ship/cleveland.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4906,7 +4906,7 @@
    "type": "CL",
    "name": "圣菲",
    "strength": 2,
-   "picture": "misc/image/ship/leander.png",
+   "picture": "misc/image/ship/cleveland.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4937,7 +4937,7 @@
    "type": "DD",
    "name": "护航驱逐舰01",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/usa_de1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4968,7 +4968,7 @@
    "type": "DD",
    "name": "护航驱逐舰02",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/usa_de1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4999,7 +4999,7 @@
    "type": "DD",
    "name": "护航驱逐舰03",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/usa_de1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5030,7 +5030,7 @@
    "type": "DD",
    "name": "护航驱逐舰04",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/usa_de1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5061,7 +5061,7 @@
    "type": "DD",
    "name": "护航驱逐舰05",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/usa_de1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5092,7 +5092,7 @@
    "type": "DD",
    "name": "护航驱逐舰06",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/usa_de1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5123,7 +5123,7 @@
    "type": "DD",
    "name": "护航驱逐舰07",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/usa_de1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5154,7 +5154,7 @@
    "type": "DD",
    "name": "护航驱逐舰08",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/usa_de1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5185,7 +5185,7 @@
    "type": "DD",
    "name": "护航驱逐舰09",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/usa_de1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5216,7 +5216,7 @@
    "type": "DD",
    "name": "护航驱逐舰10",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/usa_de1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5247,7 +5247,7 @@
    "type": "DD",
    "name": "护航驱逐舰11",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/usa_de1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5278,7 +5278,7 @@
    "type": "DD",
    "name": "护航驱逐舰12",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/usa_de1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5309,7 +5309,7 @@
    "type": "DD",
    "name": "护航驱逐舰13",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/usa_de1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5340,7 +5340,7 @@
    "type": "DD",
    "name": "护航驱逐舰14",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/usa_de1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5371,7 +5371,7 @@
    "type": "DD",
    "name": "护航驱逐舰15",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/usa_de1.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5402,7 +5402,7 @@
    "type": "DD",
    "name": "护航驱逐舰16",
    "strength": 1,
-   "picture": "misc/image/ship/farragut.png",
+   "picture": "misc/image/ship/usa_de1.png",
    "card": {
     "picture": "",
     "nation": "",

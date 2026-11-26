@@ -39,10 +39,29 @@
 | jap_dd1.png | JAP_DD1_ship.png | 日军通用新式驱逐舰（秋月/朝潮/阳炎/岛风/夕云共用） |
 | shiratsuyu.png | JAP_DE1_ship.png | 日军通用旧式驱逐舰（白露/时雨/有明/夕暮及吹雪、初春等） |
 | cmn_ms1_3.png | CMN_MS1-3_ship.png | 通用运输船（双方 TRS 卡） |
+| essex.png | USA_CV5_ship.png | 埃塞克斯级（马里亚纳的 8 艘 CV） |
+| south_dakota.png | USA_BB7-2_ship.png | 南达科他级（南达科他/印第安纳/马萨诸塞/阿拉巴马） |
+| iowa.png | USA_BB8_ship.png | 衣阿华级（新泽西/依阿华） |
+| tennessee.png | USA_BB5_ship.png | 田纳西级 |
+| pennsylvania.png | USA_BB3_ship.png | 宾夕法尼亚级（宾夕法尼亚/加利福尼亚） |
+| colorado.png | USA_BB6_ship.png | 科罗拉多级（马里兰/科罗拉多） |
+| new_mexico.png | USA_BB4_ship.png | 新墨西哥级（新墨西哥/爱达荷/密西西比） |
+| baltimore.png | USA_CA5_ship.png | 巴尔的摩级（巴尔的摩/波士顿/芝加哥/昆西/休斯顿） |
+| cleveland.png | USA_CL3_ship.png | 克利夫兰级（6 艘 CL） |
+| fletcher.png | USA_DD1_ship.png | 弗莱彻级（马里亚纳的 56 艘 DD） |
+| usa_de1.png | USA_DE1_ship.png | 美国护航驱逐舰（16 艘 DE） |
+| taiho.png | JAP_CV4_ship.png | 大凤级 |
+| hiyo.png | JAP_CV2_ship.png | 飞鹰级（隼鹰/飞鹰） |
+| unryu.png | JAP_CV3_ship.png | 云龙级（云龙/天城/葛城） |
+| ryuho.png | JAP_CVL4_ship.png | 龙凤级 |
+| yamato.png | JAP_BB5_ship.png | 大和级（大和/武藏） |
+| takao.png | JAP_CA2_ship.png | 高雄级（高雄/爱宕） |
+| tone.png | JAP_CA10_ship.png | 利根级（利根/筑摩） |
+| agano.png | JAP_CL2_ship.png | 阿贺野级 / 大淀（矢矧/能代/大淀） |
 
 完整的"素材文件 → 舰种 → 舰级"对照在 `素材/船只剪影/ship_classes.csv`。
-素材包里还有一批当前剧本没用到（或本作尚未建卡）的舰级图，例如埃塞克斯、大和、
-亚特兰大、利根、兰利等，需要时按同一命名规则抄进本目录并在 JSON 里指过去。
+素材包里还有一批当前剧本没用到（或本作尚未建卡）的舰级图，例如亚特兰大、兰利、
+利根 1943 形态等，需要时按同一命名规则抄进本目录并在 JSON 里指过去。
 
 `素材/船只剪影/沉没` 是沉没状态的单独剪影，目前前端没有用到：
 沉没舰船是给同一张剪影加倾斜、灰度和半透明来表现（`ShipCounter.vue`），
