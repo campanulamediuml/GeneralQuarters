@@ -1278,6 +1278,34 @@ func radioOrderFaction(state State, order Order) string {
 	return ""
 }
 
+// cloneUnit 复制一份舰船快照给视图用。
+//
+// Damage/Deck 这些子对象引擎是原地改的（进水层数、甲板长度、升降机状态），
+// 视图要是直接共享指针，"上一帧的投影"就会跟着房间状态一起变——补丁拿它比差异，
+// 会算成"没变化"，玩家那边就停在旧画面上了。投影必须是值快照。
+func cloneUnit(unit Unit) Unit {
+	copied := unit
+	if unit.Damage != nil {
+		damage := *unit.Damage
+		damage.Flooding = append([]int(nil), unit.Damage.Flooding...)
+		copied.Damage = &damage
+	}
+	if unit.Deck != nil {
+		deck := *unit.Deck
+		deck.Elevators = make([]*AircraftElevator, len(unit.Deck.Elevators))
+		for index, elevator := range unit.Deck.Elevators {
+			if elevator == nil {
+				continue
+			}
+			elevatorCopy := *elevator
+			elevatorCopy.AircraftIDs = append([]string(nil), elevator.AircraftIDs...)
+			deck.Elevators[index] = &elevatorCopy
+		}
+		copied.Deck = &deck
+	}
+	return copied
+}
+
 func VisibleUnits(state State, faction string) []Unit {
 	units := []Unit{}
 	visibleFleets := map[string]bool{}
@@ -1292,7 +1320,7 @@ func VisibleUnits(state State, faction string) []Unit {
 			}
 		}
 		if visible {
-			copyUnit := *unit
+			copyUnit := cloneUnit(*unit)
 			copyUnit.FleetID = FleetKey(unit)
 			visibleFleets[copyUnit.FleetID] = true
 			if copyUnit.Heading == "" {

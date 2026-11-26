@@ -105,16 +105,29 @@ func buildSpectateView(room store.Room, players []store.Player, events []store.E
 		"losses":         losses,
 		"scores":         game.VictoryPoints(state),
 		"objectives":     state.Objectives,
-		"shore_supplies": state.ShoreSupplies,
+		"shore_supplies": intMapSnapshot(state.ShoreSupplies),
 		"outcome":        state.Outcome,
 		"night":          state.Night,
 		"clock":          game.Clock(state),
 		"wind":           state.Wind,
-		"players":        players,
+		"players":        playersSnapshot(players),
 		"events":         events,
 		"spectator":      true,
 	}
 	return response
+}
+
+// intMapSnapshot 拷贝一份 map 给视图用：岸头物资会被卸载/岸轰改掉，
+// 视图直接放房间内存里的那张表，"上一帧"就会跟着变，补丁算不出差异。
+func intMapSnapshot(source map[string]int) map[string]int {
+	if source == nil {
+		return nil
+	}
+	copied := make(map[string]int, len(source))
+	for key, value := range source {
+		copied[key] = value
+	}
+	return copied
 }
 
 // spectatorLosses 合并双方的损失台账。

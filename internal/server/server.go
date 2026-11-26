@@ -838,6 +838,18 @@ func (s *Server) doState(msg roomMsg) roomReply {
 	return roomJSON(http.StatusOK, view)
 }
 
+// playersSnapshot 拷贝一份玩家记录给视图用。
+// 视图会作为"上一帧"缓存下来参与补丁 diff，直接放房间内存里的那个切片的话，
+// 上下线改的是同一块内存，补丁就会把变化算成"没变"，玩家看不到对手上线/离线。
+func playersSnapshot(players []store.Player) []store.Player {
+	if players == nil {
+		return nil
+	}
+	copied := make([]store.Player, len(players))
+	copy(copied, players)
+	return copied
+}
+
 // findPlayer 按 ID 取玩家：投影一律用库里最新的记录，不用连接上缓存的那份
 // （改名、换阵营之后不该继续按老记录投影）。
 func findPlayer(players []store.Player, playerID string) (store.Player, bool) {
@@ -894,7 +906,7 @@ func (s *Server) privateView(ctx context.Context, room store.Room, players []sto
 		"scores":     game.VictoryPoints(room.State),
 		"outcome":    room.State.Outcome,
 		"objectives": room.State.Objectives,
-		"you":        player, "players": players, "orders": ownOrders, "events": events,
+		"you":        player, "players": playersSnapshot(players), "orders": ownOrders, "events": events,
 		// solo 让前端把"完成部署"换成"等待对手进房"，别让玩家点了才发现结算不了。
 		"solo": room.Solo,
 		// 这里不要放 server_time 之类每次都变的字段：推送靠"和上一帧逐字节相同就不发"

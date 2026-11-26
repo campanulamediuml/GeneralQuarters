@@ -328,3 +328,41 @@ func TestWebSocketCommandPushIsPatch(t *testing.T) {
 	}
 	t.Logf("一次命令的推送：补丁 %d 字节 / 全量 %d 字节", size, len(full))
 }
+
+// 同一个人的两条连接，关掉一条之后推给另一条的补丁里必须带 players：
+// "谁在线"就写在 players[].connected 里。视图要是直接引用房间内存里的玩家表，
+// 上一帧会被一起改掉，补丁就只剩 you，玩家永远看不到对手上线/离线。
+func TestWebSocketPresencePatchTouchesPlayersList(t *testing.T) {
+	host, _, _, cleanup := setupTestServer(t)
+	defer cleanup()
+	var created roomResponse
+	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_fixture", "solo": true}, &created); status != http.StatusCreated {
+		t.Fatalf("create room status %d", status)
+	}
+	first := dialTestWS(t, host, "/ws?room_id="+created.RoomID)
+	seedPlayerView(t, first, created.RoomID)
+
+	second := dialTestWS(t, host, "/ws?room_id="+created.RoomID)
+	// 第二条连接建起来之后要等它被 worker 处理完，否则关掉它可能和上线消息乱序。
+	time.Sleep(100 * time.Millisecond)
+	_ = second.Close()
+
+	envelope, size := readRawViewFrame(t, first)
+	patch, ok := envelope["patch"]
+	if !ok {
+		t.Fatalf("这帧不是补丁：%d 字节", size)
+	}
+	var decoded struct {
+		Players json.RawMessage `json:"players"`
+		You     json.RawMessage `json:"you"`
+	}
+	if err := json.Unmarshal(patch, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if len(decoded.Players) == 0 {
+		t.Fatalf("补丁里没有 players，上线/下线状态推不出去：%s", patch)
+	}
+	if len(decoded.You) == 0 {
+		t.Fatalf("补丁里没有 you：%s", patch)
+	}
+}

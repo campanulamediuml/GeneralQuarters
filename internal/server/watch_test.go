@@ -1,6 +1,7 @@
 package server
 
 import (
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -135,5 +136,44 @@ func TestSpectatorGroundTasksCarryReconSectors(t *testing.T) {
 	}
 	if len(task.ReconSectors[0].SectorHexes) == 0 {
 		t.Fatal("机场侦察扇面没有 hex，观战页画不出来")
+	}
+}
+
+// 观战视图也必须是值快照：岸头物资、舰船损伤这些都是房间内存里原地改的，
+// 视图要是共享那张表，"上一帧"会跟着变，补丁就算不出差异，观战页会停在旧画面。
+func TestSpectateViewIsSnapshot(t *testing.T) {
+	scenario, gameMap, catalog, err := game.LoadScenario(testContentRoot(t), "_fixture")
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err := game.NewState(scenario, gameMap, catalog, 7)
+	if err != nil {
+		t.Fatal(err)
+	}
+	room := store.Room{ID: "room-1", Status: "running", Turn: 1, State: state}
+	view := buildSpectateView(room, nil, nil)
+	before, err := json.Marshal(view)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if state.ShoreSupplies == nil {
+		state.ShoreSupplies = map[string]int{}
+	}
+	state.ShoreSupplies["A|0101"] = 99
+	for _, unit := range state.Units {
+		if unit.Damage == nil {
+			unit.Damage = &game.ShipDamage{}
+		}
+		unit.Damage.Fire = "fire"
+		if unit.Deck != nil {
+			unit.Deck.Length += 3
+		}
+	}
+	after, err := json.Marshal(view)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(before) != string(after) {
+		t.Fatal("观战视图跟着房间状态一起变了：视图必须是值快照")
 	}
 }
