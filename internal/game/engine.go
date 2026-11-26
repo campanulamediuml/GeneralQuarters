@@ -1376,16 +1376,24 @@ func VisibleUnits(state State, faction string) []Unit {
 	visibleFleets := map[string]bool{}
 	for _, unit := range state.Units {
 		visible := unit.Faction == faction
+		visual := false
 		if !visible {
 			for _, friendly := range state.Units {
 				if friendly.Faction == faction && Distance(friendly.Coord, unit.Coord) <= visualContactRange {
-					visible = true
+					visible, visual = true, true
 					break
 				}
 			}
 		}
 		if visible {
 			copyUnit := cloneUnit(*unit)
+			// 目视范围内的敌方舰队，情报就是满的：两格内连舰名和编成都看得见。
+			// 以前这里原样抄了真实算子的 contact_level=0，于是接口一边说"没有情报"、
+			// 一边把完整舰种/强度/卡面全发出来，观战页和外部脚本都被这对矛盾绕过。
+			if visual {
+				copyUnit.ContactLevel = 4
+				copyUnit.ContactStaleTurns = 0
+			}
 			copyUnit.FleetID = FleetKey(unit)
 			visibleFleets[copyUnit.FleetID] = true
 			if copyUnit.Heading == "" {

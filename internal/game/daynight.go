@@ -363,11 +363,12 @@ func groundAirborneUnits(state State) []*AirfieldAirUnit {
 // 水上侦察机是死刑。无法及时返航的编队会收到一条明确警告（玩家还能手动召回）。
 func recallLoopingAircraftBeforeNight(state *State) []EngineEvent {
 	if state.Night {
-		// 天已经黑了还在天上的循环类任务（CAP／空中掩护／侦察）必须掉头。
-		// 它们没有"打完就回家"的终点：不召回就会一直盘旋烧油，航程见底直接被删掉，
-		// 而夜间着舰至少还有三成活路。打击编队是玩家自己的赌注（上面只警告过一次），
-		// 转场是跨多日移动，这两类不在这里动。
-		return recallLoiteringAfterDark(state)
+		// 天黑之后不再做"赶不赶得上"的规划：这一刻只有两种事在做——
+		// 已经在返航的继续飞，还在盘旋的按油量自己决定什么时候撤（advanceCover / CAP / 侦察
+		// 都有"剩的航程只够回家就掉头"的判定）。不在这里统一拍掉头是有意的：
+		// 长腿的陆基机（H6K 航程 48、B-17 37）熬到天亮再落地是 0 摔毁，
+		// 而夜间降落机场要判 20%、航母 70%，硬让它们现在就落等于替玩家送死。
+		return nil
 	}
 	remaining := turnsUntilNight(*state)
 	events := []EngineEvent{}
@@ -455,54 +456,6 @@ func recallLoopingAircraftBeforeNight(state *State) []EngineEvent {
 		} else {
 			events = append(events, EngineEvent{Type: "night_warning", Audience: aircraft.Faction, Text: fmt.Sprintf("%s已经赶不上了：返航要%d回合，距天黑只剩%d回合，立即掉头", aircraft.Model, need, remaining)})
 		}
-	}
-	return events
-}
-
-// recallLoiteringAfterDark 把天黑之后还挂在空中的 CAP／空中掩护／侦察统一掉头。
-//
-// 这几类是"一直留在空中"的任务，没有终点：入夜前那一轮召回是按"赶不赶得上"算的，
-// 一旦入夜那一刻还在天上（起飞晚了、或者被别的逻辑卡住），它们就会一直盘旋到航程耗尽。
-// 掉头之后照样按夜间规则判摔毁（航母 70%、机场 20%，规则书 531–537 行），
-// 但那是三成活路，比等着被删掉好。
-func recallLoiteringAfterDark(state *State) []EngineEvent {
-	events := []EngineEvent{}
-	recall := func(faction, model, status string) {
-		label := map[string]string{"cap": "CAP", "cover": "空中掩护", "recon": "侦察"}[status]
-		if label == "" {
-			label = "飞行任务"
-		}
-		events = append(events, EngineEvent{Type: "night_recall", Audience: faction, Text: fmt.Sprintf("%s天黑后仍在执行%s，立即返航（夜间着舰按规则判摔毁）", model, label)})
-	}
-	for _, id := range sortedAirUnitIDs(*state) {
-		aircraft := state.Aircraft[id]
-		if aircraft == nil || !airborne(aircraft) || aircraft.Returning {
-			continue
-		}
-		switch aircraft.Status {
-		case "cap", "cover", "recon":
-		default:
-			continue
-		}
-		aircraft.Returning = true
-		aircraft.ForwardCoord = ""
-		aircraft.TrackingFleetID = ""
-		aircraft.TargetCoord = ""
-		recall(aircraft.Faction, aircraft.Model, aircraft.Status)
-	}
-	for _, aircraft := range groundAirborneUnits(*state) {
-		if aircraft.Returning {
-			continue
-		}
-		switch aircraft.Status {
-		case "cap", "cover", "recon":
-		default:
-			continue
-		}
-		aircraft.Returning = true
-		aircraft.TargetCoord = ""
-		aircraft.TrackingFleetID = ""
-		recall(aircraft.Faction, aircraft.Model, aircraft.Status)
 	}
 	return events
 }

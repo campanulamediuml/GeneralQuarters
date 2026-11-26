@@ -526,11 +526,29 @@
   function contentURL(picture) {
     return picture ? '/content/' + String(picture).replace(/^\/+/, '') : '';
   }
+  // 受损标签：只认服务端真正下发的字段。
+  // 以前是"把 damage 里所有为真的键都翻成中文"，而 flooding 是数组 []——空数组在 JS 里是真值，
+  // 于是每一艘完好无损的船都挂着"进水"，观战详情整页漂红。字段名也是另写的（list/rudder/engine/deck），
+  // 对不上 ShipDamage 的 tilt/deck_damaged/elevator_damage，真正受损反而可能显示不出来。
   function damageText(damage) {
     if (!damage) return '完好';
-    var names = { disabled: '失去动力', oil_leak: '漏油', fire: '起火', flooding: '进水', list: '倾斜', rudder: '舵机受损', engine: '主机受损', deck: '甲板受损' };
-    var keys = Object.keys(damage).filter(function (key) { return damage[key]; });
-    return keys.length ? keys.map(function (key) { return names[key] || key; }).join(' / ') : '完好';
+    var parts = [];
+    if (damage.disabled) parts.push('失去动力');
+    if (damage.fire === 'burning') parts.push('起火燃烧');
+    else if (damage.fire) parts.push('小型火灾');
+    if (damage.deck_destroyed) parts.push('飞行甲板摧毁');
+    else if (damage.deck_damaged) parts.push('飞行甲板损伤');
+    if (damage.elevator_damage > 0) parts.push('升降机受损×' + damage.elevator_damage);
+    var flooding = (damage.flooding && damage.flooding.length) || 0;
+    if (flooding > 0) parts.push('进水×' + flooding);
+    if (damage.tilt) parts.push('倾斜');
+    if (damage.oil_leak) parts.push('漏油');
+    if (damage.torpedo_disabled) parts.push('鱼雷发射器受损');
+    if (damage.surface_radar_disabled) parts.push('水面雷达受损');
+    if (damage.fire_control_radar_disabled) parts.push('火控雷达受损');
+    if (damage.air_radar_disabled) parts.push('对空雷达受损');
+    if (damage.sonar_disabled) parts.push('声呐受损');
+    return parts.length ? parts.join(' / ') : '完好';
   }
   function pictureBlock(picture, fallback, className) {
     var url = contentURL(picture);
