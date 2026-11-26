@@ -898,7 +898,7 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
            整个替换掉，扇面就变成一块盖住地形的色块，观感非常刺眼。 -->
       <polygon v-if="reconCells.has(hex.coord)" class="recon-tint" :points="points(hex.x, hex.y)" />
       <polygon v-if="reconCurrentCells.has(hex.coord)" class="recon-current-tint" :points="points(hex.x, hex.y)" />
-      <text class="coord-label" :x="hex.x" :y="hex.y - 23">{{ hex.coord }}</text>
+      <text class="coord-label" :x="hex.x" :y="hex.y - 30">{{ hex.coord }}</text>
       <!-- 机场格的地名由机场算子自己写，地形标签再写一遍会变成上下两个"拉包尔"。 -->
       <text v-if="hex.name && !airfieldsAt(hex.coord).length" class="terrain-label" :x="hex.x" :y="hex.y + 18">{{ hex.name }}</text>
       <!-- 每格底部的风向小箭头：指向"风吹向"的方向，替代原来只有一个全局风向 -->
@@ -1055,10 +1055,10 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         class="map-airfield-card"
         :class="[`faction-${airfield.faction.toLowerCase()}`, { enemy: airfield.faction !== playerFaction, unknown: airfield.contact_level < 3 }]"
         :data-airfield-id="airfield.id"
-        :x="center(coord).x - 32 + (index - (airfieldsAt(coord).length - 1) / 2) * 66"
-        :y="center(coord).y - 29"
-        width="64"
-        height="58"
+        :x="center(coord).x - 28 + (index - (airfieldsAt(coord).length - 1) / 2) * 58"
+        :y="center(coord).y - 25"
+        width="56"
+        height="52"
         @click.stop="airfieldClick(airfield)"
       >
         <div xmlns="http://www.w3.org/1999/xhtml" class="map-airfield-card-inner">

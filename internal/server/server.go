@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"generalquarters/internal/game"
@@ -843,6 +844,11 @@ func (s *Server) doState(msg roomMsg) roomReply {
 		return roomError(http.StatusInternalServerError, err.Error())
 	}
 	actor.views.players[player.ID] = view
+	if msg.client != nil {
+		// 这条连接现在有底座了：从这一帧之后的补丁才允许推给它。
+		// 全量和补丁由同一个 worker goroutine 先后入队，所以顺序天然是"先底座、后补丁"。
+		msg.client.synced.Store(true)
+	}
 	return roomJSON(http.StatusOK, view)
 }
 
@@ -1132,6 +1138,10 @@ type wsClient struct {
 	roomID    string
 	playerID  string
 	spectator bool
+	// synced 表示这条连接已经自己拉过一份全量底座。
+	// 没有底座就不能收补丁：刷新页面时服务端还留着上一条连接的底座，
+	// 一上来就推差异会让客户端"收到补丁但没有底座"，然后关连接重连，永远同步不上。
+	synced atomic.Bool
 }
 
 // enqueue 把一帧塞进连接的出口。塞不进去说明对端已经读不动了：直接断开，
@@ -1206,6 +1216,11 @@ func (h *hub) deliver(roomID, playerID string, spectator bool, frame []byte) {
 			continue
 		}
 		if playerID != "" && client.playerID != playerID {
+			continue
+		}
+		// 这条连接还没拉过底座：补丁对它没有意义（会在客户端那里找不到合并目标）。
+		// 观战连接首帧由服务端直接推快照，不走这个分支。
+		if !client.spectator && !client.synced.Load() {
 			continue
 		}
 		if !client.enqueue(frame) {

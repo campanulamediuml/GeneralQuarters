@@ -41,10 +41,10 @@ export function handleRoomSocketMessage(raw: string): boolean {
     }
     if (!message.patch) return true
     if (!pushedView) {
-      // 收到补丁却没有底座：这一帧丢掉的话，后面每一帧都会打在错的底座上，而且不报错。
-      // 断开重连，新连接会重新拿一份全量。
-      console.error('收到视图补丁但没有底座，重连以重新同步')
-      roomSocket?.close()
+      // 还没拉到全量底座：这一帧直接丢掉，不回退成"断开重连"。
+      // 底座（/state）正在同一条连接上加载，它反映的是加载那一刻的最新状态；
+      // 而在这里重连只会连上同一条推送路径、再撞上同一帧，变成同步不上的死循环。
+      console.warn('还没拿到全量底座，先丢弃这一帧补丁')
       return true
     }
     // 就地打补丁：改了哪个字段，只有读那个字段的组件会重算。
