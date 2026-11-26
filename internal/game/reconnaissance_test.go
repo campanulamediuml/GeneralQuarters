@@ -59,17 +59,16 @@ func TestReconDetectionChanceModifiers(t *testing.T) {
 		{ID: "b2", FleetID: "target", Faction: "B", Type: "BB", Coord: "0104"},
 		{ID: "b3", FleetID: "target", Faction: "B", Type: "DD", Coord: "0104"},
 	}
-	// 每 hex -1%：25 基础 + 11（2BB+1DD）- 10（降雨）- 3（距离）= 23，
-	// 降雨再乘一次天气系数 0.35 → 8.05。
-	if chance := reconDetectionChance(state, aircraft, members); math.Abs(chance-8.05) > 0.001 {
+	// 每 hex -1%：25 基础 + 11（2BB+1DD）- 3（距离）= 33；降雨只乘天气系数 0.35 → 11.55。
+	if chance := reconDetectionChance(state, aircraft, members); math.Abs(chance-11.55) > 0.001 {
 		t.Fatalf("舰船、距离和降雨修正错误：%.2f", chance)
 	}
 	state.Contacts = map[string]map[string]*FleetContact{"A": {"target": {Level: 1}}}
-	if chance := reconDetectionChance(state, aircraft, members); math.Abs(chance-9.8) > 0.001 {
+	if chance := reconDetectionChance(state, aircraft, members); math.Abs(chance-13.3) > 0.001 {
 		t.Fatalf("既有情报修正错误：%.2f", chance)
 	}
 	aircraft.SectorWidth = 120
-	if chance := reconDetectionChance(state, aircraft, members); math.Abs(chance-4.9) > 0.001 {
+	if chance := reconDetectionChance(state, aircraft, members); math.Abs(chance-6.65) > 0.001 {
 		t.Fatalf("120度扇面没有将最终发现率减半：%.2f", chance)
 	}
 }
@@ -80,10 +79,10 @@ func TestReconWeatherFactorIsMultiplicative(t *testing.T) {
 		weather string
 		want    float64
 	}{
-		{"", 28},        // 25 + 6（1BB+1DD）- 3（距离）
-		{"cloud", 11.5}, // (25+6-5-3) × 0.5
-		{"rain", 6.3},   // (25+6-10-3) × 0.35
-		{"storm", 2.6},  // (25+6-15-3) × 0.2
+		{"", 28},       // 25 + 6（1BB+1DD）- 3（距离）
+		{"cloud", 14},  // 28 × 0.5
+		{"rain", 9.8},  // 28 × 0.35
+		{"storm", 5.6}, // 28 × 0.2
 	}
 	for _, tc := range cases {
 		cells := []MapCell{}

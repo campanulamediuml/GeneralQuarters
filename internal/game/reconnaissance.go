@@ -684,14 +684,7 @@ func reconDetectionChance(state State, aircraft *AirUnit, members []Unit) float6
 		}
 	}
 	if len(members) > 0 {
-		switch weatherAt(state.Map, members[0].Coord) {
-		case "cloud":
-			chance -= 5
-		case "rain":
-			chance -= 10
-		case "storm":
-			chance -= 15
-		}
+		// 天气不再扣点，只在最后乘一次系数（见下面的 weatherFactor）。
 		// 规则书 543 行原值是每 hex -2%，实测太狠：8 格外基本搜不到，
 		// 而整备 + 飞行 + 空袭这条链路根本来不及。这里下调为每 hex -1%，
 		// 有效搜索半径从 6–8 格放宽到 12–15 格。
@@ -710,9 +703,8 @@ func reconDetectionChance(state State, aircraft *AirUnit, members []Unit) float6
 		chance *= 2
 	}
 	if len(members) > 0 {
-		// 天气再额外打一次折：多云 ×0.5、降雨 ×0.35、风暴 ×0.2。
-		// 前面的 -5/-10/-15 是"目标藏在云底下不好找"，这个系数是"整片天根本看不出去"，
-		// 两笔叠加：基础 40% 的搜索在风暴里先 -15 再 ×0.2，只剩 5%。
+		// 天气只乘一次系数：多云 ×0.5、降雨 ×0.35、风暴 ×0.2。
+		// 以前这里还按档扣 -5/-10/-15，等于把"看不清"罚两遍；只留系数更好算。
 		chance *= weatherFactor(weatherAt(state.Map, members[0].Coord))
 	}
 	// 宽扇面按规则书"应用全部修正后的最终发现率 ÷2"放在最后：对整条链折半，
@@ -732,17 +724,8 @@ func resolveTracking(state *State, aircraft *AirUnit, members []Unit) []EngineEv
 			chance++
 		}
 	}
-	weather := weatherAt(state.Map, members[0].Coord)
-	switch weather {
-	case "cloud":
-		chance -= 10
-	case "rain":
-		chance -= 15
-	case "storm":
-		chance -= 20
-	}
-	// 和发现率一样，天气再乘一遍系数：风暴里连盯住目标都很难。
-	chance *= weatherFactor(weather)
+	// 和发现率一样，天气只乘系数（多云 ×0.5、降雨 ×0.35、风暴 ×0.2），不再按档扣点。
+	chance *= weatherFactor(weatherAt(state.Map, members[0].Coord))
 	chance = math.Max(0, math.Min(100, chance))
 	roll := probabilityRoll(&state.RNGState)
 	if roll >= chance {

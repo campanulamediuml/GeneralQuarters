@@ -2012,15 +2012,8 @@ func groundReconChance(state State, aircraft *AirfieldAirUnit, members []Unit) f
 		}
 	}
 	if len(members) > 0 {
-		switch weatherAt(state.Map, members[0].Coord) {
-		case "cloud":
-			chance -= 5
-		case "rain":
-			chance -= 10
-		case "storm":
-			chance -= 15
-		}
 		// 与舰载侦察一致：每 hex -1%（规则书原值 -2%，实测有效半径太短）。
+		// 天气不在这里扣点，统一放到最后乘系数。
 		chance -= float64(Distance(aircraft.OriginCoord, members[0].Coord))
 	}
 	// 与舰载侦察一致：水上飞机最终发现率 ×2（飞得慢，但驻空久、效率高）。
@@ -2028,7 +2021,7 @@ func groundReconChance(state State, aircraft *AirfieldAirUnit, members []Unit) f
 		chance *= 2
 	}
 	if len(members) > 0 {
-		// 与舰载机一致：除了上面的 -5/-10/-15，天气再乘一次系数（多云 ×0.5、降雨 ×0.35、风暴 ×0.2）。
+		// 与舰载机一致：天气只乘系数（多云 ×0.5、降雨 ×0.35、风暴 ×0.2），不再按档扣点。
 		chance *= weatherFactor(weatherAt(state.Map, members[0].Coord))
 	}
 	// 与舰载机同一顺序：宽扇面的 ÷2 放在最后，120 度永远正好是 60 度的一半。
