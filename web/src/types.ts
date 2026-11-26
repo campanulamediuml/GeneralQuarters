@@ -192,7 +192,7 @@ export interface ReconSector {
 export interface AirTask {
   id: string
   kind: 'cap' | 'recon' | 'asw' | 'attack' | 'transfer' | 'cover'
-  phase: 'servicing' | 'lifting' | 'preparing' | 'launching' | 'assembling' | 'active' | 'recovering'
+  phase: 'servicing' | 'lifting' | 'taxiing' | 'preparing' | 'launching' | 'assembling' | 'active' | 'recovering'
   name: string
   carrier_id: string
   carrier_ids: string[]

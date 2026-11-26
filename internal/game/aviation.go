@@ -1961,8 +1961,13 @@ func LandAircraft(state *State, aircraft *AirUnit, carrier *Unit) {
 	taskID := aircraft.TaskID
 	taskKind := aircraft.TaskKind
 	clearAirTask(aircraft)
-	aircraft.TaskID = taskID
-	aircraft.TaskKind = taskKind
+	// 打击编队落地就等于这一波结束：算子回甲板/机库由面板展示，任务组里只留还在
+	// 空中的成员（编队牌跟着收缩），最后一个落地时整队消失。以前把 TaskID 留着，
+	// 于是"返航中"的编队落地后又以"任务整备中"的样子冒回打击任务栏。
+	if taskKind != "attack" {
+		aircraft.TaskID = taskID
+		aircraft.TaskKind = taskKind
+	}
 	// 母舰已经沉没时没有需要用"在舰机数"做容量校验的接收方，直接停在回收状态等待处理。
 	if state == nil || state.Units[carrier.ID] != carrier {
 		return
@@ -2231,7 +2236,24 @@ func canRestartCAP(state State, aircraft *AirUnit) bool {
 	return carrier != nil && AviationAvailable(carrier)
 }
 
-func taskPhase(members []*AirUnit) string {
+// elevatorLowering 判断这架算子所在的升降机是不是在下降（回收方向）。
+// 只看算子自己的 status == "elevator" 分不出方向，编队卡的阶段就会把"正在下降"说成
+// "升降机提升中"——回收的编队看起来像又要出击。
+func elevatorLowering(state State, aircraft *AirUnit) bool {
+	carrier := state.Units[aircraft.CarrierID]
+	if carrier == nil || carrier.Deck == nil {
+		return false
+	}
+	for _, elevator := range carrier.Deck.Elevators {
+		if elevator.ID != aircraft.ElevatorID {
+			continue
+		}
+		return elevator.Status == "lowering"
+	}
+	return false
+}
+
+func taskPhase(state State, members []*AirUnit) string {
 	// 回收阶段：一部分成员已经落到甲板/升降机上，另一部分还在空中往回飞。
 	// 这种混合状态以前会显示成 lifting 或 launching，玩家看不出编队正在回收。
 	// 只把"已经落到甲板等下降"(recovery) 算作已回收：elevator 可能是提升中，
@@ -2293,6 +2315,10 @@ func taskPhase(members []*AirUnit) string {
 			launched = true
 		}
 		if aircraft.Status == "elevator" {
+			// 下降到机库是回收流程的后半段，不是又一次出击。
+			if elevatorLowering(state, aircraft) {
+				return "recovering"
+			}
 			return "lifting"
 		}
 	}
@@ -2422,7 +2448,7 @@ func VisibleAviation(state State, faction string) AviationView {
 				}
 			}
 		}
-		phase := taskPhase(aircraftList)
+		phase := taskPhase(state, aircraftList)
 		task := AirTask{ID: taskID, Kind: kind, Phase: phase, CarrierID: leader.CarrierID, CarrierIDs: []string{}, AircraftIDs: []string{}, Aircraft: []AirUnit{}, Priority: leader.Priority, Lane: leader.TaskLane, Faction: leader.Faction}
 		carrierSet := map[string]bool{}
 		for _, aircraft := range aircraftList {

@@ -370,8 +370,10 @@ function launchRecon() {
 function taskPhase(task: AirTask) {
   if ((task.kind === 'cap' || task.kind === 'recon') && task.airborne_count > 0 && task.airborne_count < task.aircraft_ids.length) return `部分已升空 · ${task.airborne_count}/${task.aircraft_ids.length}`
   if (task.phase === 'servicing') return '任务整备中'
+  // 机场没有升降机：整备完成先滑行到跑道，再在跑道待命；航母才是提升/甲板待飞。
   if (task.phase === 'lifting') return '升降机提升中'
-  if (task.phase === 'preparing') return '甲板待飞'
+  if (task.phase === 'taxiing') return '滑行至跑道'
+  if (task.phase === 'preparing') return selectedCarrier.value && isAirfield(selectedCarrier.value) ? '跑道待飞' : '甲板待飞'
   if (task.phase === 'launching') return task.kind === 'attack' ? '编队离场' : '已升空'
   if (task.phase === 'assembling') return '舰队上空等待编队'
   if (task.phase === 'recovering') return `回收中 · ${task.airborne_count}/${task.aircraft_ids.length} 仍在空中`
@@ -429,7 +431,9 @@ function reconGroupAlive(task: AirTask) {
 
 // 打击编队的"出发"从任务栏里退出：离场之后编队的整编已经结束，
 // 详情、改目标、召回都在大地图那张编队牌上做。
-const departedPhases = ['launching', 'active', 'recovering']
+// 任务栏只是"编队还在整备、准备出击"的地方：全员升空（含在舰队上空等目标/等集结）
+// 之后编队属于海图，落回甲板/机库的算子属于回收面板，两者都不该再占着打击任务栏。
+const departedPhases = ['assembling', 'launching', 'active', 'recovering']
 
 // 栏位由服务端分配（task.lane，1 起）：编队组队时占一个空栏，全部升空之后栏位交还，
 // 下一支新编队重新拿回 I。以前按"任务在列表里的位置 % 2"分栏，已出发的编队还挂在列表里

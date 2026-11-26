@@ -7,9 +7,9 @@ import (
 
 // TestLandedAircraftCanBeRetasked 回归：任务完成降回机库后，算子必须能再次被分配任务。
 //
-// LandAircraft 为了保住任务分组只清任务参数、保留 TaskID，而 TaskKind 已经被清空；
-// 分组关闭逻辑只认 TaskKind，于是一架打完一轮的飞机会永久卡在"已经属于其他任务"，
-// 而 RETURN_TO_HANGAR 又不接受 hangar 状态，玩家没有任何办法把它重新拖进任务栏。
+// 曾经出过"着舰保留 TaskID 但清掉 TaskKind"的幽灵状态：分组关闭只认 TaskKind，
+// 算子被当成"已经属于其他任务"，RETURN_TO_HANGAR 又不接受 hangar 状态，再也拖不进任务栏。
+// 现在着舰对打击编队直接清干净（TaskID/TaskKind 一起清），回到机库就是自由算子。
 func TestLandedAircraftCanBeRetasked(t *testing.T) {
 	state := sandboxState(t)
 	id := "b-cv-01-dive_bomber-x1"
@@ -21,8 +21,8 @@ func TestLandedAircraftCanBeRetasked(t *testing.T) {
 
 	carrier := state.Units["b-cv-01"]
 	LandAircraft(&state, aircraft, carrier)
-	if aircraft.TaskID != "strike-test" {
-		t.Fatalf("着舰应保留 TaskID 以维持分组：%+v", aircraft)
+	if aircraft.TaskID != "" || aircraft.TaskKind != "" {
+		t.Fatalf("着舰后应退出打击编队：task=%q kind=%q", aircraft.TaskID, aircraft.TaskKind)
 	}
 	// 升降机下降完成后的状态。
 	aircraft.Status = "hangar"

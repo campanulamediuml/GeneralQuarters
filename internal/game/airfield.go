@@ -2337,9 +2337,26 @@ func GroundAviationView(state State, faction string) AviationView {
 			task.NightMargin = 0
 			task.NightSafe = true
 		}
+		// 阶段要照着机场的真实流程说：机库整备 → 滑行到跑道 → 跑道待命 → 升空。
+		// 以前只有 service / active 两档，飞机已经在跑道上待命了，任务卡还写"任务整备中"。
 		task.Phase = "servicing"
 		if task.AirborneCount > 0 {
 			task.Phase = "active"
+		} else {
+			ready, taxiing := false, false
+			for _, member := range members {
+				switch member.Status {
+				case "ready":
+					ready = true
+				case "deck":
+					taxiing = true
+				}
+			}
+			if ready {
+				task.Phase = "preparing"
+			} else if taxiing {
+				task.Phase = "taxiing"
+			}
 		}
 		// 起飞顶点：任务卡要写"目标 / 起飞位置"。机场编队的起飞顶点就是机场坐标，
 		// 但转场/循环回来的算子 OriginCoord 可能是旧值，所以优先用当前机场。

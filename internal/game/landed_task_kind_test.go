@@ -2,40 +2,34 @@ package game
 
 import "testing"
 
-// TestLandedAircraftKeepsTaskKind 回归：着舰不能把任务类型清掉。
-// TaskID 保留但 TaskKind 被清空的算子会变成"无类型残骸"：任务栏里既不是攻击也不是侦察，
-// 卡在升降机/甲板上既放飞不了也回收不了，玩家看到的是一队回不来的轰炸机。
-func TestLandedAircraftKeepsTaskKind(t *testing.T) {
+// TestLandedAttackAircraftLeavesTaskBar：打击任务栏只放"还在整备、准备出击"的编队。
+// 编队离场后属于海图，落回甲板/机库的算子属于回收面板——落地还给任务栏留一张
+// "任务整备中"的编队卡，玩家会以为这波又回来了。
+// 同时守住以前的幽灵状态：TaskID 留着、TaskKind 清掉 = 既不能放飞也不能重新分配。
+func TestLandedAttackAircraftLeavesTaskBar(t *testing.T) {
 	state := sandboxState(t)
 	aircraft := state.Aircraft["b-cv-01-dive_bomber-x1"]
 	carrier := state.Units[aircraft.CarrierID]
 	carrier.Deck.Operation = ""
 	aircraft.Status = "attack"
 	aircraft.TaskKind = "attack"
-	aircraft.TaskID = "strike-keep-kind"
+	aircraft.TaskID = "strike-leave"
 	aircraft.Coord = carrier.Coord
 
 	LandAircraft(&state, aircraft, carrier)
 	if aircraft.Status != "recovery" {
 		t.Fatalf("着舰后应进入回收状态：%s", aircraft.Status)
 	}
-	if aircraft.TaskKind != "attack" || aircraft.TaskID != "strike-keep-kind" {
-		t.Fatalf("着舰不应清掉任务归属：kind=%q task=%q", aircraft.TaskKind, aircraft.TaskID)
+	if aircraft.TaskID != "" || aircraft.TaskKind != "" {
+		t.Fatalf("落地应退出打击编队：kind=%q task=%q", aircraft.TaskKind, aircraft.TaskID)
 	}
-
-	view := VisibleAviation(state, "B")
-	found := false
-	for _, task := range view.Tasks {
-		if task.ID != "strike-keep-kind" {
-			continue
-		}
-		found = true
-		if task.Kind != "attack" {
-			t.Fatalf("回收中的攻击编队在任务栏里丢了类型：%q", task.Kind)
-		}
+	if aircraft.TaskLane != 0 {
+		t.Fatalf("落地应归还任务栏位：%d", aircraft.TaskLane)
 	}
-	if !found {
-		t.Fatal("回收中的攻击编队从任务栏消失了")
+	for _, task := range VisibleAviation(state, "B").Tasks {
+		if task.ID == "strike-leave" {
+			t.Fatalf("落地后编队不该还留在任务栏：%+v", task)
+		}
 	}
 }
 

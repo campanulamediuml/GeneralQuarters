@@ -91,8 +91,9 @@ func TestAttackReturnLandsAndClearsConfusion(t *testing.T) {
 		advanceAircraftReturn(&state, aircraft)
 		carrier.Deck.Operation = ""
 	}
-	// 着舰后保留 TaskID 让任务栏还能显示等待下降的算子；任务参数（目标/航程等）必须清空。
-	if aircraft.Status != "recovery" || aircraft.Confusion || aircraft.TaskID != "strike-a" || aircraft.TargetCoord != "" || aircraft.Coord != "" {
+	// 着舰即退出打击编队：算子回甲板/机库由回收面板展示，编队牌只留还在空中的人。
+	// 任务参数（目标/航程等）同样必须清空。
+	if aircraft.Status != "recovery" || aircraft.Confusion || aircraft.TaskID != "" || aircraft.TargetCoord != "" || aircraft.Coord != "" {
 		t.Fatalf("返航降落状态错误：%+v", aircraft)
 	}
 }
