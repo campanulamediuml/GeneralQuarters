@@ -115,3 +115,59 @@ func BenchmarkSpectateSnapshot(b *testing.B) {
 		}
 	})
 }
+
+// 一次"推补丁"的成本拆开看：投影（含读库）、diff、编码。
+// diff 这一项曾经是 11ms——两万条战报的列表里每个元素都在跑 FieldByNameFunc，
+// 修完类型元数据缓存后是 0.4ms 量级；这条基准就是防它再爬回去。
+func BenchmarkPrivateViewPush(b *testing.B) {
+	st, roomID := benchFixture(b)
+	ctx := context.Background()
+	server := &Server{store: st}
+	room, err := st.Room(ctx, roomID)
+	if err != nil {
+		b.Fatalf("读取房间失败: %v", err)
+	}
+	players, err := st.Players(ctx, roomID)
+	if err != nil {
+		b.Fatalf("读取玩家失败: %v", err)
+	}
+	if len(players) == 0 {
+		b.Skip("房间没有玩家")
+	}
+	player := players[0]
+
+	b.Run("view", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			if _, err := server.privateView(ctx, room, players, player); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+
+	previous, err := server.privateView(ctx, room, players, player)
+	if err != nil {
+		b.Fatal(err)
+	}
+	next, err := server.privateView(ctx, room, players, player)
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.Run("diff", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			if diffView(previous, next) != any(patchNone) {
+				b.Fatal("同一份状态不该算出补丁")
+			}
+		}
+	})
+
+	b.Run("marshal", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			if data, err := json.Marshal(next); err != nil || len(data) == 0 {
+				b.Fatal("编码失败")
+			}
+		}
+	})
+}

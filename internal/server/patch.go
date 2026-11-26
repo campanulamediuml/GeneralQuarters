@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"sync"
 )
 
 // 视图补丁：拿两份投影做 diff，算出"和上一帧相比变了哪些东西"。
@@ -54,18 +55,87 @@ func patchKey(value reflect.Value) (string, string) {
 	if value.Kind() != reflect.Struct {
 		return "", ""
 	}
-	for _, field := range patchKeyFields {
-		found := value.FieldByNameFunc(func(name string) bool {
-			structField, ok := value.Type().FieldByName(name)
-			return ok && jsonFieldName(structField) == field
-		})
-		if found.IsValid() {
-			if text := keyText(found); text != "" {
-				return field, text
-			}
+	for _, key := range structMetaOf(value.Type()).keys {
+		found, ok := fieldByPath(value, key.path)
+		if !ok {
+			continue
+		}
+		if text := keyText(found); text != "" {
+			return key.name, text
 		}
 	}
 	return "", ""
+}
+
+// fieldByPath 按嵌入路径取字段；中间的嵌入指针是 nil 就当成没这个字段。
+// FieldByIndex 遇到 nil 会直接 panic，而视图里"嵌入指针为空"是正常状态。
+func fieldByPath(value reflect.Value, path []int) (reflect.Value, bool) {
+	for _, index := range path {
+		for value.Kind() == reflect.Pointer {
+			if value.IsNil() {
+				return reflect.Value{}, false
+			}
+			value = value.Elem()
+		}
+		if value.Kind() != reflect.Struct {
+			return reflect.Value{}, false
+		}
+		value = value.Field(index)
+	}
+	return value, true
+}
+
+// structMeta 是一个结构体类型在补丁里的投影：哪些字段参与比较、JSON 名叫什么，
+// 以及 patchKeyFields 里这个类型真正有哪几个主键候选。
+//
+// 这些都只和类型有关，算一次就够。不缓存的话，视图里每个实体每帧都要解一遍 tag、
+// 跑一遍 FieldByNameFunc——438 格地图、几十艘舰、上百架飞机，一次推送 11ms 里
+// 45% 就烧在这上面（而补丁本身只有几百字节）。
+type structMeta struct {
+	fields []structField
+	keys   []structKeyField
+}
+
+type structField struct {
+	index int
+	name  string
+}
+
+type structKeyField struct {
+	path []int // 用路径是为了支持嵌入字段（FieldByIndex 能吃多级）
+	name string
+}
+
+var structMetaCache sync.Map // reflect.Type -> *structMeta
+
+func structMetaOf(t reflect.Type) *structMeta {
+	if cached, ok := structMetaCache.Load(t); ok {
+		return cached.(*structMeta)
+	}
+	meta := &structMeta{fields: make([]structField, 0, t.NumField())}
+	for index := 0; index < t.NumField(); index++ {
+		field := t.Field(index)
+		if field.PkgPath != "" {
+			continue // 未导出字段 encoding/json 也不会带出去
+		}
+		name, skip := structFieldJSONName(field)
+		if skip {
+			continue
+		}
+		meta.fields = append(meta.fields, structField{index: index, name: name})
+	}
+	for _, candidate := range patchKeyFields {
+		found, ok := t.FieldByNameFunc(func(name string) bool {
+			structField, ok := t.FieldByName(name)
+			return ok && jsonFieldName(structField) == candidate
+		})
+		if !ok {
+			continue
+		}
+		meta.keys = append(meta.keys, structKeyField{path: found.Index, name: candidate})
+	}
+	actual, _ := structMetaCache.LoadOrStore(t, meta)
+	return actual.(*structMeta)
 }
 
 // keyText 把主键字段转成字符串。事件的 id 是数字，不能只认 string：
@@ -100,9 +170,9 @@ func jsonFieldName(field reflect.StructField) string {
 }
 
 // diffView 返回从 prev 到 next 的补丁；没有变化时返回 patchNone。
-func diffView(prev, next any) any { return diffAny("", reflect.ValueOf(prev), reflect.ValueOf(next)) }
+func diffView(prev, next any) any { return diffAny(reflect.ValueOf(prev), reflect.ValueOf(next)) }
 
-func diffAny(path string, prev, next reflect.Value) any {
+func diffAny(prev, next reflect.Value) any {
 	// 指针字段（比如 units[].deck）先拆开：不拆的话任何变化都整块重发，
 	// 一条航向命令就会带上整个甲板对象（升降机、状态……），白多几百字节。
 	for next.Kind() == reflect.Pointer && !next.IsNil() {
@@ -124,7 +194,7 @@ func diffAny(path string, prev, next reflect.Value) any {
 		if prev.Kind() == reflect.Interface && !prev.IsNil() {
 			prev = prev.Elem()
 		}
-		return diffAny(path, prev, next.Elem())
+		return diffAny(prev, next.Elem())
 	}
 	if prev.Kind() == reflect.Interface {
 		if prev.IsNil() {
@@ -137,32 +207,25 @@ func diffAny(path string, prev, next reflect.Value) any {
 		if prev.Kind() != reflect.Map || prev.Type() != next.Type() {
 			return next.Interface()
 		}
-		return diffMap(path, prev, next)
+		return diffMap(prev, next)
 	case reflect.Slice, reflect.Array:
 		if !(prev.Kind() == next.Kind() && prev.Type() == next.Type()) {
 			return next.Interface()
 		}
-		return diffSlice(path, prev, next)
+		return diffSlice(prev, next)
 	case reflect.Struct:
 		if prev.Kind() != reflect.Struct || prev.Type() != next.Type() {
 			return next.Interface()
 		}
-		if prev.NumField() == 0 {
+		meta := structMetaOf(next.Type())
+		if len(meta.fields) == 0 {
 			return patchNone
 		}
 		patch := map[string]any{}
-		for index := 0; index < next.NumField(); index++ {
-			field := next.Type().Field(index)
-			if field.PkgPath != "" {
-				continue // 未导出字段 encoding/json 也不会带出去
-			}
-			name, skip := structFieldJSONName(field)
-			if skip {
-				continue
-			}
-			change := diffAny(joinPath(path, name), prev.Field(index), next.Field(index))
+		for _, field := range meta.fields {
+			change := diffAny(prev.Field(field.index), next.Field(field.index))
 			if change != any(patchNone) {
-				patch[name] = change
+				patch[field.name] = change
 			}
 		}
 		if len(patch) == 0 {
@@ -202,7 +265,7 @@ func indexComma(tag string) int {
 	return -1
 }
 
-func diffMap(path string, prev, next reflect.Value) any {
+func diffMap(prev, next reflect.Value) any {
 	if next.Type().Key().Kind() != reflect.String {
 		if valuesEqual(prev, next) {
 			return patchNone
@@ -217,7 +280,7 @@ func diffMap(path string, prev, next reflect.Value) any {
 			patch[name] = next.MapIndex(key).Interface()
 			continue
 		}
-		change := diffAny(joinPath(path, name), before, next.MapIndex(key))
+		change := diffAny(before, next.MapIndex(key))
 		if change != any(patchNone) {
 			patch[name] = change
 		}
@@ -254,7 +317,7 @@ func isEntityList(list reflect.Value) bool {
 	return true
 }
 
-func diffSlice(path string, prev, next reflect.Value) any {
+func diffSlice(prev, next reflect.Value) any {
 	if !isEntityList(prev) || !isEntityList(next) {
 		if valuesEqual(prev, next) {
 			return patchNone
@@ -279,7 +342,7 @@ func diffSlice(path string, prev, next reflect.Value) any {
 			upsert = append(upsert, item.Interface())
 			continue
 		}
-		change := diffAny("", old, item)
+		change := diffAny(old, item)
 		if change == any(patchNone) {
 			continue
 		}
@@ -326,13 +389,18 @@ func valuesEqual(left, right reflect.Value) bool {
 			return left.IsNil() && right.IsNil()
 		}
 		return valuesEqual(left.Elem(), right.Elem())
+	// 标量直接比，不走 DeepEqual：DeepEqual 要 Interface() 装箱，
+	// 实体一多（上百架飞机、几百格地图）每帧光装箱就是上万次分配。
+	case reflect.String:
+		return left.String() == right.String()
+	case reflect.Bool:
+		return left.Bool() == right.Bool()
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return left.Int() == right.Int()
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return left.Uint() == right.Uint()
+	case reflect.Float32, reflect.Float64:
+		return left.Float() == right.Float()
 	}
 	return reflect.DeepEqual(left.Interface(), right.Interface())
-}
-
-func joinPath(path, key string) string {
-	if path == "" {
-		return key
-	}
-	return path + "." + key
 }

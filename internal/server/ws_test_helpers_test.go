@@ -215,3 +215,25 @@ func seedPlayerView(t *testing.T, conn *websocket.Conn, roomID string) map[strin
 	viewReader(conn).view = view
 	return view
 }
+
+// readRawViewFrame 读下一帧推送的原始字节。和 wsViewReader.read 的区别是它不合并，
+// 用来断言"这帧到底是补丁还是整份视图"。
+func readRawViewFrame(t *testing.T, conn *websocket.Conn) (map[string]json.RawMessage, int) {
+	t.Helper()
+	_ = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	for {
+		var raw json.RawMessage
+		if err := conn.ReadJSON(&raw); err != nil {
+			t.Fatal(err)
+		}
+		var envelope map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &envelope); err != nil {
+			t.Fatal(err)
+		}
+		var kind string
+		_ = json.Unmarshal(envelope["type"], &kind)
+		if kind == "state" || kind == "snapshot" {
+			return envelope, len(raw)
+		}
+	}
+}

@@ -105,3 +105,43 @@ func containsString(haystack, needle string) bool {
 	}
 	return false
 }
+
+// 主键识别被缓存成了类型元数据，这里把它认得住的几种形状钉住：
+// 字段名和 JSON 名不一致、多个候选时按 patchKeyFields 的优先级、嵌入字段。
+func TestPatchKeyFromCachedMeta(t *testing.T) {
+	type plain struct {
+		ID    string `json:"id"`
+		Coord string `json:"coord"`
+	}
+	if field, key := patchKey(reflect.ValueOf(plain{ID: "u1", Coord: "0101"})); field != "id" || key != "u1" {
+		t.Fatalf("多个候选时应取 id：%q %q", field, key)
+	}
+	type renamed struct {
+		UnitID string `json:"unit_id"`
+		Value  int
+	}
+	if field, key := patchKey(reflect.ValueOf(renamed{UnitID: "u2"})); field != "unit_id" || key != "u2" {
+		t.Fatalf("JSON 名和字段名不一致时应认 JSON 名：%q %q", field, key)
+	}
+	type embedded struct {
+		Key string `json:"id"`
+	}
+	type outer struct {
+		embedded
+		Value int
+	}
+	if field, key := patchKey(reflect.ValueOf(outer{embedded: embedded{Key: "u3"}})); field != "id" || key != "u3" {
+		t.Fatalf("嵌入字段也要能当主键：%q %q", field, key)
+	}
+	if field, key := patchKey(reflect.ValueOf(plain{})); field != "" || key != "" {
+		t.Fatalf("空主键应返回空：%q %q", field, key)
+	}
+	// 数字主键（战报事件）不能丢。
+	type event struct {
+		ID   int64  `json:"id"`
+		Text string `json:"text"`
+	}
+	if field, key := patchKey(reflect.ValueOf(event{ID: 42})); field != "id" || key != "42" {
+		t.Fatalf("数字主键应转成字符串：%q %q", field, key)
+	}
+}

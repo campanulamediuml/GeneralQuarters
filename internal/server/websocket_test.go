@@ -296,3 +296,35 @@ func rawState(t *testing.T, client *testClient, roomID string) []byte {
 	}
 	return body
 }
+
+// 一条命令之后只推补丁，不能把整份视图重发一遍。
+// 补丁是"和上一帧比出来的差异"，客户端拿它往本地底座上合并；一旦退化成整份重发，
+// 每敲一次命令就是十几万字节，观战页和手机端会立刻看出来。
+func TestWebSocketCommandPushIsPatch(t *testing.T) {
+	host, _, _, cleanup := setupTestServer(t)
+	defer cleanup()
+	var created roomResponse
+	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_fixture", "solo": true}, &created); status != http.StatusCreated {
+		t.Fatalf("create room status %d", status)
+	}
+	conn := dialTestWS(t, host, "/ws?room_id="+created.RoomID)
+	view := seedPlayerView(t, conn, created.RoomID)
+	full, err := json.Marshal(view)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := conn.WriteJSON(wsRequest{Type: "rpc_request", ID: "patch-move", Method: http.MethodPost, Path: "/api/v1/rooms/" + created.RoomID + "/commands", Body: json.RawMessage(`{"command_id":"patch-move","type":"SET_MOVE","unit_id":"a-bb-01","coord":"0203"}`)}); err != nil {
+		t.Fatal(err)
+	}
+	envelope, size := readRawViewFrame(t, conn)
+	if _, ok := envelope["view"]; ok {
+		t.Fatalf("这帧带的是整份视图（%d 字节），推送应只带补丁", size)
+	}
+	if _, ok := envelope["patch"]; !ok {
+		t.Fatalf("这帧既不是补丁也不是视图：%d 字节", size)
+	}
+	if size*4 > len(full) {
+		t.Fatalf("补丁 %d 字节，全量 %d 字节：一次命令不该推这么多", size, len(full))
+	}
+	t.Logf("一次命令的推送：补丁 %d 字节 / 全量 %d 字节", size, len(full))
+}
