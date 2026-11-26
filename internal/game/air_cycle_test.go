@@ -159,7 +159,7 @@ func TestTimelineBlocksServiceAndLaunch(t *testing.T) {
 
 	// 05:00（第 16 回合）整理完了也不许起飞。
 	aircraft.Status = "deck"
-	aircraft.ServiceTurns = 2
+	aircraft.ServiceTurns = 1
 	state.Turn = 16
 	AdvanceAviation(&state)
 	if aircraft.Status == "cap" {

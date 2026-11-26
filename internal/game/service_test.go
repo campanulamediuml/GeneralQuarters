@@ -2,7 +2,7 @@ package game
 
 import "testing"
 
-// 规则书 231–236 行：普通整备 3 回合——机库加油整备、提升到甲板、起飞。
+// 规则书 240–244 行：普通整备 3 回合——机库加油整备、提升到甲板、起飞，各占一回合。
 func TestNormalServiceTakesThreeTurns(t *testing.T) {
 	state := sandboxState(t)
 	order := Order{Type: "LAUNCH_CAP", AircraftIDs: []string{"b-cv-01-fighter-x1"}}
@@ -14,16 +14,20 @@ func TestNormalServiceTakesThreeTurns(t *testing.T) {
 	if aircraft.Status != "service" || aircraft.ServiceTurns != 0 {
 		t.Fatalf("分配任务后应进入机库整备第 0 回合：%+v", aircraft)
 	}
+	// 第 1 回合：机库加油整备完成，但还没上甲板。
 	AdvanceAviation(&state)
 	if aircraft.Status != "service" || aircraft.ServiceTurns != 1 {
-		t.Fatalf("第 1 回合应仍在机库加油整备：status=%s turns=%d", aircraft.Status, aircraft.ServiceTurns)
+		t.Fatalf("第 1 回合应完成机库加油整备但仍停在机库：status=%s turns=%d", aircraft.Status, aircraft.ServiceTurns)
 	}
+	// 第 2 回合：上升降机。
 	AdvanceAviation(&state)
-	if aircraft.Status != "elevator" && aircraft.Status != "deck" && aircraft.Status != "cap" {
-		t.Fatalf("第 2 回合应完成整备并开始提升：%s", aircraft.Status)
+	if aircraft.Status != "elevator" {
+		t.Fatalf("第 2 回合应开始提升：%s", aircraft.Status)
 	}
-	if aircraft.ServiceTurns < 2 {
-		t.Fatalf("完成整备后应记录 2 回合：%d", aircraft.ServiceTurns)
+	// 第 3 回合：提升完成并放飞。
+	AdvanceAviation(&state)
+	if aircraft.Status != "cap" {
+		t.Fatalf("第 3 回合应完成提升并放飞：%s", aircraft.Status)
 	}
 }
 

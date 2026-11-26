@@ -32,9 +32,9 @@ func TestEstimateCarrierStrikeCountsPrep(t *testing.T) {
 		{ID: "a2", CarrierID: "cv1", Status: "hangar", Coord: "1010", TargetCoord: "1012"},
 	}
 	toTarget, toLanded := EstimateCarrierStrike(state, members, home)
-	// service 剩 2 回合整备 + 1 回合提升 = 3，再飞 1 回合 + 接敌 1 = 5；机库那架同样 3+1+1。
-	if toTarget != 5 {
-		t.Fatalf("整备中的编队到目标应 5 回合，实际 %d", toTarget)
+	// service 剩 1 回合整备 + 1 回合提升 = 2，再飞 1 回合 + 接敌 1 = 4；机库那架同样 2+1+1。
+	if toTarget != 4 {
+		t.Fatalf("整备中的编队到目标应 4 回合，实际 %d", toTarget)
 	}
 	if toLanded <= toTarget {
 		t.Fatalf("落舰回合必须晚于命中回合：target=%d landed=%d", toTarget, toLanded)

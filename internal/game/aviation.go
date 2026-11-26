@@ -1424,9 +1424,9 @@ func launchReadyTasks(state *State) []EngineEvent {
 }
 
 // advanceAircraftService 推进"机库内加油整备"这一阶段（规则书 231–236 行）：
-// 普通整备要 3 回合——机库加油整备、提升到甲板、起飞。第 1 回合进机库整备、
-// 第 2 回合完成整备升上甲板、第 3 回合放飞；转场/攻击这种要求整队一起走的任务，
-// 等到整组都整备完毕再一起提升。
+// 普通整备要 3 回合——机库加油整备、提升到甲板、起飞，每个阶段各占 1 回合。
+// 分配任务的当回合算机库整备，下一回合上升降机，再下一回合放飞；
+// 转场/攻击这种要求整队一起走的任务，等到整组都整备完毕再一起提升。
 //
 // 这个计数此前完全不存在：任何"service"算子都会在同一回合被升降机抓走提升，
 // 于是挂载检查、任务拥堵这些规则都没有立足点。
@@ -1453,8 +1453,8 @@ func advanceAircraftService(state *State) []EngineEvent {
 		kind := members[0].TaskKind
 		ready := false
 		for _, aircraft := range members {
-			// 第 1 回合进入机库整备，第 2 回合整备完成。
-			if aircraft.ServiceTurns < 2 {
+			// 机库加油整备只要 1 回合（规则书 240–256 行：整备、提升、起飞各 1 回合）。
+			if aircraft.ServiceTurns < 1 {
 				aircraft.ServiceTurns++
 			}
 		}
@@ -1471,7 +1471,7 @@ func advanceAircraftService(state *State) []EngineEvent {
 			continue
 		}
 		for _, aircraft := range members {
-			if aircraft.ServiceTurns >= 2 && !aircraft.Damaged && aircraft.Maintenance == 0 {
+			if aircraft.ServiceTurns >= 1 && !aircraft.Damaged && aircraft.Maintenance == 0 {
 				events = append(events, EngineEvent{Type: "air_service_complete", Audience: aircraft.Faction, Text: aircraft.Model + "完成机库加油整备，等待提升"})
 			}
 		}
@@ -1485,9 +1485,10 @@ func aircraftRepairChance(state State, faction string) float64 {
 	return rulesFor(state, faction).RepairChance
 }
 
-// serviceComplete 判断机库加油整备是否已完成：需要 2 个整备回合，且没有待修/待检修状态。
+// serviceComplete 判断机库加油整备是否已完成：1 个整备回合就够，且没有待修/待检修状态。
+// 整备、提升、起飞各占 1 回合，所以分配任务当回合是 servicing，下一回合才轮到升降机。
 func serviceComplete(aircraft *AirUnit) bool {
-	return aircraft != nil && aircraft.ServiceTurns >= 2 && !aircraft.Damaged && aircraft.Maintenance == 0
+	return aircraft != nil && aircraft.ServiceTurns >= 1 && !aircraft.Damaged && aircraft.Maintenance == 0
 }
 
 // elevatorBudget 是这艘船本回合"提升 + 下降"合计能处理的算子数：
@@ -1507,12 +1508,17 @@ func elevatorBudget(unit *Unit) int {
 
 func scheduleElevators(state *State) []EngineEvent {
 	events := []EngineEvent{}
-	events = append(events, advanceAircraftService(state)...)
+	// 先按"推进前就已经整备完"的算子挑提升对象，再推进整备计数：
+	// 整备只要 1 回合，如果先推进计数，当回合完成整备的算子会立刻被升降机抓走，
+	// "整备 / 提升 / 起飞"三个回合就压成两个了。整备完的这一回合仍算 servicing，
+	// 下一回合才上甲板——和规则书 240–244 行的三段各 1 回合一致。
 	taskGroups := sortedTaskGroups(*state, func(aircraft *AirUnit) bool {
 		// TaskKind 为空的算子是"脱队残骸"（老存档里返航后类型被清掉留下的），
 		// 不能再往甲板上提升：升上去也放飞不了，只会把甲板和升降机一起堵死。
 		return aircraft.Status == "service" && serviceComplete(aircraft) && aircraft.TaskKind != "" && !taskWaitsForTarget(aircraft)
 	})
+	// 挑选名单确定之后再推进整备计数/发整备完成战报。
+	events = append(events, advanceAircraftService(state)...)
 	for _, carrierID := range sortedUnitIDs(state.Units) {
 		carrier := state.Units[carrierID]
 		if !AviationAvailable(carrier) {

@@ -23,7 +23,7 @@ func TestAttackGroupDropsStrandedMembers(t *testing.T) {
 	stranded.TaskKind = "attack"
 	stranded.TaskID = "strike-x"
 	stranded.TargetCoord = "0708"
-	stranded.ServiceTurns = 2
+	stranded.ServiceTurns = 1
 	stranded.Coord = "0303"
 
 	events := AdvanceAviation(&state)

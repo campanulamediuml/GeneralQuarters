@@ -31,7 +31,7 @@ func etaClock(state State, turns int) string {
 }
 
 // carrierLaunchPrep 估算一架舰载机离舰还要几个回合：
-// 甲板上的这回合就能走；机库里要 2 回合整备再上一次升降机；整备中的按剩余回合数算。
+// 甲板上的这回合就能走；机库里要 1 回合整备再上一次升降机；整备中的按剩余回合数算。
 func carrierLaunchPrep(aircraft *AirUnit) int {
 	if aircraft == nil || airborne(aircraft) {
 		return 0
@@ -42,16 +42,17 @@ func carrierLaunchPrep(aircraft *AirUnit) int {
 	case "elevator":
 		return 1
 	case "recovery":
-		// 刚落甲板：先下降一回合，再整备两回合。
+		// 刚落甲板：先下降一回合，再整备一回合，再提升一回合。
 		return 3
 	case "service":
-		need := 2 - aircraft.ServiceTurns
+		need := 1 - aircraft.ServiceTurns
 		if need < 0 {
 			need = 0
 		}
 		return need + 1
 	}
-	return 3
+	// 机库/待命：整备 1 回合 + 提升 1 回合。
+	return 2
 }
 
 // EstimateCarrierStrike 返回舰载攻击编队"命中目标的回合数"和"最后一架落回母舰的回合数"，

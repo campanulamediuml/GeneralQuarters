@@ -641,7 +641,7 @@ type AirUnit struct {
 	Confusion        bool   `json:"confusion"`
 	Damaged          bool   `json:"damaged"`
 	Maintenance      int    `json:"maintenance"`
-	// ServiceTurns 记录机库加油整备已经消耗的回合数（规则书 231–236 行：整备 2 回合 + 提升 1 回合 + 起飞）。
+	// ServiceTurns 记录机库加油整备已经消耗的回合数（规则书 240–244 行：整备、提升、起飞各 1 回合）。
 	ServiceTurns int `json:"service_turns"`
 	// Engaged 表示本编队已成功接敌，下一回合可以进入目标上空发起空袭（规则书 609 行）
 	Engaged bool `json:"engaged"`

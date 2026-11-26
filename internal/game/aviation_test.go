@@ -266,8 +266,8 @@ func TestCapAndReconJoiningLaterKeepIndependentStages(t *testing.T) {
 				t.Fatalf("新加入的算子应重新开始机库整备：%d", state.Aircraft[test.secondID].ServiceTurns)
 			}
 			AdvanceAviation(&state)
-			// 第一架放飞，第二架此时才整备完成（ServiceTurns=1）：引入整备计数后，
-			// "后加入的算子"要多花一回合在机库里，这符合规则书 231–236 行。
+			// 第一架放飞，第二架此时才整备完成（ServiceTurns=1）：整备、提升、放飞各占一回合，
+			// "后加入的算子"要多等一回合上甲板，这符合规则书 240–244 行。
 			if state.Aircraft[test.firstID].Status != test.airborne || state.Aircraft[test.secondID].Status != "service" {
 				t.Fatalf("第一架放飞时带走了第二架：第一架=%s 第二架=%s", state.Aircraft[test.firstID].Status, state.Aircraft[test.secondID].Status)
 			}

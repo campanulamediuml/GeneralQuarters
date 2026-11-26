@@ -44,7 +44,7 @@ func TestKindlessAircraftNeverLifted(t *testing.T) {
 	aircraft.Status = "service"
 	aircraft.TaskID = "ghost-task"
 	aircraft.TaskKind = ""
-	aircraft.ServiceTurns = 2
+	aircraft.ServiceTurns = 1
 	aircraft.Coord = carrier.Coord
 	aircraft.SetRange(12)
 
