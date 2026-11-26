@@ -353,9 +353,24 @@ func destroyAircraftGroup(state *State, carrier *Unit, group []*AirUnit, count i
 	return names
 }
 
+// hangarExplosionTable 是机库存放整装待发飞机、被炸弹命中且 DCT 失败时的小表。
+// 这里不抽全局严重伤害表：挂弹飞机连环爆只有三种结果，也正是这一条让整装待发的航母
+// 有可能被一发炸弹炸出油气爆炸。甲板上没有这个结算（飞机在甲板上不构成封闭空间）。
+var hangarExplosionTable = []string{"avgas_explosion", "ammo_explosion", "small_fire"}
+
+// hangarDCTRoll 是机库爆炸判定的 d10。美军开放机库取优势（两投取小，更容易过），
+// 日军封闭机库取劣势（两投取大，更容易炸）；DCT 失败的条件是骰点大于损管值。
+func hangarDCTRoll(state *State, unit *Unit) int {
+	first, second := d10(state), d10(state)
+	if rulesFor(*state, unit.Faction).HangarDCTAdvantage {
+		return min(first, second)
+	}
+	return max(first, second)
+}
+
 // bombHangarDeckEffect 是炸弹命中航母时的"整装待发飞机"结算（规则书 421–423 行）：
-// 机库里有整装待发的飞机 → 摧毁至多 2 个算子、引起小型火灾、额外一次 DCT；
-// 甲板上有整装待发的飞机 → 摧毁至多 2 个算子并引起小型火灾。两项分别结算。
+// 机库组和甲板组各自结算——摧毁至多 2 个算子并引起小型火灾；
+// 机库组额外掷一次 DCT，失败时从 hangarExplosionTable 抽一条（航空燃油爆炸/弹药爆炸/小型火灾）。
 // 装甲航母被炸弹命中时只损伤甲板飞机，机库飞机不受影响（规则书 486–489 行），
 // 因此这里只在普通航母上调用。
 func bombHangarDeckEffect(state *State, target *Unit, warned bool) []EngineEvent {
@@ -366,8 +381,10 @@ func bombHangarDeckEffect(state *State, target *Unit, warned bool) []EngineEvent
 			events = append(events, EngineEvent{Type: "hangar_aircraft_lost", Audience: target.Faction, Text: fmt.Sprintf("炸弹命中%s机库，摧毁整装待发的%s共%d个算子", target.Name, strings.Join(names, "、"), len(names))})
 		}
 		addFire(target, "small")
-		if len(events) > 0 && d10(state) > dctValue(state, target, warned) {
-			events = append(events, severeDamage(state, target, HitBomb)...)
+		// 机库里是挂好弹的飞机：失败就从那张三选一的小表里抽。
+		if hangarDCTRoll(state, target) > dctValue(state, target, warned) {
+			result := hangarExplosionTable[nextUint64(&state.RNGState)%uint64(len(hangarExplosionTable))]
+			events = append(events, applySevereDamageResult(state, target, result)...)
 		}
 	}
 	if len(deck) > 0 {

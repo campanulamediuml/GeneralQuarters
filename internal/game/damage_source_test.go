@@ -79,3 +79,117 @@ func TestShellHitKeepsReadyAircraft(t *testing.T) {
 		t.Fatalf("炸弹命中应当摧毁整装待发飞机，实际还剩 %d 架", bombCarrier.Card.Aircraft)
 	}
 }
+
+// 机库的额外 DCT 只抽那张三选一小表：航空燃油爆炸、弹药爆炸、小型火灾。
+func TestHangarExplosionTableIsThreeEntries(t *testing.T) {
+	want := map[string]bool{"avgas_explosion": true, "ammo_explosion": true, "small_fire": true}
+	if len(hangarExplosionTable) != len(want) {
+		t.Fatalf("机库爆炸表应为 3 条，实际 %v", hangarExplosionTable)
+	}
+	for _, item := range hangarExplosionTable {
+		if !want[item] {
+			t.Fatalf("机库爆炸表混进了别的条目：%v", hangarExplosionTable)
+		}
+	}
+}
+
+// 有整装待发的机库飞机时，一发炸弹就可能炸出油气爆炸；甲板组只掉飞机和点小火，不掷额外 DCT。
+// 这里直接测炸弹命中航母后的"整装待发飞机"结算，不带命中本身那一次 DCT，
+// 免得随机抽到“机库损伤”先把飞机清空、把断言搅乱。
+func TestBombAircraftGroupsSplitEffects(t *testing.T) {
+	build := func(withHangar, withDeck bool) (*State, *Unit) {
+		carrier := &Unit{ID: "cv", FleetID: "cv", Name: "航母", Type: "CV", Faction: "A", Strength: 6, MaxStrength: 6, Card: ShipCard{DamageControl: 0, HangarCapacity: 4, Aircraft: 4}}
+		aircraft := map[string]*AirUnit{}
+		if withHangar {
+			aircraft["hangar-1"] = &AirUnit{ID: "hangar-1", CarrierID: "cv", Armed: true, Status: "hangar", Model: "SBD"}
+			aircraft["hangar-2"] = &AirUnit{ID: "hangar-2", CarrierID: "cv", Armed: true, Status: "service", Model: "SBD"}
+		}
+		if withDeck {
+			aircraft["deck-1"] = &AirUnit{ID: "deck-1", CarrierID: "cv", Armed: true, Status: "deck", Model: "F4F"}
+			aircraft["deck-2"] = &AirUnit{ID: "deck-2", CarrierID: "cv", Armed: true, Status: "ready", Model: "F4F"}
+		}
+		return &State{RNGState: 11, Units: map[string]*Unit{"cv": carrier}, Aircraft: aircraft}, carrier
+	}
+	countSevere := func(events []EngineEvent) int {
+		count := 0
+		for _, event := range events {
+			if strings.Contains(event.Text, "严重伤害判定") {
+				count++
+			}
+		}
+		return count
+	}
+
+	// 只打甲板：掉两个算子 + 小火，不掷额外 DCT。
+	deckState, deckCarrier := build(false, true)
+	events := bombHangarDeckEffect(deckState, deckCarrier, false)
+	if got := countSevere(events); got != 0 {
+		t.Fatalf("甲板组不该掷额外 DCT，实际 %d 次：%v", got, events)
+	}
+	if len(deckState.Aircraft) != 0 {
+		t.Fatalf("甲板组应摧毁至多 2 个算子，剩 %d 个", len(deckState.Aircraft))
+	}
+	if EnsureDamage(deckCarrier).Fire != "small" {
+		t.Fatalf("甲板飞机被摧毁只点一把小火，实际 %q", EnsureDamage(deckCarrier).Fire)
+	}
+
+	// 机库组：额外一次 DCT，必然落到三选一，且小火升级为大火。
+	seen := map[string]bool{}
+	for seed := uint64(1); seed <= 80; seed++ {
+		state, carrier := build(true, true)
+		state.RNGState = seed
+		events := bombHangarDeckEffect(state, carrier, false)
+		if got := countSevere(events); got != 1 {
+			t.Fatalf("机库组应恰好掷一次 DCT，实际 %d 次：%v", got, events)
+		}
+		for _, event := range events {
+			for _, name := range []string{"航空燃油爆炸", "弹药爆炸", "小型火灾"} {
+				if strings.Contains(event.Text, name) {
+					seen[name] = true
+				}
+			}
+		}
+		if EnsureDamage(carrier).Fire != "burning" {
+			t.Fatalf("同回合两把小火应升级为大火，实际 %q", EnsureDamage(carrier).Fire)
+		}
+	}
+	for _, name := range []string{"航空燃油爆炸", "弹药爆炸", "小型火灾"} {
+		if !seen[name] {
+			t.Fatalf("80 次里没抽到%s：%v", name, seen)
+		}
+	}
+}
+
+// 美军开放机库取优势（两投取小），日军封闭机库取劣势（两投取大）：
+// 同样一发炸弹、同样 50% 的失败线，美军 25% 会失败，日军 75%。
+func TestHangarDCTAdvantageByDoctrine(t *testing.T) {
+	trials := 400
+	failRate := func(doctrine string) float64 {
+		state := &State{RNGState: 1, Doctrines: map[string]string{"A": "us", "B": "japan"}}
+		unit := &Unit{ID: "cv", Type: "CV", Faction: "A", Card: ShipCard{DamageControl: 5}}
+		if doctrine == "japan" {
+			unit.Faction = "B"
+		}
+		failures := 0
+		for i := 0; i < trials; i++ {
+			if hangarDCTRoll(state, unit) > unit.Card.DamageControl {
+				failures++
+			}
+		}
+		return float64(failures) / float64(trials)
+	}
+	us := failRate("us")
+	japan := failRate("japan")
+	if us < 0.18 || us > 0.32 {
+		t.Fatalf("美军开放机库的失败率应接近 25%%，实际 %.2f", us)
+	}
+	if japan < 0.68 || japan > 0.82 {
+		t.Fatalf("日军封闭机库的失败率应接近 75%%，实际 %.2f", japan)
+	}
+	if !(japan > us) {
+		t.Fatalf("日军机库应该更容易被炸：us=%.2f japan=%.2f", us, japan)
+	}
+	if rulesForDoctrine("us", 1942, false).HangarDCTAdvantage != true || rulesForDoctrine("japan", 1942, false).HangarDCTAdvantage {
+		t.Fatal("阵营规则里的机库优势配置不对")
+	}
+}
