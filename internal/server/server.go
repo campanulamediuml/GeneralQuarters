@@ -1056,10 +1056,13 @@ func (s *Server) privateView(ctx context.Context, room store.Room, players []sto
 		"enemy_air":   game.VisibleEnemyAir(room.State, player.Faction),
 		"losses":      game.VisibleLosses(room.State, player.Faction),
 		// scores 是战果分：击沉/击落 + 已完成的投送目标；剧本用 score 目标时按它判定。
-		"scores":     game.VictoryPoints(room.State),
-		"outcome":    room.State.Outcome,
-		"objectives": room.State.Objectives,
-		"you":        player, "players": playersSnapshot(players), "orders": ownOrders, "events": events,
+		"scores": game.VictoryPoints(room.State),
+		// score_breakdown 是同一笔分的逐条来源（击沉哪艘、瘫了哪艘、掉了多少架），
+		// 侧栏 VP 旁边那个"得分明细"按钮就是拿它渲染的。
+		"score_breakdown": game.ScoreBreakdown(room.State),
+		"outcome":         room.State.Outcome,
+		"objectives":      room.State.Objectives,
+		"you":             player, "players": playersSnapshot(players), "orders": ownOrders, "events": events,
 		// solo 让前端把"完成部署"换成"等待对手进房"，别让玩家点了才发现结算不了。
 		"solo": room.Solo,
 		// 这里不要放 server_time 之类每次都变的字段：推送靠"和上一帧逐字节相同就不发"

@@ -109,18 +109,49 @@ func AwardCrippledCarriers(state *State) []EngineEvent {
 	return events
 }
 
-// VictoryPoints 返回双方已经拿到的战果分：击沉/击落对方舰船与航空算子的分数之和，
-// 加上已经完成的投送目标（按其 value 计 VP）。未完成的投送目标不计分；
-// 对局结束时由 FinalVictoryPoints 把这条目标的分数判给阻止方。
-func VictoryPoints(state State) map[string]float64 {
-	scores := map[string]float64{"A": 0, "B": 0}
-	for side, ledger := range state.Losses {
+// ScoreLine 是一条战果分的来源，供界面"得分明细"逐条列出。
+// 记分方向天然是反向的：己方的损失记在对方账上，所以 Faction 记的是"这笔损失是谁的"，
+// 前端拿它和自己的阵营比一下就知道该显示"我方损失"还是"敌方损失"。
+// Text 写成中性描述，不带主语，让前端决定冠什么词。
+type ScoreLine struct {
+	// Kind 取值 ship / crippled / aircraft / supply。
+	Kind string `json:"kind"`
+	// Faction 是这条记录的归属方：损失条目是吃亏的一方，投送目标是得分的一方。
+	Faction string  `json:"faction"`
+	Text    string  `json:"text"`
+	ShipID  string  `json:"ship_id,omitempty"`
+	Type    string  `json:"type,omitempty"`
+	Turn    int     `json:"turn,omitempty"`
+	Count   int     `json:"count,omitempty"`
+	Points  float64 `json:"points"`
+}
+
+// ScoreBreakdown 返回 得分阵营 → 逐条明细。VictoryPoints 就是它的求和，
+// 这样"总分"和"明细"永远不会对不上——两个函数各算一遍是最容易出岔子的写法。
+//
+// 关于保密：敌方的飞机损失在终局前本来就不进 VisibleLosses，但战果分本身是公开的，
+// 而"击落敌机"这一项可以直接从比分里反解出来（自己的击沉战果是可见的），
+// 所以明细里如实写架数并不会多泄露一分情报。
+func ScoreBreakdown(state State) map[string][]ScoreLine {
+	lines := map[string][]ScoreLine{"A": {}, "B": {}}
+	// 固定按 A、B 遍历：明细要参与"逐字节判重"的推送，不能带 map 随机序。
+	for _, side := range []string{"A", "B"} {
+		ledger := state.Losses[side]
 		if ledger == nil {
 			continue
 		}
 		enemy := OppositeFaction(side)
 		for _, loss := range ledger.Ships {
-			scores[enemy] += float64(ShipVictoryPoints(loss.Type, loss.Card))
+			points := ShipVictoryPoints(loss.Type, loss.Card)
+			if points == 0 {
+				// 认不出的舰种不给分，也不占一条空明细（求和结果不变）。
+				continue
+			}
+			lines[enemy] = append(lines[enemy], ScoreLine{
+				Kind: "ship", Faction: side, Turn: loss.Turn, ShipID: loss.ID, Type: loss.Type,
+				Text:   fmt.Sprintf("击沉「%s」（%s）", loss.Name, loss.Type),
+				Points: float64(points),
+			})
 		}
 		// 瘫痪航母按机库一半计分；但沉没的船改按整艘算，不能让"先瘫后沉"领两次。
 		sunk := make(map[string]bool, len(ledger.Ships))
@@ -131,7 +162,11 @@ func VictoryPoints(state State) map[string]float64 {
 			if sunk[crippled.ID] {
 				continue
 			}
-			scores[enemy] += CrippledCarrierVictoryPoints(crippled.Card)
+			lines[enemy] = append(lines[enemy], ScoreLine{
+				Kind: "crippled", Faction: side, Turn: crippled.Turn, ShipID: crippled.ID, Type: crippled.Type,
+				Text:   fmt.Sprintf("「%s」丧失作战能力（%s）", crippled.Name, crippled.Reason),
+				Points: CrippledCarrierVictoryPoints(crippled.Card),
+			})
 		}
 		aircraft := ledger.AircraftTotal
 		if aircraft == 0 {
@@ -140,14 +175,38 @@ func VictoryPoints(state State) map[string]float64 {
 				aircraft += loss.Count
 			}
 		}
-		scores[enemy] += float64(aircraft) * scorePerAircraft
+		if aircraft > 0 {
+			lines[enemy] = append(lines[enemy], ScoreLine{
+				Kind: "aircraft", Faction: side, Count: aircraft,
+				Text:   fmt.Sprintf("航空算子损失 %d 架", aircraft),
+				Points: float64(aircraft) * scorePerAircraft,
+			})
+		}
 	}
 	for _, objective := range state.Objectives {
 		if objective.Kind != ObjectiveSupplies || objective.Faction == "" {
 			continue
 		}
-		if objectiveCompleted(state, objective.Faction, objective) {
-			scores[objective.Faction] += float64(supplyObjectiveValue(objective))
+		if !objectiveCompleted(state, objective.Faction, objective) {
+			continue
+		}
+		lines[objective.Faction] = append(lines[objective.Faction], ScoreLine{
+			Kind: "supply", Faction: objective.Faction,
+			Text:   "完成投送目标：" + objectiveLabel(objective),
+			Points: float64(supplyObjectiveValue(objective)),
+		})
+	}
+	return lines
+}
+
+// VictoryPoints 返回双方已经拿到的战果分：击沉/击落对方舰船与航空算子的分数之和，
+// 加上已经完成的投送目标（按其 value 计 VP）。未完成的投送目标不计分；
+// 对局结束时由 FinalVictoryPoints 把这条目标的分数判给阻止方。
+func VictoryPoints(state State) map[string]float64 {
+	scores := map[string]float64{"A": 0, "B": 0}
+	for faction, breakdown := range ScoreBreakdown(state) {
+		for _, line := range breakdown {
+			scores[faction] += line.Points
 		}
 	}
 	return scores

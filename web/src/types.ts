@@ -527,10 +527,24 @@ export interface GameView {
   losses?: Record<string, FactionLosses>
   /** 战果分：击沉/击落折算值 + 已完成的投送目标，剧本声明 kind:"score" 目标时用于判胜负 */
   scores?: Record<string, number>
+  /** 战果分明细：得分阵营 → 逐条来源（击沉/瘫痪/航空算子/投送），加起来就是 scores */
+  score_breakdown?: Record<string, ScoreLine[]>
   /** 对局结果：存在即表示已经结束。level 是 VP 比值给出的等级。 */
   outcome?: { winner?: string; level?: 'draw' | 'tactical' | 'strategic'; reason: string; scores: Record<string, number>; turn: number; turn_cap?: boolean }
   objectives?: { id: string; text?: string; kind: string; coord?: string; faction?: string; value?: number; points?: number; decisive?: boolean }[]
   join_token?: string
+}
+
+/** 一条战果分来源。记分方向是反的：己方的损失记在对方账上，faction 是吃亏的一方。 */
+export interface ScoreLine {
+  kind: 'ship' | 'crippled' | 'aircraft' | 'supply'
+  faction: 'A' | 'B'
+  text: string
+  ship_id?: string
+  type?: string
+  turn?: number
+  count?: number
+  points: number
 }
 
 export interface ShipLoss {

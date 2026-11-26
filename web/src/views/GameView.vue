@@ -332,7 +332,13 @@ function dismissError() {
   error.value = ''
 }
 function onErrorKeydown(event: KeyboardEvent) {
-  if (event.key === 'Escape' && error.value) dismissError()
+  if (event.key !== 'Escape') return
+  if (error.value) {
+    dismissError()
+    return
+  }
+  // 得分明细也是弹窗，Esc 一样能关，和报错弹窗保持同一套手感。
+  if (scoreDetailOpen.value) scoreDetailOpen.value = false
 }
 
 // 剧本时间线：顶部时钟直接标出"现在能不能整备/放飞"，因为放飞窗口只有几回合，
@@ -348,6 +354,27 @@ const scoreBoard = computed(() => {
 })
 function formatVP(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')
+}
+
+// 侧栏那个 VP 数字单独摆着像天降的：玩家击沉了什么自己清楚，但"这 1 分到底哪来的"
+// 只能靠猜。明细弹窗把同一笔账摊开——击沉哪一艘、瘫了哪一艘、掉了多少架、投送有没有完成。
+// 注意方向：己方的损失记在对方账上，所以两栏都写着"这笔是谁亏的"。
+const scoreDetailOpen = ref(false)
+const scoreDetail = computed(() => {
+  const faction = state.value?.you?.faction || 'A'
+  const other = faction === 'A' ? 'B' : 'A'
+  const breakdown = state.value?.score_breakdown || {}
+  const rows = (side: string) => (breakdown[side] || []).map((line) => ({ ...line, points: Number(line.points ?? 0) }))
+  return { faction, other, mineRows: rows(faction), enemyRows: rows(other) }
+})
+// 条目前面那个小标签：损失的归属方 + 类型，一眼能看出分是从哪一侧漏出去的。
+// 栏头已经写了"我方得分/对方得分"，所以标签只留"我方/敌方 + 怎么丢的"，短一截好排。
+function scoreLineTag(line: { kind: string; faction: string }): string {
+  if (line.kind === 'supply') return '投送完成'
+  const from = line.faction === scoreDetail.value.faction ? '我方' : '敌方'
+  if (line.kind === 'crippled') return from + '·瘫痪'
+  if (line.kind === 'aircraft') return from + '·航空'
+  return from + '·击沉'
 }
 
 const clockWindowLabel = computed(() => {
@@ -981,7 +1008,10 @@ onUnmounted(() => {
         <strong>{{ state.clock.time }}</strong>
         <small>{{ clockWindowLabel }}</small>
       </div>
-      <div v-if="hasScoreObjective" class="rail-vp"><span>当前 VP</span><strong>{{ formatVP(scoreBoard.mine) }} : {{ formatVP(scoreBoard.enemy) }}</strong><small>我方 : 敌方</small></div>
+      <div v-if="hasScoreObjective" class="rail-vp">
+        <span>当前 VP</span><strong>{{ formatVP(scoreBoard.mine) }} : {{ formatVP(scoreBoard.enemy) }}</strong><small>我方 : 敌方</small>
+        <button class="rail-vp-detail" title="看看这些分是怎么来的" @click="scoreDetailOpen = true">得分明细</button>
+      </div>
       <div v-else class="rail-vp"><span>当前 VP</span><strong>0 : 0</strong><small>本剧本不计分</small></div>
       <button class="rail-next" :class="{ locked: state?.you.ready || waitingForOpponent }" :disabled="!state || actionBusy || waitingForOpponent || state.you.ready" @click="toggleReady"><span>{{ waitingForOpponent ? '等待对手' : deploying ? (state?.you.ready ? '已部署完毕' : '部署完毕') : state?.you.ready ? '等待结算' : '下一回合' }}</span><b>▶</b></button>
     </aside>
@@ -1204,6 +1234,40 @@ onUnmounted(() => {
         <header><div><span class="section-kicker">COMMAND REJECTED</span><h2>操作未生效</h2></div><button aria-label="关闭" @click="dismissError">×</button></header>
         <p class="error-modal-text">{{ error }}</p>
         <footer class="error-modal-actions"><button class="apply-button" @click="dismissError">知道了</button></footer>
+      </section>
+    </div>
+
+    <!-- 得分明细：侧栏 VP 旁边那个按钮点开的。同一笔账摊成两栏——我方得了几分、
+         对方从我们身上拿了多少，每条都写清是哪一方的损失折算的。 -->
+    <div v-if="scoreDetailOpen" class="fleet-dialog score-dialog" @click.self="scoreDetailOpen = false">
+      <section class="fleet-modal score-modal" role="dialog" aria-modal="true" aria-label="战果分明细">
+        <header><div><span class="section-kicker">VICTORY POINTS · BREAKDOWN</span><h2>得分明细</h2></div><button aria-label="关闭" @click="scoreDetailOpen = false">×</button></header>
+        <p class="score-intro">总比分 {{ formatVP(scoreBoard.mine) }} : {{ formatVP(scoreBoard.enemy) }}。己方的损失同时记在对方账上，所以两边加起来不是零和——你沉一艘，我加一分。</p>
+        <div class="score-columns">
+          <article class="score-column">
+            <header><span>我方得分</span><strong>{{ formatVP(scoreBoard.mine) }}</strong></header>
+            <p v-if="!scoreDetail.mineRows.length" class="score-empty">还没有战果：击沉对方舰船、打瘫对方航母、击落对方航空算子都会计分。</p>
+            <ul v-else class="score-lines">
+              <li v-for="(line, index) in scoreDetail.mineRows" :key="line.kind + '-' + index">
+                <span class="score-line-tag">{{ scoreLineTag(line) }}</span>
+                <p>{{ line.text }}<small v-if="line.turn">（T{{ line.turn }}）</small></p>
+                <b>+{{ formatVP(line.points) }}</b>
+              </li>
+            </ul>
+          </article>
+          <article class="score-column enemy">
+            <header><span>对方得分</span><strong>{{ formatVP(scoreBoard.enemy) }}</strong></header>
+            <p v-if="!scoreDetail.enemyRows.length" class="score-empty">对方还没有战果。</p>
+            <ul v-else class="score-lines">
+              <li v-for="(line, index) in scoreDetail.enemyRows" :key="line.kind + '-' + index">
+                <span class="score-line-tag">{{ scoreLineTag(line) }}</span>
+                <p>{{ line.text }}<small v-if="line.turn">（T{{ line.turn }}）</small></p>
+                <b>+{{ formatVP(line.points) }}</b>
+              </li>
+            </ul>
+          </article>
+        </div>
+        <footer class="score-rules">计分规则：航母按机库容量、战列舰 6、重巡 3、轻巡 2、驱逐/运输船 1；航母丧失作战能力按机库一半（先瘫后沉不重复领）；每个航空算子 0.25；投送目标按目标分值。</footer>
       </section>
     </div>
 

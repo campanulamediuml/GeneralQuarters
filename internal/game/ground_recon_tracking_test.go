@@ -22,20 +22,42 @@ func TestGroundReconStartsTrackingOnContact(t *testing.T) {
 		t.Fatal("靶场里没有敌方舰船")
 	}
 	fleetID := FleetKey(fleet)
-	coord := fleet.Coord
+	// 靶场先用 firstEnemyShip 挑船是随机的（遍历 map），挑中的阵位离机场多远每跑一次都不一样，
+	// 而发现率随距离往下掉，于是"首抽很低"也不一定过线——这个测试以前就靠运气。
+	// 现在把目标舰队挪到机场旁边一个空格：距离 ≤2，发现率 ≥25%，并且那一格里只有这一支舰队，
+	// 所以第一次概率判定就是它的，种子一定能挑到。
+	occupied := map[string]bool{}
+	for _, unit := range state.Units {
+		occupied[unit.Coord] = true
+	}
+	coord := ""
+	for _, candidate := range []string{"1711", "1612", "1512", "1610", "1712"} {
+		if !occupied[candidate] {
+			coord = candidate
+			break
+		}
+	}
+	if coord == "" {
+		t.Fatal("机场周围找不到空格放靶子")
+	}
+	for _, member := range fleetMembers(&state, fleetID) {
+		unit := state.Units[member.ID]
+		unit.Coord = coord
+	}
+	chance := groundReconChance(state, plane, fleetMembers(&state, fleetID))
 
-	// 让这一次发现判定必定成功：概率判定的 roll 来自 RNG，挑一个首抽很低的种子。
+	// 让这一次发现判定必定成功：概率判定的 roll 来自 RNG，挑一个首抽低于发现率的种子。
 	seeded := false
 	for seed := uint64(1); seed < 5000; seed++ {
 		probe := seed
-		if probabilityRoll(&probe) < 20 {
+		if probabilityRoll(&probe) < chance {
 			state.RNGState = seed
 			seeded = true
 			break
 		}
 	}
 	if !seeded {
-		t.Fatal("没有找到可用的随机种子")
+		t.Fatalf("发现率 %.1f%% 下没有找到可用的随机种子", chance)
 	}
 
 	searchGroundReconStep(&state, plane, []string{coord}, 0)
