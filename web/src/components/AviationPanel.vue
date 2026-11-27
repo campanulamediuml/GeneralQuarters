@@ -661,7 +661,13 @@ function operationName(carrier: CarrierAirStatus) {
       <div><span class="section-kicker">AVIATION COMMAND</span><h1>{{ selectedUnit?.fleet_name || '航空指挥界面' }}</h1></div>
       <div v-if="selectedCarrier" class="aviation-title-status"><span>{{ selectedCarrier.name }}</span><strong>{{ operationName(selectedCarrier) }}</strong></div>
     </header>
-    <p v-if="selectionHint" class="air-selection-hint" role="alert">{{ selectionHint }}</p>
+    <div v-if="selectionHint" class="fleet-dialog" @click.self="selectionHint = ''">
+      <section class="fleet-modal" role="alertdialog" aria-modal="true" aria-label="机队提示">
+        <header><div><span class="section-kicker">AIR NOTICE</span><h2>机队提示</h2></div><button aria-label="关闭" @click="selectionHint = ''">×</button></header>
+        <p class="error-modal-text">{{ selectionHint }}</p>
+        <footer class="error-modal-actions"><button class="apply-button" @click="selectionHint = ''">知道了</button></footer>
+      </section>
+    </div>
 
     <div v-if="!carriers.length" class="aviation-placeholder"><span>△</span><h2>当前舰队没有航空作业舰</h2><p>在剧本中部署航母或搭载水上飞机的舰船，或先在地图上点选机场。</p></div>
     <div v-else class="air-task-lanes mission-grid">

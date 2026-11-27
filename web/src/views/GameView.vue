@@ -46,11 +46,8 @@ const actionBusy = ref(false)
 const error = ref('')
 // 挂载错配提示：不拦命令，只在拖进任务栏/改目标后浮一条，玩家不理它也会自己消失。
 const loadoutHint = ref('')
-let loadoutHintTimer: ReturnType<typeof setTimeout> | undefined
 function showLoadoutHint(text: string) {
   loadoutHint.value = text
-  if (loadoutHintTimer) clearTimeout(loadoutHintTimer)
-  loadoutHintTimer = setTimeout(() => { loadoutHint.value = '' }, 12000)
 }
 const socketStatus = ref<'connecting' | 'online' | 'offline'>('connecting')
 const copied = ref(false)
@@ -319,8 +316,11 @@ const menuFleets = computed(() => groupFleets(ownUnits.value.filter((unit) => un
 const mergeSource = computed(() => menuFleets.value.find((fleet) => fleet.fleet_id === mergeSourceID.value))
 const orderedEvents = computed(() => [...(state.value?.events || [])].reverse())
 // 新事件里出现"挂载不适合这个任务"就弹一条浮动提示：这类命令服务端照收，只是干不了活。
+const lastLoadoutHintID = ref(0)
 watch(() => state.value?.events?.at(-1), (event) => {
-  if (event && event.type === 'air_loadout_mismatch') showLoadoutHint(event.text)
+  if (!event || event.type !== 'air_loadout_mismatch' || event.id === lastLoadoutHintID.value) return
+  lastLoadoutHintID.value = event.id
+  showLoadoutHint(event.text)
 })
 const readyCount = computed(() => state.value?.players.filter((player) => player.ready).length || 0)
 
@@ -1252,9 +1252,13 @@ onUnmounted(() => {
     </div>
 
     <!-- 命令被拒/同步失败：居中弹窗，玩家看完自己关。不再占页面布局，也不会挡着海图等下一次成功操作。 -->
-    <div v-if="loadoutHint" class="loadout-hint" role="status" @click="loadoutHint = ''">
-      <span>{{ loadoutHint }}</span>
-      <button aria-label="关闭" @click.stop="loadoutHint = ''">×</button>
+    <!-- 挂载错配：同样是弹窗，玩家看完自己关；命令已经收下了，不改任何状态。 -->
+    <div v-if="loadoutHint" class="fleet-dialog" @click.self="loadoutHint = ''">
+      <section class="fleet-modal" role="alertdialog" aria-modal="true" aria-label="挂载提示">
+        <header><div><span class="section-kicker">LOADOUT NOTICE</span><h2>挂载提示</h2></div><button aria-label="关闭" @click="loadoutHint = ''">×</button></header>
+        <p class="error-modal-text">{{ loadoutHint }}</p>
+        <footer class="error-modal-actions"><button class="apply-button" @click="loadoutHint = ''">知道了</button></footer>
+      </section>
     </div>
     <div v-if="error" class="fleet-dialog error-dialog" @click.self="dismissError">
       <section class="fleet-modal error-modal" role="alertdialog" aria-modal="true" aria-label="操作未生效">

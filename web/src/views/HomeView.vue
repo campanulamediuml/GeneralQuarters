@@ -115,7 +115,13 @@ async function joinGame() {
           <input id="room-token" v-model="token" class="text-input token-input" maxlength="14" placeholder="XXXX-XXXX-XXXX" @keyup.enter="joinGame" />
           <button class="secondary-button" :disabled="busy" @click="joinGame">加入</button>
         </div>
-        <p v-if="error" class="error-banner" role="alert">{{ error }}</p>
+        <div v-if="error" class="fleet-dialog" @click.self="error = ''">
+          <section class="fleet-modal" role="alertdialog" aria-modal="true" aria-label="操作未生效">
+            <header><div><span class="section-kicker">COMMAND REJECTED</span><h2>操作未生效</h2></div><button aria-label="关闭" @click="error = ''">×</button></header>
+            <p class="error-modal-text">{{ error }}</p>
+            <footer class="error-modal-actions"><button class="apply-button" @click="error = ''">知道了</button></footer>
+          </section>
+        </div>
         <div class="panel-footer"><span>GO SERVER</span><span>VUE CLIENT</span><span>SQLITE</span></div>
       </div>
     </section>
