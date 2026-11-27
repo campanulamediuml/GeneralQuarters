@@ -53,12 +53,24 @@ func main() {
 	defer database.Close()
 
 	mux := http.NewServeMux()
-	app := server.New(database, cfg.ContentDir(), cfg.SecureCookie)
-	// 开发时让观战页从磁盘读模板：改 HTML 刷新浏览器就生效，不用重新编译重启。
-	if cfg.WatchHTML != "" {
-		app.SetWatchTemplate(cfg.WatchHTML)
-		log.Printf("观战页模板从磁盘读：%s", cfg.WatchHTML)
+	webDir := cfg.WebDir
+	if webDir == "" {
+		webDir = "web/dist"
 	}
+	if info, err := os.Stat(webDir); err != nil || !info.IsDir() {
+		log.Fatalf("前端产物目录不存在：%s（先 cd web && ./node_modules/.bin/vite build，或在配置里写 web_dir）", webDir)
+	}
+	// 观战页是 web/public/watch.html，构建后落在 dist 根目录；和 Vue 页面一样从磁盘读。
+	watchPath := cfg.WatchHTML
+	if watchPath == "" {
+		watchPath = filepath.Join(webDir, "watch.html")
+	}
+	if _, err := os.Stat(watchPath); err != nil {
+		log.Fatalf("观战页模板不存在：%s（前端构建会把 web/public/watch.html 复制进 dist）", watchPath)
+	}
+	app := server.New(database, cfg.ContentDir(), cfg.SecureCookie)
+	app.SetWatchTemplate(watchPath)
+	log.Printf("观战页模板从磁盘读：%s", watchPath)
 	app.RegisterRoutes(mux)
 	// 重启后双方 ready 标记还在库里、却没人再发 ready，回合结算会永远等不到触发。
 	runCtx, stopRun := context.WithCancel(context.Background())
@@ -78,7 +90,7 @@ func main() {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		_, _ = w.Write(api.Docs)
 	})
-	registerSPA(mux, cfg.WebDir)
+	registerSPA(mux, webDir)
 
 	httpServer := &http.Server{Addr: cfg.Listen, Handler: securityHeaders(mux), ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 90 * time.Second}
 	go func() {

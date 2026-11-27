@@ -31,13 +31,13 @@ func TestWatchTemplateReloadsFromDiskWithoutRestart(t *testing.T) {
 	}
 }
 
-// 模板路径读不到时必须退回内嵌版本：观战页打不开比样式旧要严重得多。
-func TestWatchTemplateFallsBackToEmbeddedPage(t *testing.T) {
+// 模板路径读不到时直接 500：页面不再有内嵌兜底，部署漏拷 watch.html 要当场暴露，
+// 而不是悄悄发一份旧页面出去。
+func TestWatchTemplateMissingReturnsError(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "nope.html")
 	client, _, _, cleanup := setupTestServer(t, func(app *Server) { app.SetWatchTemplate(missing) })
 	defer cleanup()
-	body, status := fetchWatchPage(t, client, "/watch/room?token=x")
-	if status != 200 || !strings.Contains(body, "GENERAL QUARTERS") {
-		t.Fatalf("模板缺失时没有退回内嵌页：status=%d body=%s", status, head(body, 200))
+	if body, status := fetchWatchPage(t, client, "/watch/room?token=x"); status != 500 {
+		t.Fatalf("模板缺失时状态码 %d，期望 500：%s", status, head(body, 200))
 	}
 }

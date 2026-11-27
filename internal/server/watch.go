@@ -3,8 +3,8 @@ package server
 import (
 	"bytes"
 	"context"
-	_ "embed"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -13,9 +13,6 @@ import (
 	"generalquarters/internal/game"
 	"generalquarters/internal/store"
 )
-
-//go:embed watch.html
-var watchHTML []byte
 
 // doSpectate 是"观战"视角：用房间 join_token 换一份不按阵营裁剪的完整快照。
 // 对局本身仍然是两边私有情报各看各的；这个接口只给拿得到邀请 token 的人（房主/旁观者）用，
@@ -170,12 +167,8 @@ func spectatorGroundTasks(state game.State) []game.AirTask {
 	return tasks
 }
 
-// watchPage 是给旁观者看的只读海图，不依赖前端构建产物，随服务端一起发布。
-// SetWatchTemplate 让观战页改成从磁盘读模板。
-//
-// 观战页是 go:embed 进二进制的，默认改一行 HTML 就得重新编译再重启——和改 Vue 页面
-// 的体验完全不一样。开发时把它指到 internal/server/watch.html 就回到"改完刷新"。
-// 空字符串表示继续用内嵌版本（发布时就是这一份，单文件部署不受影响）。
+// watchPage 是给旁观者看的只读海图：一个自带渲染脚本的静态页，放在前端产物目录里
+// （web/public/watch.html → dist/watch.html），和 Vue 页面一起从磁盘下发，不编进二进制。
 func (s *Server) SetWatchTemplate(path string) {
 	s.watchPath = path
 	s.watchMu.Lock()
@@ -183,27 +176,28 @@ func (s *Server) SetWatchTemplate(path string) {
 	s.watchMu.Unlock()
 }
 
-// watchDocument 返回当前观战页 HTML：没配路径就用内嵌版本，配了就读磁盘（按 mtime 缓存，
-// 每帧请求都读盘没必要）。读失败退回内嵌版本——页面挂了总比整个观战打不开好。
-func (s *Server) watchDocument() []byte {
-	if s.watchPath == "" {
-		return watchHTML
+// watchDocument 按 mtime 读磁盘上的观战页（每帧请求都读盘没必要），改完 HTML 刷新即可。
+// 模板缺失/读不出来直接报错：与其悄悄退回一份旧页面，不如让部署问题当场暴露。
+func (s *Server) watchDocument() ([]byte, error) {
+	path := s.watchPath
+	if path == "" {
+		return nil, fmt.Errorf("观战页模板没有配置")
 	}
 	s.watchMu.Lock()
 	defer s.watchMu.Unlock()
-	info, err := os.Stat(s.watchPath)
+	info, err := os.Stat(path)
 	if err != nil {
-		return watchHTML
+		return nil, fmt.Errorf("观战页模板不存在：%s", path)
 	}
 	if s.watchBody != nil && info.ModTime().Equal(s.watchMtime) && info.Size() == int64(len(s.watchBody)) {
-		return s.watchBody
+		return s.watchBody, nil
 	}
-	data, err := os.ReadFile(s.watchPath)
+	data, err := os.ReadFile(path)
 	if err != nil {
-		return watchHTML
+		return nil, fmt.Errorf("观战页模板读不出来：%s", path)
 	}
 	s.watchBody, s.watchMtime = data, info.ModTime()
-	return data
+	return data, nil
 }
 
 func (s *Server) watchPage(w http.ResponseWriter, r *http.Request) {
@@ -211,7 +205,11 @@ func (s *Server) watchPage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Referrer-Policy", "no-referrer")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	page := s.watchDocument()
+	page, err := s.watchDocument()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 	if len(parts) == 2 && r.URL.Query().Get("token") == "" {
 		token := game.NormalizeToken(parts[1])

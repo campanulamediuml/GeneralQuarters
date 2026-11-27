@@ -40,19 +40,19 @@ JSON 在每次建局/读取时从磁盘加载（新开房间就生效）。
 本地配置一般长这样：
 
 ```json
-{ "listen": ":8100", "web_dir": "web/dist", "watch_html": "internal/server/watch.html" }
+{ "listen": ":8100", "web_dir": "web/dist" }
 ```
 
 页面相关的改动都不用重启后端：
 
 - 改 Vue/CSS：`cd web && npm run build`（不到 1 秒）→ 刷新浏览器。想连这一步都省，就挂着
   `npm run watch`（`vite build --watch`），存盘即重建，刷新即可见。
-- 改观战页 `internal/server/watch.html`：服务端按 mtime 读盘，保存后刷新就有，连 build 都不用。
+- 改观战页 `web/public/watch.html`：构建时复制到 `dist/watch.html`，服务端按 mtime 读盘，保存后刷新就有。
 - 真要改 .vue 还不想刷新，再 `npm run dev`（Vite 在 5173 热更新，把 `/api`、`/ws`、`/watch`、
   `/content` 代理给 8100）。
 
-`web_dir` 留空时按 `web/dist` 处理；目录不存在会拒绝启动。观战页模板是唯一还内嵌的 HTML，
-不填 `watch_html` 就用二进制里那份。部署/联调统一用 `http://127.0.0.1:8100`。
+`web_dir` 留空时按 `web/dist` 处理；目录不存在会拒绝启动。观战页就是 dist 根目录下的
+`watch.html`（源码在 `web/public/`），`watch_html` 只在想把它放到别处时才用。部署/联调统一用 `http://127.0.0.1:8100`。
 
 ## 剧本
 

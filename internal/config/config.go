@@ -32,8 +32,8 @@ type Config struct {
 	// WebDir 指到前端产物目录（默认 web/dist）：前端是纯静态资源，一律从磁盘读，
 	// 改完 npm run build 刷新即可，不用重新编译、也不用重启服务。目录不存在会拒绝启动。
 	WebDir string `json:"web_dir"`
-	// WatchHTML 指到观战页模板（internal/server/watch.html）：给了就按 mtime 从磁盘读，
-	// 改完 HTML 刷新浏览器就生效。不填用内置模板（仅这一份 HTML 还编在二进制里）。
+	// WatchHTML 指到观战页模板：默认取 web_dir/watch.html（web/public/watch.html 构建后落在 dist 根目录）。
+	// 按 mtime 从磁盘读，改完 HTML 刷新浏览器就生效，不用重启。
 	WatchHTML string `json:"watch_html"`
 	// Source 记录实际读到的配置文件路径（空表示只用默认值 + 环境变量），仅用于启动日志。
 	Source string `json:"-"`
