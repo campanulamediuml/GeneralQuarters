@@ -81,6 +81,7 @@ func TestNightSeaplaneReconHalved(t *testing.T) {
 		if unit.Faction != "A" || unit.Type != "DD" {
 			continue
 		}
+		// 这个用例要的是"没封顶的发现率"：只取一艘船当目标，编队加成最小时才看得出折半。
 		if factor := weatherFactor(weatherAt(state.Map, unit.Coord)); factor > bestWeather {
 			bestWeather = factor
 			members = []Unit{*unit}
@@ -176,25 +177,31 @@ func TestNightSeaplaneTrackingHalved(t *testing.T) {
 	if aircraft == nil {
 		t.Fatal("缺少水上飞机基地算子")
 	}
-	// 跟踪成功率里带天气系数，而天气按被跟踪舰队的坐标查：遍历 map 随手取第一艘驱逐舰，
-	// 会在"恰好取到坏天气那一队"时把成功率压到 18%，用例随机失败。按 id 排序取天气最好的
-	// 那艘，前提就稳定了（这里测的是夜间折半，不是天气）。
+	// 跟踪是按舰队算的（50% + 编队里每艘船的加成），生产代码走的是
+	// fleetMembers(state, TrackingFleetID)。这里以前手工塞了一艘驱逐舰当 members，
+	// 于是编队加成只有 +1%，而且天气随"map 遍历先碰到哪艘船"漂移，用例会随机失败。
 	var members []Unit
 	bestWeather := -1.0
+	trackedFleet := ""
 	for _, id := range sortedUnitIDs(state.Units) {
 		unit := state.Units[id]
 		if unit.Faction != "A" || unit.Type != "DD" {
 			continue
 		}
-		if factor := weatherFactor(weatherAt(state.Map, unit.Coord)); factor > bestWeather {
+		fleet := fleetMembers(&state, FleetKey(unit))
+		if len(fleet) == 0 {
+			continue
+		}
+		if factor := weatherFactor(weatherAt(state.Map, fleet[0].Coord)); factor > bestWeather {
 			bestWeather = factor
-			members = []Unit{*unit}
+			members = fleet
+			trackedFleet = FleetKey(unit)
 		}
 	}
 	if len(members) == 0 {
 		t.Fatal("剧本里没有美军驱逐舰")
 	}
-	aircraft.TrackingFleetID = FleetKey(&members[0])
+	aircraft.TrackingFleetID = trackedFleet
 
 	tracked := func(night bool, trials int) int {
 		state.Night = night
