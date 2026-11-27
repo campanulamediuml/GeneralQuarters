@@ -468,6 +468,54 @@ func armoredCarrierBombEffect(state *State, target *Unit, warned bool) []EngineE
 	return events
 }
 
+// shellDamageTier 返回这艘船在"损伤阶梯"上的位置：0 = BB、1 = BC、2 = CA、
+// 3 = CL、4 = DD。舰种决定起点（航母和重巡同级），每挨一发炮弹下移一级，
+// 到 DD 封顶——挨打越多，船体越通透，后续命中越容易直接打进要害。
+func shellDamageTier(unit *Unit) int {
+	base := 4
+	switch unit.Type {
+	case "BB":
+		base = 0
+	case "BC":
+		base = 1
+	case "CA", "CV":
+		// 航母和重巡同级。
+		base = 2
+	case "CL", "CVL":
+		// 轻母和轻巡同级。
+		base = 3
+	}
+	tier := base
+	if unit.Damage != nil {
+		tier += unit.Damage.ShellHits
+	}
+	if tier > 4 {
+		tier = 4
+	}
+	return tier
+}
+
+// shellDamageChance 是这一发炮弹直接打掉 1 点生命值的概率（%）。
+// 阶梯越靠下越脆：BB 1%、BC 2%、CA（含航母）4%、CL（含轻母）8%、DD 10%，
+// 护航航母和运输船直接 12%——它们没有能挡住炮弹的结构，再往下推没有意义。
+func shellDamageChance(unit *Unit) float64 {
+	if unit.Type == "CVE" || unit.Type == "TRS" {
+		return 12
+	}
+	switch shellDamageTier(unit) {
+	case 0:
+		return 1
+	case 1:
+		return 2
+	case 2:
+		return 4
+	case 3:
+		return 8
+	default:
+		return 10
+	}
+}
+
 // applyGunOrBombHit 结算炮弹和炸弹命中：两者共用防空、甲板与 DCT 流程，
 // 差别在装甲航母的甲板损坏概率（炸弹 25%，规则书 490 行），
 // 以及"整装待发飞机被摧毁"只有炸弹才会发生（规则书 421–423 行）。
@@ -501,6 +549,18 @@ func applyGunOrBombHit(state *State, hit Hit) []EngineEvent {
 	}
 	if state.Units[target.ID] == nil {
 		return events
+	}
+	// 炮弹另有一条"损伤阶梯"：不管 DCT 过不过，都按当前级别判一次直接扣 1 点生命值，
+	// 判完把这个级别往下推一级。挨打越多，后续每一发越容易打进要害——被集火的船
+	// 会越打越脆，而不是一直按初始舰种吃 1%~2% 的刮痧。
+	if hit.Cause == HitShell {
+		damage := EnsureDamage(target)
+		if probabilityRoll(&state.RNGState) < shellDamageChance(target) {
+			events = append(events, damageStrength(state, target, 1)...)
+		}
+		if state.Units[target.ID] != nil {
+			damage.ShellHits++
+		}
 	}
 	return events
 }

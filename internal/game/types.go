@@ -548,6 +548,9 @@ type ShipDamage struct {
 	FireControlRadarDisabled bool `json:"fire_control_radar_disabled"`
 	AirRadarDisabled         bool `json:"air_radar_disabled"`
 	SonarDisabled            bool `json:"sonar_disabled"`
+	// ShellHits 是这艘船累计挨了多少发炮弹。炮弹命中会把"损伤阶梯"往下推一级
+	// （BB→BC→CA→CL→DD），级别越低，后续命中直接扣 1 点生命值的概率越高。
+	ShellHits int `json:"shell_hits"`
 }
 
 type Unit struct {
