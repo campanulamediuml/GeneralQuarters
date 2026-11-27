@@ -26,8 +26,8 @@ func TestMarianasLandingGroups(t *testing.T) {
 			if unit.Card.Cargo <= 0 {
 				t.Fatalf("%s 没有货", unit.Name)
 			}
-			if unit.Card.SpeedClass != "slow" {
-				t.Fatalf("%s 不是慢速运输船：%s", unit.Name, unit.Card.SpeedClass)
+			if unit.Card.SpeedClass != "very_slow" {
+				t.Fatalf("%s 不是极慢运输船：%s", unit.Name, unit.Card.SpeedClass)
 			}
 		case "DD":
 			group.dd++
@@ -41,8 +41,8 @@ func TestMarianasLandingGroups(t *testing.T) {
 		if group.trs != 12 || group.dd != 12 {
 			t.Fatalf("%s 编成 %d 运输 + %d 驱逐，期望 12+12", id, group.trs, group.dd)
 		}
-		if interval := FleetMoveInterval(state, state.Units[firstUnitOfFleet(state, id)]); interval != 6 {
-			t.Fatalf("%s 每 %d 回合移动一格，慢速运输队应为 6", id, interval)
+		if interval := FleetMoveInterval(state, state.Units[firstUnitOfFleet(state, id)]); interval != 9 {
+			t.Fatalf("%s 每 %d 回合移动一格，极慢运输队应为 9", id, interval)
 		}
 	}
 
