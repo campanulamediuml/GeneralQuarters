@@ -230,7 +230,7 @@
     "hangar_advantage": 3,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 2, 3]
+    "move_cycle": [2, 2, 2, 3, 2, 2, 3]
    }
   },
   {
@@ -362,7 +362,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 3, 3]
+    "move_cycle": [2, 3, 3, 2, 3, 3, 3]
    }
   },
   {
@@ -395,7 +395,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 3, 3]
+    "move_cycle": [2, 3, 3, 2, 3, 3, 3]
    }
   },
   {
@@ -494,7 +494,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 2, 3]
+    "move_cycle": [2, 2, 2, 3, 2, 2, 3]
    }
   },
   {
@@ -527,7 +527,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 2, 3]
+    "move_cycle": [2, 2, 2, 3, 2, 2, 3]
    }
   },
   {
@@ -560,7 +560,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 2, 3]
+    "move_cycle": [2, 2, 2, 3, 2, 2, 3]
    }
   },
   {
@@ -593,7 +593,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 2, 3]
+    "move_cycle": [2, 2, 2, 3, 2, 2, 3]
    }
   },
   {
@@ -626,7 +626,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 2, 3]
+    "move_cycle": [2, 2, 2, 3, 2, 2, 3]
    }
   },
   {
@@ -659,7 +659,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 2, 3]
+    "move_cycle": [2, 2, 2, 3, 2, 2, 3]
    }
   },
   {
@@ -692,7 +692,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 2, 3]
+    "move_cycle": [2, 2, 2, 3, 2, 2, 3]
    }
   },
   {
@@ -725,7 +725,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 2, 3]
+    "move_cycle": [2, 2, 2, 3, 2, 2, 3]
    }
   },
   {
@@ -1583,7 +1583,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 3, 3, 3]
+    "move_cycle": [2, 3, 3, 2, 3, 3, 3]
    }
   },
   {
@@ -1616,7 +1616,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 3, 3, 3]
+    "move_cycle": [2, 3, 3, 2, 3, 3, 3]
    }
   },
   {
@@ -1682,7 +1682,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 3]
+    "move_cycle": [2, 2, 3, 2, 3, 2, 3]
    }
   },
   {
@@ -1715,7 +1715,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 3]
+    "move_cycle": [2, 2, 3, 2, 3, 2, 3]
    }
   },
   {
@@ -1748,7 +1748,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 2, 2, 2, 2, 3]
+    "move_cycle": [2, 2, 2, 2, 2, 2, 2, 3]
    }
   },
   {
@@ -1781,7 +1781,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 2, 2, 2, 2, 3]
+    "move_cycle": [2, 2, 2, 2, 2, 2, 2, 3]
    }
   },
   {
@@ -1814,7 +1814,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 2, 2, 2, 2, 3]
+    "move_cycle": [2, 2, 2, 2, 2, 2, 2, 3]
    }
   },
   {
@@ -1847,7 +1847,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 2, 2, 2, 2, 3]
+    "move_cycle": [2, 2, 2, 2, 2, 2, 2, 3]
    }
   },
   {
@@ -1880,7 +1880,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 2, 2, 2, 2, 3]
+    "move_cycle": [2, 2, 2, 2, 2, 2, 3]
    }
   },
   {
@@ -1913,7 +1913,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 2, 2, 2, 2, 3]
+    "move_cycle": [2, 2, 2, 2, 2, 2, 3]
    }
   },
   {
@@ -1946,7 +1946,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 2, 2, 2, 2, 3]
+    "move_cycle": [2, 2, 2, 2, 2, 2, 3]
    }
   },
   {
@@ -1979,7 +1979,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 2, 2, 2, 2, 3]
+    "move_cycle": [2, 2, 2, 2, 2, 2, 2, 3]
    }
   },
   {
@@ -2012,7 +2012,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 2, 2, 2, 2, 3]
+    "move_cycle": [2, 2, 2, 2, 2, 2, 3]
    }
   },
   {
@@ -2639,7 +2639,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [4]
+    "move_cycle": [3, 4, 4, 4, 4, 4, 4, 4]
    }
   },
   {
@@ -2672,7 +2672,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [4]
+    "move_cycle": [3, 4, 4, 4, 4, 4, 4, 4]
    }
   },
   {
@@ -2705,7 +2705,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [4]
+    "move_cycle": [3, 4, 4, 4, 4, 4, 4, 4]
    }
   },
   {
@@ -2738,7 +2738,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [4]
+    "move_cycle": [3, 4, 4, 4, 4, 4, 4, 4]
    }
   },
   {
@@ -2771,7 +2771,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [4]
+    "move_cycle": [3, 4, 4, 4, 4, 4, 4, 4]
    }
   },
   {
@@ -2804,7 +2804,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [4]
+    "move_cycle": [3, 4, 4, 4, 4, 4, 4, 4]
    }
   },
   {
@@ -2837,7 +2837,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [4]
+    "move_cycle": [3, 4, 4, 4, 4, 4, 4, 4]
    }
   },
   {
@@ -2870,7 +2870,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [4]
+    "move_cycle": [3, 4, 4, 4, 4, 4, 4, 4]
    }
   },
   {
@@ -2903,7 +2903,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [4]
+    "move_cycle": [3, 4, 4, 4, 4, 4, 4, 4]
    }
   },
   {
@@ -3035,7 +3035,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [4]
+    "move_cycle": [3, 4, 4, 4, 4, 4, 4, 4]
    }
   },
   {
@@ -3068,7 +3068,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [4]
+    "move_cycle": [3, 4, 4, 4, 4, 4, 4, 4]
    }
   },
   {
@@ -3101,7 +3101,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [4]
+    "move_cycle": [3, 4, 4, 4, 4, 4, 4, 4]
    }
   },
   {
@@ -3134,7 +3134,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [4]
+    "move_cycle": [3, 4, 4, 4, 4, 4, 4, 4]
    }
   },
   {
@@ -3167,7 +3167,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [3, 4, 3, 4, 4]
+    "move_cycle": [3, 4, 3, 4, 3, 4, 4]
    }
   },
   {
@@ -3200,7 +3200,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [3, 4, 3, 4, 4]
+    "move_cycle": [3, 4, 3, 4, 3, 4, 4]
    }
   },
   {
@@ -3233,7 +3233,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [3, 4, 3, 4, 4]
+    "move_cycle": [3, 4, 3, 4, 3, 4, 4]
    }
   },
   {
@@ -3266,7 +3266,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [3, 4, 3, 4, 4]
+    "move_cycle": [3, 4, 3, 4, 3, 4, 4]
    }
   },
   {
@@ -3398,7 +3398,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [3, 4, 3, 4, 4]
+    "move_cycle": [3, 4, 3, 4, 3, 4, 4]
    }
   },
   {
@@ -3497,7 +3497,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 3, 3]
+    "move_cycle": [2, 3, 3, 2, 3, 3, 3]
    }
   },
   {
@@ -3530,7 +3530,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 3, 3]
+    "move_cycle": [2, 3, 3, 2, 3, 3, 3]
    }
   },
   {
@@ -3959,7 +3959,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 2, 3, 2, 3]
+    "move_cycle": [2, 2, 3, 2, 2, 3, 2, 3]
    }
   },
   {
@@ -3992,7 +3992,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 2, 3, 2, 3]
+    "move_cycle": [2, 2, 3, 2, 2, 3, 2, 3]
    }
   },
   {
@@ -4025,7 +4025,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 2, 3, 2, 3]
+    "move_cycle": [2, 2, 3, 2, 2, 3, 2, 3]
    }
   },
   {
@@ -4058,7 +4058,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 2, 3, 2, 3]
+    "move_cycle": [2, 2, 3, 2, 2, 3, 2, 3]
    }
   },
   {
@@ -5081,7 +5081,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 2, 3]
+    "move_cycle": [2, 2, 2, 3, 2, 2, 3]
    }
   },
   {
@@ -5114,7 +5114,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 2, 3]
+    "move_cycle": [2, 2, 2, 3, 2, 2, 3]
    }
   },
   {
@@ -5147,7 +5147,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 2, 3]
+    "move_cycle": [2, 2, 2, 3, 2, 2, 3]
    }
   },
   {
@@ -5180,7 +5180,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 2, 3]
+    "move_cycle": [2, 2, 2, 3, 2, 2, 3]
    }
   },
   {
@@ -5213,7 +5213,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 2, 3]
+    "move_cycle": [2, 2, 2, 3, 2, 2, 3]
    }
   },
   {
@@ -5246,7 +5246,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 2, 3]
+    "move_cycle": [2, 2, 2, 3, 2, 2, 3]
    }
   },
   {
@@ -5279,7 +5279,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [3, 3, 3, 3, 3, 4]
+    "move_cycle": [3, 3, 3, 3, 3, 3, 3, 4]
    }
   },
   {
@@ -5312,7 +5312,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [3, 3, 3, 3, 3, 4]
+    "move_cycle": [3, 3, 3, 3, 3, 3, 3, 4]
    }
   },
   {
@@ -5345,7 +5345,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [3, 3, 3, 3, 3, 4]
+    "move_cycle": [3, 3, 3, 3, 3, 3, 3, 4]
    }
   },
   {
@@ -5378,7 +5378,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [3, 3, 3, 3, 3, 4]
+    "move_cycle": [3, 3, 3, 3, 3, 3, 3, 4]
    }
   },
   {
@@ -5411,7 +5411,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [3, 3, 3, 3, 3, 4]
+    "move_cycle": [3, 3, 3, 3, 3, 3, 3, 4]
    }
   },
   {
@@ -5444,7 +5444,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [3, 3, 3, 3, 3, 4]
+    "move_cycle": [3, 3, 3, 3, 3, 3, 3, 4]
    }
   },
   {
@@ -5477,7 +5477,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [3, 3, 3, 3, 3, 4]
+    "move_cycle": [3, 3, 3, 3, 3, 3, 3, 4]
    }
   },
   {
@@ -5510,7 +5510,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [3, 3, 3, 3, 3, 4]
+    "move_cycle": [3, 3, 3, 3, 3, 3, 3, 4]
    }
   },
   {
@@ -5543,7 +5543,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [3, 3, 3, 3, 3, 4]
+    "move_cycle": [3, 3, 3, 3, 3, 3, 3, 4]
    }
   },
   {
@@ -5576,7 +5576,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [3, 3, 3, 3, 3, 4]
+    "move_cycle": [3, 3, 3, 3, 3, 3, 3, 4]
    }
   },
   {
@@ -5609,7 +5609,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [3, 3, 3, 3, 3, 4]
+    "move_cycle": [3, 3, 3, 3, 3, 3, 3, 4]
    }
   },
   {
@@ -5642,7 +5642,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [3, 3, 3, 3, 3, 4]
+    "move_cycle": [3, 3, 3, 3, 3, 3, 3, 4]
    }
   },
   {
@@ -5675,7 +5675,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [3, 3, 3, 3, 3, 4]
+    "move_cycle": [3, 3, 3, 3, 3, 3, 3, 4]
    }
   },
   {
@@ -5708,7 +5708,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [3, 3, 3, 3, 3, 4]
+    "move_cycle": [3, 3, 3, 3, 3, 3, 3, 4]
    }
   },
   {
@@ -5741,7 +5741,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [3, 3, 3, 3, 3, 4]
+    "move_cycle": [3, 3, 3, 3, 3, 3, 3, 4]
    }
   },
   {
@@ -5774,7 +5774,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [3, 3, 3, 3, 3, 4]
+    "move_cycle": [3, 3, 3, 3, 3, 3, 3, 4]
    }
   },
   {
@@ -8183,7 +8183,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 3]
+    "move_cycle": [2, 2, 3, 2, 3, 2, 3]
    }
   },
   {
@@ -8216,7 +8216,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 3]
+    "move_cycle": [2, 2, 3, 2, 3, 2, 3]
    }
   },
   {
@@ -8249,7 +8249,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 3, 3, 3, 3]
+    "move_cycle": [2, 3, 3, 3]
    }
   },
   {
@@ -8381,7 +8381,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [3]
+    "move_cycle": [3, 3, 3, 3, 3, 3, 3, 4]
    }
   },
   {
@@ -8414,7 +8414,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [3]
+    "move_cycle": [3, 3, 3, 3, 3, 3, 3, 4]
    }
   },
   {
@@ -8546,7 +8546,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 2, 2, 2, 2, 3]
+    "move_cycle": [2, 2, 2, 2, 2, 2, 2, 3]
    }
   },
   {
@@ -8579,7 +8579,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 2, 2, 2, 2, 3]
+    "move_cycle": [2, 2, 2, 2, 2, 2, 2, 3]
    }
   },
   {
@@ -8612,7 +8612,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 2, 2, 2, 2, 3]
+    "move_cycle": [2, 2, 2, 2, 2, 2, 2, 3]
    }
   },
   {
@@ -8645,7 +8645,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 2, 2, 2, 2, 3]
+    "move_cycle": [2, 2, 2, 2, 2, 2, 2, 3]
    }
   },
   {
@@ -8678,7 +8678,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 2, 2, 2, 2, 3]
+    "move_cycle": [2, 2, 2, 2, 2, 2, 3]
    }
   },
   {
@@ -8711,7 +8711,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 2, 2, 2, 2, 3]
+    "move_cycle": [2, 2, 2, 2, 2, 2, 3]
    }
   },
   {
@@ -8777,7 +8777,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 2, 2, 2, 2, 3]
+    "move_cycle": [2, 2, 2, 2, 2, 2, 3]
    }
   },
   {
@@ -8810,7 +8810,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 2, 2, 2, 2, 3]
+    "move_cycle": [2, 2, 2, 2, 2, 2, 2, 3]
    }
   },
   {
@@ -8843,7 +8843,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false,
-    "move_cycle": [2, 2, 2, 2, 2, 3]
+    "move_cycle": [2, 2, 2, 2, 2, 2, 2, 3]
    }
   },
   {

@@ -24,6 +24,6 @@
   "gunnery": 8,
   "hangar_capacity": 1,
   "fire_control_radar": false,
-  "move_cycle": [2, 2, 2, 2, 2, 3]
+  "move_cycle": [2, 2, 2, 2, 2, 2, 2, 3]
  }
 }

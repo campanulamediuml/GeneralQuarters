@@ -41,13 +41,10 @@ func TestMarianasLandingGroups(t *testing.T) {
 		if group.trs != 12 || group.dd != 12 {
 			t.Fatalf("%s 编成 %d 运输 + %d 驱逐，期望 12+12", id, group.trs, group.dd)
 		}
-		// 运输船按现实航速约 14 节（5,5,6 回合交替 = 14 节），不再是老四档的极慢 9 回合。
+		// 运输船单舰现实航速约 14 节（5,5,6 交替），24 艘的运输队是大型编队，再 -2 节 = 12 节。
 		leader := state.Units[firstUnitOfFleet(state, id)]
-		if knots := FleetCycleKnots(state, leader); knots != 14 {
-			t.Fatalf("%s 航速 %d 节，运输队应约 14 节", id, knots)
-		}
-		if interval := FleetMoveInterval(state, leader); interval != 5 {
-			t.Fatalf("%s 每 %d 回合移动一格，14 节的运输队应是 5", id, interval)
+		if knots := FleetCycleKnots(state, leader); knots != 12 {
+			t.Fatalf("%s 航速 %d 节，24 艘的运输队应为 14-2=12 节", id, knots)
 		}
 	}
 

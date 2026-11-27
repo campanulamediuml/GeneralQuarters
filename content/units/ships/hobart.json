@@ -24,6 +24,6 @@
   "gunnery": 6,
   "nation": "australia",
   "fire_control_radar": false,
-  "move_cycle": [2, 2, 3]
+  "move_cycle": [2, 2, 2, 3, 2, 2, 3]
  }
 }

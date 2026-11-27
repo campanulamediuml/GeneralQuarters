@@ -68,17 +68,23 @@ def knots_for(name, ship_type):
 
 
 def cycle_for(knots):
-    """平均回合数最接近 75/knots 的整数序列；同样误差挑短的。"""
+    """挑一串周期，让平均每格回合数最接近 75/目标航速；同样接近时挑短的周期。
+
+    按回合数贴近而不是按"向下取整后的结数"，否则 12 节会被 [6]（实际 12.5 节）顶掉，
+    而 6.25 回合的 6、6、6、7 才是正好 12 节。牌面结数只在算不出来的时候向下取整。
+    """
+    target = int(math.floor(knots))
     n = 75.0 / knots
+    base = int(math.floor(n))
     best = None
-    for length in range(1, 7):
+    for length in range(1, 9):
         for extra in range(length + 1):  # 有 extra 个 base+1
-            base = int(math.floor(n))
-            total = base * length + extra
-            avg = total / length
-            error = abs(avg - n)
-            if best is None or error < best[0] - 1e-9 or (abs(error - best[0]) <= 1e-9 and length < len(best[1])):
-                best = (error, build_cycle(base, length, extra))
+            avg = (base * length + extra) / length
+            model = 75.0 / avg
+            # 先保证牌面结数（向下取整）对得上，再比真实结数误差，最后才比周期长短。
+            score = (abs(int(math.floor(model)) - target), round(abs(model - knots), 6), length)
+            if best is None or score < best[0]:
+                best = (score, build_cycle(base, length, extra))
     return best[1]
 
 

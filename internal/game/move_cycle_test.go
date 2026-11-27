@@ -1,6 +1,9 @@
 package game
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 // 交替节奏的意义：固定整数周期只能落在 37.5/25/12.5/8.3 节几档，
 // 交替之后 25 海里/hex、20 分钟/回合的换算能把航速填到 30、20、12 节这种中间值。
@@ -66,7 +69,8 @@ func TestAlternatingMoveCycleRepeats(t *testing.T) {
 	}
 }
 
-// 编队按最慢的那艘走：拖一条 25 节的战列舰，高速航母也得跟着 3 回合。
+// 编队按最慢的那艘走：拖一条 25 节的战列舰，30 节的航母也得跟着 25 节走。
+// 两条船还算小型编队，不扣速。
 func TestFleetMoveCycleTakesSlowest(t *testing.T) {
 	carrier := &Unit{ID: "cv", FleetID: "f1", Type: "CV", Card: ShipCard{MoveCycle: []int{2, 3}, DamageControl: 4}}
 	bb := &Unit{ID: "bb", FleetID: "f1", Type: "BB", Card: ShipCard{MoveCycle: []int{3}, DamageControl: 7}}
@@ -74,8 +78,48 @@ func TestFleetMoveCycleTakesSlowest(t *testing.T) {
 	if got := FleetCycleKnots(state, carrier); got != 25 {
 		t.Fatalf("整队航速应取最慢的 25 节，实际 %d", got)
 	}
-	if got := moveGaps(&state, carrier, 10); got[0] != 3 || got[1] != 3 {
-		t.Fatalf("整队应按 3 回合走一格，实际 %v", got)
+	if got := moveGaps(&state, carrier, 12); got[0] != 3 || got[1] != 3 {
+		t.Fatalf("25 节的整队应 3 回合走一格，实际 %v", got)
+	}
+	// 单舰不减：同样一条战列舰单独跑就是 25 节。
+	solo := &Unit{ID: "bb2", FleetID: "f2", Type: "BB", Card: ShipCard{MoveCycle: []int{3}, DamageControl: 7}}
+	soloState := State{Units: map[string]*Unit{"bb2": solo}}
+	if got := FleetCycleKnots(soloState, solo); got != 25 {
+		t.Fatalf("单舰应按自己的 25 节走，实际 %d", got)
+	}
+}
+
+// 编队规模惩罚：3–5 艘 −1 节，6 艘以上 −2 节。
+func TestFormationSizePenalty(t *testing.T) {
+	build := func(extra int) (State, *Unit) {
+		units := map[string]*Unit{}
+		trs := &Unit{ID: "t1", FleetID: "f1", Type: "TRS", Card: ShipCard{MoveCycle: []int{5, 5, 6}, DamageControl: 3}}
+		units["t1"] = trs
+		for i := 0; i < extra; i++ {
+			id := fmt.Sprintf("d%d", i)
+			units[id] = &Unit{ID: id, FleetID: "f1", Type: "DD", Card: ShipCard{MoveCycle: []int{2}, DamageControl: 4}}
+		}
+		return State{Units: units}, trs
+	}
+	// 2 艘：小型，14 节。
+	if state, trs := build(1); FleetCycleKnots(state, trs) != 14 {
+		t.Fatalf("2 艘的编队不该扣速，实际 %d 节", FleetCycleKnots(state, trs))
+	}
+	// 4 艘：中型，13 节（5、6 交替）。
+	state, trs := build(3)
+	if got := FleetCycleKnots(state, trs); got != 13 {
+		t.Fatalf("4 艘的编队应 −1 节 = 13，实际 %d", got)
+	}
+	if cycle := FleetMoveCycle(state, trs); CycleKnots(cycle) != 13 {
+		t.Fatalf("13 节的周期折算回来仍应是 13 节，实际 %v", cycle)
+	}
+	// 6 艘：大型，12 节（6、6、6、7 交替）。
+	state, trs = build(5)
+	if got := FleetCycleKnots(state, trs); got != 12 {
+		t.Fatalf("6 艘的编队应 −2 节 = 12，实际 %d", got)
+	}
+	if cycle := FleetMoveCycle(state, trs); len(cycle) != 4 || cycle[3] != 7 {
+		t.Fatalf("12 节应是 6、6、6、7，实际 %v", cycle)
 	}
 }
 

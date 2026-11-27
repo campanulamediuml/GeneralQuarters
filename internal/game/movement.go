@@ -83,8 +83,59 @@ func ShipMoveCycle(unit *Unit) []int {
 	return cycle
 }
 
+// CycleForKnots 是反查：给定航速（节），找一串周期，让牌面结数（75/平均回合数向下取整）
+// 最接近它。同样接近时优先短的周期，再优先平均回合数更贴近的——和 tools/fill_move_cycles.py
+// 用同一套规则，所以脚本填出来的周期和引擎算出来的编队节奏是一回事。
+func CycleForKnots(knots int) []int {
+	if knots <= 0 {
+		return []int{24}
+	}
+	n := 75.0 / float64(knots)
+	base := int(math.Floor(n))
+	if base < 1 {
+		base = 1
+	}
+	var best []int
+	bestScore := 0.0
+	for length := 1; length <= 8; length++ {
+		for extra := 0; extra <= length; extra++ {
+			avg := float64(base*length+extra) / float64(length)
+			model := 75 / avg
+			// 先保证牌面结数（向下取整）对得上，再比真实结数误差，最后才比周期长短。
+			score := math.Abs(math.Floor(model)-float64(knots)) +
+				math.Abs(model-float64(knots))/100 +
+				float64(length)/10000
+			if best == nil || score < bestScore {
+				bestScore = score
+				best = buildCycle(base, length, extra)
+			}
+		}
+	}
+	return best
+}
+
+// buildCycle 把 extra 个 base+1 均匀撒进 length 个位置，避免走走停停成块。
+func buildCycle(base, length, extra int) []int {
+	if extra <= 0 {
+		return []int{base}
+	}
+	if extra >= length {
+		return []int{base + 1}
+	}
+	cycle := make([]int, 0, length)
+	for i := 0; i < length; i++ {
+		if (i+1)*extra/length > i*extra/length {
+			cycle = append(cycle, base+1)
+		} else {
+			cycle = append(cycle, base)
+		}
+	}
+	return cycle
+}
+
 // FleetMoveCycle 取编队里最慢的那艘船当全队节奏：平均回合数最大的那个周期说了算，
-// 所以拖一条运输船的航母编队会跟着运输船走。
+// 所以拖一条运输船的航母编队会跟着运输船走。两艘以上的编队还要再 -1 节：保持队形、
+// 规避机动都要吃掉一点航速，单舰跑自己的最高航速。
 func FleetMoveCycle(state State, unit *Unit) []int {
 	if unit == nil {
 		return []int{24}
@@ -92,35 +143,59 @@ func FleetMoveCycle(state State, unit *Unit) []int {
 	fleetID := FleetKey(unit)
 	legacy := true
 	pureFastDD := true
+	members := 0
 	var slowest []int
 	slowestAvg := 0.0
-	found := false
 	for _, member := range state.Units {
 		if FleetKey(member) != fleetID {
 			continue
 		}
-		found = true
+		members++
 		if len(member.Card.MoveCycle) > 0 {
 			legacy = false
 		}
-		cycle := ShipMoveCycle(member)
-		if avg := cycleAverage(cycle); avg > slowestAvg {
-			slowestAvg = avg
+		if cycle := ShipMoveCycle(member); cycleAverage(cycle) > slowestAvg {
+			slowestAvg = cycleAverage(cycle)
 			slowest = cycle
 		}
 		if member.Type != "DD" || EffectiveSpeedClass(member) != "fast" {
 			pureFastDD = false
 		}
 	}
-	if !found || len(slowest) == 0 {
+	if members == 0 || len(slowest) == 0 {
 		return []int{24}
 	}
-	// 纯高速驱逐舰编队按 2 回合 1 hex（37.5 节）走，这是老规则里唯一比四档细的一档。
-	// 卡面配了周期就不套这条，以数据为准。
+	// 老卡（没有 move_cycle）的纯高速驱逐舰编队仍是 2 回合 1 hex，这是旧规则里
+	// 唯一比四档细的一档，留着让旧存档行为不变。
 	if legacy && pureFastDD {
 		return []int{2}
 	}
+	// 编队规模惩罚：保持队形、规避机动都要吃掉一点航速，队伍越大越难。单舰不罚；
+	// 失去动力的船不参与（24 回合本来就是"拖也拖不动"）；老卡（纯四档）的编队也不罚，
+	// 免得旧存档里一支舰队的节奏凭空变掉。
+	if !legacy && slowestAvg < 24 {
+		if penalty := formationSpeedPenalty(members); penalty > 0 {
+			target := CycleKnots(slowest) - penalty
+			if target < 1 {
+				target = 1
+			}
+			return CycleForKnots(target)
+		}
+	}
 	return slowest
+}
+
+// formationSpeedPenalty 按编队规模扣航速：小型（1–2 艘）不扣，中型（3–5 艘）−1 节，
+// 大型（6 艘以上）−2 节。档位和情报里显示的"编队规模"共用同一套阈值，避免出现
+// "情报说大型编队、跑起来却和两条船一样快"。
+func formationSpeedPenalty(members int) int {
+	switch contactSizeClass(members) {
+	case "medium":
+		return 1
+	case "large":
+		return 2
+	}
+	return 0
 }
 
 func cycleAverage(cycle []int) float64 {
