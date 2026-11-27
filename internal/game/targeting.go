@@ -92,6 +92,18 @@ func setGroundStrikeTarget(state *State, aircraft *AirfieldAirUnit, faction, coo
 	}
 }
 
+// applyStrikeFleet 把玩家显式点名的那支敌方舰队落到编队上：无线电改目标也认这个字段，
+// 否则同格停着几支舰队时只会按情报顺序认领第一支，玩家点的是谁并不作数。
+func applyStrikeFleet(state State, aircraft *AirUnit, faction, fleetID string) {
+	if aircraft == nil || fleetID == "" {
+		return
+	}
+	aircraft.TargetFleetID = fleetID
+	if coord, ok := strikeFleetCoord(state, faction, fleetID); ok {
+		aircraft.TargetCoord = coord
+	}
+}
+
 // resolveStrikeFleet 找出当前目标 hex 对应的敌方舰队，供"目标丢失后继续追踪"使用。
 func resolveStrikeFleet(state State, faction, coord string) string {
 	if coord == "" {

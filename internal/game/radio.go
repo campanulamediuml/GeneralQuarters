@@ -217,6 +217,12 @@ func validateRadioOrder(state State, faction string, order Order) error {
 	if !inBounds(state.Map, order.Coord) {
 		return fmt.Errorf("新目标坐标不在地图内")
 	}
+	// 改目标时可以点名"同格里打哪支舰队"，点名的必须是已侦测到的敌方舰队。
+	if formationKind == "attack" && order.TargetFleetID != "" {
+		if err := ValidateStrikeFleetTarget(state, faction, order.TargetFleetID, order.Coord); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -312,6 +318,11 @@ func ApplyRadioOrder(state *State, faction string, order Order) []EngineEvent {
 				continue
 			}
 			setStrikeTarget(state, aircraft, faction, order.Coord)
+			// 玩家在目标清单里点的是哪支舰队就认哪支：同格几支舰队时不能按情报顺序瞎认。
+			// 转场编队的目标舰队是自家船，走的是另一套（friendly），这里只管打击编队。
+			if aircraft.TaskKind == "attack" {
+				applyStrikeFleet(*state, aircraft, faction, order.TargetFleetID)
+			}
 			aircraft.Engaged = false
 		}
 		for _, aircraft := range groundMembers {
@@ -319,6 +330,12 @@ func ApplyRadioOrder(state *State, faction string, order Order) []EngineEvent {
 				continue
 			}
 			setGroundStrikeTarget(state, aircraft, faction, order.Coord)
+			if aircraft.TaskKind == "attack" && order.TargetFleetID != "" {
+				aircraft.TargetFleetID = order.TargetFleetID
+				if coord, ok := strikeFleetCoord(*state, faction, order.TargetFleetID); ok {
+					aircraft.TargetCoord = coord
+				}
+			}
 		}
 		events = append(events, EngineEvent{Type: "radio_retarget", Audience: faction, Text: fmt.Sprintf("%s无线电改目标成功（最近友军 %d hex，成功率 %.0f%%），新目标 %s", coord, distance, chance, order.Coord)})
 	}
