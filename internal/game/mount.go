@@ -370,6 +370,18 @@ func AttackBonus(loadout Loadout) int {
 	return 0
 }
 
+// EffectiveAntiGround 返回折过挂载之后的实际对地攻击值。
+//
+// 挂鱼雷的飞机对地值按 0 算——鱼雷只能打船，带鱼雷的舰攻飞到敌方机场上空是打不出伤害的。
+// 这条只改"对地"，对舰照常走鱼雷；不这样的话，挂鱼雷的九七舰攻炸机场和挂炸弹一样疼，
+// 玩家就永远没有"这一趟挂鱼雷还是挂炸弹"的选择。重型炸弹的 +2 仍然照加。
+func EffectiveAntiGround(loadout Loadout, antiGround int) int {
+	if loadout.Weapon() == WeaponTorpedo {
+		return 0
+	}
+	return antiGround + AttackBonus(loadout)
+}
+
 // withLoadoutAttack 返回"折过挂载加成"的算子副本，只给玩家视图用。
 //
 // state 里存的是基础攻击值，结算时自己会加一次 AttackBonus（对舰见 resolveBombingOn、
@@ -377,18 +389,16 @@ func AttackBonus(loadout Loadout) int {
 // 对地/对舰就该当场变成 +2，否则只能看到航程缩水，攻击值一点不动，很像没生效。
 // 加成绝不能写进 state：结算再加一次就会变成 +4，还会被状态存档带下去。
 func withLoadoutAttack(unit AirUnit) AirUnit {
-	bonus := AttackBonus(unit.Loadout)
-	unit.AntiShip += bonus
-	unit.AntiGround += bonus
+	unit.AntiShip += AttackBonus(unit.Loadout)
+	unit.AntiGround = EffectiveAntiGround(unit.Loadout, unit.AntiGround)
 	return unit
 }
 
 // withLoadoutAttackGround 是同一个加成在机场算子上的版本：机场那套投影
 // 直接下发 AirfieldAirUnit 本体，不经过 AirUnit。
 func withLoadoutAttackGround(unit AirfieldAirUnit) AirfieldAirUnit {
-	bonus := AttackBonus(unit.Loadout)
-	unit.AntiShip += bonus
-	unit.AntiGround += bonus
+	unit.AntiShip += AttackBonus(unit.Loadout)
+	unit.AntiGround = EffectiveAntiGround(unit.Loadout, unit.AntiGround)
 	return unit
 }
 

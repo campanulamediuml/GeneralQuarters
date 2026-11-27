@@ -667,9 +667,30 @@ func resolveGroundStrike(state *State, taskID, coord string) []EngineEvent {
 	}
 	bombers := []*AirUnit{}
 	for _, aircraft := range attackers {
+		// 挂鱼雷的飞机不参加对地投弹：鱼雷打不了机场，对地值按 0 计。
+		// 它照样会飞过来吃防空，只是这一趟炸不动跑道。
+		if aircraft.Loadout.Weapon() == WeaponTorpedo {
+			continue
+		}
 		// 挂弹的战斗机按投弹处理；不挂弹的战斗机是护航，后面按 1 点强度扫射。
 		if aircraft.Kind != "fighter" || aircraft.Loadout.Weapon() == WeaponBomb {
 			bombers = append(bombers, aircraft)
+		}
+	}
+	if len(bombers) < len(attackers) {
+		blocked := map[string]bool{}
+		for _, aircraft := range attackers {
+			if aircraft.Loadout.Weapon() == WeaponTorpedo {
+				blocked[aircraft.Model] = true
+			}
+		}
+		if len(blocked) > 0 {
+			models := make([]string, 0, len(blocked))
+			for model := range blocked {
+				models = append(models, model)
+			}
+			sort.Strings(models)
+			events = append(events, EngineEvent{Type: "ground_strike_blocked", Audience: "all", Text: fmt.Sprintf("挂鱼雷的%s无法对地攻击（对地值按 0 计），这一趟炸不动%s的跑道", strings.Join(models, "、"), airfield.Name)})
 		}
 	}
 	// 规则书 689 行：重防空的目标池是“当前参与空袭的算子”，护航战斗机也算。
@@ -696,9 +717,8 @@ func resolveGroundStrike(state *State, taskID, coord string) []EngineEvent {
 		if !operationalAircraft(state, aircraft) {
 			continue
 		}
-		// 重型炸弹 +2 对地（规则书 82 行）：对舰那条路径早就加了，对地漏了，
-		// 于是同一队挂重型炸弹的飞机炸船是 +2、炸机场反而是原值。
-		antiGround := aircraft.AntiGround + AttackBonus(aircraft.Loadout)
+		// 对地值按挂载折算：重型炸弹 +2（规则书 82 行），挂鱼雷为 0——鱼雷打不了机场。
+		antiGround := EffectiveAntiGround(aircraft.Loadout, aircraft.AntiGround)
 		if aircraft.Confusion && antiGround > 0 {
 			antiGround--
 		}
