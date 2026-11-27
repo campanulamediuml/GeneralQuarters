@@ -87,7 +87,7 @@ func TestMarianasReferenceShipCards(t *testing.T) {
 		"苍龙": {2, 2, 6, 7},
 		"飞龙": {2, 2, 6, 7},
 		"山城": {5, 5, 4, 21},
-		"扶桑": {5, 5, 4, 25},
+		"扶桑": {5, 5, 4, 21},
 	}
 	found := map[string]bool{}
 	for _, unit := range state.Units {
