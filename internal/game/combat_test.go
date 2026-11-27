@@ -67,6 +67,22 @@ func TestTorpedoUsesTargetSpeedAndConsumesSalvo(t *testing.T) {
 	}
 }
 
+// 鱼雷打光就是打光了：剩 0 点的船不再发射，也不会把库存打成负数。
+func TestDryTorpedoTubesCannotFire(t *testing.T) {
+	attacker := &Unit{ID: "a", FleetID: "a", Name: "空管驱逐舰", Type: "DD", Faction: "A", Coord: "0101", Card: ShipCard{TorpedoSalvos: 0}}
+	broken := &Unit{ID: "b", FleetID: "b", Name: "鱼雷管被毁", Type: "DD", Faction: "A", Coord: "0101", Card: ShipCard{TorpedoSalvos: 3}}
+	EnsureDamage(broken).TorpedoDisabled = true
+	target := &Unit{ID: "t", FleetID: "t", Name: "目标", Type: "BB", Faction: "B", Coord: "0101", Strength: 6, MaxStrength: 6, Card: ShipCard{SpeedClass: "normal", DamageControl: 7}}
+	state := State{RNGState: 42, Units: map[string]*Unit{"a": attacker, "b": broken, "t": target}, Doctrines: map[string]string{}}
+	hits, events := torpedoVolley(&state, []Unit{*attacker, *broken}, []Unit{*target})
+	if len(hits) != 0 || len(events) != 0 {
+		t.Fatalf("没有鱼雷的船不该发射：hits=%d events=%v", len(hits), events)
+	}
+	if attacker.Card.TorpedoSalvos != 0 || broken.Card.TorpedoSalvos != 3 {
+		t.Fatalf("库存不该被扣成负数或改动：%d %d", attacker.Card.TorpedoSalvos, broken.Card.TorpedoSalvos)
+	}
+}
+
 func TestSinkingCarrierRemovesAircraft(t *testing.T) {
 	carrier := &Unit{ID: "cv", FleetID: "cv", Name: "航母", Type: "CV", Faction: "A", Strength: 1, MaxStrength: 5, Card: ShipCard{DamageControl: 6}}
 	state := State{RNGState: 42, Units: map[string]*Unit{"cv": carrier}, Aircraft: map[string]*AirUnit{
