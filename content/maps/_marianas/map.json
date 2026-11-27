@@ -366,7 +366,7 @@
    "name": ""
   },
   {
-   "coord": "3061",
+   "coord": "3160",
    "terrain": "island",
    "name": "罗塔岛"
   },
@@ -407,16 +407,6 @@
   },
   {
    "coord": "3159",
-   "terrain": "shoal",
-   "name": ""
-  },
-  {
-   "coord": "3160",
-   "terrain": "shoal",
-   "name": ""
-  },
-  {
-   "coord": "3161",
    "terrain": "shoal",
    "name": ""
   },

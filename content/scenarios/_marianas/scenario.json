@@ -5944,7 +5944,7 @@
    "id": "af-b-rota",
    "faction": "B",
    "name": "罗塔机场",
-   "coord": "3061",
+   "coord": "3160",
    "type": "small",
    "runways": 2,
    "radar": false,

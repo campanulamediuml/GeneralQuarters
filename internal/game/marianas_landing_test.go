@@ -143,8 +143,8 @@ func TestMarianasLandingGroups(t *testing.T) {
 			t.Fatalf("%s 水上基地不该有岸炮：%+v", id, airfield)
 		}
 	}
-	// 一座岛一格：机场压在岛上，塞班 2763、天宁 2962、关岛 3361。
-	for id, coord := range map[string]string{"af-b-saipan": "2763", "af-b-tinian": "2962", "af-b-guam": "3361"} {
+	// 一座岛一格：机场压在岛上，塞班 2763、天宁 2962、罗塔 3161、关岛 3361。
+	for id, coord := range map[string]string{"af-b-saipan": "2763", "af-b-tinian": "2962", "af-b-rota": "3160", "af-b-guam": "3361"} {
 		if airfield := state.Airfields[id]; airfield == nil || airfield.Coord != coord {
 			t.Fatalf("%s 应该在 %s：%+v", id, coord, airfield)
 		}
@@ -155,8 +155,8 @@ func TestMarianasLandingGroups(t *testing.T) {
 			t.Fatalf("%s 应该在 %s：%+v", id, coord, airfield)
 		}
 	}
-	// 三座岛机场旁边都得留一格开阔水面，不然舰队进不去、登陆和岸轰全都做不了（规则书 304 行）。
-	for _, id := range []string{"af-b-saipan", "af-b-tinian", "af-b-guam"} {
+	// 四座岛机场旁边都得留一格开阔水面，不然舰队进不去、登陆和岸轰全都做不了（规则书 304 行）。
+	for _, id := range []string{"af-b-saipan", "af-b-tinian", "af-b-rota", "af-b-guam"} {
 		airfield := state.Airfields[id]
 		if airfield == nil {
 			t.Fatalf("缺少 %s", id)
@@ -165,10 +165,10 @@ func TestMarianasLandingGroups(t *testing.T) {
 			t.Fatalf("%s 的 %s 没有开阔水面通道，舰队进不去，也就没法登陆/岸轰", id, airfield.Coord)
 		}
 	}
-	// 并掉的多余岛格（2862 塞班、2963 天宁、3260 关岛）现在都是海。
+	// 并掉/搬走的岛格（2862 塞班、2963 天宁、3061 罗塔、3260 关岛）现在都是海。
 	for _, cell := range state.Map.Cells {
 		switch cell.Coord {
-		case "2862", "2963", "3260":
+		case "2862", "2963", "3061", "3260":
 			if cell.Terrain == "island" {
 				t.Fatalf("%s 不应该还是岛", cell.Coord)
 			}
