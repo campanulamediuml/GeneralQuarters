@@ -884,6 +884,20 @@ func ValidateOrder(state State, faction string, order Order) error {
 		if size > limit {
 			return fmt.Errorf("两支舰队合并后共%d艘，超过一支舰队的上限%d艘", size, limit)
 		}
+		// 护航要求同样要覆盖合并：CV 单独一队 + DD 单独一队贴在一起是合法的，
+		// 但两支航母队互并（谁都不带护航）就该拦下来。
+		composition := fleetComposition{}
+		for _, other := range state.Units {
+			if other.Faction != faction || other.Coord != unit.Coord {
+				continue
+			}
+			if FleetKey(other) == FleetKey(unit) || FleetKey(other) == FleetKey(target) {
+				composition.add(other.Type)
+			}
+		}
+		if err := composition.validate(FleetKey(target)); err != nil {
+			return err
+		}
 		return nil
 	default:
 		return fmt.Errorf("不支持的命令类型")
@@ -905,6 +919,7 @@ func validateReorganization(state State, faction string, order Order) error {
 	}
 	limit := fleetShipLimit(state)
 	fleetSizes := map[string]int{}
+	compositions := map[string]*fleetComposition{}
 	for unitID, fleetID := range order.Assignments {
 		if !expected[unitID] || strings.TrimSpace(fleetID) == "" || len(fleetID) > 64 {
 			return fmt.Errorf("整编包含无效单位或舰队标识")
@@ -913,8 +928,65 @@ func validateReorganization(state State, faction string, order Order) error {
 		if fleetSizes[fleetID] > limit {
 			return fmt.Errorf("一支舰队最多允许%d艘船", limit)
 		}
+		composition := compositions[fleetID]
+		if composition == nil {
+			composition = &fleetComposition{}
+			compositions[fleetID] = composition
+		}
+		composition.add(state.Units[unitID].Type)
+	}
+	// 护航校验排在规模之后：先报最直观的"船太多"，再报缺护航。按舰队 id 排序遍历，
+	// 保证同一次提交每次报错的内容一样。
+	fleetIDs := make([]string, 0, len(compositions))
+	for fleetID := range compositions {
+		fleetIDs = append(fleetIDs, fleetID)
+	}
+	sort.Strings(fleetIDs)
+	for _, fleetID := range fleetIDs {
+		if err := compositions[fleetID].validate(fleetID); err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+// fleetComposition 是一支编队的舰种构成，用来校验规则书的护航要求：
+// 每艘航母至少配 1 艘护航舰，每 2 艘运输船至少配 1 艘护航舰。
+type fleetComposition struct {
+	carriers   int
+	transports int
+	escorts    int
+}
+
+func (composition *fleetComposition) add(unitType string) {
+	switch upperType(unitType) {
+	case "CV", "CVL", "CVE":
+		composition.carriers++
+	case "TRS":
+		composition.transports++
+	default:
+		composition.escorts++
+	}
+}
+
+// requiredEscorts 是这支编队至少需要的护航舰数：航母各占 1 艘，运输船每 2 艘占 1 艘（向上取整）。
+func (composition fleetComposition) requiredEscorts() int {
+	return composition.carriers + (composition.transports+1)/2
+}
+
+// validate 在护航不足时返回可以直接展示给玩家的错误。
+func (composition fleetComposition) validate(fleetID string) error {
+	if composition.escorts >= composition.requiredEscorts() {
+		return nil
+	}
+	switch {
+	case composition.carriers > 0 && composition.transports > 0:
+		return fmt.Errorf("舰队%s有%d艘航母和%d艘运输船，至少需要%d艘护航舰，现在只有%d艘", fleetID, composition.carriers, composition.transports, composition.requiredEscorts(), composition.escorts)
+	case composition.carriers > 0:
+		return fmt.Errorf("舰队%s有%d艘航母，每艘航母至少需要1艘护航舰，现在只有%d艘", fleetID, composition.carriers, composition.escorts)
+	default:
+		return fmt.Errorf("舰队%s有%d艘运输船，每2艘运输船至少需要1艘护航舰，现在只有%d艘", fleetID, composition.transports, composition.escorts)
+	}
 }
 
 // fleetShipLimit 是整编时一支舰队的舰船上限：剧本可以放宽（马里亚纳 40 艘），

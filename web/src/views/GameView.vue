@@ -314,6 +314,20 @@ const mapAirTaskOrigin = computed(() => {
 const fleetChoices = computed(() => ownFleets.value.filter((fleet) => fleet.coord === fleetChoiceCoord.value))
 const menuFleets = computed(() => groupFleets(ownUnits.value.filter((unit) => unit.coord === menuCoord.value).map((unit) => ({ ...unit, fleet_id: draftAssignments.value[unit.id] || unit.fleet_id })), []))
 const mergeSource = computed(() => menuFleets.value.find((fleet) => fleet.fleet_id === mergeSourceID.value))
+// 整编草稿的护航自检：服务端才是权威，这里只是提前把不合规的编队标出来，
+// 免得玩家点“应用整编”才被拒。配额和规则书一致：每艘航母 1 艘护航、每 2 艘运输船 1 艘。
+const draftEscortShortfall = computed(() => {
+  const result: Record<string, { need: number; escorts: number }> = {}
+  for (const fleet of menuFleets.value) {
+    const carriers = fleet.members.filter((unit) => ['CV', 'CVL', 'CVE'].includes(unit.type)).length
+    const transports = fleet.members.filter((unit) => unit.type === 'TRS').length
+    const escorts = fleet.members.length - carriers - transports
+    const need = carriers + Math.ceil(transports / 2)
+    if (escorts < need) result[fleet.fleet_id] = { need, escorts }
+  }
+  return result
+})
+const draftInvalid = computed(() => Object.keys(draftEscortShortfall.value).length > 0)
 const orderedEvents = computed(() => [...(state.value?.events || [])].reverse())
 // 新事件里出现"挂载不适合这个任务"就弹一条浮动提示：这类命令服务端照收，只是干不了活。
 const lastLoadoutHintID = ref(0)
@@ -1244,7 +1258,7 @@ onUnmounted(() => {
         <p class="manager-hint">选择“默认”将舰队置顶并设为操作对象。成员可以转移到其他舰队、拆出新舰队，也可以整支合并。</p>
         <div class="fleet-columns">
           <article v-for="fleet in menuFleets" :key="fleet.fleet_id" class="fleet-column" :class="{ default: selectedFleet?.fleet_id === fleet.fleet_id, 'merge-source': mergeSourceID === fleet.fleet_id, 'transfer-target': movingMemberID && !fleet.members.some((unit) => unit.id === movingMemberID) }">
-            <header><div><span class="unit-type-badge">{{ fleet.type }}</span><h3>{{ fleet.name }}</h3><small>{{ fleet.count }}艘 · 强度{{ fleet.strength }}/{{ fleet.max_strength }}</small></div><button class="default-button" @click="selectedID = fleet.id">{{ selectedFleet?.fleet_id === fleet.fleet_id ? '默认' : '设为默认' }}</button></header>
+            <header><div><span class="unit-type-badge">{{ fleet.type }}</span><h3>{{ fleet.name }}</h3><small>{{ fleet.count }}艘 · 强度{{ fleet.strength }}/{{ fleet.max_strength }}</small><small v-if="draftEscortShortfall[fleet.fleet_id]" class="escort-shortfall">护航不足：{{ draftEscortShortfall[fleet.fleet_id].escorts }}/{{ draftEscortShortfall[fleet.fleet_id].need }}</small></div><button class="default-button" @click="selectedID = fleet.id">{{ selectedFleet?.fleet_id === fleet.fleet_id ? '默认' : '设为默认' }}</button></header>
             <div class="fleet-counter-grid manager-counter-grid">
               <div v-for="member in fleet.members" :key="member.id" class="manager-counter" :class="{ selected: movingMemberID === member.id }">
                 <button class="fleet-counter-button" :data-ship-id="member.id" @click="movingMemberID = movingMemberID === member.id ? '' : member.id"><ShipCounter :unit="member" /></button>
@@ -1255,7 +1269,7 @@ onUnmounted(() => {
             <footer v-if="!movingMemberID"><button v-if="!mergeSourceID" @click="mergeSourceID = fleet.fleet_id">合并舰队</button><button v-else-if="mergeSourceID === fleet.fleet_id" disabled>当前整编源</button><button v-else class="confirm" @click="mergeDraftInto(fleet.fleet_id)">合并到此队</button></footer>
           </article>
         </div>
-        <footer class="manager-actions"><button class="reset-button" @click="openManager(menuCoord)">重置</button><span>整编由服务器立即生效</span><button class="apply-button" :disabled="actionBusy" @click="applyReorganization">应用整编</button></footer>
+        <footer class="manager-actions"><button class="reset-button" @click="openManager(menuCoord)">重置</button><span>{{ draftInvalid ? '有编队护航不足，补齐后才能提交' : '整编由服务器立即生效' }}</span><button class="apply-button" :disabled="actionBusy || draftInvalid" @click="applyReorganization">应用整编</button></footer>
       </section>
     </div>
 
