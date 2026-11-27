@@ -380,6 +380,7 @@ onUnmounted(() => {
               <div><dt>舰船</dt><dd>{{ fleetShips.length }}</dd></div>
               <div><dt>情报</dt><dd>{{ selectedFleet?.contact_level ? selectedFleet?.contact_level + ' 级' : '完整' }}</dd></div>
               <div class="watch-meta-wide"><dt>航速</dt><dd>约 {{ fleetKnots }} 节<template v-if="selectedFleet?.move_interval">（每 {{ selectedFleet?.move_interval }} 回合 1 格）</template></dd></div>
+              <div class="watch-meta-wide" title="混乱值：每回合 -1；混乱中不能整编、不能岸轰，炮击与鱼雷命中按自身混乱每点 -5%"><dt>混乱</dt><dd :class="{ 'watch-confusion-hot': (selectedFleet?.confusion || 0) > 0 }">{{ selectedFleet?.confusion || 0 }}</dd></div>
               <div v-if="selectedFleetAirCover" class="watch-meta-wide"><dt>空中掩护</dt><dd>CAP {{ selectedFleetAirCover.cap }} · 掩护 {{ selectedFleetAirCover.cover }}<template v-if="selectedFleetAirCover.returning">（返航 {{ selectedFleetAirCover.returning }}）</template></dd></div>
             </dl>
             <div class="watch-fleet-grid">
@@ -527,6 +528,8 @@ onUnmounted(() => {
 .watch-meta dt { opacity: .6; white-space: nowrap; }
 /* 航速、空中掩护这类一行放不下两栏的条目独占整行，否则"航速"会被挤成竖排两个字。 */
 .watch-meta .watch-meta-wide { grid-column: 1 / -1; }
+/* 有混乱时数字转橙：混乱期间不能整编、不能岸轰，命中还要吃惩罚，不能跟 0 一样灰着。 */
+.watch-meta .watch-confusion-hot { color: #f0a53a; }
 .watch-meta dd { margin: 0; font-weight: 600; }
 .watch-fleet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 5px; }
 /* 兵牌原尺寸 126px 宽，观战面板里按 0.58 缩小，一屏能看完整支编队而不是翻好几页。 */

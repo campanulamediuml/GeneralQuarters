@@ -579,7 +579,7 @@ path.hex-wind{pointer-events:none;fill:none;stroke:#7fa6b0;stroke-width:1.3;stro
 
 /* 舰队面板：舰队防空值（全舰队重型防空之和），和"可移动/还需N回合"同一行 */
 .fleet-aa-value{color:#b9d6de;white-space:nowrap}
-.fleet-aa-value b{color:#f0d58d;font-size:13px;margin-left:2px}
+.fleet-aa-value b{color:#f0d58d;font-size:13px;margin-left:2px}.fleet-confusion{color:#b9d6de;white-space:nowrap}.fleet-confusion b{color:#8fd6b0;font-size:13px;margin-left:2px}.fleet-confusion.hot b{color:#f0a53a}
 /* 机库/甲板里的挂载下拉：和任务栏里的那个同一套外观，只是多一项"无挂载"。
    选挂载 = 开始整备，清空 = 卸弹回机库。 */
 .air-counter-item>.loadout-picker{display:block;width:84px;margin-top:4px;padding:3px 2px;border:1px solid #476d7a;background:#173844;color:#d5e5e3;font-size:8px}
