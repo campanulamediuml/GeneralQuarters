@@ -842,6 +842,29 @@ func isTorpedoAttack(aircraft *AirUnit) bool {
 // isHighAltitudeBomber 识别"对舰命中率吃战略轰炸机减半惩罚"的高空机：
 // 战略轰炸机始终算；B-26 这类带 high_altitude_bomber 标记的机型只在挂炸弹时算。
 // 轻防空免疫是另一条判定（更宽，含中型/水平轰炸机），见 ignoresLightAA。
+// bombAttackDisadvantage 判断这次对舰投弹是不是"鱼雷机挂炸弹"。
+// 鱼雷机没有俯冲轰炸能力（挂架和瞄准具都是为低空雷击准备的），挂炸弹时只能低空水平投弹，
+// 对舰命中判定要取劣势（掷两次取差）。挂鱼雷、或者老存档没写挂载信息的，都不受影响。
+func bombAttackDisadvantage(aircraft *AirUnit) bool {
+	if aircraft == nil || aircraft.Kind != "torpedo_bomber" {
+		return false
+	}
+	return aircraft.Loadout != LoadoutNone && aircraft.Loadout.Weapon() == WeaponBomb
+}
+
+// strikeRollHits 掷一次对舰命中判定。disadvantage 表示"取劣势"：掷两次，两次都过才算命中
+// （等价于把命中率平方，25% → 6.25%）。用它是为了让"没法俯冲轰炸"体现成判定档位，
+// 而不是又一个百分比修正——和飞行员熟练度、机库爆炸用的是同一套骰子语言。
+func strikeRollHits(state *State, chance float64, disadvantage bool) bool {
+	if probabilityRoll(&state.RNGState) >= chance {
+		return false
+	}
+	if !disadvantage {
+		return true
+	}
+	return probabilityRoll(&state.RNGState) < chance
+}
+
 func isHighAltitudeBomber(aircraft *AirUnit) bool {
 	if aircraft == nil {
 		return false
@@ -1015,6 +1038,8 @@ func resolveBombingOn(state *State, attacker *AirUnit, target *Unit, mixed, capR
 		antiShip++
 	}
 	chance := strikeHitChance(*state, attacker, target, mixed, capRemaining)
+	// 鱼雷机挂炸弹：没法俯冲，只能低空水平投弹，对舰命中判定取劣势。
+	disadvantage := bombAttackDisadvantage(attacker)
 	hits := 0
 	// 记录尝试次数，即使 0 命中也要让战报/动画知道"确实投弹了"，而不是看起来漏结算。
 	report.BombAttempts += antiShip
@@ -1024,7 +1049,7 @@ func resolveBombingOn(state *State, attacker *AirUnit, target *Unit, mixed, capR
 		}
 	}
 	for ; antiShip > 0; antiShip-- {
-		if probabilityRoll(&state.RNGState) >= chance {
+		if !strikeRollHits(state, chance, disadvantage) {
 			continue
 		}
 		hits++
