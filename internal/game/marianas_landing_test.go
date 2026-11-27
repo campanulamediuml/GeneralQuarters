@@ -270,3 +270,47 @@ func firstUnitOfFleet(state State, fleetID string) string {
 	}
 	return ""
 }
+
+// TF58.3 是六艘独立级轻航母：独立、普林斯顿、贝劳伍德、考彭斯、蒙特雷、兰利。
+// 每艘 7 个 F6F + 2 个 TBF，队里另有 8 艘弗莱彻级。
+func TestMarianasLightCarrierGroup(t *testing.T) {
+	scenario, gameMap, catalog, err := LoadScenario("../../content", "_marianas")
+	if err != nil {
+		t.Fatalf("加载剧本失败：%v", err)
+	}
+	state, err := NewState(scenario, gameMap, catalog, 42)
+	if err != nil {
+		t.Fatalf("建局失败：%v", err)
+	}
+	want := map[string]bool{"独立": true, "普林斯顿": true, "贝劳伍德": true, "考彭斯": true, "蒙特雷": true, "兰利": true}
+	found := map[string]bool{}
+	cvl, dd := 0, 0
+	for _, unit := range state.Units {
+		if unit.FleetID != "TF58.3" {
+			continue
+		}
+		switch unit.Type {
+		case "CVL":
+			cvl++
+			found[unit.Name] = true
+		case "DD":
+			dd++
+		}
+	}
+	if cvl != 6 || dd != 8 {
+		t.Fatalf("TF58.3 编成 %d 轻航母 + %d 驱逐，期望 6 + 8", cvl, dd)
+	}
+	for name := range want {
+		if !found[name] {
+			t.Fatalf("TF58.3 缺少 %s", name)
+		}
+	}
+	for _, unit := range state.Units {
+		if unit.FleetID != "TF58.3" || unit.Type != "CVL" {
+			continue
+		}
+		if unit.Card.HangarCapacity != 9 || unit.Card.Aircraft != 9 {
+			t.Fatalf("%s 机库 %d/%d，期望 9/9", unit.Name, unit.Card.Aircraft, unit.Card.HangarCapacity)
+		}
+	}
+}

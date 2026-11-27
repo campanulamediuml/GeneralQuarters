@@ -2257,6 +2257,22 @@
    "fleet_id": "TG2",
    "fleet_name": "乙部队",
    "ship": "jp-cv-14"
+  },
+  {
+   "id": "us-cvl-05",
+   "faction": "A",
+   "name": "蒙特雷",
+   "fleet_id": "TF58.3",
+   "fleet_name": "第58.3特混大队（轻航母）",
+   "ship": "us-cvl-05"
+  },
+  {
+   "id": "us-cvl-06",
+   "faction": "A",
+   "name": "兰利",
+   "fleet_id": "TF58.3",
+   "fleet_name": "第58.3特混大队（轻航母）",
+   "ship": "us-cvl-06"
   }
  ],
  "air_deployments": [
@@ -5913,6 +5929,114 @@
    "id": "jp-bb-11-f1m-x3",
    "unit": "f1m",
    "carrier": "jp-bb-11"
+  },
+  {
+   "id": "us-cvl-05-f6f-x1",
+   "unit": "f6f",
+   "carrier": "us-cvl-05",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-05-f6f-x2",
+   "unit": "f6f",
+   "carrier": "us-cvl-05",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-05-f6f-x3",
+   "unit": "f6f",
+   "carrier": "us-cvl-05",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-05-f6f-x4",
+   "unit": "f6f",
+   "carrier": "us-cvl-05",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-05-f6f-x5",
+   "unit": "f6f",
+   "carrier": "us-cvl-05",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-05-f6f-x6",
+   "unit": "f6f",
+   "carrier": "us-cvl-05",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-05-f6f-x7",
+   "unit": "f6f",
+   "carrier": "us-cvl-05",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-05-tbf-x1",
+   "unit": "tbf",
+   "carrier": "us-cvl-05",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-05-tbf-x2",
+   "unit": "tbf",
+   "carrier": "us-cvl-05",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-06-f6f-x1",
+   "unit": "f6f",
+   "carrier": "us-cvl-06",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-06-f6f-x2",
+   "unit": "f6f",
+   "carrier": "us-cvl-06",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-06-f6f-x3",
+   "unit": "f6f",
+   "carrier": "us-cvl-06",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-06-f6f-x4",
+   "unit": "f6f",
+   "carrier": "us-cvl-06",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-06-f6f-x5",
+   "unit": "f6f",
+   "carrier": "us-cvl-06",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-06-f6f-x6",
+   "unit": "f6f",
+   "carrier": "us-cvl-06",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-06-f6f-x7",
+   "unit": "f6f",
+   "carrier": "us-cvl-06",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-06-tbf-x1",
+   "unit": "tbf",
+   "carrier": "us-cvl-06",
+   "skill": "veteran"
+  },
+  {
+   "id": "us-cvl-06-tbf-x2",
+   "unit": "tbf",
+   "carrier": "us-cvl-06",
+   "skill": "veteran"
   }
  ],
  "airfields": [
