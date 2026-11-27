@@ -1,6 +1,6 @@
 {
  "id": "_marianas",
- "version": 2,
+ "version": 3,
  "name": "马里亚纳 · 1944年6月（架空：8 艘舰队航母 vs 联合舰队五群）",
  "map": "_marianas",
  "units": "marianas",
@@ -6096,6 +6096,180 @@
    "id": "us-cl-10-os2u-x1",
    "unit": "os2u",
    "carrier": "us-cl-10",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-ca-07-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-ca-07",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-ca-07-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-ca-07",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-ca-08-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-ca-08",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-ca-08-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-ca-08",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-ca-09-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-ca-09",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-ca-09-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-ca-09",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-ca-10-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-ca-10",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-ca-10-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-ca-10",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-ca-11-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-ca-11",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-ca-11-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-ca-11",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-ca-11-e13a-x3",
+   "unit": "e13a",
+   "carrier": "jp-ca-11",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-ca-12-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-ca-12",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-ca-12-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-ca-12",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-ca-12-e13a-x3",
+   "unit": "e13a",
+   "carrier": "jp-ca-12",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-ca-13-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-ca-13",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-ca-13-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-ca-13",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-ca-13-e13a-x3",
+   "unit": "e13a",
+   "carrier": "jp-ca-13",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-bb-06-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-bb-06",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-bb-06-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-bb-06",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-bb-07-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-bb-07",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-bb-07-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-bb-07",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-bb-08-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-bb-08",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-bb-08-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-bb-08",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-bb-08-e13a-x3",
+   "unit": "e13a",
+   "carrier": "jp-bb-08",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-bb-09-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-bb-09",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-bb-09-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-bb-09",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-bb-09-e13a-x3",
+   "unit": "e13a",
+   "carrier": "jp-bb-09",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-bb-12-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-bb-12",
+   "skill": "regular"
+  },
+  {
+   "id": "jp-bb-12-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-bb-12",
    "skill": "regular"
   }
  ],
