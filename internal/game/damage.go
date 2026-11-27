@@ -223,7 +223,7 @@ func severeDamageTable(cause HitCause, unit *Unit) []string {
 }
 
 // severeDamageTableFrom 多带一个攻击方：小口径的炮弹打不穿大船的船体，
-// 目标比攻击方高 2 档以上抽不到「严重进水」，高 3 档以上连「船体损伤」也抽不到。
+// 目标比攻击方高 2 档以上抽不到「严重进水」「弹药爆炸」，高 3 档以上连「船体损伤」也抽不到。
 // 只有炮弹受这条限制；鱼雷和火灾（attacker == nil）照旧。
 func severeDamageTableFrom(cause HitCause, unit *Unit, attacker *Unit) []string {
 	table := []string{"small_fire", "burning", "flooding", "dc_down", "ammo_explosion"}
@@ -260,7 +260,8 @@ func severeDamageTableFrom(cause HitCause, unit *Unit, attacker *Unit) []string 
 	if cause == HitShell && attacker != nil {
 		gap := shellDamageRank(unit.Type) - shellDamageRank(attacker.Type)
 		if gap <= -2 {
-			table = dropDamageResults(table, "severe_flooding")
+			// 小口径打不穿大船：既打不出致命进水，也点不着弹药库。
+			table = dropDamageResults(table, "severe_flooding", "ammo_explosion")
 		}
 		if gap <= -3 {
 			table = dropDamageResults(table, "hull_damage")

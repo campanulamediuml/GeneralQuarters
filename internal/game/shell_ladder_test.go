@@ -97,15 +97,20 @@ func TestSmallCaliberCannotRollHeavyHullDamage(t *testing.T) {
 	cl := shellTestShip("cl", "CL", 4, 5)
 	dd := shellTestShip("dd", "DD", 2, 5)
 
-	if table := severeDamageTableFrom(HitShell, bb, bc); !containsDamage(table, "severe_flooding") || !containsDamage(table, "hull_damage") {
-		t.Fatal("战巡的炮弹该能打出战列舰的严重进水和船体损伤")
+	if table := severeDamageTableFrom(HitShell, bb, bc); !containsDamage(table, "severe_flooding") ||
+		!containsDamage(table, "hull_damage") || !containsDamage(table, "ammo_explosion") {
+		t.Fatal("战巡的炮弹该能打出战列舰的严重进水、船体损伤和弹药爆炸")
 	}
-	if table := severeDamageTableFrom(HitShell, bb, ca); containsDamage(table, "severe_flooding") || !containsDamage(table, "hull_damage") {
-		t.Fatal("重巡能打船体损伤，但打不出严重进水")
+	// 差 2 档：能打船体损伤，但打不出致命进水和弹药爆炸。
+	if table := severeDamageTableFrom(HitShell, bb, ca); containsDamage(table, "severe_flooding") ||
+		containsDamage(table, "ammo_explosion") || !containsDamage(table, "hull_damage") {
+		t.Fatal("重巡能打船体损伤，但打不出严重进水和弹药爆炸")
 	}
+	// 差 3 档以上：连船体损伤都没有。
 	for _, attacker := range []*Unit{cl, dd} {
-		if table := severeDamageTableFrom(HitShell, bb, attacker); containsDamage(table, "severe_flooding") || containsDamage(table, "hull_damage") {
-			t.Fatalf("%s 的炮弹不该打出战列舰的严重进水/船体损伤", attacker.Type)
+		if table := severeDamageTableFrom(HitShell, bb, attacker); containsDamage(table, "severe_flooding") ||
+			containsDamage(table, "hull_damage") || containsDamage(table, "ammo_explosion") {
+			t.Fatalf("%s 的炮弹不该打出战列舰的严重进水/船体损伤/弹药爆炸", attacker.Type)
 		}
 	}
 	// 鱼雷不设限：没有攻击方，也不看口径。
