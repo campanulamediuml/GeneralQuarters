@@ -1298,7 +1298,8 @@ func ResolveOrders(state *State, orders []Order) []EngineEvent {
 	// 同时处于规则书 176–178 行的"飞行编队移动"之后、"水面交火/岸轰"之前。
 	events = append(events, resolveRadioOrders(state, orders)...)
 	events = append(events, resolveDetachments(state)...)
-	// 岸轰和运输卸载（规则书 178 行）
+	// 岸炮先开火（每回合对停在格内的敌舰），然后才结算岸轰和运输卸载（规则书 178 行）
+	events = append(events, resolveCoastalFire(state)...)
 	events = append(events, resolveShoreBombardment(state)...)
 	events = append(events, resolveUnloading(state)...)
 	events = append(events, resolvePortSupply(state)...)

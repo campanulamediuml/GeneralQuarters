@@ -3006,6 +3006,57 @@ func resolveShoreBombardment(state *State) []EngineEvent {
 	return events
 }
 
+// resolveCoastalFire 结算岸炮的常备射击：岸炮不是只在挨打时才还击，而是每回合对停在
+// 自己格子里的敌方舰队开火（每点 30%，天气修正）。岸轰会给参与的舰船 +4 混乱，一轮齐射后要等四回合
+// 才能再打；中间那几回合岸炮照常轰，所以小型舰队硬咬岸防炮就是白挨。
+func resolveCoastalFire(state *State) []EngineEvent {
+	events := []EngineEvent{}
+	ids := make([]string, 0, len(state.Airfields))
+	for id := range state.Airfields {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		airfield := state.Airfields[id]
+		if airfield == nil || airfield.Coastal <= 0 {
+			continue
+		}
+		targets := []*Unit{}
+		for _, unit := range state.Units {
+			if unit.Faction != airfield.Faction && unit.Coord == airfield.Coord && unit.Strength > 0 {
+				targets = append(targets, unit)
+			}
+		}
+		if len(targets) == 0 {
+			continue
+		}
+		sort.Slice(targets, func(i, j int) bool { return targets[i].ID < targets[j].ID })
+		chance := 30 + hexHitModifier(*state, airfield.Coord)
+		hits := 0
+		for shots := airfield.Coastal; shots > 0; shots-- {
+			if chance <= 0 || probabilityRoll(&state.RNGState) >= chance {
+				continue
+			}
+			alive := make([]*Unit, 0, len(targets))
+			for _, unit := range targets {
+				if state.Units[unit.ID] != nil {
+					alive = append(alive, unit)
+				}
+			}
+			if len(alive) == 0 {
+				break
+			}
+			target := alive[int(nextUint64(&state.RNGState)%uint64(len(alive)))]
+			hits++
+			events = append(events, applyHits(state, []Hit{{AttackerID: airfield.ID, TargetID: target.ID, Cause: HitShell}})...)
+		}
+		if hits > 0 {
+			events = append(events, EngineEvent{Type: "coastal_fire", Audience: "all", Text: fmt.Sprintf("%s的岸炮对格内敌舰开火：每点%.0f%%，命中%d次", airfield.Name, chance, hits)})
+		}
+	}
+	return events
+}
+
 func hexHitModifier(state State, coord string) float64 {
 	switch weatherAt(state.Map, coord) {
 	case "rain":
@@ -3039,27 +3090,9 @@ func bombardFleet(state *State, fleetID string, airfield *Airfield) []EngineEven
 			break
 		}
 	}
-	// 清滩：炮击自家机场上被敌人卸下的滩头物资。岸炮是自家的不会还击，也不能把自己的跑道炸了。
+	// 清滩：炮击自家机场上被敌人卸下的滩头物资，不能把自己的跑道炸了。
+	// 岸炮已经由 resolveCoastalFire 每回合对格内敌舰开火，这里不再重复结算。
 	clearingBeach := fleetFaction != "" && airfield.Faction == fleetFaction
-	// 岸炮先开火：命中随机舰船，每点岸炮 30% 独立判定
-	coastalHits := 0
-	if !clearingBeach {
-		for shots := airfield.Coastal; shots > 0; shots-- {
-			if probabilityRoll(&state.RNGState) >= 30+hexHitModifier(*state, airfield.Coord) {
-				continue
-			}
-			alive := fleetMembers(state, fleetID)
-			if len(alive) == 0 {
-				break
-			}
-			target := state.Units[alive[int(nextUint64(&state.RNGState)%uint64(len(alive)))].ID]
-			if target == nil {
-				continue
-			}
-			coastalHits++
-			events = append(events, applyHits(state, []Hit{{AttackerID: airfield.ID, TargetID: target.ID, Cause: HitShell}})...)
-		}
-	}
 	// 舰队炮击机场：普通舰每次命中 -1 生命值并摧毁至多 1 架地面飞机，战列舰 -2 / 至多 2 架
 	// 舰队在开火前指定目标，同一次齐射只结算一类（规则书 513 行）：
 	// 敌方滩头物资仍有余量就打物资，否则打机场。
@@ -3139,7 +3172,7 @@ func bombardFleet(state *State, fleetID string, airfield *Airfield) []EngineEven
 	if coastalLoss > 0 {
 		coastalText = fmt.Sprintf("，岸炮-%d", coastalLoss)
 	}
-	events = append(events, EngineEvent{Type: "shore_bombardment", Audience: "all", Text: fmt.Sprintf("%s在%s对%s岸轰：命中%d次（机场生命值-%d，摧毁地面飞机%d%s%s），岸炮反击命中%d次，舰队混乱+4", leaderName, airfield.Coord, airfield.Name, gunneryHits, airfieldDamage, groundLoss, supText, coastalText, coastalHits)})
+	events = append(events, EngineEvent{Type: "shore_bombardment", Audience: "all", Text: fmt.Sprintf("%s在%s对%s岸轰：命中%d次（机场生命值-%d，摧毁地面飞机%d%s%s），舰队混乱+4", leaderName, airfield.Coord, airfield.Name, gunneryHits, airfieldDamage, groundLoss, supText, coastalText)})
 	return events
 }
 

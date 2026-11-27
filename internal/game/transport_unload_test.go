@@ -7,6 +7,8 @@ import "testing"
 func TestTransportUnloadsAutomaticallyAfterThreeTurns(t *testing.T) {
 	state := sandboxState(t)
 	airfield := state.Airfields["af-b-sentry"]
+	// 这条用例只量卸货节奏：岸炮现在每回合都会轰格内的敌舰，留着它会把运输船先打沉。
+	airfield.Coastal = 0
 	before := airfield.Strength
 	trs := &Unit{
 		ID: "trs-test", FleetID: "TRS-A", FleetName: "运输队", Name: "运输船", Type: "TRS", Faction: "A",
