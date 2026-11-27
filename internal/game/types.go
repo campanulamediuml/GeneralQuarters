@@ -238,6 +238,9 @@ type ShipCard struct {
 	// 美军航母在 1942 珊瑚海是 2 骰、1944 马里亚纳是 3 骰，列克星敦级没有优势。
 	HangarAdvantage HangarAdvantageLevel `json:"hangar_advantage"`
 	HistoricalLoss  string               `json:"historical_loss"`
+	// Supply 是这条船的弹药供给：例如护航航母（CVE）不提供鱼雷，
+	// 停在它上面的鱼雷机就只能挂炸弹/侦察。
+	Supply Supply `json:"supply"`
 	// MoveCycle 是这级舰的移动节奏：一圈里第 i 格要等 cycle[i] 回合再走下一格。
 	// 25 海里/hex、20 分钟/回合，平均 N 回合走一格就是 75/N 节，所以固定的整数周期只能落
 	// 在 37.5/25/12.5/8.3 节这几档上；交替周期把航速填细：[2,3] 平均 2.5 → 30 节，
@@ -338,6 +341,8 @@ type AirfieldDefinition struct {
 	// 航母有独立机库容量，机场以前完全没有上限，转场可以把一堆飞机堆进同一个机场。
 	HangarCapacity int      `json:"hangar_capacity"`
 	Aircraft       []string `json:"aircraft"`
+	// Supply 是这个机场的弹药供给：剧本可以写"这个基地不给鱼雷挂载"。
+	Supply Supply `json:"supply"`
 }
 
 // Airfield 是运行时的机场状态。生命值 = 初始跑道数 × 5，可用跑道由生命值推导。
@@ -361,6 +366,8 @@ type Airfield struct {
 	// 本回合剩余的起降通行次数：每条可用跑道每回合最多 12 次（规则书 250 行）。
 	// 机场受袭会把正在起降的算子挤回机库，并占用通行次数（规则书 218 行）。
 	OpsRemaining int `json:"ops_remaining"`
+	// Supply 是这个机场的弹药供给（剧本可配"不提供某种挂载"）。
+	Supply Supply `json:"supply"`
 }
 
 // runwaySortiesPerTurn 是每条跑道每回合最多支持的起降算子数。
@@ -675,13 +682,16 @@ type AirUnit struct {
 	// 前端据此不再显示"舰载机"的蓝色航程框。
 	AirfieldOnly bool `json:"airfield_only"`
 	// TorpedoCapable / HighAltitudeBomber 从机种定义带过来，决定挂载表与攻击结算。
-	TorpedoCapable     bool   `json:"torpedo_capable"`
-	HighAltitudeBomber bool   `json:"high_altitude_bomber"`
-	Launched           bool   `json:"launched"`
-	ElevatorID         string `json:"elevator_id"`
-	Priority           int    `json:"priority"`
-	TaskID             string `json:"task_id"`
-	TaskKind           string `json:"task_kind"`
+	TorpedoCapable     bool `json:"torpedo_capable"`
+	HighAltitudeBomber bool `json:"high_altitude_bomber"`
+	// SupplyBlocked 是给界面用的投影：当前补给点（母舰/机场）不提供哪些武器类别。
+	// 只由视图层填，引擎判定走 SupplyOfAircraft / SupplyOfGroundAircraft。
+	SupplyBlocked []Weapon `json:"supply_blocked,omitempty"`
+	Launched      bool     `json:"launched"`
+	ElevatorID    string   `json:"elevator_id"`
+	Priority      int      `json:"priority"`
+	TaskID        string   `json:"task_id"`
+	TaskKind      string   `json:"task_kind"`
 	// TaskLane 是编队在航空面板里占的栏位（1 起；0 = 老存档没记过）。
 	// 栏位只表示"正在组队的位置"：编队全部升空之后栏位就空出来，
 	// 下一支新编队重新拿到 I，编号不会随着列表里挂着的已出发编队往后漂。
@@ -860,9 +870,11 @@ type CarrierAirStatus struct {
 	// 空串表示正常。之前这些状态只体现在"命令被拒"里，玩家看不到原因。
 	BlockedReason string `json:"blocked_reason"`
 	// PreventedBy 指出挡路的具体来源（例如甲板上占位的无目标攻击编队）。
-	PreventedBy string             `json:"prevented_by"`
-	Elevators   []AircraftElevator `json:"elevators"`
-	Aircraft    []AirUnit          `json:"aircraft"`
+	PreventedBy string `json:"prevented_by"`
+	// SupplyBlocked 是这条船/这个机场不能提供的武器类别，航空面板据此提示"没有鱼雷"。
+	SupplyBlocked []Weapon           `json:"supply_blocked,omitempty"`
+	Elevators     []AircraftElevator `json:"elevators"`
+	Aircraft      []AirUnit          `json:"aircraft"`
 }
 
 type FleetContact struct {

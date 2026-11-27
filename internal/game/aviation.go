@@ -2591,6 +2591,8 @@ func VisibleAviation(state State, faction string) AviationView {
 			continue
 		}
 		carrier := CarrierAirStatus{UnitID: unit.ID, Faction: unit.Faction, Name: unit.Name, Type: unit.Type, HangarCapacity: unit.Card.HangarCapacity, DeckLength: unit.Deck.Length, DeckCapacity: unit.Deck.Length, Operation: unit.Deck.Operation, Elevators: []AircraftElevator{}, Aircraft: []AirUnit{}}
+		// 这条船给不出的弹药类别（护航航母没有鱼雷）要下发：面板上要写清楚"本舰无鱼雷"。
+		carrier.SupplyBlocked = unit.Card.Supply.Blocked
 		// 把"为什么不能起降"直接投影给客户端：倾斜/起火/甲板摧毁这类状态以前只能通过
 		// 命令被 400 拒绝才知道，玩家会以为飞机卡死了。
 		carrier.BlockedReason = aviationBlockReason(state, unit)
@@ -2619,6 +2621,9 @@ func VisibleAviation(state State, faction string) AviationView {
 			if canSearch(projection) {
 				projection.ReconRadiusLimit = ReconRadiusLimit(projection)
 			}
+			// 挂载表要跟着补给点走：把这个补给点给不出的武器类别一起下发，
+			// 前端据此把鱼雷选项从下拉里摘掉，而不是等玩家点了再被服务端拒绝。
+			projection.SupplyBlocked = unit.Card.Supply.Blocked
 			carrier.Aircraft = append(carrier.Aircraft, withLoadoutAttack(projection))
 		}
 		sort.Slice(carrier.Aircraft, func(i, j int) bool { return carrier.Aircraft[i].ID < carrier.Aircraft[j].ID })
@@ -2670,7 +2675,9 @@ func VisibleAviation(state State, faction string) AviationView {
 		carrierSet := map[string]bool{}
 		for _, aircraft := range aircraftList {
 			task.AircraftIDs = append(task.AircraftIDs, aircraft.ID)
-			task.Aircraft = append(task.Aircraft, withLoadoutAttack(*aircraft))
+			projection := withLoadoutAttack(*aircraft)
+			projection.SupplyBlocked = SupplyOfAircraft(state, aircraft).Blocked
+			task.Aircraft = append(task.Aircraft, projection)
 			if !carrierSet[aircraft.CarrierID] {
 				carrierSet[aircraft.CarrierID] = true
 				task.CarrierIDs = append(task.CarrierIDs, aircraft.CarrierID)

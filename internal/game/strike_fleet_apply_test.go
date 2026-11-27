@@ -1,6 +1,9 @@
 package game
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 // 无线电改目标同样要点名"打哪支舰队"：同格停着两支敌舰队时，
 // 按情报顺序认领第一支等于玩家白点了。这里直接量 applyStrikeFleet 的落点。
@@ -20,7 +23,8 @@ func TestApplyStrikeFleetUsesDisplayCoord(t *testing.T) {
 	// 空 ID（点的是空格/机场）不能把原目标清掉，也不能凭空认领一支舰队。
 	before := *aircraft
 	applyStrikeFleet(state, aircraft, "A", "")
-	if *aircraft != before {
+	// AirUnit 带 supply_blocked 切片后不再可比较，这里改成深比较。
+	if !reflect.DeepEqual(*aircraft, before) {
 		t.Fatalf("空舰队 ID 不应改动目标：%+v", *aircraft)
 	}
 }

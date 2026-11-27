@@ -164,6 +164,28 @@ func LoadoutOptionsFor(kind string, seaplane bool, antiGround, antiShip int, tor
 	return filterAmmoLoadouts(options, canBomb, canTorpedo)
 }
 
+// LoadoutOptionsWithSupply 在 LoadoutOptionsFor 之上再叠一层补给限制。
+//
+// 挂载表过去只看"飞机能不能挂"：机型是鱼雷机、对舰值 > 0，机库里就永远能选鱼雷。
+// 但弹药是补给点给的——护航航母（CVE）的弹药库没有鱼雷，停在它上面的 TBF 只能挂炸弹；
+// 同一架飞机转场到舰队航母（CV/CVL）之后，鱼雷选项就回来了。
+// 所以限制跟着补给点走，不写进机型定义。
+func LoadoutOptionsWithSupply(kind string, seaplane bool, antiGround, antiShip int, torpedoCapable bool, supply Supply) []Loadout {
+	options := LoadoutOptionsFor(kind, seaplane, antiGround, antiShip, torpedoCapable)
+	if len(supply.Blocked) == 0 {
+		return options
+	}
+	kept := make([]Loadout, 0, len(options))
+	for _, option := range options {
+		// 转场不是弹药，任何补给点都得放行。
+		if supply.Blocks(option) {
+			continue
+		}
+		kept = append(kept, option)
+	}
+	return kept
+}
+
 // filterAmmoLoadouts 按飞机能力删掉挂不了的弹药，其余选项原样保留。
 // 转场永远保留：就算飞机没有武装，也得能飞回后方。
 func filterAmmoLoadouts(options []Loadout, canBomb, canTorpedo bool) []Loadout {
@@ -201,7 +223,16 @@ func DefaultLoadout(kind string, seaplane bool, antiGround, antiShip int, taskKi
 
 // DefaultLoadoutFor 是带鱼雷挂架能力的默认挂载。
 func DefaultLoadoutFor(kind string, seaplane bool, antiGround, antiShip int, taskKind string, targetKind StrikeTarget, torpedoCapable bool) Loadout {
-	options := LoadoutOptionsFor(kind, seaplane, antiGround, antiShip, torpedoCapable)
+	return DefaultLoadoutWithSupply(kind, seaplane, antiGround, antiShip, taskKind, targetKind, torpedoCapable, Supply{})
+}
+
+// DefaultLoadoutWithSupply 再带上补给点：护航航母上的鱼雷机默认挂炸弹，
+// 不会因为机种是 torpedo_bomber 就被自动配成补给点根本给不出的鱼雷。
+func DefaultLoadoutWithSupply(kind string, seaplane bool, antiGround, antiShip int, taskKind string, targetKind StrikeTarget, torpedoCapable bool, supply Supply) Loadout {
+	options := LoadoutOptionsWithSupply(kind, seaplane, antiGround, antiShip, torpedoCapable, supply)
+	if len(options) == 0 {
+		return LoadoutNone
+	}
 	preferred := preferredWeapon(options, kind, taskKind, targetKind)
 	if pick, ok := bestLoadout(options, preferred); ok {
 		return pick
@@ -299,11 +330,17 @@ func ValidateLoadout(kind string, seaplane bool, antiGround, antiShip int, loado
 
 // ValidateLoadoutFor 校验带鱼雷挂架能力的机型。
 func ValidateLoadoutFor(kind string, seaplane bool, antiGround, antiShip int, loadout Loadout, torpedoCapable bool) error {
+	return ValidateLoadoutWithSupply(kind, seaplane, antiGround, antiShip, loadout, torpedoCapable, Supply{})
+}
+
+// ValidateLoadoutWithSupply 再校验补给点的弹药：补给点不给的东西挂不上。
+// "该去哪儿挂"的说明由调用方用 SupplyRefusal 补，那里才知道母舰/机场叫什么。
+func ValidateLoadoutWithSupply(kind string, seaplane bool, antiGround, antiShip int, loadout Loadout, torpedoCapable bool, supply Supply) error {
 	// 空载永远合法：把挂载清空等于"卸弹回机库"，是玩家的一个合法选择。
 	if loadout == LoadoutNone {
 		return nil
 	}
-	for _, option := range LoadoutOptionsFor(kind, seaplane, antiGround, antiShip, torpedoCapable) {
+	for _, option := range LoadoutOptionsWithSupply(kind, seaplane, antiGround, antiShip, torpedoCapable, supply) {
 		if option == loadout {
 			return nil
 		}
@@ -430,7 +467,9 @@ func applyLoadout(state State, aircraft *AirUnit) {
 		return
 	}
 	targetKind := strikeTargetKind(state, aircraft)
-	loadout := LoadoutForTaskFor(aircraft.Kind, aircraft.Seaplane, aircraft.AntiGround, aircraft.AntiShip, aircraft.TaskKind, targetKind, aircraft.TorpedoCapable)
+	// 补给点给不出鱼雷时（例如停在护航航母上），默认挂载也不能是鱼雷。
+	supply := SupplyOfAircraft(state, aircraft)
+	loadout := LoadoutForTaskWithSupply(aircraft.Kind, aircraft.Seaplane, aircraft.AntiGround, aircraft.AntiShip, aircraft.TaskKind, targetKind, aircraft.TorpedoCapable, supply)
 	applyLoadoutChoice(aircraft, loadout)
 	if manual {
 		// 武器已经卸下来了，这次手动挂载跟着作废：转场结束后按任务自动配。
@@ -482,6 +521,11 @@ func LoadoutForTaskFor(kind string, seaplane bool, antiGround, antiShip int, tas
 	return DefaultLoadoutFor(kind, seaplane, antiGround, antiShip, taskKind, targetKind, torpedoCapable)
 }
 
+// LoadoutForTaskWithSupply 再带上补给点的弹药限制。
+func LoadoutForTaskWithSupply(kind string, seaplane bool, antiGround, antiShip int, taskKind string, targetKind StrikeTarget, torpedoCapable bool, supply Supply) Loadout {
+	return DefaultLoadoutWithSupply(kind, seaplane, antiGround, antiShip, taskKind, targetKind, torpedoCapable, supply)
+}
+
 // DroppedTank 模拟空战爆发后抛弃副油箱（规则书 48 行）：
 // 只损失副油箱里还没烧掉的那部分；已经烧干时抛弃不会减少剩余航程。
 func dropTank(aircraft *AirUnit) int {
@@ -524,7 +568,12 @@ func validateLoadoutOrder(state State, faction string, order Order) error {
 			if airfieldAirborne(ground) {
 				return fmt.Errorf("已经升空的算子不能更换挂载")
 			}
-			if err := ValidateLoadoutFor(ground.Kind, false, ground.AntiGround, ground.AntiShip, loadout, ground.TorpedoCapable); err != nil {
+			supply := SupplyOfGroundAircraft(state, ground)
+			if err := ValidateLoadoutWithSupply(ground.Kind, false, ground.AntiGround, ground.AntiShip, loadout, ground.TorpedoCapable, supply); err != nil {
+				// 补给点不给的东西，提示要说到"这个机场缺什么"，而不是笼统的"无法挂载"。
+				if refused := supplyRefusal(supply, loadout, SupplySourceLabelGround(state, ground)); refused != nil {
+					return refused
+				}
 				return err
 			}
 			continue
@@ -542,7 +591,12 @@ func validateLoadoutOrder(state State, faction string, order Order) error {
 		if aircraft.Status == "recovery" {
 			return fmt.Errorf("%s还在排队下降，等它回到机库再换挂载", aircraft.Model)
 		}
-		if err := ValidateLoadoutFor(aircraft.Kind, aircraft.Seaplane, aircraft.AntiGround, aircraft.AntiShip, loadout, aircraft.TorpedoCapable); err != nil {
+		supply := SupplyOfAircraft(state, aircraft)
+		if err := ValidateLoadoutWithSupply(aircraft.Kind, aircraft.Seaplane, aircraft.AntiGround, aircraft.AntiShip, loadout, aircraft.TorpedoCapable, supply); err != nil {
+			// 母舰的弹药保障不够时，说清楚是哪条船、缺什么、去哪儿能挂上。
+			if refused := supplyRefusal(supply, loadout, SupplySourceLabel(state, aircraft)); refused != nil {
+				return refused
+			}
 			return err
 		}
 	}
@@ -669,7 +723,7 @@ func applyGroundLoadout(state State, aircraft *AirfieldAirUnit) {
 			}
 		}
 	}
-	loadout := DefaultLoadoutFor(aircraft.Kind, false, aircraft.AntiGround, aircraft.AntiShip, aircraft.TaskKind, targetKind, aircraft.TorpedoCapable)
+	loadout := DefaultLoadoutWithSupply(aircraft.Kind, false, aircraft.AntiGround, aircraft.AntiShip, aircraft.TaskKind, targetKind, aircraft.TorpedoCapable, SupplyOfGroundAircraft(state, aircraft))
 	applyGroundLoadoutChoice(aircraft, loadout)
 	if manual {
 		aircraft.LoadoutManual = false

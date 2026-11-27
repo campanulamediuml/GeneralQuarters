@@ -429,6 +429,8 @@ func deployAirfields(state *State, scenario ScenarioDefinition, airDefinitions a
 			Runways: definition.Runways, MaxStrength: definition.Runways * 5,
 			HangarCapacity: definition.HangarCapacity,
 			Radar:          definition.Radar, HeavyAA: definition.HeavyAA, LightAA: definition.LightAA, Coastal: definition.Coastal,
+			// 弹药供给跟着机场定义走：剧本写"这个基地不提供鱼雷"就只发炸弹。
+			Supply: definition.Supply,
 		}
 		if airfield.HangarCapacity <= 0 {
 			// 机场没有机库：默认不限制（99999），剧本要限制某个小机场时自己写数。

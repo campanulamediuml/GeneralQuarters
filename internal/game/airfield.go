@@ -2535,9 +2535,13 @@ func GroundAviationView(state State, faction string) AviationView {
 	view := AviationView{Carriers: []CarrierAirStatus{}, Tasks: []AirTask{}}
 	for _, status := range VisibleGroundAir(state, faction) {
 		carrier := CarrierAirStatus{UnitID: status.UnitID, Name: status.Name, Type: string(status.Type), DeckLength: status.Runways}
+		// 机场也能配"不给某种挂载"（例如某个岛屿基地没存鱼雷），同样下发给界面。
+		carrier.SupplyBlocked = SupplyOfAirfield(state, status.UnitID).Blocked
 		carrier.Aircraft = []AirUnit{}
 		for _, aircraft := range status.Aircraft {
-			carrier.Aircraft = append(carrier.Aircraft, withLoadoutAttack(groundAirUnit(state, &aircraft)))
+			unit := withLoadoutAttack(groundAirUnit(state, &aircraft))
+			unit.SupplyBlocked = SupplyOfAirfield(state, aircraft.AirfieldID).Blocked
+			carrier.Aircraft = append(carrier.Aircraft, unit)
 		}
 		view.Carriers = append(view.Carriers, carrier)
 	}
@@ -2562,6 +2566,7 @@ func GroundAviationView(state State, faction string) AviationView {
 		for _, member := range members {
 			// 任务卡上的对地/对舰要跟着挂载走：切重型炸弹就得当场 +2。
 			unit := withLoadoutAttack(groundAirUnit(state, member))
+			unit.SupplyBlocked = SupplyOfAirfield(state, member.AirfieldID).Blocked
 			task.Aircraft = append(task.Aircraft, unit)
 			task.AircraftIDs = append(task.AircraftIDs, member.ID)
 			if airfieldAirborne(member) {

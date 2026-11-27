@@ -138,6 +138,8 @@ export interface AirUnit {
   airfield_only?: boolean
   /** 有鱼雷挂架；挂鱼雷出击时按鱼雷机结算（B-26）。 */
   torpedo_capable?: boolean
+  /** 当前补给点（母舰/机场）不提供的武器类别：这些挂载不出现在下拉里。 */
+  supply_blocked?: string[]
   /** 挂炸弹对舰时按高空轰炸结算：免疫轻防空，但命中率减半。 */
   high_altitude_bomber?: boolean
   launched: boolean
@@ -278,6 +280,8 @@ export interface CarrierAirStatus {
   blocked_reason?: string
   /** 甲板被占满时，指出挡路的具体来源，例如还没设目标的攻击编队 */
   prevented_by?: string
+  /** 这个补给点（母舰/机场）不提供的武器类别，例如护航航母没有 torpedo */
+  supply_blocked?: string[]
   elevators: AircraftElevator[]
   aircraft: AirUnit[]
 }

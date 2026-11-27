@@ -92,11 +92,26 @@ function loadoutOptionsFor(aircraft: AirUnit) {
     default:
       options = ['transfer+tank']
   }
+  // 补给点给不出的弹药不进下拉：护航航母没有鱼雷，停在上面的 TBF 只能挂炸弹。
+  // 转场到能保障的母舰后服务端会重新下发 supply_blocked，鱼雷选项自己回来。
+  const blocked = new Set(aircraft.supply_blocked || [])
   return options.filter((option) => {
-    if (option.startsWith('bomb')) return canBomb
-    if (option.startsWith('torpedo')) return canTorpedo
+    const weapon = option.split('+')[0]
+    if (blocked.has(weapon)) return false
+    if (weapon === 'bomb') return canBomb
+    if (weapon === 'torpedo') return canTorpedo
     return true
   })
+}
+
+// 补给点缺什么弹药要在面板上写清楚，否则玩家只会看到"鱼雷选项怎么没了"。
+const supplyWeaponLabels: Record<string, string> = { torpedo: '鱼雷', bomb: '炸弹', recon: '侦察', air: '对空' }
+function supplyNote(carrier: CarrierAirStatus) {
+  const blocked = carrier.supply_blocked || []
+  if (!blocked.length) return ''
+  const names = blocked.map((weapon) => supplyWeaponLabels[weapon] || weapon).join('、')
+  if (isAirfield(carrier)) return `本机场不提供${names}挂载`
+  return `本舰弹药库不提供${names}挂载：转场到能保障的母舰再挂`
 }
 
 function loadoutName(loadout?: string, tankDropped?: boolean) {
@@ -810,6 +825,7 @@ function operationName(carrier: CarrierAirStatus) {
           </div>
           <div class="hangar-meter"><span>停机位</span><strong>{{ hangarText(selectedCarrier) }}</strong></div>
           <div class="carrier-operation"><span :class="`operation-${selectedCarrier.operation || 'idle'}`">{{ operationName(selectedCarrier) }}</span><small>{{ isSeaplaneBase(selectedCarrier) ? `水上起降位 ${selectedCarrier.deck_length}` : isAirfield(selectedCarrier) ? `可用跑道 ${selectedCarrier.deck_length}` : `起飞 ${selectedCarrier.launch_used} / ${selectedCarrier.deck_length}` }}</small></div>
+          <p v-if="supplyNote(selectedCarrier)" class="carrier-supply">▣ {{ supplyNote(selectedCarrier) }}</p>
           <p v-if="selectedCarrier.blocked_reason" class="carrier-blocked">⚠ {{ selectedCarrier.blocked_reason }}</p>
           <p v-else-if="selectedCarrier.prevented_by" class="carrier-blocked">⚠ 甲板已满：{{ selectedCarrier.prevented_by }}</p>
         </div>

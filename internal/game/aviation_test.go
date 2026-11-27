@@ -1,6 +1,9 @@
 package game
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 // setAircraftReady 把算子摆成"甲板待命、已经整备好"：状态 deck/ready、整备进度写满，
 // 并按接下来要执行的任务配一套挂载。没有油弹的甲板算子按规则不能直接出击，
@@ -428,7 +431,8 @@ func TestRepeatedJoinOfCurrentTaskIsIdempotent(t *testing.T) {
 	}
 	events := ApplyAirOrder(&state, repeated)
 	after := *state.Aircraft["b-cv-04-dive_bomber-x1"]
-	if after != before {
+	// AirUnit 现在带 supply_blocked 切片，结构体不再可比较，用深比较。
+	if !reflect.DeepEqual(after, before) {
 		t.Fatalf("重复加入当前任务改变了状态：之前=%+v 之后=%+v", before, after)
 	}
 	if len(events) != 1 || events[0].Type != "air_task_unchanged" {

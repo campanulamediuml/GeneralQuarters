@@ -2696,6 +2696,7 @@
    "strength": 1,
    "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
+    "supply": {"blocked": ["torpedo"]},
     "class": "卡萨布兰卡级",
     "picture": "",
     "nation": "",
@@ -2730,6 +2731,7 @@
    "strength": 1,
    "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
+    "supply": {"blocked": ["torpedo"]},
     "class": "卡萨布兰卡级",
     "picture": "",
     "nation": "",
@@ -2764,6 +2766,7 @@
    "strength": 1,
    "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
+    "supply": {"blocked": ["torpedo"]},
     "class": "卡萨布兰卡级",
     "picture": "",
     "nation": "",
@@ -2798,6 +2801,7 @@
    "strength": 1,
    "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
+    "supply": {"blocked": ["torpedo"]},
     "class": "卡萨布兰卡级",
     "picture": "",
     "nation": "",
@@ -2832,6 +2836,7 @@
    "strength": 1,
    "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
+    "supply": {"blocked": ["torpedo"]},
     "class": "桑加蒙级",
     "picture": "",
     "nation": "",
@@ -2866,6 +2871,7 @@
    "strength": 1,
    "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
+    "supply": {"blocked": ["torpedo"]},
     "class": "卡萨布兰卡级",
     "picture": "",
     "nation": "",
@@ -2900,6 +2906,7 @@
    "strength": 1,
    "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
+    "supply": {"blocked": ["torpedo"]},
     "class": "博格级",
     "picture": "",
     "nation": "",
@@ -2934,6 +2941,7 @@
    "strength": 1,
    "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
+    "supply": {"blocked": ["torpedo"]},
     "class": "博格级",
     "picture": "",
     "nation": "",
@@ -2968,6 +2976,7 @@
    "strength": 1,
    "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
+    "supply": {"blocked": ["torpedo"]},
     "class": "桑加蒙级",
     "picture": "",
     "nation": "",
@@ -3002,6 +3011,7 @@
    "strength": 1,
    "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
+    "supply": {"blocked": ["torpedo"]},
     "class": "卡萨布兰卡级",
     "picture": "",
     "nation": "",
@@ -3036,6 +3046,7 @@
    "strength": 1,
    "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
+    "supply": {"blocked": ["torpedo"]},
     "class": "卡萨布兰卡级",
     "picture": "",
     "nation": "",
@@ -3070,6 +3081,7 @@
    "strength": 1,
    "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
+    "supply": {"blocked": ["torpedo"]},
     "class": "卡萨布兰卡级",
     "picture": "",
     "nation": "",
@@ -3104,6 +3116,7 @@
    "strength": 1,
    "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
+    "supply": {"blocked": ["torpedo"]},
     "class": "桑加蒙级",
     "picture": "",
     "nation": "",
@@ -3138,6 +3151,7 @@
    "strength": 1,
    "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
+    "supply": {"blocked": ["torpedo"]},
     "class": "卡萨布兰卡级",
     "picture": "",
     "nation": "",
@@ -3172,6 +3186,7 @@
    "strength": 1,
    "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
+    "supply": {"blocked": ["torpedo"]},
     "class": "卡萨布兰卡级",
     "picture": "",
     "nation": "",
@@ -3206,6 +3221,7 @@
    "strength": 1,
    "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
+    "supply": {"blocked": ["torpedo"]},
     "class": "卡萨布兰卡级",
     "picture": "",
     "nation": "",
