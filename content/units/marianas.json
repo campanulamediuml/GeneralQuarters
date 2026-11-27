@@ -7976,7 +7976,7 @@
    "type": "CV",
    "name": "信浓",
    "strength": 7,
-   "picture": "misc/image/ship/yamato.png",
+   "picture": "misc/image/ship/shinano.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8104,7 +8104,7 @@
    "type": "BB",
    "name": "扶桑",
    "strength": 5,
-   "picture": "misc/image/ship/kongo.png",
+   "picture": "misc/image/ship/fuso.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8136,7 +8136,7 @@
    "type": "BB",
    "name": "山城",
    "strength": 5,
-   "picture": "misc/image/ship/kongo.png",
+   "picture": "misc/image/ship/fuso.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8168,7 +8168,7 @@
    "type": "BB",
    "name": "伊势",
    "strength": 5,
-   "picture": "misc/image/ship/nagato.png",
+   "picture": "misc/image/ship/ise.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8200,7 +8200,7 @@
    "type": "BB",
    "name": "日向",
    "strength": 5,
-   "picture": "misc/image/ship/nagato.png",
+   "picture": "misc/image/ship/ise.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8392,7 +8392,7 @@
    "type": "CA",
    "name": "铃谷",
    "strength": 3,
-   "picture": "misc/image/ship/tone.png",
+   "picture": "misc/image/ship/mogami.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8424,7 +8424,7 @@
    "type": "CA",
    "name": "熊野",
    "strength": 3,
-   "picture": "misc/image/ship/tone.png",
+   "picture": "misc/image/ship/mogami.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8456,7 +8456,7 @@
    "type": "CA",
    "name": "最上",
    "strength": 3,
-   "picture": "misc/image/ship/tone.png",
+   "picture": "misc/image/ship/mogami.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8776,7 +8776,7 @@
    "type": "CV",
    "name": "飞龙",
    "strength": 2,
-   "picture": "misc/image/ship/unryu.png",
+   "picture": "misc/image/ship/hiryu.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8808,7 +8808,7 @@
    "type": "CV",
    "name": "苍龙",
    "strength": 2,
-   "picture": "misc/image/ship/unryu.png",
+   "picture": "misc/image/ship/soryu.png",
    "card": {
     "picture": "",
     "nation": "",

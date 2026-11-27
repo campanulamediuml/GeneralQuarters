@@ -10,10 +10,6 @@ import (
 // TestEveryCatalogPictureFileExists 校验 units/*.json 里写的 picture 都能在 content/ 下找到，
 // 避免改名/换图之后 JSON 指向一个 404 路径（前端拿不到图只会静默留白）。
 func TestEveryCatalogPictureFileExists(t *testing.T) {
-	_, _, catalog, err := LoadScenario("../../content", "_coral_real")
-	if err != nil {
-		t.Fatal(err)
-	}
 	root := "../../content"
 	check := func(label, picture string) {
 		if picture == "" {
@@ -24,24 +20,35 @@ func TestEveryCatalogPictureFileExists(t *testing.T) {
 			t.Errorf("%s picture=%q 找不到文件：%v", label, picture, err)
 		}
 	}
-	for _, unit := range catalog.Units {
-		check("舰船 "+unit.ID, unit.Picture)
-	}
-	for _, aircraft := range catalog.Air {
-		check("飞机 "+aircraft.Faction+"-"+aircraft.ID, aircraft.Picture)
+	// 两个剧本各自的单位库都要查：马里亚纳独有的大和/埃塞克斯级图很容易漏。
+	for _, scenarioID := range []string{"_coral_real", "_marianas"} {
+		_, _, catalog, err := LoadScenario(root, scenarioID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, unit := range catalog.Units {
+			check(scenarioID+" 舰船 "+unit.ID, unit.Picture)
+		}
+		for _, aircraft := range catalog.Air {
+			check(scenarioID+" 飞机 "+aircraft.Faction+"-"+aircraft.ID, aircraft.Picture)
+		}
 	}
 }
 
 // TestShipPicturesCarryAlpha 校验舰船图片是带 alpha 的蒙版：前端用 CSS mask-image 取 alpha 上色，
 // 如果整张图没有透明像素（白底 JPG、纯色块），兵牌上就会是一个实心矩形。
 func TestShipPicturesCarryAlpha(t *testing.T) {
-	_, _, catalog, err := LoadScenario("../../content", "_coral_real")
-	if err != nil {
-		t.Fatal(err)
-	}
 	root := "../../content"
 	seen := map[string]bool{}
-	for _, unit := range catalog.Units {
+	units := []UnitDefinition{}
+	for _, scenarioID := range []string{"_coral_real", "_marianas"} {
+		_, _, catalog, err := LoadScenario(root, scenarioID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		units = append(units, catalog.Units...)
+	}
+	for _, unit := range units {
 		if unit.Picture == "" || seen[unit.Picture] {
 			continue
 		}

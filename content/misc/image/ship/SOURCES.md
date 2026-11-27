@@ -28,10 +28,15 @@
 | yorktown.png | USA_CV3_ship.png | 约克城级 |
 | usa_cvl1.png | USA_CVL1_ship.png | 独立级 |
 | usa_cve0.png | USA_CVE0_ship.png | 博格 / 卡萨布兰卡 / 长岛 / 桑加蒙级共用 |
-| nagato.png | JAP_BB4_ship.png | 长门级（日军 BB 卡） |
+| nagato.png | JAP_BB4_ship.png | 长门级（长门/陆奥） |
+| fuso.png | JAP_BB1_ship.png | 扶桑级（扶桑/山城） |
+| ise.png | JAP_BB2_ship.png | 伊势级常规战列舰形态（伊势/日向；素材里的 JAP_BBV1 是航空战列舰形态，本作未用） |
 | kongo.png / haruna.png / hiei.png / kirishima.png | JAP_BC1_ship.png | 金刚级（金刚、榛名、比叡、雾岛同名文件，同一张剪影） |
 | akagi.png / kaga.png | JAP_CV1 Akagi_ship.png / JAP_CV1 Kaga_ship.png | 赤城 / 加贺（单舰） |
 | shokaku.png | JAP_CV8_ship.png | 翔鹤级（翔鹤、瑞鹤共用） |
+| soryu.png | JAP_CV6_ship.png | 苍龙（单舰） |
+| hiryu.png | JAP_CV7_ship.png | 飞龙（单舰） |
+| shinano.png | JAP_CV5_ship.png | 信浓（单舰，装甲航母） |
 | jap_cvl1.png | JAP_CVL1_ship.png | 瑞凤级 |
 | jap_cve0.png | JAP_CVE0_ship.png | 大鹰 / 海鹰 / 神鹰共用 |
 | myoko.png / furutaka.png | JAP_CA1_ship.png | 古鹰级、青叶级、妙高级共用（日 CA 卡与青叶/古鹰/加古/衣笠/妙高/羽黑） |
@@ -57,6 +62,7 @@
 | yamato.png | JAP_BB5_ship.png | 大和级（大和/武藏） |
 | takao.png | JAP_CA2_ship.png | 高雄级（高雄/爱宕） |
 | tone.png | JAP_CA10_ship.png | 利根级（利根/筑摩） |
+| mogami.png | JAP_CA3_ship.png | 最上级（最上/铃谷/熊野） |
 | agano.png | JAP_CL2_ship.png | 阿贺野级 / 大淀（矢矧/能代/大淀） |
 
 完整的"素材文件 → 舰种 → 舰级"对照在 `素材/船只剪影/ship_classes.csv`。
