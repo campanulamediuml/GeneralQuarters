@@ -79,12 +79,22 @@ function lossSummary(faction: 'A' | 'B') {
   return { sunk, aircraft, ships: ledger.ship_total || sunk.length }
 }
 
-function selectFleet(fleetID: string) {
-  selectedFleetID.value = fleetID
+// 详情面板同一时间只显示一种对象：舰队 / 机场 / 空中编队。选中任何一种都要把另外两种的
+// 选择清掉，否则面板会一直停在旧对象上（点过机场或飞机，再点舰队就切不过去）。
+function clearDetailSelection() {
+  selectedFleetID.value = ''
   selectedUnitID.value = ''
+  selectedAirTaskID.value = ''
+  detailAirfield.value = null
+}
+
+function selectFleet(fleetID: string) {
+  clearDetailSelection()
+  selectedFleetID.value = fleetID
 }
 
 function selectUnit(unit: Unit) {
+  clearDetailSelection()
   selectedFleetID.value = unit.fleet_id || unit.id
   selectedUnitID.value = unit.id
 }
@@ -96,8 +106,7 @@ function selectAirfield(airfieldID: string) {
 
 // 直接把机场当作"编队详情"展示：名称、生命、岸炮、驻机。
 function selectAirTaskForAirfield(airfield: AirfieldContact) {
-  selectedFleetID.value = ''
-  selectedUnitID.value = ''
+  clearDetailSelection()
   detailAirfield.value = airfield
 }
 
@@ -116,13 +125,12 @@ const distanceOrigin = computed(() => {
 })
 
 function selectAirTask(taskID: string) {
+  clearDetailSelection()
   selectedAirTaskID.value = taskID
 }
 
 function closeDetail() {
-  selectedFleetID.value = ''
-  selectedUnitID.value = ''
-  detailAirfield.value = null
+  clearDetailSelection()
 }
 
 function applySnapshot(message: { view?: unknown; patch?: unknown }) {
