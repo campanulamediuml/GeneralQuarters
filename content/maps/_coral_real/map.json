@@ -926,9 +926,34 @@
    "name": ""
   },
   {
+   "coord": "1919",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "1920",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "1921",
+   "terrain": "shoal",
+   "name": ""
+  },
+  {
    "coord": "1923",
    "terrain": "shoal",
    "name": "德伯因"
+  },
+  {
+   "coord": "1924",
+   "terrain": "reef",
+   "name": ""
+  },
+  {
+   "coord": "1925",
+   "terrain": "reef",
+   "name": ""
   },
   {
    "coord": "1944",
