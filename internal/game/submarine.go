@@ -544,22 +544,22 @@ func submarineTorpedoAttack(state *State, sub *Submarine, fleetID string, report
 }
 
 // submarineTorpedoChance 是鱼雷命中率（%）：
-//   - -4 偷袭：白天远距离 5%，夜间近距离 25%，规则书写死；
-//   - -2 近距离：25% + 各项修正，最低 5%。
+//   - 基础 25%（白天远距离偷袭就是这个数）；
+//   - 夜间潜艇能贴近到近距离发射，+20；夜间再 +10，所以夜间偷袭是 55%；
+//   - 再叠加日军/美军 1944 前/小型舰艇的修正，最低 5。
 func submarineTorpedoChance(state State, sub *Submarine, target *Unit, longRange bool) float64 {
-	if longRange {
-		return 5
-	}
 	chance := 25.0
-	chance += 20 // 近距离
+	if !longRange {
+		chance += 20 // 近距离
+	}
+	if state.Night {
+		chance += 10
+	}
 	if doctrineOf(state, sub.Faction) == DoctrineJapan {
 		chance += 10
 	}
 	if doctrineOf(state, sub.Faction) == DoctrineUS && state.Year < 1944 {
 		chance -= 20
-	}
-	if state.Night {
-		chance += 10
 	}
 	if upperType(target.Type) == "DD" {
 		chance -= 10

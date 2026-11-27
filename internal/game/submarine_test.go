@@ -170,10 +170,10 @@ func TestSubmarineTorpedoChanceTable(t *testing.T) {
 	}
 	state.Night = true
 	if got := submarineTorpedoChance(state, jp, cv, false); got != 65 {
-		t.Fatalf("日军近距离夜间应为 65，实际 %.0f", got)
+		t.Fatalf("日军夜间近距离应为 25+20+10+10=65，实际 %.0f", got)
 	}
 	state.Night = false
-	// 1944 年起取消美军 -20：25+20=45。
+	// 1944 年起取消美军 -20：夜间近距离 25+20=45。
 	if got := submarineTorpedoChance(state, us, cv, false); got != 45 {
 		t.Fatalf("美军 1944 近距离应为 25+20=45，实际 %.0f", got)
 	}
@@ -185,8 +185,14 @@ func TestSubmarineTorpedoChanceTable(t *testing.T) {
 	if got := submarineTorpedoChance(state, jp, dd, false); got != 45 {
 		t.Fatalf("日军近距离打驱逐舰应为 55-10=45，实际 %.0f", got)
 	}
-	if got := submarineTorpedoChance(state, jp, cv, true); got != 5 {
-		t.Fatalf("白天远距离偷袭固定 5%%，实际 %.0f", got)
+	// -4 的白天是远距离偷袭：基础 25%，不吃近距离 +20。
+	if got := submarineTorpedoChance(state, us, cv, true); got != 25 {
+		t.Fatalf("白天远距离偷袭应为 25%%，实际 %.0f", got)
+	}
+	// 夜间 -4 贴近到近距离：25+20+10=55（美军 1944 不再吃 -20）。
+	state.Night = true
+	if got := submarineTorpedoChance(state, us, cv, !state.Night); got != 55 {
+		t.Fatalf("夜间近距离偷袭应为 55%%，实际 %.0f", got)
 	}
 }
 
