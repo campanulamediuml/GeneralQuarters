@@ -252,12 +252,12 @@ function flightTasksAt(coord: string) {
 // 一次超远程打击能连着拆出好几张牌。以前按 30px 横向偏移排，
 // 两张 48px 宽的牌几乎完全重叠，点选会串到别的编队上。
 // 现在改成竖排阶梯：牌面高 30，行距 34 正好不重叠，点击各归各的。
-function flightPosition(coord: string, index: number, total: number) {
+// 编队牌画在 hex 内部的上沿：飞机在舰队上面，牌面也跟着落在格子上部。
+// 以前整张牌挂在 hex 上方 52px 处，牌子跟格子分家，看距离圈时很难判断到底在哪一格。
+function flightPosition(coord: string, index: number) {
   const point = center(coord)
-  if (total <= 1) {
-    return { x: point.x, y: point.y - 52 }
-  }
-  return { x: point.x, y: point.y - 52 - index * 34 }
+  // 同格多支编队（拆组后的攻击/返航）竖排往下让：牌高 30、说明文字 10，行距 40。
+  return { x: point.x, y: point.y - 26 + index * 40 }
 }
 
 // 编队牌写任务状态而不是型号：拆组之后同一格会并存"攻击"和"返航"两张牌，
@@ -744,25 +744,19 @@ const hexSigs = computed(() => {
 
 // 两支舰队同格（接触状态）时反方向错开并左右挂名；单支舰队仍然居中。
 // 兵牌 52×36，位移太小的话连旗舰剪影都会被压住。
-// 同格还停着机场算子时，兵牌整体下移：机场卡收成窄条顶在格子上沿（见 AirfieldCounter 的 compact），
-// 中间才是舰队的位置——以前机场卡居中压住整个格子，兵牌 52×36 一点不露。
+// 机场卡默认居中（顶边 = 中心 -25）；同格停着舰队时把卡片往上让 6，让出整行跑道/雷达/生命值，
+// 兵牌盖在卡片下半截上——卡片正好被兵牌切在数字中间时，那一行字看着像没渲染完。
 const AIRFIELD_TOP = -25
-const AIRFIELD_TOP_SHARED = -40
-const UNIT_DROP_SHARED = 12
-
-function sharedWithFleet(coord: string) {
-  return fleetsAt(coord).length > 0
-}
+const AIRFIELD_TOP_SHARED = -31
 
 function airfieldTop(coord: string) {
-  return sharedWithFleet(coord) ? AIRFIELD_TOP_SHARED : AIRFIELD_TOP
+  return fleetsAt(coord).length > 0 ? AIRFIELD_TOP_SHARED : AIRFIELD_TOP
 }
 
 function unitPosition(coord: string, index: number) {
   const point = center(coord)
-  const drop = airfieldsAt(coord).length ? UNIT_DROP_SHARED : 0
-  if (!stackedAt(coord)) return { x: point.x, y: point.y + drop }
-  return { x: point.x + index * 22 - 11, y: point.y - index * 20 + 10 + drop }
+  if (!stackedAt(coord)) return { x: point.x, y: point.y }
+  return { x: point.x + index * 22 - 11, y: point.y - index * 20 + 10 }
 }
 
 function moveOrder(fleet: FleetGroup) {
@@ -1030,6 +1024,27 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         :data-nav-fleet="route.fleet.fleet_id"
       />
     </g>
+    <!-- 机场层排在舰队层下面：机场卡 56×52 居中，几乎占满一个 hex，压在舰队层上时
+         52×36 的兵牌会被整块盖住、也点不到。舰队停进机场格时兵牌盖在卡片上，
+         选舰队、拖舰队都照常，机场卡露出的上下边框仍然可以点开。 -->
+    <g v-for="coord in airfieldCoords" :key="`airfield-${coord}`">
+      <foreignObject
+        v-for="(airfield, index) in airfieldsAt(coord)"
+        :key="airfield.id"
+        class="map-airfield-card"
+        :class="[`faction-${airfield.faction.toLowerCase()}`, { enemy: !spectate && airfield.faction !== playerFaction, unknown: !spectate && airfield.contact_level < 3 }]"
+        :data-airfield-id="airfield.id"
+        :x="center(coord).x - 28 + (index - (airfieldsAt(coord).length - 1) / 2) * 58"
+        :y="center(coord).y + airfieldTop(coord)"
+        width="56"
+        height="52"
+        @click.stop="airfieldClick(airfield)"
+      >
+        <div xmlns="http://www.w3.org/1999/xhtml" class="map-airfield-card-inner">
+          <AirfieldCounter :airfield="airfieldContactStatus(airfield)" />
+        </div>
+      </foreignObject>
+    </g>
     <g v-for="coord in fleetCoords" :key="`units-${coord}`">
       <g
         v-for="(unit, index) in fleetsAt(coord)"
@@ -1117,15 +1132,14 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         :data-task-faction="spectate && task.faction ? task.faction : playerFaction"
         :data-display-coord="task.current_coord"
         :data-target-coord="task.target_coord"
-        :transform="`translate(${flightPosition(coord, index, flightTasksAt(coord).length).x}, ${flightPosition(coord, index, flightTasksAt(coord).length).y})`"
+        :transform="`translate(${flightPosition(coord, index).x}, ${flightPosition(coord, index).y})`"
         @click.stop="markerClick(task.current_coord || coord, () => emit('selectAirTask', task.id))"
       >
-        <rect x="-24" y="-15" width="48" height="30" rx="3" />
-        <image v-if="task.kind === 'attack'" class="flight-task-picture" :href="formationPicture(task)" x="-21" y="-13" width="42" height="26" preserveAspectRatio="xMidYMid meet" :data-aircraft-picture="formationPictureFile(task)" />
-        <path v-else class="flight-task-symbol" :data-task-kind="task.kind" :d="task.kind === 'cover' ? aircraftSilhouette('fighter') : aircraftSilhouette('recon')" transform="translate(-14 -16) scale(.46)" />
-        <text x="30" y="-3">{{ flightLabel(task) }} {{ task.airborne_count }}/{{ task.aircraft_ids.length }}{{ task.cannot_land ? ' ⚠' : '' }}</text>
-        <text class="flight-task-range" x="30" y="10">航程 {{ flightRange(task) }}</text>
-        <text v-if="flightTasksAt(coord).length === 1" class="flight-task-coord" y="27">{{ task.current_coord }} → {{ task.target_coord || '等待目标' }}</text>
+        <rect x="-23" y="-15" width="46" height="30" rx="3" />
+        <image v-if="task.kind === 'attack'" class="flight-task-picture" :href="formationPicture(task)" x="-20" y="-13" width="40" height="26" preserveAspectRatio="xMidYMid meet" :data-aircraft-picture="formationPictureFile(task)" />
+        <path v-else class="flight-task-symbol" :data-task-kind="task.kind" :d="task.kind === 'cover' ? aircraftSilhouette('fighter') : aircraftSilhouette('recon')" transform="translate(-14 -15) scale(.46)" />
+        <text class="flight-task-count" x="21" y="13">{{ task.airborne_count }}/{{ task.aircraft_ids.length }}</text>
+        <text class="flight-task-caption" y="23">{{ flightLabel(task) }} · {{ task.current_coord }}{{ task.cannot_land ? ' ⚠' : '' }}</text>
         <title>{{ flightModels(task) }} · {{ flightLabel(task) }} · {{ task.airborne_count }}/{{ task.aircraft_ids.length }} 已升空 · 当前 {{ task.current_coord }} · 目标 {{ task.target_coord || '未设置' }} · 剩余航程 {{ flightRange(task) }}</title>
       </g>
     </g>
@@ -1144,24 +1158,6 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         <title>{{ capBadgeTitle(badge) }}</title>
       </g>
     </g>
-    <g v-for="coord in airfieldCoords" :key="`airfield-${coord}`">
-      <foreignObject
-        v-for="(airfield, index) in airfieldsAt(coord)"
-        :key="airfield.id"
-        class="map-airfield-card"
-        :class="[`faction-${airfield.faction.toLowerCase()}`, { enemy: !spectate && airfield.faction !== playerFaction, unknown: !spectate && airfield.contact_level < 3 }]"
-        :data-airfield-id="airfield.id"
-        :x="center(coord).x - 28 + (index - (airfieldsAt(coord).length - 1) / 2) * 58"
-        :y="center(coord).y + airfieldTop(coord)"
-        width="56"
-        height="52"
-        @click.stop="airfieldClick(airfield)"
-      >
-        <div xmlns="http://www.w3.org/1999/xhtml" class="map-airfield-card-inner">
-          <AirfieldCounter :airfield="airfieldContactStatus(airfield)" :compact="sharedWithFleet(coord)" />
-        </div>
-      </foreignObject>
-    </g>
     <g v-for="coord in groundAirCoords" :key="`ground-air-${coord}`">
       <g
         v-for="(task, index) in groundFlightAt(coord)"
@@ -1170,14 +1166,14 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         :class="[task.kind, `faction-${(spectate && task.faction ? task.faction : playerFaction).toLowerCase()}`, { selected: selectedAirTaskId === task.id, returning: task.returning }]"
         :data-ground-task-id="task.id"
         :data-task-faction="spectate && task.faction ? task.faction : playerFaction"
-        :transform="`translate(${flightPosition(coord, index, groundFlightAt(coord).length).x}, ${flightPosition(coord, index, groundFlightAt(coord).length).y})`"
+        :transform="`translate(${flightPosition(coord, index).x}, ${flightPosition(coord, index).y})`"
         @click.stop="markerClick(task.current_coord || coord, () => emit('selectAirTask', task.id))"
       >
         <rect x="-22" y="-13" width="44" height="26" rx="3" />
         <image v-if="task.kind === 'attack'" class="flight-task-picture" :href="formationPicture(task)" x="-19" y="-11" width="38" height="22" preserveAspectRatio="xMidYMid meet" :data-aircraft-picture="formationPictureFile(task)" />
         <path v-else class="flight-task-symbol" :d="aircraftSilhouette('recon')" transform="translate(-13 -11) scale(.5)" />
-        <text class="ground-task-label" x="14" y="-2">{{ flightLabel(task) }} {{ task.airborne_count }}</text>
-        <text class="ground-task-coord" y="10">{{ task.current_coord }}</text>
+        <text class="ground-task-count" x="20" y="11">{{ task.airborne_count }}</text>
+        <text class="ground-task-caption" y="21">{{ flightLabel(task) }} · {{ task.current_coord }}</text>
         <title>{{ flightModels(task) }} · {{ flightLabel(task) }} · 来自机场 · {{ task.current_coord }}{{ task.target_coord ? ' → ' + task.target_coord : '' }}</title>
       </g>
       <g
