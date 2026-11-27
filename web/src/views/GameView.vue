@@ -872,18 +872,33 @@ function closeManager() {
 }
 
 // 点潜艇（侧栏列表或地图算子）＝选中它等下一次海图点击；再点一次取消。
-// 舰队拆分：把带深弹的反潜舰拆成一支"反潜支队"留在原地继续反潜，主队照常行动。
-// 和整编分开：不挂 3 回合移动锁，也不动冷却。拆不拆得出来交给服务端判断，
-// 界面上不预先禁用——没有反潜舰、或整支都是反潜舰，都可以正常点。
-const canSplitFleet = computed(() => Boolean(selectedFleet.value))
-
-async function splitFleet() {
+// 舰队拆分：通用操作，玩家自己挑要拆出去的舰船组成新舰队。
+// 和整编分开：不挂 3 回合移动锁，也不动冷却；反潜战里把带深弹的船拆出去，
+// 正在被追踪的潜艇会自动交给新舰队继续反潜。
+const splitOpen = ref(false)
+const splitSelection = ref<string[]>([])
+function openSplit() {
   if (!state.value || !selectedFleet.value || actionBusy.value || locked.value || deploying.value) return
+  splitSelection.value = []
+  splitOpen.value = true
+}
+function closeSplit() {
+  splitOpen.value = false
+  splitSelection.value = []
+}
+function toggleSplitMember(id: string) {
+  const index = splitSelection.value.indexOf(id)
+  if (index >= 0) splitSelection.value.splice(index, 1)
+  else splitSelection.value.push(id)
+}
+async function applySplit() {
+  if (!state.value || !selectedFleet.value || !splitSelection.value.length || actionBusy.value) return
   const leader = selectedFleet.value.members[0]
   if (!leader) return
   actionBusy.value = true
   try {
-    await sendCommand({ type: 'SPLIT_FLEET', unit_id: leader.id })
+    await sendCommand({ type: 'SPLIT_FLEET', unit_id: leader.id, split_ids: [...splitSelection.value] })
+    closeSplit()
     error.value = ''
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : '舰队拆分失败'
@@ -891,6 +906,7 @@ async function splitFleet() {
     actionBusy.value = false
   }
 }
+watch(() => selectedFleet.value?.fleet_id, () => closeSplit())
 
 function selectSubmarine(id: string) {
   if (!deploying.value || locked.value || actionBusy.value) return
@@ -1322,7 +1338,7 @@ onUnmounted(() => {
                     <span class="nav-engagement">
                       <button v-for="(label, value) in engagementLabels" :key="value" :class="{ active: selectedEngagement === value }" :disabled="actionBusy || locked || deploying" :title="locked ? '本回合已就绪，操作已锁定' : ''" @click.stop="setEngagement(value as 'aggressive' | 'advantage' | 'avoid')">{{ label }}</button>
                     </span>
-                  </div></div><div class="fleet-workbench-actions"><button @click="counterSide = counterSide === 'front' ? 'back' : 'front'">{{ counterSide === 'front' ? '查看兵牌背面' : '查看兵牌正面' }}</button><button :disabled="locked" :title="locked ? '本回合已就绪，操作已锁定' : ''" @click="openManager(selectedFleet.coord)">舰队整编</button><button :disabled="locked || deploying || !canSplitFleet" :title="deploying ? '部署阶段请用舰队整编调整编成' : '拆出反潜舰留在原地继续反潜，主队照常行动（不锁移动）'" @click="splitFleet()">舰队拆分</button><button v-if="selectedFleet.members.some((unit) => ['CV', 'CVL', 'CVE'].includes(unit.type))" :disabled="deploying" :title="deploying ? '部署阶段先摆船，开战后再安排航空作业' : ''" @click="openAviation(selectedFleet.fleet_id)">航空作业</button><button class="fleet-toggle-cards" :aria-pressed="fleetCardsCollapsed" @click="fleetCardsCollapsed = !fleetCardsCollapsed">{{ fleetCardsCollapsed ? '展开兵牌' : '收起兵牌' }}</button><button aria-label="关闭舰队详情" @click="selectedID = ''">×</button></div></header>
+                  </div></div><div class="fleet-workbench-actions"><button @click="counterSide = counterSide === 'front' ? 'back' : 'front'">{{ counterSide === 'front' ? '查看兵牌背面' : '查看兵牌正面' }}</button><button :disabled="locked" :title="locked ? '本回合已就绪，操作已锁定' : ''" @click="openManager(selectedFleet.coord)">舰队整编</button><button :disabled="locked || deploying" :title="deploying ? '部署阶段请用舰队整编调整编成' : '选出要拆出去的舰船组成新舰队（不锁移动、不改冷却）'" @click="openSplit()">舰队拆分</button><button v-if="selectedFleet.members.some((unit) => ['CV', 'CVL', 'CVE'].includes(unit.type))" :disabled="deploying" :title="deploying ? '部署阶段先摆船，开战后再安排航空作业' : ''" @click="openAviation(selectedFleet.fleet_id)">航空作业</button><button class="fleet-toggle-cards" :aria-pressed="fleetCardsCollapsed" @click="fleetCardsCollapsed = !fleetCardsCollapsed">{{ fleetCardsCollapsed ? '展开兵牌' : '收起兵牌' }}</button><button aria-label="关闭舰队详情" @click="selectedID = ''">×</button></div></header>
                 <div v-show="!fleetCardsCollapsed" class="fleet-counter-grid"><button v-for="member in selectedFleet.members" :key="member.id" class="fleet-counter-button" :class="{ active: selectedUnit?.id === member.id }" :data-ship-id="member.id" @click="selectFleetMember(member)"><ShipCounter :unit="member" :side="counterSide" /></button></div>
               </section>
               <section v-if="inspectedFleet" class="fleet-workbench enemy-fleet-workbench" :data-fleet-id="inspectedFleet.fleet_id">
@@ -1429,6 +1445,19 @@ onUnmounted(() => {
             <span><strong>{{ fleet.name }}</strong><small>{{ fleet.count }}艘 · 强度{{ fleet.strength }}/{{ fleet.max_strength }} · {{ fleet.coord }}</small></span>
           </button>
         </div>
+      </section>
+    </div>
+
+    <div v-if="splitOpen" class="fleet-dialog" @click.self="closeSplit">
+      <section class="fleet-modal fleet-manager split-modal">
+        <header><div><span class="section-kicker">SPLIT FLEET · {{ selectedFleet?.coord }}</span><h2>舰队拆分</h2></div><button aria-label="关闭" @click="closeSplit">×</button></header>
+        <p class="manager-hint">选择要拆出去的舰船：拆出后成为新舰队，两队都不影响移动和冷却。反潜战里把带深弹的船拆出去，正在被追踪的潜艇会交给新舰队继续反潜。</p>
+        <div class="fleet-counter-grid manager-counter-grid">
+          <div v-for="member in (selectedFleet?.members || [])" :key="member.id" class="manager-counter" :class="{ selected: splitSelection.includes(member.id) }" :data-ship-id="member.id">
+            <button class="fleet-counter-button" @click="toggleSplitMember(member.id)"><ShipCounter :unit="member" /></button>
+          </div>
+        </div>
+        <footer class="manager-actions"><span>已选 {{ splitSelection.length }} / {{ selectedFleet?.members.length || 0 }} 艘</span><button class="reset-button" @click="splitSelection = []">全不选</button><button class="apply-button" :disabled="actionBusy || !splitSelection.length" @click="applySplit">拆出 {{ splitSelection.length }} 艘</button></footer>
       </section>
     </div>
 

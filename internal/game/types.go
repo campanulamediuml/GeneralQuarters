@@ -1170,6 +1170,8 @@ type Order struct {
 	Heading       string            `json:"heading"`
 	SectorWidth   int               `json:"sector_width"`
 	Assignments   map[string]string `json:"assignments"`
+	// SplitIDs 只用于舰队拆分（SPLIT_FLEET）：选中要拆成新舰队的舰船。
+	SplitIDs []string `json:"split_ids"`
 	// TaskKind 只用于无线电改令（RETASK_AIR）：打算换成哪种任务。
 	TaskKind string `json:"task_kind"`
 	// Loadout 只用于换挂载命令（SET_LOADOUT）。

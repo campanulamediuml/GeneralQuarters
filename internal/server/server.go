@@ -391,6 +391,7 @@ type commandRequest struct {
 	Heading       string            `json:"heading"`
 	SectorWidth   int               `json:"sector_width"`
 	Assignments   map[string]string `json:"assignments"`
+	SplitIDs      []string          `json:"split_ids"`
 	TaskKind      string            `json:"task_kind"`
 	Loadout       string            `json:"loadout"`
 	// Lane：新建打击/侦察编队时前端想放进面板的第几栏（1 起），可选的偏好。
@@ -612,6 +613,7 @@ func commandFingerprint(request commandRequest) string {
 		request.Type, request.UnitID, request.TargetUnitID, request.AircraftID,
 		strings.Join(request.AircraftIDs, ","), request.TaskID, request.Coord, request.TargetFleetID, request.Heading,
 		strconv.Itoa(request.SectorWidth),
+		strings.Join(request.SplitIDs, ","),
 		request.TaskKind, request.Loadout, fmt.Sprintf("%t", request.Disperse), request.Engagement,
 	}
 	sum := sha256.Sum256([]byte(strings.Join(parts, "|")))
@@ -671,7 +673,7 @@ func (s *Server) doCommand(msg roomMsg) roomReply {
 	if request.BaseTurn > 0 && request.BaseTurn != room.Turn {
 		return roomError(http.StatusConflict, "本回合已经结算：请基于当前回合重新操作")
 	}
-	order := game.Order{Type: request.Type, UnitID: request.UnitID, TargetUnitID: request.TargetUnitID, AircraftID: request.AircraftID, AircraftIDs: request.AircraftIDs, TaskID: request.TaskID, Coord: game.NormalizeToken(request.Coord), TargetFleetID: request.TargetFleetID, Heading: strings.ToUpper(request.Heading), SectorWidth: request.SectorWidth, Assignments: request.Assignments, TaskKind: strings.ToLower(request.TaskKind), Loadout: strings.ToLower(request.Loadout), Lane: request.Lane, Disperse: request.Disperse, Engagement: strings.ToLower(request.Engagement), Cycle: request.Cycle}
+	order := game.Order{Type: request.Type, UnitID: request.UnitID, TargetUnitID: request.TargetUnitID, AircraftID: request.AircraftID, AircraftIDs: request.AircraftIDs, TaskID: request.TaskID, Coord: game.NormalizeToken(request.Coord), TargetFleetID: request.TargetFleetID, Heading: strings.ToUpper(request.Heading), SectorWidth: request.SectorWidth, Assignments: request.Assignments, SplitIDs: request.SplitIDs, TaskKind: strings.ToLower(request.TaskKind), Loadout: strings.ToLower(request.Loadout), Lane: request.Lane, Disperse: request.Disperse, Engagement: strings.ToLower(request.Engagement), Cycle: request.Cycle}
 	if err := game.ValidateOrder(room.State, player.Faction, order); err != nil {
 		// 带码的错误交给统一渲染：文案来自 content 的错误表，前端也能拿 code 自己翻。
 		return s.codedError(http.StatusBadRequest, err)

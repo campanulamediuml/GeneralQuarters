@@ -6,17 +6,19 @@ import (
 	"strings"
 )
 
-// —— 舰队拆分（反潜支队） ——
+// —— 舰队拆分 ——
 //
-// 触发反潜战的舰队可以把带深水炸弹的船拆成一支"反潜支队"留在原地继续反潜，
-// 主队照常执行本回合的移动命令。它和整编（MERGE_FLEET / REORGANIZE_HEX）刻意分开：
+// 玩家把一支舰队里的部分舰船拆成一支新舰队：比整编轻，只做"分家"这一件事。
+// 它和整编（MERGE_FLEET / REORGANIZE_HEX）刻意分开：
 //   - 整编会给新编队挂 3 回合移动锁，拆分不挂；
-//   - 整编可能跨舰队重组，拆分只做一件事：把 ASW 船分出去；
-//   - 拆分不动坐标、朝向、冷却和停留计时，主队该走走、该留留。
+//   - 整编可能跨舰队重组，拆分只把选中的船分出去；
+//   - 拆分不动坐标、朝向、冷却和停留计时，两队都按原计划行动。
+//
+// 反潜战里的"反潜支队"只是它的一个用法：把带深弹的船拆出去留在原地反潜，
+// 正在追踪的潜艇会跟着改挂到新舰队。
 
-// validateSplitFleet 只校验"舰队存在且属于当前玩家"。
-// 拆分本身不设额外限制：舰队里没有反潜舰时命令照收（只是没有可拆的船），
-// 整支舰队都是反潜舰时也可以全部拆成支队——这两种情况都算正常操作。
+// validateSplitFleet 校验拆分：选中的船必须属于这支舰队，且至少选一艘。
+// 不限制"必须留下船"：全选等于把这支舰队整体改成新舰队，玩家想这么干也可以。
 func validateSplitFleet(state State, faction string, order Order) error {
 	if InDeployPhase(state) {
 		return fmt.Errorf("部署阶段请用舰队整编调整编成")
@@ -25,81 +27,101 @@ func validateSplitFleet(state State, faction string, order Order) error {
 	if unit == nil || unit.Faction != faction {
 		return fmt.Errorf("舰队不存在或不属于当前玩家")
 	}
+	if len(order.SplitIDs) == 0 {
+		return fmt.Errorf("先选择要拆出的舰船")
+	}
+	fleetID := FleetKey(unit)
+	seen := map[string]bool{}
+	for _, id := range order.SplitIDs {
+		if seen[id] {
+			return fmt.Errorf("拆分的舰船列表里有重复项")
+		}
+		seen[id] = true
+		member := state.Units[id]
+		if member == nil || member.Faction != faction {
+			return fmt.Errorf("要拆出的舰船不存在或不属于当前玩家")
+		}
+		if FleetKey(member) != fleetID {
+			return fmt.Errorf("%s不属于这支舰队", member.Name)
+		}
+	}
 	return nil
 }
 
-// splitFleetCounts 数一支舰队里反潜舰和其余舰船的数量。
-// 反潜舰的判定和潜艇战一致：装备深水炸弹且剩余数量不为 0。
-func splitFleetCounts(state State, fleetID string) (asw, rest int) {
-	for _, unit := range state.Units {
-		if unit == nil || FleetKey(unit) != fleetID || unit.Strength <= 0 {
-			continue
-		}
-		if unit.Card.DepthCharges > 0 {
-			asw++
-			continue
-		}
-		rest++
-	}
-	return asw, rest
-}
-
-// ApplySplitFleet 把舰队里的反潜舰拆成新支队，留在同一格。
-// 不挂移动锁、不改冷却/停留计时，主队和支队都按原计划行动。
+// ApplySplitFleet 把选中的舰船拆成一支新舰队，留在同一格。
+// 不挂移动锁、不改冷却/停留计时，两队都按原计划行动。
 func ApplySplitFleet(state *State, order Order) []EngineEvent {
 	leader := state.Units[order.UnitID]
 	if leader == nil {
 		return nil
 	}
 	oldFleetID := FleetKey(leader)
-	newFleetID := oldFleetID + "-asw"
+	newFleetID := oldFleetID + "-s1"
 	for index := 2; ; index++ {
-		exists := false
-		for _, unit := range state.Units {
-			if unit != nil && FleetKey(unit) == newFleetID {
-				exists = true
-				break
-			}
-		}
-		if !exists {
+		if !fleetExists(*state, newFleetID) {
 			break
 		}
-		newFleetID = fmt.Sprintf("%s-asw%d", oldFleetID, index)
+		newFleetID = fmt.Sprintf("%s-s%d", oldFleetID, index)
 	}
 	oldName := leader.FleetName
 	if oldName == "" {
 		oldName = leader.Name
 	}
-	// 已经是反潜支队的舰队再拆，不要变成"反潜支队反潜支队"。
-	newName := oldName
-	if !strings.HasSuffix(oldName, "反潜支队") {
-		newName = oldName + "反潜支队"
+	newName := oldName + "分队"
+	if strings.HasSuffix(oldName, "分队") {
+		newName = oldName
 	}
 
-	splitIDs := []string{}
-	for _, id := range sortedUnitIDs(state.Units) {
-		unit := state.Units[id]
-		if unit == nil || unit.Faction != leader.Faction || FleetKey(unit) != oldFleetID {
-			continue
-		}
-		if unit.Card.DepthCharges <= 0 {
-			continue
-		}
-		unit.FleetID = newFleetID
-		unit.FleetName = newName
-		splitIDs = append(splitIDs, unit.ID)
-	}
-	if len(splitIDs) == 0 {
-		return []EngineEvent{{Type: "fleet_split_empty", Audience: leader.Faction, Text: fmt.Sprintf("%s没有装备深水炸弹的船，本次没有可拆分的舰船", oldName)}}
-	}
+	splitIDs := append([]string(nil), order.SplitIDs...)
 	sort.Strings(splitIDs)
-	// 正在被这支舰队追踪的潜艇改挂到新支队：反潜舰留在原地，追踪不该断。
+	moved := 0
+	for _, id := range splitIDs {
+		member := state.Units[id]
+		if member == nil || member.Faction != leader.Faction || FleetKey(member) != oldFleetID {
+			continue
+		}
+		member.FleetID = newFleetID
+		member.FleetName = newName
+		moved++
+	}
+	if moved == 0 {
+		return []EngineEvent{{Type: "fleet_split_empty", Audience: leader.Faction, Text: fmt.Sprintf("%s没有可拆分的舰船", oldName)}}
+	}
+	// 正在被这支舰队追踪的潜艇：拆出去的分队里有反潜舰、主队没了，就把追踪交给分队。
+	trackingMoved := false
 	for _, id := range sortedSubmarineIDs(state.Submarines) {
 		sub := state.Submarines[id]
 		if sub == nil || !sub.Discovered || sub.TrackedFleetID != oldFleetID {
 			continue
 		}
-		sub.TrackedFleetID = newFleetID
+		if fleetHasASWShips(*state, newFleetID) && !fleetHasASWShips(*state, oldFleetID) {
+			sub.TrackedFleetID = newFleetID
+			trackingMoved = true
+		}
 	}
-	return []EngineEvent{{Type: "fleet_split", Audience: leader.Faction, Text: fmt.Sprintf("%s分出%d艘反潜舰组成%s，留在%s继续反潜；主队照常行动", oldName, len(splitIDs), newName, leader.Coord)}}
+	text := fmt.Sprintf("%s拆出%d艘舰船组成%s，留在%s", oldName, moved, newName, leader.Coord)
+	if trackingMoved {
+		text += "；被追踪的潜艇改由分队继续反潜"
+	}
+	return []EngineEvent{{Type: "fleet_split", Audience: leader.Faction, Text: text}}
+}
+
+// fleetExists 判断某个 fleet_id 下还有没有船。
+func fleetExists(state State, fleetID string) bool {
+	for _, unit := range state.Units {
+		if unit != nil && FleetKey(unit) == fleetID {
+			return true
+		}
+	}
+	return false
+}
+
+// fleetHasASWShips 判断一支舰队里还有没有反潜舰（深弹 > 0）。
+func fleetHasASWShips(state State, fleetID string) bool {
+	for _, unit := range state.Units {
+		if unit != nil && FleetKey(unit) == fleetID && unit.Card.DepthCharges > 0 {
+			return true
+		}
+	}
+	return false
 }

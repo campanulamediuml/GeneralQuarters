@@ -312,6 +312,8 @@ export interface Order {
   heading?: ReconHeading
   sector_width?: 60 | 120
   assignments?: Record<string, string>
+  /** 舰队拆分：要拆成新舰队的舰船 id */
+  split_ids?: string[]
   task_kind?: string
   disperse?: boolean
   engagement?: 'aggressive' | 'advantage' | 'avoid'
