@@ -89,3 +89,27 @@ func TestNonShellHitsSkipCaliberCheck(t *testing.T) {
 		t.Fatal("炸弹不该吃炮弹的口径判定")
 	}
 }
+// 小口径打不穿大船的船体：CA 的炮弹打不出战列舰的严重进水，CL/DD 连船体损伤都打不出。
+func TestSmallCaliberCannotRollHeavyHullDamage(t *testing.T) {
+	bb := shellTestShip("t", "BB", 8, 6)
+	bc := shellTestShip("bc", "BC", 6, 5)
+	ca := shellTestShip("ca", "CA", 6, 5)
+	cl := shellTestShip("cl", "CL", 4, 5)
+	dd := shellTestShip("dd", "DD", 2, 5)
+
+	if table := severeDamageTableFrom(HitShell, bb, bc); !containsDamage(table, "severe_flooding") || !containsDamage(table, "hull_damage") {
+		t.Fatal("战巡的炮弹该能打出战列舰的严重进水和船体损伤")
+	}
+	if table := severeDamageTableFrom(HitShell, bb, ca); containsDamage(table, "severe_flooding") || !containsDamage(table, "hull_damage") {
+		t.Fatal("重巡能打船体损伤，但打不出严重进水")
+	}
+	for _, attacker := range []*Unit{cl, dd} {
+		if table := severeDamageTableFrom(HitShell, bb, attacker); containsDamage(table, "severe_flooding") || containsDamage(table, "hull_damage") {
+			t.Fatalf("%s 的炮弹不该打出战列舰的严重进水/船体损伤", attacker.Type)
+		}
+	}
+	// 鱼雷不设限：没有攻击方，也不看口径。
+	if table := severeDamageTable(HitTorpedo, bb); !containsDamage(table, "severe_flooding") || !containsDamage(table, "hull_damage") {
+		t.Fatal("鱼雷该能打出战列舰的严重进水和船体损伤")
+	}
+}

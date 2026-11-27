@@ -204,7 +204,12 @@ func AdvanceShipConditions(state *State) []EngineEvent {
 
 // severeDamage 抽一条严重伤害。表按命中来源和船只装备拼（见 severeDamageTable）。
 func severeDamage(state *State, unit *Unit, cause HitCause) []EngineEvent {
-	table := severeDamageTable(cause, unit)
+	return severeDamageFrom(state, unit, cause, nil)
+}
+
+// severeDamageFrom 带攻击方抽表：炮弹有口径限制，鱼雷和火灾传 nil 不设限。
+func severeDamageFrom(state *State, unit *Unit, cause HitCause, attacker *Unit) []EngineEvent {
+	table := severeDamageTableFrom(cause, unit, attacker)
 	result := table[nextUint64(&state.RNGState)%uint64(len(table))]
 	return applySevereDamageResult(state, unit, result)
 }
@@ -214,6 +219,13 @@ func severeDamage(state *State, unit *Unit, cause HitCause) []EngineEvent {
 // 否则没有雷达的驱逐舰会白掷到一条毫无效果的"火控雷达损坏"。
 // 漏油只有鱼雷和炮弹命中才可能抽到——炸弹和火灾抽到"漏油"等于白给一条结果。
 func severeDamageTable(cause HitCause, unit *Unit) []string {
+	return severeDamageTableFrom(cause, unit, nil)
+}
+
+// severeDamageTableFrom 多带一个攻击方：小口径的炮弹打不穿大船的船体，
+// 目标比攻击方高 2 档以上抽不到「严重进水」，高 3 档以上连「船体损伤」也抽不到。
+// 只有炮弹受这条限制；鱼雷和火灾（attacker == nil）照旧。
+func severeDamageTableFrom(cause HitCause, unit *Unit, attacker *Unit) []string {
 	table := []string{"small_fire", "burning", "flooding", "dc_down", "ammo_explosion"}
 	if cause == HitTorpedo || cause == HitShell {
 		table = append(table, "oil_leak")
@@ -245,7 +257,35 @@ func severeDamageTable(cause HitCause, unit *Unit) []string {
 	if unit.Type == "TRS" {
 		table = append(table, "cargo_loss")
 	}
+	if cause == HitShell && attacker != nil {
+		gap := shellDamageRank(unit.Type) - shellDamageRank(attacker.Type)
+		if gap <= -2 {
+			table = dropDamageResults(table, "severe_flooding")
+		}
+		if gap <= -3 {
+			table = dropDamageResults(table, "hull_damage")
+		}
+	}
 	return table
+}
+
+// dropDamageResults 从伤害表里剔掉指定条目：口径不够的炮弹砸不穿战列舰的船体，
+// 与其让它抽到再改成"无效果"，不如直接不进表。
+func dropDamageResults(table []string, drop ...string) []string {
+	kept := make([]string, 0, len(table))
+	for _, entry := range table {
+		skip := false
+		for _, blocked := range drop {
+			if entry == blocked {
+				skip = true
+				break
+			}
+		}
+		if !skip {
+			kept = append(kept, entry)
+		}
+	}
+	return kept
 }
 
 // applySevereDamageResult 把一条严重伤害落到船上；抽表和落表拆开，方便逐条测试效果。
@@ -527,7 +567,7 @@ func applyGunOrBombHit(state *State, hit Hit) []EngineEvent {
 	}
 	events := []EngineEvent{}
 	if d10(state) > dctValue(state, target, hit.Warned) {
-		events = append(events, severeDamage(state, target, hit.Cause)...)
+		events = append(events, severeDamageFrom(state, target, hit.Cause, state.Units[hit.AttackerID])...)
 	}
 	// 只有炸弹会打击整装待发的飞机：炮弹打穿机库再点着飞机是另一条规则，这里没有。
 	if hit.Cause == HitBomb && IsCarrier(target) && state.Units[target.ID] != nil {
