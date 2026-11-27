@@ -387,9 +387,12 @@ var hangarExplosionTable = []string{"avgas_explosion", "ammo_explosion", "small_
 // hangarDCTRoll 是机库爆炸判定的 d10：卡面带 HangarAdvantage 的航母取优势（两投取小），
 // 其余取劣势（两投取大，油气积聚更容易炸）。这是单舰属性，和阵营无关。
 // DCT 失败的条件是骰点大于损管值。
-func hangarDCTRoll(state *State, unit *Unit) int {
+//
+// sealed 表示机库被装甲甲板封死（装甲航母被打穿）：油气排不出去，爆炸判定强制劣势，
+// 就算卡面上有 hangar_advantage 也不给优势。
+func hangarDCTRoll(state *State, unit *Unit, sealed bool) int {
 	first, second := d10(state), d10(state)
-	if unit.Card.HangarAdvantage {
+	if unit.Card.HangarAdvantage && !sealed {
 		return min(first, second)
 	}
 	return max(first, second)
@@ -409,7 +412,7 @@ func bombHangarDeckEffect(state *State, target *Unit, warned bool) []EngineEvent
 		}
 		addFire(target, "small")
 		// 机库里是挂好弹的飞机：失败就从那张三选一的小表里抽。
-		if hangarDCTRoll(state, target) > dctValue(state, target, warned) {
+		if hangarDCTRoll(state, target, false) > dctValue(state, target, warned) {
 			result := hangarExplosionTable[nextUint64(&state.RNGState)%uint64(len(hangarExplosionTable))]
 			events = append(events, applySevereDamageResult(state, target, result)...)
 		}
@@ -419,6 +422,40 @@ func bombHangarDeckEffect(state *State, target *Unit, warned bool) []EngineEvent
 			events = append(events, EngineEvent{Type: "deck_aircraft_lost", Audience: target.Faction, Text: fmt.Sprintf("炸弹命中%s飞行甲板，摧毁整装待发的%s共%d个算子", target.Name, strings.Join(names, "、"), len(names))})
 		}
 		addFire(target, "small")
+	}
+	return events
+}
+
+// armoredCarrierBombEffect 是炸弹命中装甲航母时的"整装待发飞机"结算（规则书 520 行）：
+// 机库藏在装甲甲板下面，普通命中打不到——先额外过一次 DCT，失败（骰点大于损管值）才算
+// 把装甲甲板打穿。打穿之后机库是封闭的，油气排不出去，机库爆炸那次 DCT 强制劣势（取大）。
+// 甲板上的整装待发飞机不受装甲保护，照常结算（装甲甲板挡不住摆在甲板上的飞机）。
+func armoredCarrierBombEffect(state *State, target *Unit, warned bool) []EngineEvent {
+	events := []EngineEvent{}
+	hangar, deck := readyAircraft(*state, target.ID)
+	if len(deck) > 0 {
+		if names := destroyAircraftGroup(state, target, deck, 2); len(names) > 0 {
+			events = append(events, EngineEvent{Type: "deck_aircraft_lost", Audience: target.Faction, Text: fmt.Sprintf("炸弹命中%s飞行甲板，摧毁整装待发的%s共%d个算子", target.Name, strings.Join(names, "、"), len(names))})
+		}
+		addFire(target, "small")
+	}
+	if len(hangar) == 0 {
+		return events
+	}
+	// 击穿装甲甲板本身要过一次 DCT：损管成功＝甲板扛住了，机库里的飞机没事。
+	if d10(state) <= dctValue(state, target, warned) {
+		events = append(events, EngineEvent{Type: "armored_deck_held", Audience: target.Faction, Text: fmt.Sprintf("%s的装甲甲板挡住了炸弹，机库里的整装待发飞机未受损失", target.Name)})
+		return events
+	}
+	events = append(events, EngineEvent{Type: "armored_deck_penetrated", Audience: target.Faction, Text: fmt.Sprintf("炸弹击穿%s的装甲甲板", target.Name)})
+	if names := destroyAircraftGroup(state, target, hangar, 2); len(names) > 0 {
+		events = append(events, EngineEvent{Type: "hangar_aircraft_lost", Audience: target.Faction, Text: fmt.Sprintf("炸弹打进%s机库，摧毁整装待发的%s共%d个算子", target.Name, strings.Join(names, "、"), len(names))})
+	}
+	addFire(target, "small")
+	// 封闭机库：油气排不出去，机库爆炸判定强制劣势。
+	if hangarDCTRoll(state, target, true) > dctValue(state, target, warned) {
+		result := hangarExplosionTable[nextUint64(&state.RNGState)%uint64(len(hangarExplosionTable))]
+		events = append(events, applySevereDamageResult(state, target, result)...)
 	}
 	return events
 }
@@ -449,14 +486,8 @@ func applyGunOrBombHit(state *State, hit Hit) []EngineEvent {
 	// 只有炸弹会打击整装待发的飞机：炮弹打穿机库再点着飞机是另一条规则，这里没有。
 	if hit.Cause == HitBomb && IsCarrier(target) && state.Units[target.ID] != nil {
 		if target.Card.ArmoredCarrier {
-			_, deck := readyAircraft(*state, target.ID)
-			if len(deck) > 0 {
-				if names := destroyAircraftGroup(state, target, deck, 2); len(names) > 0 {
-					events = append(events, EngineEvent{Type: "deck_aircraft_lost", Audience: target.Faction, Text: fmt.Sprintf("炸弹命中%s飞行甲板，摧毁整装待发的%s共%d个算子", target.Name, strings.Join(names, "、"), len(names))})
-				}
-				addFire(target, "small")
-			}
-		} else if state.Units[target.ID] != nil {
+			events = append(events, armoredCarrierBombEffect(state, target, hit.Warned)...)
+		} else {
 			events = append(events, bombHangarDeckEffect(state, target, hit.Warned)...)
 		}
 	}

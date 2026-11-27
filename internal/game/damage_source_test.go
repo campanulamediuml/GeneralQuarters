@@ -189,7 +189,7 @@ func TestHangarDCTAdvantageByCard(t *testing.T) {
 		unit := &Unit{ID: "cv", Type: "CV", Faction: "A", Card: ShipCard{DamageControl: 5, HangarAdvantage: openHangar}}
 		failures := 0
 		for i := 0; i < trials; i++ {
-			if hangarDCTRoll(state, unit) > unit.Card.DamageControl {
+			if hangarDCTRoll(state, unit, false) > unit.Card.DamageControl {
 				failures++
 			}
 		}

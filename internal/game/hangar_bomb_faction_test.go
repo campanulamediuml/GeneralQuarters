@@ -83,19 +83,22 @@ func TestFactionHangarBombDifference(t *testing.T) {
 	}
 	us := factionProbeCard(4, true, false, 24)
 	jp := factionProbeCard(3, false, false, 18)
-	armored := factionProbeCard(4, false, true, 20)
+	armored := factionProbeCard(4, false, true, 20) // 大凤：装甲航母，DCT 4
+	shinano := factionProbeCard(7, false, true, 15) // 信浓：装甲航母，DCT 7
 
 	usArmed := measure(us, "A", 18, true)
 	usEmpty := measure(us, "A", 18, false)
 	jpArmed := measure(jp, "B", 18, true)
 	jpEmpty := measure(jp, "B", 18, false)
 	taihoArmed := measure(armored, "B", 18, true)
+	shinanoArmed := measure(shinano, "B", 15, true)
 
 	t.Logf("整装待发：美军 毁机 %.2f 结构 -%.2f 燃烧 %.1f%%；日军 毁机 %.2f 结构 -%.2f 燃烧 %.1f%%",
 		usArmed.aircraft, usArmed.strength, usArmed.burning, jpArmed.aircraft, jpArmed.strength, jpArmed.burning)
 	t.Logf("空载未整备：美军 毁机 %.2f 结构 -%.2f 燃烧 %.1f%%；日军 毁机 %.2f 结构 -%.2f 燃烧 %.1f%%",
 		usEmpty.aircraft, usEmpty.strength, usEmpty.burning, jpEmpty.aircraft, jpEmpty.strength, jpEmpty.burning)
-	t.Logf("装甲航母（大凤）整装待发：毁机 %.2f 结构 -%.2f 燃烧 %.1f%%", taihoArmed.aircraft, taihoArmed.strength, taihoArmed.burning)
+	t.Logf("装甲航母（大凤 DCT4）整装待发：毁机 %.2f 结构 -%.2f 燃烧 %.1f%%", taihoArmed.aircraft, taihoArmed.strength, taihoArmed.burning)
+	t.Logf("装甲航母（信浓 DCT7）整装待发：毁机 %.2f 结构 -%.2f 燃烧 %.1f%%", shinanoArmed.aircraft, shinanoArmed.strength, shinanoArmed.burning)
 
 	// 飞机损失只由"整装待发"决定，和阵营无关：两边都是每发 2 架。
 	for _, item := range []struct {
@@ -122,8 +125,15 @@ func TestFactionHangarBombDifference(t *testing.T) {
 	if jpArmed.burning < usArmed.burning+20 {
 		t.Fatalf("日军整装待发的机库应该更容易烧穿：%.1f%% vs %.1f%%", jpArmed.burning, usArmed.burning)
 	}
-	// 装甲航母的机库组根本不结算：装不整备一样，机库飞机损失只剩严重伤害表的小概率。
-	if taihoArmed.aircraft > 0.3 {
-		t.Fatalf("装甲航母的机库不该吃整装待发损失，实际每发毁 %.2f 架", taihoArmed.aircraft)
+	// 装甲航母：机库不是免单，而是要先过一道"击穿装甲甲板"的 DCT。
+	// 损管失败才打穿，所以大凤（DCT4）大约是普通航母的六成，信浓（DCT7）只有三成。
+	if taihoArmed.aircraft < 1.0 || taihoArmed.aircraft > 1.45 {
+		t.Fatalf("大凤（DCT4）每发应毁约 1.2 架（60%% 击穿 × 2 架），实际 %.2f", taihoArmed.aircraft)
+	}
+	if shinanoArmed.aircraft < 0.4 || shinanoArmed.aircraft > 0.85 {
+		t.Fatalf("信浓（DCT7）每发应毁约 0.6 架（30%% 击穿 × 2 架），实际 %.2f", shinanoArmed.aircraft)
+	}
+	if !(taihoArmed.aircraft < jpArmed.aircraft && shinanoArmed.aircraft < taihoArmed.aircraft) {
+		t.Fatalf("装甲越厚越难击穿：翔鹤 %.2f / 大凤 %.2f / 信浓 %.2f", jpArmed.aircraft, taihoArmed.aircraft, shinanoArmed.aircraft)
 	}
 }
