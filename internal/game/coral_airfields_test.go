@@ -75,14 +75,14 @@ func TestCoralRealLandBasedAirGroups(t *testing.T) {
 		}
 	}
 
-	// 机型数据：G4M 航程 40、G3M 38、都是强度 1 / 对空 0 / 对舰 2（1942 精锐 +1 后对舰 3）。
+	// 机型数据：G4M 航程 40、G3M 38、都是强度 1 / 对空 0 / 对舰 2（精锐机组走掷骰，不加卡面数值）。
 	for _, id := range []string{"af-b-rabaul-g4m-1", "af-b-rabaul-g3m-1"} {
 		aircraft := state.GroundAir[id]
 		wantRange := 40
 		if strings.Contains(id, "g3m") {
 			wantRange = 38
 		}
-		if aircraft == nil || aircraft.BaseRange != wantRange || aircraft.Strength != 1 || aircraft.AntiShip != 3 {
+		if aircraft == nil || aircraft.BaseRange != wantRange || aircraft.Strength != 1 || aircraft.AntiShip != 2 {
 			t.Fatalf("%s 数据不对：%+v", id, aircraft)
 		}
 	}
@@ -178,8 +178,8 @@ func TestCoralRealLaeAirGroup(t *testing.T) {
 		t.Fatalf("莱城机群数量错误：%v", counts)
 	}
 	a5m := state.GroundAir["af-b-lae-a5m-1"]
-	// 1942 年日军精锐飞行员规则给战斗机对空 +1，所以这里读到的是基础 1 + 1 = 2。
-	if a5m == nil || a5m.Model != "A5M 九六舰战" || a5m.BaseRange != 13 || a5m.Strength != 1 || a5m.AirCombat != 2 || a5m.AntiShip != 0 || a5m.AntiGround != 0 {
+	// 1942 年日军精锐机组只把掷骰档位升到老兵，对空值仍是机型基础 1。
+	if a5m == nil || a5m.Model != "A5M 九六舰战" || a5m.BaseRange != 13 || a5m.Strength != 1 || a5m.AirCombat != 1 || a5m.AntiShip != 0 || a5m.AntiGround != 0 {
 		t.Fatalf("A5M 数值错误：%+v", a5m)
 	}
 }

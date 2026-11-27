@@ -47,7 +47,7 @@ type FactionRules struct {
 	// 规则书里日军写成"兵力比≥1"，美军写成">1/2"，边界上差一档，这里照抄不合并。
 	AmmunitionLowInclusive bool
 
-	// ElitePilotBonus：开战初期精锐机组，1942 年及以前战斗机对空 +1、俯冲/鱼雷机对舰 +1。
+	// ElitePilotBonus：开战初期精锐机组，1942 年及以前日军机组掷 DC 时升一档（不改卡面数值）。
 	ElitePilotBonus int
 	// EarlyWarReconBonus：同一批精锐机组在侦察上的发现率加成（%）。
 	EarlyWarReconBonus float64

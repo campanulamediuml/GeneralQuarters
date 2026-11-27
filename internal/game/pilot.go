@@ -5,13 +5,12 @@ import "strings"
 // —— 飞行员熟练度 ——
 //
 // 机型卡讲的是"这架飞机能做什么"，熟练度讲的是"坐在里面的人什么水平"。
-// 1942 年的精锐机组走了 FactionRules.ElitePilotBonus 那条国家+年份的规则；
-// 1944 年日军飞行队被打空、补充兵只飞过几十小时，这层差距必须按【机队】写，
-// 不能让同一架 A6M5 在航母上是新手、在拉包尔又变回精锐。
+// 熟练度不改写任何卡面数值：空战查表和投弹命中率只认机型值，人的差别全在
+// DC 临场发挥这一掷上——过了就给这一次出手 +1，没过按原值打。
 //
-// 熟练度直接改写算子的对空/对舰数值（和精英机组加成同一条路径），
-// 不新增一套命中修正——空战查表和投弹命中率都只认卡面数值，这样"老手"在
-// 空战和投弹两条线上都是同一个加成，规则书里查表也只需要加一列熟练度。
+// 1942 年及以前日军的"精锐机组"（FactionRules.ElitePilotBonus）也走这条路径：
+// 把掷骰档位升一档，而不是往对空/对舰值上加 1。1944 年日军飞行队被打空、
+// 补充兵只飞过几十小时，这层差距按【机队】写，靠剧本的 skill 字段体现。
 const (
 	PilotRookie  = "rookie"
 	PilotRegular = "regular"
@@ -75,6 +74,23 @@ func PilotAdvantageLabel(skill string) string {
 	return "普通"
 }
 
+// elitePilotSkill 把"开战初期精锐机组"折进熟练度档位：1942 年及以前日军机组
+// 掷 DC 时升一档（新手→普通、普通→老兵、老兵→王牌、王牌不变），卡面数值一律不动。
+// 这是"国家 + 年份"的规则，不是机型属性：1944 年的同一架 A6M2 不带这层加成。
+func elitePilotSkill(state State, faction, skill string) string {
+	normalized := NormalizePilotSkill(skill)
+	if rulesFor(state, faction).ElitePilotBonus == 0 {
+		return normalized
+	}
+	switch normalized {
+	case PilotRookie:
+		return PilotRegular
+	case PilotRegular:
+		return PilotVeteran
+	}
+	return PilotAce
+}
+
 // pilotSkillFromID 从机场算子的 ID 里读熟练度（例如 af-b-saipan-a6m5-rookie-1）。
 // 机场的 aircraft 列表只是一串 ID，不像舰载机部署那样有结构化字段；
 // 与其为地面航空再加一层 schema，不如让 ID 自己带段——解析器本来就按 "-" 找机种定义。
@@ -87,5 +103,3 @@ func pilotSkillFromID(id string) string {
 	}
 	return PilotRegular
 }
-
-

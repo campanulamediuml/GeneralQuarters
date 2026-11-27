@@ -643,7 +643,8 @@ type AirUnit struct {
 	Name         string `json:"name"`
 	Model        string `json:"model"`
 	Kind         string `json:"kind"`
-	// Skill 是飞行员熟练度（rookie/regular/veteran/ace，缺省按普通），部署时已折进对空/对舰数值。
+	// Skill 是飞行员熟练度（rookie/regular/veteran/ace，缺省按普通）；它只决定 DC 掷骰档位，
+	// 不改对空/对舰数值，部署时精锐机组规则已经折进这一档。
 	Skill string `json:"skill"`
 	// Picture/PictureMode 由 aircraft[].picture/picture_mode 注入；老存档缺图时前端回退到内置剪影。
 	Picture     string `json:"picture"`

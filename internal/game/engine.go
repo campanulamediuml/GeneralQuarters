@@ -360,15 +360,14 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		// 空载算子没有副油箱，航程就是机种基础航程；玩家把它拖进任务栏时再按任务自动配。
 		initialLoadout := LoadoutNone
 		fuel := MountedFuel(definition.Range, initialLoadout)
-		airCombat, antiShip := elitePilotBonus(state, carrier.Faction, definition.Kind, definition.AirCombat, definition.AntiShip)
-		// 卡面数值只含国家/年份的精锐机组加成；飞行员熟练度不改数值，
-		// 只决定 DC 判定的骰子档位（PilotDiceAdvantage）。
-		skill := NormalizePilotSkill(deployment.Skill)
+		// 机型数值只由机型决定；飞行员熟练度不改数值，只决定 DC 判定的骰子档位。
+		// 1942 年及以前日军机组的精锐加成也走熟练度（掷骰升一档），不再加到卡面上。
+		skill := elitePilotSkill(state, carrier.Faction, deployment.Skill)
 		state.Aircraft[deployment.ID] = &AirUnit{
 			ID: deployment.ID, DefinitionID: definition.ID, CarrierID: carrier.ID, Faction: carrier.Faction,
 			Name: definition.Name, Model: definition.Model, Kind: definition.Kind, Skill: skill, Picture: definition.Picture, PictureMode: definition.PictureMode, Status: "hangar", Strength: definition.Strength,
 			BaseRange: definition.Range, Loadout: initialLoadout,
-			MaxRange: fuel.Available(), Fuel: fuel, RemainingRange: fuel.Available(), AirCombat: airCombat, AntiShip: antiShip, AntiGround: definition.AntiGround, Seaplane: definition.Seaplane, AirfieldOnly: definition.AirfieldOnly, TorpedoCapable: definition.TorpedoCapable, HighAltitudeBomber: definition.HighAltitudeBomber,
+			MaxRange: fuel.Available(), Fuel: fuel, RemainingRange: fuel.Available(), AirCombat: definition.AirCombat, AntiShip: definition.AntiShip, AntiGround: definition.AntiGround, Seaplane: definition.Seaplane, AirfieldOnly: definition.AirfieldOnly, TorpedoCapable: definition.TorpedoCapable, HighAltitudeBomber: definition.HighAltitudeBomber,
 		}
 		carrier.Card.Aircraft++
 	}
@@ -382,23 +381,6 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 	// 初始朝向，deck_length 却还是没修正的 base，玩家按它规划会差 2 架。
 	RefreshDeckLengths(&state)
 	return state, nil
-}
-
-// elitePilotBonus 是"开战初期精锐飞行员"的机型修正：
-// 1942 年及以前，日军 D3A/B5N 对舰攻击 +1，零战空战 +1。
-// 这是飞行员的素质加成，不该写进机型档案（那样 1944 年的同一机型也会带着这 +1）。
-func elitePilotBonus(state State, faction, kind string, airCombat, antiShip int) (int, int) {
-	// 精锐机组是"国家 + 年份"的规则，不是机型属性：1944 年的同一机型不该还带着这 +1。
-	if rulesFor(state, faction).ElitePilotBonus == 0 {
-		return airCombat, antiShip
-	}
-	switch kind {
-	case "fighter":
-		airCombat++
-	case "dive_bomber", "torpedo_bomber":
-		antiShip++
-	}
-	return airCombat, antiShip
 }
 
 // deployAirfields 把剧本里的机场和地面飞机落到状态里，并做与舰船部署一致的内容校验。
@@ -470,15 +452,15 @@ func deployAirfields(state *State, scenario ScenarioDefinition, airDefinitions a
 			// 岸基机同样默认空载：挂载由玩家在机库里选（或者分配任务时按任务自动配）。
 			initialGroundLoadout := LoadoutNone
 			fuel := MountedFuel(aircraftDef.Range, initialGroundLoadout)
-			groundAirCombat, groundAntiShip := elitePilotBonus(*state, airfield.Faction, aircraftDef.Kind, aircraftDef.AirCombat, aircraftDef.AntiShip)
 			// 地面航空的熟练度写在 ID 里（af-b-yap-a6m5-rookie-1）：没有舰载部署那样的结构化条目。
-			groundSkill := pilotSkillFromID(aircraftID)
+			// 1942 年及以前日军机组的精锐加成同样折进这一档，不动卡面数值。
+			groundSkill := elitePilotSkill(*state, airfield.Faction, pilotSkillFromID(aircraftID))
 			state.GroundAir[aircraftID] = &AirfieldAirUnit{
 				ID: aircraftID, DefinitionID: aircraftDef.ID, AirfieldID: airfield.ID, Faction: airfield.Faction,
 				Model: aircraftDef.Model, Kind: aircraftDef.Kind, Skill: groundSkill, Picture: aircraftDef.Picture, PictureMode: aircraftDef.PictureMode, Status: "hangar", Strength: aircraftDef.Strength,
 				BaseRange: aircraftDef.Range, Loadout: initialGroundLoadout,
 				MaxRange: fuel.Available(), RemainingRange: fuel.Available(),
-				AirCombat: groundAirCombat, AntiShip: groundAntiShip, AntiGround: aircraftDef.AntiGround,
+				AirCombat: aircraftDef.AirCombat, AntiShip: aircraftDef.AntiShip, AntiGround: aircraftDef.AntiGround,
 				AirfieldOnly: aircraftDef.AirfieldOnly, Seaplane: aircraftDef.Seaplane, TorpedoCapable: aircraftDef.TorpedoCapable, HighAltitudeBomber: aircraftDef.HighAltitudeBomber,
 				// 侦察半径按"不含备用油"的航程折半：备用油只够回家，不能用来搜索（规则书 69 行）。
 				ReconRadiusLimit: max(1, fuel.Available()/2),
