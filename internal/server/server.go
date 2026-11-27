@@ -699,6 +699,8 @@ func (s *Server) doCommand(msg roomMsg) roomReply {
 			events = game.ApplyEngagementOrder(&room.State, order)
 		case "DEPLOY_SUB":
 			events = game.ApplySubDeploy(&room.State, order)
+		case "SPLIT_FLEET":
+			events = game.ApplySplitFleet(&room.State, order)
 		case "SET_MOVE":
 			if deployPhase {
 				// 部署阶段是自由摆放：整支舰队立刻挪过去，不排进本回合计划。

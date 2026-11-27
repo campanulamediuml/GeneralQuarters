@@ -831,6 +831,9 @@ func ValidateOrder(state State, faction string, order Order) error {
 	if order.Type == "SET_AUTO_NAV" {
 		return validateNavOrder(state, faction, order)
 	}
+	if order.Type == "SPLIT_FLEET" {
+		return validateSplitFleet(state, faction, order)
+	}
 	if order.Type == "SET_ENGAGEMENT" {
 		unit := state.Units[order.UnitID]
 		if unit == nil || unit.Faction != faction {
@@ -1189,7 +1192,7 @@ func needsAirValidation(orderType string) bool {
 // 注意：RETARGET_AIR 不在这里——改目标同样是无线电通信，必须按编队消耗机会，因此走回合结算。
 func IsImmediateOrder(orderType string) bool {
 	switch orderType {
-	case "SET_MOVE", "SET_AUTO_NAV", "SET_ENGAGEMENT", "DEPLOY_SUB":
+	case "SET_MOVE", "SET_AUTO_NAV", "SET_ENGAGEMENT", "DEPLOY_SUB", "SPLIT_FLEET":
 		return true
 	}
 	return false
