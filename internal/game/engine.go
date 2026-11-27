@@ -936,10 +936,8 @@ func ApplyImmediateMove(state *State, order Order) []EngineEvent {
 	if MovesBlocked(*state, leader) || !fleetCanEnter(*state, order.Coord, FleetHasCarrier(*state, FleetKey(leader))) {
 		return nil
 	}
-	// 没在冷却里走上面的分支。
-	interval := FleetMoveInterval(*state, leader)
-	qwe := FleetMoveCooldown(*state, FleetKey(leader))
-	_ = qwe
+	// 没在冷却里走上面的分支。节奏按舰队算，走一格推进一次周期指针。
+	knots := FleetCycleKnots(*state, leader)
 	events := []EngineEvent{}
 	for _, unit := range state.Units {
 		if FleetKey(unit) != FleetKey(leader) {
@@ -949,11 +947,9 @@ func ApplyImmediateMove(state *State, order Order) []EngineEvent {
 		unit.Coord = order.Coord
 		unit.Heading = headingBetween(from, order.Coord)
 		unit.Moved = true
-		if cooldown := movementCooldownAfterMove(interval); cooldown > unit.MoveCooldown {
-			unit.MoveCooldown = cooldown
-		}
-		events = append(events, EngineEvent{Type: "unit_moved", Audience: unit.Faction, Text: fmt.Sprintf("%s从%s移动至%s，每%d回合移动一次", unit.Name, from, order.Coord, interval)})
+		events = append(events, EngineEvent{Type: "unit_moved", Audience: unit.Faction, Text: fmt.Sprintf("%s从%s移动至%s（约%d节）", unit.Name, from, order.Coord, knots)})
 	}
+	ApplyMoveCooldown(state, leader)
 	// 移动后岸轰停留计时重新开始
 	clearFleetStay(state, FleetKey(leader))
 	syncEmbarkedAircraft(state)
@@ -1195,27 +1191,40 @@ func ResolveOrders(state *State, orders []Order) []EngineEvent {
 			}
 		}
 	}
+	// 一支舰队一回合只走一格：整队一起动，也一起挂冷却。以前这里按单船循环，
+	// 第一艘挂上冷却之后，同队第二艘再进循环就看到 MoveCooldown > 0 被当成"还在冷却"，
+	// 于是整编队只动了首舰——顺带把周期指针也推进了两次。
 	ids := sortedUnitIDs(state.Units)
+	handled := map[string]bool{}
 	for _, id := range ids {
 		coord, ok := moves[id]
 		if !ok {
 			continue
 		}
 		unit := state.Units[id]
-		if unit.MoveCooldown > 0 {
-			events = append(events, EngineEvent{Type: "movement_delayed", Audience: unit.Faction, Text: fmt.Sprintf("%s还需等待%d回合才能移动", unit.Name, unit.MoveCooldown)})
+		fleetID := FleetKey(unit)
+		if handled[fleetID] {
 			continue
 		}
-		from := unit.Coord
-		unit.Coord = coord
-		unit.Heading = headingBetween(from, coord)
-		unit.Moved = true
-		interval := FleetMoveInterval(*state, unit)
-		if cooldown := movementCooldownAfterMove(interval); cooldown > unit.MoveCooldown {
-			unit.MoveCooldown = cooldown
+		handled[fleetID] = true
+		if cooldown := FleetMoveCooldown(*state, fleetID); cooldown > 0 {
+			events = append(events, EngineEvent{Type: "movement_delayed", Audience: unit.Faction, Text: fmt.Sprintf("%s还需等待%d回合才能移动", unit.Name, cooldown)})
+			continue
 		}
-		clearFleetStay(state, FleetKey(unit))
-		events = append(events, EngineEvent{Type: "unit_moved", Audience: unit.Faction, Text: fmt.Sprintf("%s从%s移动至%s，每%d回合移动一次", unit.Name, from, coord, interval)})
+		leader := unit
+		knots := FleetCycleKnots(*state, leader)
+		for _, member := range state.Units {
+			if FleetKey(member) != fleetID {
+				continue
+			}
+			from := member.Coord
+			member.Coord = coord
+			member.Heading = headingBetween(from, coord)
+			member.Moved = true
+			events = append(events, EngineEvent{Type: "unit_moved", Audience: member.Faction, Text: fmt.Sprintf("%s从%s移动至%s（约%d节）", member.Name, from, coord, knots)})
+		}
+		ApplyMoveCooldown(state, leader)
+		clearFleetStay(state, fleetID)
 	}
 	// 自动航行（规则书 280–283 行）：手动移动与自动移动共用移动机会，
 	// 所以放在手动位移之后统一结算——本回合手动动过的舰队自动航行自然不生效。
@@ -1498,6 +1507,8 @@ func VisibleFleets(state State, faction string) []FleetGroup {
 		if fleet.Faction == faction {
 			fleet.DistanceReference = BuildDistanceReference(state.Map, fleet.Coord, 8)
 			fleet.MoveInterval = FleetMoveInterval(state, &leader)
+			fleet.MoveKnots = FleetCycleKnots(state, &leader)
+			fleet.MoveCycle = FleetMoveCycle(state, &leader)
 			fleet.MoveCooldown = FleetMoveCooldown(state, id)
 			fleet.Confusion = FleetConfusion(state, id)
 			// 自动航行信息只给自己看，敌方不该看到对方的航线规划。

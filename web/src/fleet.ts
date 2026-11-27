@@ -5,6 +5,8 @@ export interface FleetGroup extends Unit {
   members: Unit[]
   count: number
   move_interval: number
+  move_knots?: number
+  move_cycle?: number[]
   move_cooldown?: number
   confusion?: number
   contact_level?: 1 | 2 | 3 | 4

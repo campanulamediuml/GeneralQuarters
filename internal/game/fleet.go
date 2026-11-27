@@ -344,8 +344,7 @@ func advanceTowardEdge(state *State) []EngineEvent {
 		if next == "" {
 			continue
 		}
-		interval := FleetMoveInterval(*state, leader)
-		cooldown := movementCooldownAfterMove(interval)
+		knots := FleetCycleKnots(*state, leader)
 		for _, member := range members {
 			unit := state.Units[member.ID]
 			if unit == nil {
@@ -354,12 +353,12 @@ func advanceTowardEdge(state *State) []EngineEvent {
 			unit.Heading = headingBetween(unit.Coord, next)
 			unit.Coord = next
 			unit.Moved = true
-			if cooldown > unit.MoveCooldown {
-				unit.MoveCooldown = cooldown
-			}
+		}
+		if fresh := state.Units[leader.ID]; fresh != nil {
+			ApplyMoveCooldown(state, fresh)
 		}
 		clearFleetStay(state, fleetID)
-		events = append(events, EngineEvent{Type: "fleet_withdrawing", Audience: leader.Faction, Text: fmt.Sprintf("%s向%s撤离一hex（每%d回合移动一次）", leader.FleetName, next, interval)})
+		events = append(events, EngineEvent{Type: "fleet_withdrawing", Audience: leader.Faction, Text: fmt.Sprintf("%s向%s撤离一hex（约%d节）", leader.FleetName, next, knots)})
 	}
 	return events
 }

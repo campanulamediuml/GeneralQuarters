@@ -234,6 +234,11 @@ type ShipCard struct {
 	// 美军航母在 1942 珊瑚海是 2 骰、1944 马里亚纳是 3 骰，列克星敦级没有优势。
 	HangarAdvantage HangarAdvantageLevel `json:"hangar_advantage"`
 	HistoricalLoss  string               `json:"historical_loss"`
+	// MoveCycle 是这级舰的移动节奏：一圈里第 i 格要等 cycle[i] 回合再走下一格。
+	// 25 海里/hex、20 分钟/回合，平均 N 回合走一格就是 75/N 节，所以固定的整数周期只能落
+	// 在 37.5/25/12.5/8.3 节这几档上；交替周期把航速填细：[2,3] 平均 2.5 → 30 节，
+	// [4,4,4,3] 平均 3.75 → 20 节，[6,6,6,7] 平均 6.25 → 12 节。为空时按 speed_class 老四档兜底。
+	MoveCycle []int `json:"move_cycle,omitempty"`
 }
 
 type AircraftDefinition struct {
@@ -559,8 +564,11 @@ type Unit struct {
 	MaxStrength  int    `json:"max_strength"`
 	Moved        bool   `json:"moved"`
 	MoveCooldown int    `json:"move_cooldown"`
-	Confusion    int    `json:"confusion"`
-	ContactLevel int    `json:"contact_level"`
+	// CyclePos 是整支舰队在移动节奏里走到第几格：交替周期靠它决定这次挂几回合冷却。
+	// 队内所有船共用同一个值，移动时一起推进。
+	CyclePos     int `json:"cycle_pos,omitempty"`
+	Confusion    int `json:"confusion"`
+	ContactLevel int `json:"contact_level"`
 	// ContactStaleTurns 是这条情报已经连续几回合没更新（0 = 本回合刚刷新）。
 	// 事件里一直有"情报已过期N回合"的文字，但机器玩家读不到。
 	ContactStaleTurns int         `json:"contact_stale_turns"`
@@ -604,8 +612,11 @@ type FleetGroup struct {
 	Moved        bool   `json:"moved"`
 	MoveCooldown int    `json:"move_cooldown"`
 	MoveInterval int    `json:"move_interval"`
-	Confusion    int    `json:"confusion"`
-	ContactLevel int    `json:"contact_level"`
+	// MoveKnots 是按移动节奏折算出来的平均航速，面板上直接显示"约 N 节"。
+	MoveKnots    int   `json:"move_knots"`
+	MoveCycle    []int `json:"move_cycle,omitempty"`
+	Confusion    int   `json:"confusion"`
+	ContactLevel int   `json:"contact_level"`
 	// ContactStaleTurns 是这条情报已经连续几回合没更新（0 = 本回合刚刷新）。
 	ContactStaleTurns int    `json:"contact_stale_turns"`
 	ContactSize       string `json:"contact_size"`

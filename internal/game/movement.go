@@ -1,5 +1,7 @@
 package game
 
+import "math"
+
 func EnsureDamage(unit *Unit) *ShipDamage {
 	if unit.Damage == nil {
 		unit.Damage = &ShipDamage{}
@@ -33,45 +35,148 @@ func EffectiveSpeedClass(unit *Unit) string {
 	return []string{"very_slow", "slow", "normal", "fast"}[rank]
 }
 
-func FleetMoveInterval(state State, unit *Unit) int {
-	if unit == nil {
+// classTurns 是老四档对应的"每几回合走一格"：25 海里/hex、20 分钟/回合换算过来，
+// normal 3 回合≈25 节，slow 6 回合≈12.5 节，very_slow 9 回合≈8.3 节，disabled 24 回合≈停在原地。
+func classTurns(class string) int {
+	switch class {
+	case "slow":
+		return 6
+	case "very_slow":
+		return 9
+	case "disabled":
 		return 24
+	default:
+		return 3
+	}
+}
+
+// ShipMoveCycle 返回单舰的移动节奏：一圈里第 i 格要等 cycle[i] 回合才能走下一格。
+// 卡面配了 move_cycle 就按它来，进水每层、倾斜各 +1 回合；没配的老卡仍走四档，
+// 保证旧存档和旧剧本的行为一点不变。
+func ShipMoveCycle(unit *Unit) []int {
+	damage := EnsureDamage(unit)
+	disabled := damage.Disabled || len(damage.Flooding) > unit.Card.DamageControl
+	if len(unit.Card.MoveCycle) == 0 {
+		if disabled {
+			return []int{24}
+		}
+		return []int{classTurns(EffectiveSpeedClass(unit))}
+	}
+	if disabled {
+		return []int{24}
+	}
+	penalty := len(damage.Flooding)
+	if damage.Tilt {
+		penalty++
+	}
+	cycle := make([]int, len(unit.Card.MoveCycle))
+	for i, turn := range unit.Card.MoveCycle {
+		turn += penalty
+		if turn < 1 {
+			turn = 1
+		}
+		if turn > 24 {
+			turn = 24
+		}
+		cycle[i] = turn
+	}
+	return cycle
+}
+
+// FleetMoveCycle 取编队里最慢的那艘船当全队节奏：平均回合数最大的那个周期说了算，
+// 所以拖一条运输船的航母编队会跟着运输船走。
+func FleetMoveCycle(state State, unit *Unit) []int {
+	if unit == nil {
+		return []int{24}
 	}
 	fleetID := FleetKey(unit)
+	legacy := true
 	pureFastDD := true
-	interval := 0
+	var slowest []int
+	slowestAvg := 0.0
+	found := false
 	for _, member := range state.Units {
 		if FleetKey(member) != fleetID {
 			continue
 		}
-		speed := EffectiveSpeedClass(member)
-		// 25 海里/hex、20 分钟/回合换算：normal 3 回合≈25 节，slow 6 回合≈12.5 节，
-		// very_slow 9 回合≈8.3 节，disabled 24 回合≈基本停在原地。
-		memberInterval := map[string]int{"normal": 3, "fast": 3, "slow": 6, "very_slow": 9, "disabled": 24}[speed]
-		if memberInterval > interval {
-			interval = memberInterval
+		found = true
+		if len(member.Card.MoveCycle) > 0 {
+			legacy = false
 		}
-		if member.Type != "DD" || speed != "fast" {
+		cycle := ShipMoveCycle(member)
+		if avg := cycleAverage(cycle); avg > slowestAvg {
+			slowestAvg = avg
+			slowest = cycle
+		}
+		if member.Type != "DD" || EffectiveSpeedClass(member) != "fast" {
 			pureFastDD = false
 		}
 	}
-	if pureFastDD && interval > 0 {
-		return 2
+	if !found || len(slowest) == 0 {
+		return []int{24}
 	}
-	if interval == 0 {
-		return 24
+	// 纯高速驱逐舰编队按 2 回合 1 hex（37.5 节）走，这是老规则里唯一比四档细的一档。
+	// 卡面配了周期就不套这条，以数据为准。
+	if legacy && pureFastDD {
+		return []int{2}
 	}
-	return interval
+	return slowest
 }
 
-// movementCooldownAfterMove 把"每 N 回合移动一次"换算成移动后要挂的冷却值。
-// 冷却在回合结算开始时递减，所以 N 回合周期要挂 N-1：普通舰队挂 2，
-// 第 1 回合动完，第 2、3 回合递减，第 4 回合（即第 3 个回合后）重新可动。
-func movementCooldownAfterMove(interval int) int {
-	if interval <= 1 {
+func cycleAverage(cycle []int) float64 {
+	if len(cycle) == 0 {
+		return 24
+	}
+	sum := 0
+	for _, turn := range cycle {
+		sum += turn
+	}
+	return float64(sum) / float64(len(cycle))
+}
+
+// CycleKnots 把节奏折算成平均航速（节）。
+func CycleKnots(cycle []int) int {
+	avg := cycleAverage(cycle)
+	if avg <= 0 {
 		return 0
 	}
-	return interval - 1
+	return int(math.Round(75 / avg))
+}
+
+// FleetMoveInterval 是节奏折成的平均回合数，面板上显示"几回合一格"用它。
+func FleetMoveInterval(state State, unit *Unit) int {
+	return int(math.Round(cycleAverage(FleetMoveCycle(state, unit))))
+}
+
+func FleetCycleKnots(state State, unit *Unit) int {
+	return CycleKnots(FleetMoveCycle(state, unit))
+}
+
+// ApplyMoveCooldown 在舰队走完一格之后调一次：按节奏取这一格要等几回合，并把周期指针推进。
+// 冷却在回合结算开始时递减，所以 N 回合走一格要挂 N-1。全队共用同一个指针，
+// 所以按领队调一次就够，队内所有船一起写。
+func ApplyMoveCooldown(state *State, leader *Unit) int {
+	cycle := FleetMoveCycle(*state, leader)
+	pos := leader.CyclePos
+	if pos < 0 || pos >= len(cycle) {
+		pos = 0
+	}
+	cooldown := cycle[pos] - 1
+	if cooldown < 0 {
+		cooldown = 0
+	}
+	next := (pos + 1) % len(cycle)
+	fleetID := FleetKey(leader)
+	for _, unit := range state.Units {
+		if FleetKey(unit) != fleetID {
+			continue
+		}
+		if cooldown > unit.MoveCooldown {
+			unit.MoveCooldown = cooldown
+		}
+		unit.CyclePos = next
+	}
+	return cooldown
 }
 
 func FleetMoveCooldown(state State, fleetID string) int {

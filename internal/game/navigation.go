@@ -287,6 +287,7 @@ func resolveAutoNavigation(state *State) []EngineEvent {
 			}
 			continue
 		}
+		knots := FleetCycleKnots(*state, leader)
 		for _, unit := range state.Units {
 			if FleetKey(unit) != fleetID {
 				continue
@@ -295,9 +296,9 @@ func resolveAutoNavigation(state *State) []EngineEvent {
 			unit.Coord = next
 			unit.Heading = headingBetween(from, next)
 			unit.Moved = true
-			if interval := FleetMoveInterval(*state, unit); movementCooldownAfterMove(interval) > unit.MoveCooldown {
-				unit.MoveCooldown = movementCooldownAfterMove(interval)
-			}
+		}
+		if fresh := state.Units[leader.ID]; fresh != nil {
+			ApplyMoveCooldown(state, fresh)
 		}
 		clearFleetStay(state, fleetID)
 		arrived := next == leader.Destination
@@ -309,7 +310,7 @@ func resolveAutoNavigation(state *State) []EngineEvent {
 			}
 			events = append(events, EngineEvent{Type: "nav_arrived", Audience: leader.Faction, Text: fmt.Sprintf("%s自动航行抵达%s，指令结束", leader.Name, next)})
 		} else {
-			events = append(events, EngineEvent{Type: "nav_moved", Audience: leader.Faction, Text: fmt.Sprintf("%s自动航行至%s（目的地%s）", leader.Name, next, leader.Destination)})
+			events = append(events, EngineEvent{Type: "nav_moved", Audience: leader.Faction, Text: fmt.Sprintf("%s自动航行至%s（约%d节，目的地%s）", leader.Name, next, knots, leader.Destination)})
 		}
 	}
 	return events

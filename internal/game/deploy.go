@@ -151,6 +151,7 @@ func ApplyDeployMove(state *State, order Order) []EngineEvent {
 		unit.Coord = target
 		unit.Moved = false
 		unit.MoveCooldown = 0
+		unit.CyclePos = 0
 		moved++
 	}
 	if moved == 0 {
@@ -173,6 +174,7 @@ func StartBattle(state *State) []EngineEvent {
 	for _, unit := range state.Units {
 		unit.Moved = false
 		unit.MoveCooldown = 0
+		unit.CyclePos = 0
 	}
 	state.FleetStays = map[string]string{}
 	state.FleetSessions = map[string]int{}
