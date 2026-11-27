@@ -52,6 +52,43 @@ func TestMarianasShipSilhouettesMatchClass(t *testing.T) {
 			t.Fatalf("日本舰队里没找到 %s", name)
 		}
 	}
+	// 美军航母按舰级钉死：埃塞克斯级七艘同一张，企业是约克城级，独立级六艘同一张。
+	// 按 ID 查而不是按舰名——具名舰库里还有 1942 年的 约克城（CV-5，约克城级），
+	// 和马利亚纳的 约克城（CV-10，埃塞克斯级）重名；兰利也是 CVL-27，不是那艘运煤船改的 CV-1。
+	usCarriers := map[string]string{
+		"us-cv-01":  lib("USA_CV5_ship.png"),
+		"us-cv-02":  lib("USA_CV5_ship.png"),
+		"us-cv-03":  lib("USA_CV5_ship.png"),
+		"us-cv-04":  lib("USA_CV5_ship.png"),
+		"us-cv-05":  lib("USA_CV5_ship.png"),
+		"us-cv-06":  lib("USA_CV5_ship.png"),
+		"us-cv-08":  lib("USA_CV5_ship.png"),
+		"us-cv-07":  lib("USA_CV3_ship.png"),
+		"us-cvl-01": lib("USA_CVL1_ship.png"),
+		"us-cvl-02": lib("USA_CVL1_ship.png"),
+		"us-cvl-03": lib("USA_CVL1_ship.png"),
+		"us-cvl-04": lib("USA_CVL1_ship.png"),
+		"us-cvl-05": lib("USA_CVL1_ship.png"),
+		"us-cvl-06": lib("USA_CVL1_ship.png"),
+		"us-cve-01": lib("USA_CVE0_ship.png"),
+		"us-cve-02": lib("USA_CVE0_ship.png"),
+	}
+	carriersFound := map[string]bool{}
+	for _, unit := range catalog.Units {
+		expect, ok := usCarriers[unit.ID]
+		if !ok {
+			continue
+		}
+		carriersFound[unit.ID] = true
+		if unit.Picture != expect {
+			t.Fatalf("%s（%s）的剪影是 %q，期望 %q", unit.Name, unit.ID, unit.Picture, expect)
+		}
+	}
+	for id := range usCarriers {
+		if !carriersFound[id] {
+			t.Fatalf("美军舰队里没找到 %s", id)
+		}
+	}
 	// 通用驱逐舰保留一张剪影，不按舰级拆图（只查本剧本编成里的 jp-dd-*，
 	// 具名舰库里的白露级等仍然用白露级剪影）。
 	dd := 0

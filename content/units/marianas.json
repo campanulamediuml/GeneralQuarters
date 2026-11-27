@@ -173,7 +173,7 @@
    "type": "CV",
    "name": "富兰克林",
    "strength": 4,
-   "picture": "misc/image/ship/library/USA_CVL1_ship.png",
+   "picture": "misc/image/ship/library/USA_CV5_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3009,7 +3009,7 @@
    "id": "us-cve-13",
    "faction": "A",
    "type": "CVE",
-   "name": "陈纳德湾",
+   "name": "加里宁湾",
    "strength": 1,
    "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
@@ -9149,7 +9149,7 @@
    "type": "CVL",
    "name": "兰利",
    "strength": 2,
-   "picture": "misc/image/ship/library/USA_CVL0_Langley.png",
+   "picture": "misc/image/ship/library/USA_CVL1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
