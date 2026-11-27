@@ -45,11 +45,7 @@ function number(value: number) {
 <template>
   <article class="ship-card" :data-definition-id="unit.definition_id">
     <header class="ship-card-head">
-      <div>
-        <span class="section-kicker">SHIP CHARACTER CARD</span>
-        <h3>{{ unit.name }}</h3>
-        <span v-if="unit.card?.class" class="ship-class-name">{{ unit.card.class }}</span>
-      </div>
+      <div><span class="section-kicker">SHIP CHARACTER CARD</span><h3>{{ unit.name }}</h3></div>
       <span class="ship-class">{{ unit.type }}</span>
     </header>
 
@@ -91,8 +87,3 @@ function number(value: number) {
     <footer><span>沙盒通用舰型 · 测试参数</span><code>{{ unit.definition_id }}</code></footer>
   </article>
 </template>
-
-<style scoped>
-/* 舰级写在舰名下面：同名舰分属不同舰级时（1942/1944 两条阿斯托里亚）靠它区分。 */
-.ship-class-name{display:block;margin-top:2px;font-size:11px;letter-spacing:.4px;color:rgba(220,231,227,.6)}
-</style>
