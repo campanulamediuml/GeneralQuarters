@@ -47,7 +47,7 @@ func TestMarianasSpeedClasses(t *testing.T) {
 		"巴尔的摩": "normal",
 		// 25 节以下：美军老式战列舰、护航航母、运输船
 		"田纳西":   "slow",
-		"卡萨布兰卡": "slow",
+		"纳托马湾": "slow",
 	}
 
 	seen := map[string]bool{}

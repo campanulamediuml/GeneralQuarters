@@ -701,7 +701,7 @@
   {
    "id": "us-cve-01",
    "faction": "A",
-   "name": "甘比尔湾",
+   "name": "马尼拉湾",
    "fleet_id": "CVE1",
    "fleet_name": "护航航母群1",
    "ship": "us-cve-01"
@@ -709,7 +709,7 @@
   {
    "id": "us-cve-02",
    "faction": "A",
-   "name": "卡萨布兰卡",
+   "name": "纳托马湾",
    "fleet_id": "CVE1",
    "fleet_name": "护航航母群1",
    "ship": "us-cve-02"
@@ -717,7 +717,7 @@
   {
    "id": "us-cve-03",
    "faction": "A",
-   "name": "方肖湾",
+   "name": "珊瑚海",
    "fleet_id": "CVE1",
    "fleet_name": "护航航母群1",
    "ship": "us-cve-03"
@@ -725,7 +725,7 @@
   {
    "id": "us-cve-04",
    "faction": "A",
-   "name": "白平原",
+   "name": "甘比尔湾",
    "fleet_id": "CVE1",
    "fleet_name": "护航航母群1",
    "ship": "us-cve-04"
@@ -733,7 +733,7 @@
   {
    "id": "us-cve-05",
    "faction": "A",
-   "name": "基特昆湾",
+   "name": "切南戈",
    "fleet_id": "CVE2",
    "fleet_name": "护航航母群2",
    "ship": "us-cve-05"
@@ -741,7 +741,7 @@
   {
    "id": "us-cve-06",
    "faction": "A",
-   "name": "图拉吉",
+   "name": "白平原",
    "fleet_id": "CVE2",
    "fleet_name": "护航航母群2",
    "ship": "us-cve-06"
@@ -749,7 +749,7 @@
   {
    "id": "us-cve-07",
    "faction": "A",
-   "name": "科雷吉多尔",
+   "name": "布雷顿",
    "fleet_id": "CVE2",
    "fleet_name": "护航航母群2",
    "ship": "us-cve-07"
@@ -757,7 +757,7 @@
   {
    "id": "us-cve-08",
    "faction": "A",
-   "name": "曼纳湾",
+   "name": "科波西",
    "fleet_id": "CVE2",
    "fleet_name": "护航航母群2",
    "ship": "us-cve-08"
@@ -765,7 +765,7 @@
   {
    "id": "us-cve-09",
    "faction": "A",
-   "name": "萨金特湾",
+   "name": "苏瓦尼",
    "fleet_id": "CVE3",
    "fleet_name": "护航航母群3",
    "ship": "us-cve-09"
@@ -773,7 +773,7 @@
   {
    "id": "us-cve-10",
    "faction": "A",
-   "name": "卡德",
+   "name": "圣洛",
    "fleet_id": "CVE3",
    "fleet_name": "护航航母群3",
    "ship": "us-cve-10"
@@ -781,7 +781,7 @@
   {
    "id": "us-cve-11",
    "faction": "A",
-   "name": "苏万尼",
+   "name": "基特昆湾",
    "fleet_id": "CVE3",
    "fleet_name": "护航航母群3",
    "ship": "us-cve-11"
@@ -789,7 +789,7 @@
   {
    "id": "us-cve-12",
    "faction": "A",
-   "name": "桑加蒙",
+   "name": "科雷希多",
    "fleet_id": "CVE3",
    "fleet_name": "护航航母群3",
    "ship": "us-cve-12"
@@ -797,7 +797,7 @@
   {
    "id": "us-cve-13",
    "faction": "A",
-   "name": "加里宁湾",
+   "name": "桑加蒙",
    "fleet_id": "CVE4",
    "fleet_name": "护航航母群4",
    "ship": "us-cve-13"
@@ -805,7 +805,7 @@
   {
    "id": "us-cve-14",
    "faction": "A",
-   "name": "香格里拉",
+   "name": "方肖湾",
    "fleet_id": "CVE4",
    "fleet_name": "护航航母群4",
    "ship": "us-cve-14"
@@ -813,7 +813,7 @@
   {
    "id": "us-cve-15",
    "faction": "A",
-   "name": "温丹湾",
+   "name": "加里宁湾",
    "fleet_id": "CVE4",
    "fleet_name": "护航航母群4",
    "ship": "us-cve-15"
@@ -821,7 +821,7 @@
   {
    "id": "us-cve-16",
    "faction": "A",
-   "name": "斯蒂默湾",
+   "name": "瓜达尔卡纳尔",
    "fleet_id": "CVE4",
    "fleet_name": "护航航母群4",
    "ship": "us-cve-16"
