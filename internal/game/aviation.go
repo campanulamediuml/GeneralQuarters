@@ -2619,9 +2619,8 @@ func VisibleAviation(state State, faction string) AviationView {
 			if canSearch(projection) {
 				projection.ReconRadiusLimit = ReconRadiusLimit(projection)
 			}
-			// 挂载表要跟着补给点走：把这个补给点给不出的武器类别一起下发，
-			// 前端据此把鱼雷选项从下拉里摘掉，而不是等玩家点了再被服务端拒绝。
-			projection.SupplyBlocked = unit.Card.Supply.Blocked
+			// 挂载选项和当前挂载的中文名都由服务端算好下发（机型能力 ∩ 这条船的补给），前端只渲染。
+			projection = withLoadoutView(projection, unit.Card.Supply)
 			carrier.Aircraft = append(carrier.Aircraft, withLoadoutAttack(projection))
 		}
 		sort.Slice(carrier.Aircraft, func(i, j int) bool { return carrier.Aircraft[i].ID < carrier.Aircraft[j].ID })
@@ -2673,9 +2672,8 @@ func VisibleAviation(state State, faction string) AviationView {
 		carrierSet := map[string]bool{}
 		for _, aircraft := range aircraftList {
 			task.AircraftIDs = append(task.AircraftIDs, aircraft.ID)
-			projection := withLoadoutAttack(*aircraft)
-			projection.SupplyBlocked = SupplyOfAircraft(state, aircraft).Blocked
-			task.Aircraft = append(task.Aircraft, projection)
+			projection := withLoadoutView(*aircraft, SupplyOfAircraft(state, aircraft))
+			task.Aircraft = append(task.Aircraft, withLoadoutAttack(projection))
 			if !carrierSet[aircraft.CarrierID] {
 				carrierSet[aircraft.CarrierID] = true
 				task.CarrierIDs = append(task.CarrierIDs, aircraft.CarrierID)

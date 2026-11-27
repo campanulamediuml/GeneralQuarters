@@ -40,74 +40,25 @@ function radioActions(task: AirTask) {
   return actions
 }
 
-// 挂载选项：由机种决定（攻击机无对空、战斗机无炸弹鱼雷、水上飞机只有侦察与转场）。
+// 挂载选项和名字都由服务端下发（机型能力 ∩ 当前补给点）：前端只渲染。
 // 空串是"无挂载"：机库里的默认状态，选一套挂载才是整备的开始。
-const loadoutLabels: Record<string, string> = {
-  '': '无挂载',
-  'recon+tank': '侦察（副油箱）',
-  recon: '侦察',
-  'air+tank': '对空（副油箱）',
-  air: '对空',
-  'torpedo+tank': '鱼雷（副油箱）',
-  torpedo: '鱼雷',
-  'bomb+tank': '炸弹（副油箱）',
-  bomb: '重型炸弹',
-  'transfer+tank': '转场（副油箱）',
-}
-
-// 挂载选项：机种决定基础表，飞机自己的对地/对舰值决定能不能带弹药。
-// 对地 0、对舰 0 的纯制空机不会出现炸弹/鱼雷选项。
 function loadoutOptionsFor(aircraft: AirUnit) {
-  if (aircraft.seaplane) return ['recon+tank', 'transfer+tank']
-  const canBomb = (aircraft.anti_ground || 0) > 0 || (aircraft.anti_ship || 0) > 0
-  // 鱼雷挂架是机型能力，不是"有对舰值就能挂"：B-26 能挂，B-25/B-17 不能。
-  const canTorpedo = (aircraft.anti_ship || 0) > 0 && (aircraft.kind === 'torpedo_bomber' || aircraft.torpedo_capable === true)
-  let options: string[]
-  switch (aircraft.kind) {
-    case 'fighter':
-      // 有对地/对舰值的战斗轰炸型可以挂炸弹；默认仍是护航对空。
-      options = ['air+tank', 'air', 'bomb+tank', 'bomb', 'transfer+tank']
-      break
-    case 'dive_bomber':
-      // 俯冲轰炸机没有鱼雷挂架：D3A1/SBD 都只能挂炸弹。
-      options = ['recon+tank', 'bomb+tank', 'bomb', 'transfer+tank']
-      break
-    case 'torpedo_bomber':
-      // 攻击机也能挂侦察载荷：没有专用侦察机时由它们执行搜索。
-      options = ['recon+tank', 'torpedo+tank', 'bomb+tank', 'bomb', 'torpedo', 'transfer+tank']
-      break
-    case 'level_bomber':
-    case 'medium_bomber':
-    case 'heavy_bomber':
-    case 'strategic_bomber':
-      // 水平轰炸机默认只有炸弹；只有带鱼雷挂架的 B-26 多出鱼雷选项。
-      // B-25 / B-17 没有鱼雷挂架，不能因为 anti_ship > 0 就显示鱼雷。
-      options = aircraft.torpedo_capable
-        ? ['recon+tank', 'torpedo+tank', 'bomb+tank', 'bomb', 'torpedo', 'transfer+tank']
-        : ['recon+tank', 'bomb+tank', 'bomb', 'transfer+tank']
-      break
-    case 'recon':
-      options = ['recon+tank', 'transfer+tank']
-      break
-    default:
-      options = ['transfer+tank']
-  }
-  // 补给点给不出的弹药不进下拉：护航航母没有鱼雷，停在上面的 TBF 只能挂炸弹。
-  // 转场到能保障的母舰后服务端会重新下发 supply_blocked，鱼雷选项自己回来。
-  const blocked = new Set(aircraft.supply_blocked || [])
-  return options.filter((option) => {
-    const weapon = option.split('+')[0]
-    if (blocked.has(weapon)) return false
-    if (weapon === 'bomb') return canBomb
-    if (weapon === 'torpedo') return canTorpedo
-    return true
-  })
+  return (aircraft.loadout_options || []).map((option) => option.id)
+}
+
+// 选项名字用服务端给的那份；当前挂载可能已经不在选项里（换了母舰），也照样有服务端名字。
+function loadoutOptionLabel(aircraft: AirUnit, option: string) {
+  // 空串是"无挂载"：那是前端的一个动作（卸弹回机库），不是服务端挂载表里的一项。
+  if (!option) return '无挂载'
+  const found = (aircraft.loadout_options || []).find((item) => item.id === option)
+  return found?.label || option
 }
 
 
-function loadoutName(loadout?: string, tankDropped?: boolean) {
-  const name = loadout ? loadoutLabels[loadout] || '' : ''
-  const parts = [name, tankDropped && loadout !== 'bomb' ? '已投副油箱' : ''].filter(Boolean)
+// 当前挂载的中文名也是服务端给的：前端不再维护 id→名字的映射表。
+function loadoutName(aircraft: AirUnit) {
+  const name = aircraft.loadout ? aircraft.loadout_label || '' : ''
+  const parts = [name, aircraft.tank_dropped && aircraft.loadout !== 'bomb' ? '已投副油箱' : ''].filter(Boolean)
   return parts.length ? ` · ${parts.join(' · ')}` : ''
 }
 
@@ -597,7 +548,7 @@ function counterHint(aircraft: AirUnit) {
     if (!aircraft.loadout) return '空载 · 选挂载整备 / 拖入任务直接出击'
     return '甲板待发 · 可拖入任务立即放飞'
   }
-  const loadout = loadoutName(aircraft.loadout, aircraft.tank_dropped)
+  const loadout = loadoutName(aircraft)
   // 在空中的算子要能分出"出击中"和"返航中"：单看 status 分不出来，
   // 往目标飞和往回飞都是 attack，只有 returning 这个标记能回答"它现在是在去还是回"。
   const airborne = ['cap', 'recon', 'attack', 'attack_holding', 'cover', 'transfer'].includes(aircraft.status)
@@ -694,7 +645,7 @@ function operationName(carrier: CarrierAirStatus) {
                   @click.stop
                   @change="emit('command', 'SET_LOADOUT' as AirCommandType, stack.ids, { loadout: ($event.target as HTMLSelectElement).value })"
                 >
-                  <option v-for="option in loadoutOptionsFor(stack.aircraft)" :key="option" :value="option">{{ loadoutLabels[option] || option }}</option>
+                  <option v-for="option in loadoutOptionsFor(stack.aircraft)" :key="option" :value="option">{{ loadoutOptionLabel(stack.aircraft, option) }}</option>
                 </select>
                 <button v-if="stack.aircraft.status === 'cap'" :disabled="busy" @click.stop="recover(stack.ids)">{{ airfieldMode ? '着陆并回收' : '着舰并排队下降' }}</button>
               </div>
@@ -769,7 +720,7 @@ function operationName(carrier: CarrierAirStatus) {
               @click.stop
               @change="setLoadout(stack.ids, ($event.target as HTMLSelectElement).value)"
             >
-              <option v-for="option in hangarLoadoutOptions(stack.aircraft)" :key="option" :value="option">{{ loadoutLabels[option] || option }}</option>
+              <option v-for="option in hangarLoadoutOptions(stack.aircraft)" :key="option" :value="option">{{ loadoutOptionLabel(stack.aircraft, option) }}</option>
             </select>
           </div>
           <button v-if="selectedIDs.length" class="return-hangar-button" :disabled="busy" @click="assignTarget('hangar')">{{ airfieldMode ? '取消任务并回机库' : '取消任务并排队下降' }}</button>
@@ -838,7 +789,7 @@ function operationName(carrier: CarrierAirStatus) {
               @click.stop
               @change="setLoadout(stack.ids, ($event.target as HTMLSelectElement).value)"
             >
-              <option v-for="option in hangarLoadoutOptions(stack.aircraft)" :key="option" :value="option">{{ loadoutLabels[option] || option }}</option>
+              <option v-for="option in hangarLoadoutOptions(stack.aircraft)" :key="option" :value="option">{{ loadoutOptionLabel(stack.aircraft, option) }}</option>
             </select>
           </div>
           <button v-if="selectedHangarIDs.length" class="lift-deck-button" :disabled="busy || locked" :title="airfieldMode ? '把选中的机库算子滑行到跑道；岸基没有升降机，滑行不占跑道起降名额' : '把选中的机库算子提升到甲板；整备完的可以直接上，空载的上去再整备'" @click.stop="liftToDeck">{{ airfieldMode ? '▲ 滑行到跑道' : '▲ 提升到甲板' }}</button>

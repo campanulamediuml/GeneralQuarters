@@ -2537,9 +2537,9 @@ func GroundAviationView(state State, faction string) AviationView {
 		carrier := CarrierAirStatus{UnitID: status.UnitID, Name: status.Name, Type: string(status.Type), DeckLength: status.Runways}
 		carrier.Aircraft = []AirUnit{}
 		for _, aircraft := range status.Aircraft {
-			unit := withLoadoutAttack(groundAirUnit(state, &aircraft))
-			unit.SupplyBlocked = SupplyOfAirfield(state, aircraft.AirfieldID).Blocked
-			carrier.Aircraft = append(carrier.Aircraft, unit)
+			// 机场也能配"不给某种挂载"：选项和挂载名照样由服务端算好，前端只渲染。
+			unit := withLoadoutView(groundAirUnit(state, &aircraft), SupplyOfAirfield(state, aircraft.AirfieldID))
+			carrier.Aircraft = append(carrier.Aircraft, withLoadoutAttack(unit))
 		}
 		view.Carriers = append(view.Carriers, carrier)
 	}
@@ -2563,9 +2563,8 @@ func GroundAviationView(state State, faction string) AviationView {
 		task := AirTask{ID: taskID, Kind: leader.TaskKind, Name: leader.Model, Priority: leader.Priority, Lane: leader.TaskLane, AircraftIDs: []string{}, Aircraft: []AirUnit{}, CarrierIDs: []string{leader.AirfieldID}, CarrierID: leader.AirfieldID}
 		for _, member := range members {
 			// 任务卡上的对地/对舰要跟着挂载走：切重型炸弹就得当场 +2。
-			unit := withLoadoutAttack(groundAirUnit(state, member))
-			unit.SupplyBlocked = SupplyOfAirfield(state, member.AirfieldID).Blocked
-			task.Aircraft = append(task.Aircraft, unit)
+			unit := withLoadoutView(groundAirUnit(state, member), SupplyOfAirfield(state, member.AirfieldID))
+			task.Aircraft = append(task.Aircraft, withLoadoutAttack(unit))
 			task.AircraftIDs = append(task.AircraftIDs, member.ID)
 			if airfieldAirborne(member) {
 				task.AirborneCount++
@@ -2735,7 +2734,9 @@ func groundAirUnit(state State, aircraft *AirfieldAirUnit) AirUnit {
 		// 陆基机型标记必须带出去：前端靠它区分"航母舰载机"和"机场起降的陆基机"，
 		// 漏掉这面旗子，陆攻的航程块会被画成舰载机的蓝底样式，看着像从航母上起飞的。
 		AirfieldOnly: aircraft.AirfieldOnly, TorpedoCapable: aircraft.TorpedoCapable, HighAltitudeBomber: aircraft.HighAltitudeBomber,
-		TaskID: aircraft.TaskID, TaskKind: aircraft.TaskKind, Priority: aircraft.Priority,
+		// 水机标记也要投影：挂载表按它给"侦察/转场"两项，丢了这一位水机会拿到轰炸机的选项。
+		Seaplane: aircraft.Seaplane,
+		TaskID:   aircraft.TaskID, TaskKind: aircraft.TaskKind, Priority: aircraft.Priority,
 		Coord: aircraft.Coord, OriginCoord: aircraft.OriginCoord, TargetCoord: aircraft.TargetCoord, Heading: aircraft.Heading,
 		SectorWidth: aircraft.SectorWidth, ReconRadius: aircraft.ReconRadius, ReconDistance: aircraft.ReconDistance,
 		ReconRadiusLimit: aircraft.ReconRadiusLimit, Returning: aircraft.Returning, TrackingFleetID: aircraft.TrackingFleetID,

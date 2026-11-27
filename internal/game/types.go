@@ -684,14 +684,16 @@ type AirUnit struct {
 	// TorpedoCapable / HighAltitudeBomber 从机种定义带过来，决定挂载表与攻击结算。
 	TorpedoCapable     bool `json:"torpedo_capable"`
 	HighAltitudeBomber bool `json:"high_altitude_bomber"`
-	// SupplyBlocked 是给界面用的投影：当前补给点（母舰/机场）不提供哪些武器类别。
-	// 只由视图层填，引擎判定走 SupplyOfAircraft / SupplyOfGroundAircraft。
-	SupplyBlocked []Weapon `json:"supply_blocked,omitempty"`
-	Launched      bool     `json:"launched"`
-	ElevatorID    string   `json:"elevator_id"`
-	Priority      int      `json:"priority"`
-	TaskID        string   `json:"task_id"`
-	TaskKind      string   `json:"task_kind"`
+	// LoadoutOptions 是给界面用的挂载选项：服务端按"机型能力 ∩ 当前补给点"算好下发，
+	// 前端只渲染，不再自己复制机种规则。只由视图层填，引擎判定走 SupplyOfAircraft。
+	LoadoutOptions []LoadoutOption `json:"loadout_options,omitempty"`
+	// LoadoutLabel 是当前挂载的中文名：同样由服务端给，前端不再维护 id→名字的映射表。
+	LoadoutLabel string `json:"loadout_label,omitempty"`
+	Launched     bool   `json:"launched"`
+	ElevatorID   string `json:"elevator_id"`
+	Priority     int    `json:"priority"`
+	TaskID       string `json:"task_id"`
+	TaskKind     string `json:"task_kind"`
 	// TaskLane 是编队在航空面板里占的栏位（1 起；0 = 老存档没记过）。
 	// 栏位只表示"正在组队的位置"：编队全部升空之后栏位就空出来，
 	// 下一支新编队重新拿到 I，编号不会随着列表里挂着的已出发编队往后漂。

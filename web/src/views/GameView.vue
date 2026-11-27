@@ -235,6 +235,8 @@ interface AirTaskModelRow {
   range: number
   max: number
   loadout: string
+  /** 挂载中文名由服务端下发：前端只渲染，不再维护 id→名字的映射。 */
+  loadoutLabel: string
 }
 const mapAirModelRows = computed<AirTaskModelRow[]>(() => {
   const task = mapAirTask.value
@@ -257,6 +259,7 @@ const mapAirModelRows = computed<AirTaskModelRow[]>(() => {
       range,
       max: aircraft.max_range,
       loadout: aircraft.loadout || '',
+      loadoutLabel: aircraft.loadout_label || '',
     })
   }
   // 同型排在一起，型内按剩余航程从多到少：一眼看出哪几架快没油了。
@@ -1222,12 +1225,12 @@ onUnmounted(() => {
                   <!-- 编队里的飞机按"机型 + 状态 + 航程"铺开成卡：剩多少油、在去还是在回，
                        每张卡自己说话。合计数字（编队最小航程）会把快没油的几架藏起来。 -->
                   <div class="air-task-model-grid">
-                    <div v-for="row in mapAirModelRows" :key="row.key" class="air-task-model" :class="{ returning: row.aircraft.returning }" :title="`${row.aircraft.model} ×${row.count}${row.loadout ? ' · 挂载 ' + row.loadout : ''}`">
+                    <div v-for="row in mapAirModelRows" :key="row.key" class="air-task-model" :class="{ returning: row.aircraft.returning }" :title="`${row.aircraft.model} ×${row.count}${row.loadoutLabel ? ' · 挂载 ' + row.loadoutLabel : ''}`">
                       <AircraftCounter :aircraft="row.aircraft" :stack-count="row.count" :player-faction="state.you.faction" :cycle-clickable="false" />
                       <div class="air-task-model-meta">
                         <b>{{ row.code }} ×{{ row.count }}</b>
                         <span>{{ row.status }} · 航程 {{ row.range }}/{{ row.max }}</span>
-                        <em v-if="row.loadout">{{ row.loadout }}</em>
+                        <em v-if="row.loadoutLabel">{{ row.loadoutLabel }}</em>
                       </div>
                     </div>
                   </div>

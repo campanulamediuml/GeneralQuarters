@@ -138,8 +138,10 @@ export interface AirUnit {
   airfield_only?: boolean
   /** 有鱼雷挂架；挂鱼雷出击时按鱼雷机结算（B-26）。 */
   torpedo_capable?: boolean
-  /** 当前补给点（母舰/机场）不提供的武器类别：这些挂载不出现在下拉里。 */
-  supply_blocked?: string[]
+  /** 服务端算好的挂载选项：机型能力 ∩ 当前补给点，前端只渲染。 */
+  loadout_options?: { id: string; label: string }[]
+  /** 当前挂载的中文名（服务端给，前端不维护映射表）。 */
+  loadout_label?: string
   /** 挂炸弹对舰时按高空轰炸结算：免疫轻防空，但命中率减半。 */
   high_altitude_bomber?: boolean
   launched: boolean

@@ -690,11 +690,33 @@ func orderFactionFromIDs(state State, order Order) string {
 	return ""
 }
 
-// LoadoutOption 是前端展示用的一个挂载选项。
-func LoadoutOptionList(kind string, seaplane bool, antiGround, antiShip int) []map[string]string {
-	result := []map[string]string{}
-	for _, loadout := range LoadoutOptions(kind, seaplane, antiGround, antiShip) {
-		result = append(result, map[string]string{"id": string(loadout), "label": loadout.Label()})
+// LoadoutOption 是给界面渲染的一个挂载选项（id + 中文名）。
+//
+// 挂载能不能选只在服务端算一次（机型能力 ∩ 补给点），前端拿这个列表直接渲染；
+// 以前前端自己复制了一份"哪个机种能挂什么"的规则，加一条限制就得两边同步改。
+type LoadoutOption struct {
+	ID    Loadout `json:"id"`
+	Label string  `json:"label"`
+}
+
+// withLoadoutView 给视图补齐挂载相关字段：可选清单、以及当前挂载的中文名。
+// 挂载表、名字都在服务端算，前端只渲染——加一种弹药或一条补给限制时只用改这里。
+// 必须在 withLoadoutAttack 之前调用：挂载加成会改对舰/对地值，选项要按机种原始值算。
+func withLoadoutView(aircraft AirUnit, supply Supply) AirUnit {
+	aircraft.LoadoutOptions = LoadoutOptionsView(aircraft.Kind, aircraft.Seaplane, aircraft.AntiGround, aircraft.AntiShip, aircraft.TorpedoCapable, supply)
+	if aircraft.Loadout != LoadoutNone {
+		aircraft.LoadoutLabel = aircraft.Loadout.Label()
+	}
+	return aircraft
+}
+
+// LoadoutOptionsView 返回下发给界面的挂载选项。
+// 和 ValidateLoadoutWithSupply 走同一个 LoadoutOptionsWithSupply，界面与校验不会分叉。
+func LoadoutOptionsView(kind string, seaplane bool, antiGround, antiShip int, torpedoCapable bool, supply Supply) []LoadoutOption {
+	options := LoadoutOptionsWithSupply(kind, seaplane, antiGround, antiShip, torpedoCapable, supply)
+	result := make([]LoadoutOption, 0, len(options))
+	for _, loadout := range options {
+		result = append(result, LoadoutOption{ID: loadout, Label: loadout.Label()})
 	}
 	return result
 }

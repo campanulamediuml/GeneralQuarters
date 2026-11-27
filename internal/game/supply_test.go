@@ -83,6 +83,36 @@ func TestAirfieldSupplyBlocksTorpedo(t *testing.T) {
 	}
 }
 
+
+// 视图要把"能挂什么 + 当前挂的是什么"都算好下发：前端只渲染，
+// 不再维护机种规则和 id→中文名映射表。
+func TestWithLoadoutViewSendsOptionsAndLabel(t *testing.T) {
+	aircraft := AirUnit{Kind: "torpedo_bomber", AntiShip: 5, AntiGround: 2, Loadout: LoadoutBombTank}
+	view := withLoadoutView(aircraft, Supply{Blocked: []Weapon{WeaponTorpedo}})
+	if view.LoadoutLabel != "炸弹（副油箱）" {
+		t.Fatalf("当前挂载中文名应由服务端给，实际 %q", view.LoadoutLabel)
+	}
+	hasOption := func(id Loadout) bool {
+		for _, option := range view.LoadoutOptions {
+			if option.ID == id {
+				return true
+			}
+		}
+		return false
+	}
+	if hasOption(LoadoutTorpedoTank) {
+		t.Fatal("护航航母上的选项里不该有鱼雷")
+	}
+	if !hasOption(LoadoutBombTank) {
+		t.Fatal("炸弹选项应当还在")
+	}
+	for _, option := range view.LoadoutOptions {
+		if option.Label == "" {
+			t.Fatalf("选项 %s 没有中文名：前端会直接显示 id", option.ID)
+		}
+	}
+}
+
 // 马里亚纳的 16 艘护航航母必须在数据里带"不提供鱼雷"，
 // 否则引擎那条规则永远不会被触发，机库里照样能选鱼雷。
 func TestMarianasEscortCarriersBlockTorpedoes(t *testing.T) {
