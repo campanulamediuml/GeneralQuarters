@@ -145,3 +145,37 @@ func TestFleetHeadingLockedAfterMove(t *testing.T) {
 		t.Fatalf("未移动的舰队应当可以调整朝向：%v", err)
 	}
 }
+
+// 移动即朝向：本回合移动过的舰队，朝向必须等于实际移动方向（手动移动/自动航行/撤离
+// 三条路都写 headingBetween），这样玩家没法"往 NE 走、朝向却挂 SW"两头占便宜。
+func TestFleetHeadingFollowsMoveDirection(t *testing.T) {
+	state := sandboxState(t)
+	unit := state.Units["a2-cv-01"]
+	moves := LegalMoves(state, unit)
+	if len(moves) == 0 {
+		t.Skip("沙盒单位本回合没有可走格")
+	}
+	from := unit.Coord
+	target := moves[0]
+	events := ResolveOrders(&state, []Order{{Type: "SET_MOVE", UnitID: unit.ID, Coord: target}})
+	if len(events) == 0 {
+		t.Fatal("移动没有产生战报")
+	}
+	for _, member := range state.Units {
+		if FleetKey(member) != FleetKey(unit) {
+			continue
+		}
+		if member.Coord != target {
+			t.Fatalf("%s 没有移动到 %s", member.Name, target)
+		}
+		if want := headingBetween(from, target); member.Heading != want {
+			t.Fatalf("%s 朝 %s，移动方向是 %s，朝向没有跟着移动", member.Name, member.Heading, want)
+		}
+		if !member.Moved {
+			t.Fatalf("%s 移动了但没标记 Moved", member.Name)
+		}
+	}
+	if err := ValidateOrder(state, "A", Order{Type: "SET_HEADING", UnitID: unit.ID, Heading: "NE"}); err == nil {
+		t.Fatal("移动过的舰队还能再单独调朝向")
+	}
+}
