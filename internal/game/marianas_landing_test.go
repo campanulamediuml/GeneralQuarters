@@ -132,8 +132,8 @@ func TestMarianasLandingGroups(t *testing.T) {
 		}
 	}
 
-	// 八座陆上机场各 8 点岸炮（2026-11 从 6 提到 8），水上飞机基地不带岸炮。
-	for _, id := range []string{"af-b-saipan", "af-b-tinian", "af-b-guam", "af-b-rota", "af-b-yap", "af-b-palau", "af-b-truk", "af-b-iwo"} {
+	// 九座陆上机场各 8 点岸炮（2026-11 从 6 提到 8），水上飞机基地不带岸炮。
+	for _, id := range []string{"af-b-saipan", "af-b-tinian", "af-b-guam", "af-b-rota", "af-b-yap", "af-b-palau", "af-b-truk", "af-b-iwo", "af-b-davao"} {
 		if airfield := state.Airfields[id]; airfield == nil || airfield.Coastal != 8 {
 			t.Fatalf("%s 岸炮不是 8：%+v", id, airfield)
 		}
@@ -156,6 +156,20 @@ func TestMarianasLandingGroups(t *testing.T) {
 	}
 	if state.GroundAir["af-b-truk-a6m5-1"] == nil || state.GroundAir["af-b-truk-g4m2-1"] == nil {
 		t.Fatal("特鲁克没有驻机")
+	}
+	// 达沃是日军在菲律宾的航空中心：大型机场，6 零战 52 + 3 银河 + 3 一式陆攻。
+	davao := state.Airfields["af-b-davao"]
+	if davao == nil || davao.Type != AirfieldLarge || davao.Coord != "4815" {
+		t.Fatalf("达沃机场不对：%+v", davao)
+	}
+	counts := map[string]int{}
+	for _, aircraft := range state.GroundAir {
+		if aircraft.AirfieldID == "af-b-davao" {
+			counts[aircraft.DefinitionID]++
+		}
+	}
+	if counts["a6m5"] != 6 || counts["g4m2"] != 3 || counts["p1y"] != 3 {
+		t.Fatalf("达沃驻机 %v，期望 6 零战 52 + 3 银河 + 3 一式陆攻", counts)
 	}
 	// 日军两个部署区：甲/乙/丙三支航母群在地图西北角，丁部队和栗田的第一游击部队在西南、帕劳以北。
 	for fleet, anchor := range map[string]string{"TG1": "1023", "TG2": "1023", "TG3": "1023", "TG4": "4221", "TG5": "4221"} {

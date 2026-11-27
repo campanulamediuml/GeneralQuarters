@@ -126,11 +126,6 @@
    "name": ""
   },
   {
-   "coord": "2207",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "2302",
    "terrain": "island",
    "name": ""
@@ -152,11 +147,6 @@
   },
   {
    "coord": "2306",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2307",
    "terrain": "island",
    "name": ""
   },
@@ -186,11 +176,6 @@
    "name": ""
   },
   {
-   "coord": "2407",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "2502",
    "terrain": "island",
    "name": ""
@@ -216,11 +201,6 @@
    "name": ""
   },
   {
-   "coord": "2507",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "2602",
    "terrain": "island",
    "name": ""
@@ -242,11 +222,6 @@
   },
   {
    "coord": "2606",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2607",
    "terrain": "island",
    "name": ""
   },
@@ -483,7 +458,7 @@
   {
    "coord": "3209",
    "terrain": "island",
-   "name": ""
+   "name": "吕宋岛"
   },
   {
    "coord": "3210",
@@ -518,7 +493,7 @@
   {
    "coord": "3310",
    "terrain": "island",
-   "name": "吕宋岛"
+   "name": ""
   },
   {
    "coord": "3311",
@@ -551,18 +526,28 @@
    "name": ""
   },
   {
-   "coord": "3404",
+   "coord": "3406",
    "terrain": "island",
    "name": ""
   },
   {
-   "coord": "3405",
+   "coord": "3407",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3408",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3410",
    "terrain": "island",
    "name": ""
   },
   {
    "coord": "3411",
-   "terrain": "water",
+   "terrain": "island",
    "name": ""
   },
   {
@@ -581,17 +566,17 @@
    "name": ""
   },
   {
-   "coord": "3505",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "3506",
    "terrain": "island",
    "name": "班乃岛"
   },
   {
    "coord": "3507",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3508",
    "terrain": "island",
    "name": ""
   },
@@ -611,17 +596,17 @@
    "name": ""
   },
   {
-   "coord": "3605",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "3606",
    "terrain": "island",
    "name": ""
   },
   {
    "coord": "3607",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3608",
    "terrain": "island",
    "name": ""
   },
@@ -646,17 +631,17 @@
    "name": ""
   },
   {
-   "coord": "3706",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "3707",
    "terrain": "island",
    "name": ""
   },
   {
    "coord": "3708",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3709",
    "terrain": "island",
    "name": ""
   },
@@ -676,17 +661,17 @@
    "name": ""
   },
   {
-   "coord": "3806",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "3807",
    "terrain": "island",
    "name": "内格罗斯岛"
   },
   {
    "coord": "3808",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3809",
    "terrain": "island",
    "name": ""
   },
@@ -751,16 +736,6 @@
    "name": ""
   },
   {
-   "coord": "4010",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4011",
-   "terrain": "island",
-   "name": "薄荷岛"
-  },
-  {
    "coord": "4046",
    "terrain": "shoal",
    "name": ""
@@ -768,6 +743,16 @@
   {
    "coord": "4047",
    "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "4110",
+   "terrain": "island",
+   "name": "薄荷岛"
+  },
+  {
+   "coord": "4111",
+   "terrain": "island",
    "name": ""
   },
   {
@@ -891,11 +876,6 @@
    "name": ""
   },
   {
-   "coord": "4316",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "4344",
    "terrain": "shoal",
    "name": ""
@@ -903,6 +883,11 @@
   {
    "coord": "4345",
    "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "4406",
+   "terrain": "island",
    "name": ""
   },
   {
@@ -956,7 +941,7 @@
    "name": ""
   },
   {
-   "coord": "4417",
+   "coord": "4506",
    "terrain": "island",
    "name": ""
   },
@@ -1033,6 +1018,11 @@
   {
    "coord": "4577",
    "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "4606",
+   "terrain": "island",
    "name": ""
   },
   {
@@ -1121,6 +1111,16 @@
    "name": ""
   },
   {
+   "coord": "4706",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4707",
+   "terrain": "island",
+   "name": ""
+  },
+  {
    "coord": "4708",
    "terrain": "island",
    "name": ""
@@ -1166,6 +1166,11 @@
    "name": ""
   },
   {
+   "coord": "4717",
+   "terrain": "island",
+   "name": ""
+  },
+  {
    "coord": "4736",
    "terrain": "island",
    "name": "帕劳群岛"
@@ -1183,6 +1188,21 @@
   {
    "coord": "4777",
    "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "4807",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4808",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4809",
+   "terrain": "island",
    "name": ""
   },
   {
@@ -1206,7 +1226,17 @@
    "name": ""
   },
   {
-   "coord": "4814",
+   "coord": "4815",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4816",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4817",
    "terrain": "island",
    "name": ""
   },
@@ -1241,6 +1271,46 @@
    "name": ""
   },
   {
+   "coord": "4908",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4909",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4910",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4911",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4912",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4913",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4914",
+   "terrain": "water",
+   "name": "达沃湾"
+  },
+  {
+   "coord": "4916",
+   "terrain": "island",
+   "name": ""
+  },
+  {
    "coord": "4936",
    "terrain": "shoal",
    "name": ""
@@ -1258,6 +1328,21 @@
   {
    "coord": "4976",
    "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "5009",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5010",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "5011",
+   "terrain": "island",
    "name": ""
   },
   {
