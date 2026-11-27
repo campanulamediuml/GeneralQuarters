@@ -155,14 +155,17 @@ func TestMarianasLandingGroups(t *testing.T) {
 	if state.GroundAir["af-b-truk-a6m5-1"] == nil || state.GroundAir["af-b-truk-g4m2-1"] == nil {
 		t.Fatal("特鲁克没有驻机")
 	}
-	// 日军两个部署区：机动部队在帕劳以北，栗田的第一游击部队在硫磺岛西南。
-	if zone := deployZoneForFleet(state.DeployZones, "B", "TG1"); zone == nil || zone.Anchor != "3717" {
-		t.Fatalf("TG1 应该出生在帕劳以北：%+v", zone)
+	// 日军两个部署区：机动部队（甲/丙）在地图西北角，丁部队和栗田的第一游击部队在西南、帕劳以北。
+	if zone := deployZoneForFleet(state.DeployZones, "B", "TG1"); zone == nil || zone.Anchor != "1014" {
+		t.Fatalf("TG1 应该出生在西北角 1014：%+v", zone)
 	}
-	if zone := deployZoneForFleet(state.DeployZones, "B", "KURITA"); zone == nil || zone.Anchor != "1226" {
-		t.Fatalf("KURITA 应该出生在硫磺岛西南：%+v", zone)
+	if zone := deployZoneForFleet(state.DeployZones, "B", "TG3"); zone == nil || zone.Anchor != "1014" {
+		t.Fatalf("丙部队应该跟甲部队同区出生：%+v", zone)
 	}
-	if zone := deployZoneForFleet(state.DeployZones, "B", "TG4"); zone == nil || zone.Anchor != "1226" {
+	if zone := deployZoneForFleet(state.DeployZones, "B", "KURITA"); zone == nil || zone.Anchor != "4212" {
+		t.Fatalf("KURITA 应该出生在西南 4212：%+v", zone)
+	}
+	if zone := deployZoneForFleet(state.DeployZones, "B", "TG4"); zone == nil || zone.Anchor != "4212" {
 		t.Fatalf("丁部队应该跟栗田同区出生：%+v", zone)
 	}
 	if zone := deployZoneForFleet(state.DeployZones, "A", "TF58.1"); zone == nil || zone.Anchor != "2365" {
