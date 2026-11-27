@@ -783,6 +783,14 @@ const selectedFleetWind = computed(() => {
   return wind.fleets.find((item) => item.fleet_id === fleetID) || null
 })
 
+// 朝向按钮为什么不能点：锁定 > 本回合已移动（朝向由移动方向决定）> 本回合已调整过。
+function headingButtonTitle(heading: string) {
+  if (locked.value) return '本回合已就绪，操作已锁定'
+  if (selectedFleetWind.value?.moved) return '本回合已经移动，朝向由移动方向决定'
+  if (selectedFleetWind.value?.changed) return '本回合已经调整过朝向'
+  return `转向${heading}`
+}
+
 async function setFleetHeading(heading: ReconHeading) {
   if (!state.value || !selectedUnit.value || actionBusy.value || locked.value) return
   actionBusy.value = true
@@ -1088,8 +1096,8 @@ onUnmounted(() => {
                   <!-- 风力只影响航母甲板：没有航母的舰队（巡洋舰水侦、驱逐舰）只显示风从哪来。 -->
                   <em v-if="selectedFleetWind.has_carrier" :class="selectedFleetWind.deck_modifier > 0 ? 'gain' : selectedFleetWind.deck_modifier < 0 ? 'loss' : ''">{{ windRelations[selectedFleetWind.relation] || selectedFleetWind.relation }} {{ selectedFleetWind.deck_modifier > 0 ? '+' : '' }}{{ selectedFleetWind.deck_modifier }} 甲板</em>
                   <em v-else class="wind-neutral">{{ windRelations[selectedFleetWind.relation] || selectedFleetWind.relation }}（无航母，甲板不受风向影响）</em>
-                  <span class="heading-picker" :class="{ spent: selectedFleetWind.changed }">
-                    <button v-for="h in headingChoices" :key="h" :disabled="selectedFleetWind.changed || actionBusy || locked || deploying" :title="locked ? '本回合已就绪，操作已锁定' : `转向${h}`" @click.stop="setFleetHeading(h)">{{ h }}</button>
+                  <span class="heading-picker" :class="{ spent: selectedFleetWind.changed || selectedFleetWind.moved }">
+                    <button v-for="h in headingChoices" :key="h" :disabled="selectedFleetWind.changed || selectedFleetWind.moved || actionBusy || locked || deploying" :title="headingButtonTitle(h)" @click.stop="setFleetHeading(h)">{{ h }}</button>
                   </span>
                 </template>
               </div><div v-if="strikeTargetTaskID" class="strike-map-target"><span>{{ strikeTargetSelection.verb }}：{{ strikeTargetLabel }} · {{ strikeTargetSelection.hint }}</span><button @click="cancelStrikeTarget">取消</button></div><div class="map-legend"><span><i class="legend-a"></i>A 阵营</span><span><i class="legend-b"></i>B 阵营</span><span><i class="legend-move"></i>可移动</span><span><i class="legend-wind"></i>格底箭头=风吹向</span><span><svg class="legend-wx" viewBox="-10 -10 20 20" aria-hidden="true"><circle cx="-5.4" cy="1.4" r="3.4" /><circle cx="-0.6" cy="-1.2" r="4.8" /><circle cx="3.6" cy="1.2" r="3.2" /><rect x="-8.6" y="1.2" width="12.8" height="3.6" rx="1.8" /></svg>多云</span><span><svg class="legend-wx" viewBox="-10 -10 20 20" aria-hidden="true"><path d="M0 -7.4c0 0 3.2 4.8 3.2 7a3.2 3.2 0 0 1-6.4 0c0-2.2 3.2-7 3.2-7Z" /><path transform="translate(-7.6 4.2) scale(.76)" d="M0 -7.4c0 0 3.2 4.8 3.2 7a3.2 3.2 0 0 1-6.4 0c0-2.2 3.2-7 3.2-7Z" /><path transform="translate(7.6 4.2) scale(.76)" d="M0 -7.4c0 0 3.2 4.8 3.2 7a3.2 3.2 0 0 1-6.4 0c0-2.2 3.2-7 3.2-7Z" /></svg>降雨</span><span><svg class="legend-wx" viewBox="-10 -10 20 20" aria-hidden="true"><path d="M1.6 -9.6 L-5.6 0.9 H-1.4 L-2.4 9.6 L6 -1.2 H1.4 L4.8 -9.6 Z" /></svg>风暴</span></div></div>

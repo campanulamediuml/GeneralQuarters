@@ -121,3 +121,27 @@ func TestInvalidHeadingRejected(t *testing.T) {
 		t.Fatal("不应能调整敌方舰队朝向")
 	}
 }
+
+// 朝向不能免费改：本回合移动过的舰队，朝向由移动方向决定，不能再单独调。
+func TestFleetHeadingLockedAfterMove(t *testing.T) {
+	state := sandboxState(t)
+	state.Wind = "NE"
+	mover := state.Units["a2-cv-01"]
+	before := mover.Heading
+	mover.Moved = true
+	if err := ValidateOrder(state, "A", Order{Type: "SET_HEADING", UnitID: "a2-cv-01", Heading: "SW"}); err == nil {
+		t.Fatal("移动过的舰队还能免费调整朝向")
+	}
+	// 绕过校验直接调用也不行，而且朝向不能被改动。
+	if events := SetFleetHeading(&state, FleetKey(mover), "SW"); len(events) != 0 {
+		t.Fatalf("移动过的舰队直接改朝向应当无效，却产生了 %d 条战报", len(events))
+	}
+	if mover.Heading != before {
+		t.Fatalf("移动过的舰队朝向被改成了 %s，原本 %s", mover.Heading, before)
+	}
+	// 没移动的舰队照常可以调。
+	mover.Moved = false
+	if err := ValidateOrder(state, "A", Order{Type: "SET_HEADING", UnitID: "a2-cv-01", Heading: "SW"}); err != nil {
+		t.Fatalf("未移动的舰队应当可以调整朝向：%v", err)
+	}
+}

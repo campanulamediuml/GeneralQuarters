@@ -136,6 +136,14 @@ func SetFleetHeading(state *State, fleetID, heading string) []EngineEvent {
 	if state.HeadingChanged[fleetID] {
 		return nil
 	}
+	// 本回合移动过的舰队不能再改朝向：移动已经决定了朝向（校验里也有同一道闸，
+	// 这里再挡一次，防止绕过 ValidateOrder 的直接调用）。
+	for _, id := range sortedUnitIDs(state.Units) {
+		unit := state.Units[id]
+		if unit != nil && FleetKey(unit) == fleetID && unit.Moved {
+			return nil
+		}
+	}
 	state.HeadingChanged[fleetID] = true
 	names := []string{}
 	for _, id := range sortedUnitIDs(state.Units) {
@@ -216,6 +224,12 @@ func validateHeadingOrder(state State, faction string, order Order) error {
 	if state.HeadingChanged[FleetKey(unit)] {
 		return fmt.Errorf("该舰队本回合已经调整过朝向")
 	}
+	// 朝向不能免费改：本回合移动过的舰队，朝向已经由移动方向决定了。
+	// 这条和"每回合一次"是两回事——移动本身就会把朝向设成移动方向，
+	// 允许事后再调一次等于白送半个转向，追击和脱离都能凭空占便宜。
+	if unit.Moved {
+		return fmt.Errorf("该舰队本回合已经移动，朝向由移动方向决定，下回合未移动时再调整")
+	}
 	return nil
 }
 
@@ -260,11 +274,17 @@ func VisibleWind(state State, faction string) WindView {
 		// 风力只影响航母甲板：没有航母的舰队（巡洋舰水上飞机、驱逐舰）风向对他们
 		// 只是"风从哪来"，甲板修正不适用，前端不该显示"+1 甲板"这种误导数字。
 		hasCarrier := false
+		moved := false
 		for _, id := range sortedUnitIDs(state.Units) {
 			unit := state.Units[id]
-			if FleetKey(unit) == fleetID && IsCarrier(unit) {
+			if FleetKey(unit) != fleetID {
+				continue
+			}
+			if IsCarrier(unit) {
 				hasCarrier = true
-				break
+			}
+			if unit.Moved {
+				moved = true
 			}
 		}
 		direction, hasWind := state.WindDirectionAt(leader.Coord)
@@ -278,7 +298,7 @@ func VisibleWind(state State, faction string) WindView {
 		}
 		view.Fleets = append(view.Fleets, FleetWind{
 			FleetID: fleetID, Heading: heading, Relation: relation, Direction: direction,
-			DeckModifier: deckModifier, HasCarrier: hasCarrier, Changed: state.HeadingChanged[fleetID],
+			DeckModifier: deckModifier, HasCarrier: hasCarrier, Changed: state.HeadingChanged[fleetID], Moved: moved,
 		})
 	}
 	return view
@@ -306,4 +326,6 @@ type FleetWind struct {
 	HasCarrier   bool `json:"has_carrier"`
 	DeckModifier int  `json:"deck_modifier"`
 	Changed      bool `json:"changed"`
+	// Moved：这支舰队本回合已经移动过。移动决定朝向，所以移动过的舰队不能再单独调朝向。
+	Moved bool `json:"moved"`
 }

@@ -530,7 +530,7 @@ export interface GameView {
     wind: string
     /** 逐格风向：行优先、每格一个字符，'0'..'5' 对应 NE/E/SE/SW/W/NW */
     cells?: string
-    fleets: { fleet_id: string; heading: string; relation: string; direction?: string; has_carrier: boolean; deck_modifier: number; changed: boolean }[]
+    fleets: { fleet_id: string; heading: string; relation: string; direction?: string; has_carrier: boolean; deck_modifier: number; changed: boolean; moved: boolean }[]
   }
   radio_used?: string[]
   /** 剧本时间线快照；没配 DayHours/TurnsPerDay 的剧本为 null */
