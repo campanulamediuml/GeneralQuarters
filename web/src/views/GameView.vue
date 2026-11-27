@@ -558,7 +558,7 @@ function connectSocket() {
 
 function selectMapUnit(unit: Unit) {
   if (strikeTargetTaskID.value) {
-    void setStrikeTarget(unit.coord)
+    void setStrikeTarget(unit.coord, unit.fleet_id)
     return
   }
   selectedAirTaskID.value = ''
@@ -658,6 +658,8 @@ const strikeTargetSelection = computed(() => {
 
 function cancelStrikeTarget() {
   strikeTargetTaskID.value = ''
+  hexCoord.value = ''
+  hexPanelMode.value = 'inspect'
   // 从地图上的编队牌点进"选目标"，取消后还得站在地图上；从整编栏进去的才回航空界面。
   activePanel.value = mapAirTaskID.value ? 'map' : 'aviation'
 }
@@ -687,13 +689,14 @@ async function retaskMapAirTask() {
 }
 
 // 空中的编队改目标要走无线电（RETARGET_AIR），会消耗该编队本回合的通信机会。
-async function setStrikeTarget(coord: string) {
+async function setStrikeTarget(coord: string, targetFleetID = '') {
   if (!strikeTargetTaskID.value) return
   const task = state.value?.aviation.tasks.find((item) => item.id === strikeTargetTaskID.value)
     ?? state.value?.ground_tasks?.find((item) => item.id === strikeTargetTaskID.value)
   // 只有空中攻击编队改目标要走无线电；空中掩护/转场用普通命令直接改目标。
   const airborne = Boolean(task && task.airborne_count > 0 && task.kind === 'attack')
-  await airCommand(airborne ? 'RETARGET_AIR' : 'SET_STRIKE_TARGET', [strikeTargetTaskID.value], { coord, task_id: strikeTargetTaskID.value })
+  // target_fleet_id 只在点名某支舰队时带：点机场就只给坐标，让服务端按对地攻击打。
+  await airCommand(airborne ? 'RETARGET_AIR' : 'SET_STRIKE_TARGET', [strikeTargetTaskID.value], { coord, task_id: strikeTargetTaskID.value, target_fleet_id: targetFleetID || undefined })
   if (!error.value) {
     // 点完目标先给玩家一张时间表：几点打到、几点全部落回来、会不会摸黑着舰。
     // 这比在编队牌上挂一行红字有用——起飞前就能决定要不要换目标或者干脆不打。
@@ -704,6 +707,15 @@ async function setStrikeTarget(coord: string) {
 
 function selectHex(coord: string) {
   if (strikeTargetTaskID.value) {
+    // 先列出这一格里能打谁，再落目标：同格既有舰队又有机场时，随手点一下就打错对象了。
+    const candidates = strikeCandidatesAt(coord)
+    if (strikeTargetSelection.value.kind !== 'cover' && (candidates.fleets.length || candidates.airfields.length)) {
+      selectedID.value = ''
+      menuCoord.value = ''
+      hexPanelMode.value = 'target'
+      hexCoord.value = coord
+      return
+    }
     void setStrikeTarget(coord)
     return
   }
@@ -720,10 +732,12 @@ function selectHex(coord: string) {
   if (hexContent(coord).length) {
     selectedID.value = ''
     menuCoord.value = ''
+    hexPanelMode.value = 'inspect'
     hexCoord.value = coord
     return
   }
   hexCoord.value = ''
+  hexPanelMode.value = 'inspect'
   selectedID.value = ''
   menuCoord.value = ''
 }
@@ -742,19 +756,52 @@ function hexContent(coord: string) {
 }
 
 const hexCoord = ref('')
-const hexFleets = computed(() => fleets.value.filter((fleet) => fleet.coord === hexCoord.value))
-const hexAirfields = computed(() => airfields.value.filter((airfield) => airfield.coord === hexCoord.value))
+const hexPanelMode = ref<'inspect' | 'target'>('inspect')
+// 选目标时的候选：打击挑敌方舰队/机场，转场挑自家机场/舰队。
+function strikeCandidatesAt(coord: string) {
+  const me = state.value?.you.faction
+  const friendly = strikeTargetSelection.value.kind === 'transfer'
+  const match = (faction: string) => (friendly ? faction === me : faction !== me)
+  return {
+    fleets: fleets.value.filter((fleet) => fleet.coord === coord && match(fleet.faction)),
+    airfields: airfields.value.filter((airfield) => airfield.coord === coord && match(airfield.faction)),
+  }
+}
+const hexFleets = computed(() => {
+  const list = fleets.value.filter((fleet) => fleet.coord === hexCoord.value)
+  return hexPanelMode.value === 'target' ? strikeCandidatesAt(hexCoord.value).fleets : list
+})
+const hexAirfields = computed(() => {
+  const list = airfields.value.filter((airfield) => airfield.coord === hexCoord.value)
+  return hexPanelMode.value === 'target' ? strikeCandidatesAt(hexCoord.value).airfields : list
+})
 const hexAirTasks = computed(() => hexAirTasksFor(hexCoord.value))
+// 目标模式里不列空中编队：这一栏回答的是"打谁"，不是这一格里有什么。
+const hexPanelTasks = computed(() => (hexPanelMode.value === 'target' ? [] : hexAirTasks.value))
+const hexPanelHint = computed(() => (hexPanelMode.value === 'target' ? strikeTargetSelection.value.verb + ' · 点一项即设为目标' : ''))
 
 function selectHexFleet(fleetID: string) {
+  const coord = hexCoord.value
+  const targeting = hexPanelMode.value === 'target'
   hexCoord.value = ''
+  if (targeting) {
+    void setStrikeTarget(coord, fleetID)
+    return
+  }
   const fleet = fleets.value.find((item) => item.fleet_id === fleetID)
   if (fleet) selectMapUnit(fleet)
 }
 
 function selectHexAirfield(airfieldID: string) {
+  const coord = hexCoord.value
+  const targeting = hexPanelMode.value === 'target'
   hexCoord.value = ''
   const airfield = airfields.value.find((item) => item.id === airfieldID)
+  if (targeting) {
+    // 打机场只提交坐标：服务端按"目标格有敌方机场"判对地攻击。
+    void setStrikeTarget(coord)
+    return
+  }
   if (!airfield) return
   if (airfield.faction === state.value?.you.faction) selectAirfield(airfield.id)
   else inspectAirfield(airfield.id)
@@ -986,13 +1033,13 @@ async function applyReorganization() {
   }
 }
 
-async function airCommand(type: 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' | 'LAUNCH_COVER' | 'LAUNCH_TRANSFER' | 'RETURN_TO_HANGAR' | 'LIFT_TO_DECK' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK' | 'SET_AIR_CYCLE' | 'SET_STRIKE_TARGET' | 'SET_STRIKE_DISPERSION' | 'RECALL_AIR' | 'RETASK_AIR' | 'RETARGET_AIR' | 'SET_LOADOUT', aircraftIDs: string[], options?: { heading?: ReconHeading; sector_width?: 60 | 120; task_id?: string; coord?: string; task_kind?: string; loadout?: string; disperse?: boolean; cycle?: boolean; lane?: number }) {
+async function airCommand(type: 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' | 'LAUNCH_COVER' | 'LAUNCH_TRANSFER' | 'RETURN_TO_HANGAR' | 'LIFT_TO_DECK' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK' | 'SET_AIR_CYCLE' | 'SET_STRIKE_TARGET' | 'SET_STRIKE_DISPERSION' | 'RECALL_AIR' | 'RETASK_AIR' | 'RETARGET_AIR' | 'SET_LOADOUT', aircraftIDs: string[], options?: { heading?: ReconHeading; sector_width?: 60 | 120; task_id?: string; coord?: string; task_kind?: string; loadout?: string; disperse?: boolean; cycle?: boolean; lane?: number; target_fleet_id?: string }) {
   if (!state.value || actionBusy.value || locked.value) return
   actionBusy.value = true
   try {
     // 无线电命令按任务挂载，不需要算子 ID。
     const payload = type === 'RECALL_AIR' || type === 'RETASK_AIR' || type === 'RETARGET_AIR'
-      ? { type, task_id: options?.task_id, coord: options?.coord, task_kind: options?.task_kind }
+      ? { type, task_id: options?.task_id, coord: options?.coord, task_kind: options?.task_kind, target_fleet_id: options?.target_fleet_id }
       : { type, aircraft_id: aircraftIDs[0], aircraft_ids: aircraftIDs, ...options }
     await sendCommand(payload)
     error.value = ''
@@ -1152,9 +1199,11 @@ onUnmounted(() => {
                 :coord="hexCoord"
                 :fleets="hexFleets"
                 :airfields="hexAirfields"
-                :air-tasks="hexAirTasks"
+                :air-tasks="hexPanelTasks"
                 :player-faction="state.you.faction"
-                @close="hexCoord = ''"
+                :mode="hexPanelMode"
+                :hint="hexPanelHint"
+                @close="hexCoord = ''; hexPanelMode = 'inspect'"
                 @select-fleet="selectHexFleet"
                 @select-airfield="selectHexAirfield"
                 @select-air-task="selectHexAirTask"

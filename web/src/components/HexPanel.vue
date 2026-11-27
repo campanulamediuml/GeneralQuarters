@@ -11,6 +11,9 @@ const props = defineProps<{
   airTasks: AirTask[]
   playerFaction: 'A' | 'B'
   spectate?: boolean
+  // target 模式用于选打击/转场目标：面板只列候选，点一项就当目标提交。
+  mode?: 'inspect' | 'target'
+  hint?: string
 }>()
 
 const emit = defineEmits<{
@@ -45,8 +48,9 @@ function taskFaction(task: AirTask) {
   <aside class="hex-panel" :data-hex="coord">
     <header>
       <div>
-        <span class="hex-panel-kicker">HEX</span>
+        <span class="hex-panel-kicker">{{ mode === 'target' ? 'TARGET' : 'HEX' }}</span>
         <h2>{{ coord }}</h2>
+        <p v-if="hint" class="hex-panel-hint">{{ hint }}</p>
       </div>
       <button type="button" aria-label="关闭格子清单" @click="emit('close')">×</button>
     </header>
@@ -120,5 +124,6 @@ function taskFaction(task: AirTask) {
 .hex-panel-row.faction-b .hex-panel-dot { background: #d77c6c; }
 .hex-panel-name { min-width: 0; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .hex-panel-row small { min-width: 0; overflow: hidden; font-size: 10px; color: #8ba4a6; text-overflow: ellipsis; white-space: nowrap; }
+.hex-panel-hint { margin: 4px 0 0; font-size: 10px; color: var(--gold); }
 .hex-panel-empty { margin: 8px 0 0; font-size: 11px; color: #8ba4a6; }
 </style>

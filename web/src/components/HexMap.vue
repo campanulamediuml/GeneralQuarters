@@ -746,15 +746,6 @@ const hexSigs = computed(() => {
 
 // 两支舰队同格（接触状态）时反方向错开并左右挂名；单支舰队仍然居中。
 // 兵牌 52×36，位移太小的话连旗舰剪影都会被压住。
-// 机场卡默认居中（顶边 = 中心 -25）；同格停着舰队时把卡片往上让 6，让出整行跑道/雷达/生命值，
-// 兵牌盖在卡片下半截上——卡片正好被兵牌切在数字中间时，那一行字看着像没渲染完。
-const AIRFIELD_TOP = -25
-const AIRFIELD_TOP_SHARED = -31
-
-function airfieldTop(coord: string) {
-  return fleetsAt(coord).length > 0 ? AIRFIELD_TOP_SHARED : AIRFIELD_TOP
-}
-
 function unitPosition(coord: string, index: number) {
   const point = center(coord)
   if (!stackedAt(coord)) return { x: point.x, y: point.y }
@@ -1026,9 +1017,9 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         :data-nav-fleet="route.fleet.fleet_id"
       />
     </g>
-    <!-- 机场层排在舰队层下面：机场卡 56×52 居中，几乎占满一个 hex，压在舰队层上时
-         52×36 的兵牌会被整块盖住、也点不到。舰队停进机场格时兵牌盖在卡片上，
-         选舰队、拖舰队都照常，机场卡露出的上下边框仍然可以点开。 -->
+    <!-- 自下而上的层叠：机场 < 舰队 < 飞行编队 < 云层。机场卡 56×52 居中，几乎占满一个 hex，
+         所以压在舰队层下面；舰队兵牌和编队牌盖在卡片上，三样东西都可以从『点格子』的清单里点开，
+         不必靠牌面露出来的那点边缘。云层只画图案、不接点击。 -->
     <g v-for="coord in airfieldCoords" :key="`airfield-${coord}`">
       <foreignObject
         v-for="(airfield, index) in airfieldsAt(coord)"
@@ -1037,7 +1028,7 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         :class="[`faction-${airfield.faction.toLowerCase()}`, { enemy: !spectate && airfield.faction !== playerFaction, unknown: !spectate && airfield.contact_level < 3 }]"
         :data-airfield-id="airfield.id"
         :x="center(coord).x - 28 + (index - (airfieldsAt(coord).length - 1) / 2) * 58"
-        :y="center(coord).y + airfieldTop(coord)"
+        :y="center(coord).y - 25"
         width="56"
         height="52"
         @click.stop="airfieldClick(airfield)"

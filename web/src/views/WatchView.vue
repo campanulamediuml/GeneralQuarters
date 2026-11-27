@@ -77,8 +77,13 @@ const clockText = computed(() => {
 })
 const windText = computed(() => state.value?.wind?.wind || '—')
 // 战果按阵营拆成两栏：以前两个阵营的战果串成一段长文，击沉一串挤在一起根本读不出来。
+// 默认收起，只晒 VP 和沉/机数；点某一边的标题才展开这一边的明细。
 function scoreLinesFor(faction: 'A' | 'B') {
   return state.value?.score_breakdown?.[faction] || []
+}
+const scoreOpen = ref<Record<string, boolean>>({ A: false, B: false })
+function toggleScoreColumn(faction: string) {
+  scoreOpen.value[faction] = !scoreOpen.value[faction]
 }
 
 function factionName(faction?: string) {
@@ -448,18 +453,20 @@ onUnmounted(() => {
         <section class="watch-card">
           <h2>战况</h2>
           <div class="watch-scoreboard">
-            <section v-for="faction in ['A', 'B'] as const" :key="faction" class="watch-score-col">
-              <header>
+            <section v-for="faction in ['A', 'B'] as const" :key="faction" class="watch-score-col" :data-score-open="scoreOpen[faction] ? 'true' : 'false'">
+              <button type="button" class="watch-score-head" :aria-expanded="scoreOpen[faction]" @click="toggleScoreColumn(faction)">
                 <b>{{ factionName(faction) }}</b>
                 <strong>{{ scores[faction] ?? 0 }}</strong>
-              </header>
+                <i class="watch-score-caret">{{ scoreOpen[faction] ? '▾' : '▸' }}</i>
+              </button>
               <small>VP · 沉 {{ lossSummary(faction).ships }} / 机 {{ lossSummary(faction).aircraft }}</small>
-              <ul v-if="scoreLinesFor(faction).length" class="watch-score-lines">
+              <button v-if="!scoreOpen[faction] && scoreLinesFor(faction).length" type="button" class="watch-score-more" @click="toggleScoreColumn(faction)">战果 {{ scoreLinesFor(faction).length }} 条 · 点开</button>
+              <ul v-if="scoreOpen[faction] && scoreLinesFor(faction).length" class="watch-score-lines">
                 <li v-for="(line, index) in scoreLinesFor(faction)" :key="line.text + index">
                   <span>{{ line.text }}</span><b>+{{ line.points }}</b>
                 </li>
               </ul>
-              <p v-else class="watch-empty">暂无战果</p>
+              <p v-if="scoreOpen[faction] && !scoreLinesFor(faction).length" class="watch-empty">暂无战果</p>
             </section>
           </div>
           <p v-if="state.outcome" class="watch-outcome">{{ state.outcome.reason }}</p>
@@ -602,10 +609,14 @@ onUnmounted(() => {
 /* 战果两栏：左美军、右日军，各自一条一条列，长文串成一段根本没法读 */
 .watch-scoreboard { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .watch-score-col { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 7px 8px; border-radius: 8px; background: rgba(255,255,255,.04); }
-.watch-score-col header { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
-.watch-score-col header b { font-size: 11px; font-weight: 600; color: #9fc4be; }
-.watch-score-col header strong { font: 700 19px/1 'Rajdhani', system-ui, sans-serif; }
-.watch-score-col small { font-size: 10px; opacity: .7; }
+.watch-score-head { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; width: 100%; padding: 0; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
+.watch-score-head:hover b { color: var(--gold); }
+.watch-score-head b { font-size: 11px; font-weight: 600; color: #9fc4be; }
+.watch-score-head strong { font: 700 19px/1 'Rajdhani', system-ui, sans-serif; }
+.watch-score-caret { flex: none; font-style: normal; font-size: 9px; color: #7fa39d; }
+.watch-score-col > small { font-size: 10px; opacity: .7; }
+.watch-score-more { margin-top: 2px; padding: 0; border: 0; background: none; color: #7fa39d; font-size: 10px; text-align: left; cursor: pointer; }
+.watch-score-more:hover { color: var(--gold); }
 /* 两栏不等高很正常（一边打死得多），列表不再单独滚动：整块侧栏本来就能滚，
    里面再套一层滚动条反而滚不到底。 */
 .watch-score-lines { list-style: none; display: flex; flex-direction: column; gap: 2px; margin: 4px 0 0; padding: 6px 0 0; border-top: 1px dashed rgba(255,255,255,.12); font-size: 10px; }
