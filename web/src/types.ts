@@ -32,6 +32,8 @@ export interface ShipCard {
   /** 火控雷达：白字交战值的依据；老存档没有这个字段时按 surface_radar 回落 */
   fire_control_radar?: boolean
   speed_class: 'normal' | 'fast' | 'slow' | 'very_slow'
+  // 移动周期：一圈里第 i 格等 move_cycle[i] 回合，平均回合数折算成节。
+  move_cycle?: number[]
   torpedo_salvos: number
   aircraft: number
   hangar_capacity: number

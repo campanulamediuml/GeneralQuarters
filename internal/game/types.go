@@ -238,7 +238,7 @@ type ShipCard struct {
 	// 25 海里/hex、20 分钟/回合，平均 N 回合走一格就是 75/N 节，所以固定的整数周期只能落
 	// 在 37.5/25/12.5/8.3 节这几档上；交替周期把航速填细：[2,3] 平均 2.5 → 30 节，
 	// [4,4,4,3] 平均 3.75 → 20 节，[6,6,6,7] 平均 6.25 → 12 节。为空时按 speed_class 老四档兜底。
-	MoveCycle []int `json:"move_cycle,omitempty"`
+	MoveCycle []int `json:"move_cycle"`
 }
 
 type AircraftDefinition struct {
@@ -566,7 +566,7 @@ type Unit struct {
 	MoveCooldown int    `json:"move_cooldown"`
 	// CyclePos 是整支舰队在移动节奏里走到第几格：交替周期靠它决定这次挂几回合冷却。
 	// 队内所有船共用同一个值，移动时一起推进。
-	CyclePos     int `json:"cycle_pos,omitempty"`
+	CyclePos     int `json:"cycle_pos"`
 	Confusion    int `json:"confusion"`
 	ContactLevel int `json:"contact_level"`
 	// ContactStaleTurns 是这条情报已经连续几回合没更新（0 = 本回合刚刷新）。
@@ -614,7 +614,7 @@ type FleetGroup struct {
 	MoveInterval int    `json:"move_interval"`
 	// MoveKnots 是按移动节奏折算出来的平均航速，面板上直接显示"约 N 节"。
 	MoveKnots    int   `json:"move_knots"`
-	MoveCycle    []int `json:"move_cycle,omitempty"`
+	MoveCycle    []int `json:"move_cycle"`
 	Confusion    int   `json:"confusion"`
 	ContactLevel int   `json:"contact_level"`
 	// ContactStaleTurns 是这条情报已经连续几回合没更新（0 = 本回合刚刷新）。

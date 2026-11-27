@@ -134,13 +134,13 @@ func cycleAverage(cycle []int) float64 {
 	return float64(sum) / float64(len(cycle))
 }
 
-// CycleKnots 把节奏折算成平均航速（节）。
+// CycleKnots 把节奏折算成平均航速（节），向下取整：牌面写 27 节就不能按 28 节算航程。
 func CycleKnots(cycle []int) int {
 	avg := cycleAverage(cycle)
 	if avg <= 0 {
 		return 0
 	}
-	return int(math.Round(75 / avg))
+	return int(math.Floor(75 / avg))
 }
 
 // FleetMoveInterval 是节奏折成的平均回合数，面板上显示"几回合一格"用它。

@@ -23,6 +23,7 @@
   "armored_carrier": false,
   "gunnery": 6,
   "nation": "australia",
-  "fire_control_radar": false
+  "fire_control_radar": false,
+  "move_cycle": [2, 2, 3]
  }
 }

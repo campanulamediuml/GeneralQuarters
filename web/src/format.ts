@@ -19,3 +19,17 @@ export function speedActionTurns(speedClass: string | undefined): number {
 export function speedKnots(speedClass: string | undefined): number {
   return Math.round((25 * 60) / (speedActionTurns(speedClass) * 20))
 }
+
+// 舰船卡配了 move_cycle 之后，航速不再是四档常数，而是按周期折算：
+// 25 海里/hex、20 分钟/回合 → 75 / 平均回合数 节，向下取整（和引擎 CycleKnots 一致）。
+export function cycleActionTurns(cycle: number[] | undefined | null): number {
+  if (!cycle || cycle.length === 0) return 3
+  const avg = cycle.reduce((sum, turns) => sum + turns, 0) / cycle.length
+  return Math.round(avg)
+}
+
+export function cycleKnots(cycle: number[] | undefined | null): number {
+  if (!cycle || cycle.length === 0) return 25
+  const avg = cycle.reduce((sum, turns) => sum + turns, 0) / cycle.length
+  return Math.floor(75 / avg)
+}

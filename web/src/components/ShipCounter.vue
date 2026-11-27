@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import type { Unit } from '../types'
 import ShipSilhouette from './ShipSilhouette.vue'
 import { counterDamageClass, damageTitles, shipDamageMarkers } from '../shipDamage'
-import { formatNumber, speedActionTurns, speedKnots } from '../format'
+import { cycleActionTurns, cycleKnots, formatNumber, speedActionTurns, speedKnots } from '../format'
 
 const props = withDefaults(defineProps<{ unit: Unit; side?: 'front' | 'back' }>(), { side: 'front' })
 const markers = computed(() => shipDamageMarkers(props.unit))
@@ -12,10 +12,14 @@ const damageTitle = computed(() => damageTitles(props.unit).join(' / '))
 const isCarrier = computed(() => ['CV', 'CVL', 'CVE'].includes(props.unit.type))
 // 背面中左显示速度：档位换算成节，动作间隔写进悬停说明。
 const speedNames: Record<string, string> = { fast: '快速', normal: '常速', slow: '慢速', very_slow: '极慢' }
-const speedValue = computed(() => speedKnots(props.unit.card.speed_class))
+// 有 move_cycle 的船按周期折算节数（30、27、14 这种非整档速度都靠它表达）。
+const cycle = computed(() => props.unit.card.move_cycle)
+const speedValue = computed(() => (cycle.value?.length ? cycleKnots(cycle.value) : speedKnots(props.unit.card.speed_class)))
 const speedTitle = computed(() => {
   const name = speedNames[props.unit.card.speed_class] || '常速'
-  return `${name} · ${speedValue.value} 节 · 每 ${speedActionTurns(props.unit.card.speed_class)} 回合行动一次`
+  const turns = cycle.value?.length ? cycleActionTurns(cycle.value) : speedActionTurns(props.unit.card.speed_class)
+  const pattern = cycle.value?.length ? `（周期 ${cycle.value.join('/')}）` : ''
+  return `${name} · ${speedValue.value} 节 · 每 ${turns} 回合行动一次${pattern}`
 })
 // 右下角交战值白字＝有火控雷达（Mk.8 这类），黑字＝没有；
 // 老存档没有 fire_control_radar 字段时回落到 surface_radar。

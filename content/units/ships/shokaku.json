@@ -23,6 +23,7 @@
   "armored_carrier": false,
   "hangar_capacity": 18,
   "gunnery": 0,
-  "fire_control_radar": false
+  "fire_control_radar": false,
+  "move_cycle": [2, 2, 2, 2, 3]
  }
 }

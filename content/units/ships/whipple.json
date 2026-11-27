@@ -22,6 +22,7 @@
   "cargo": 0,
   "armored_carrier": false,
   "gunnery": 4,
-  "fire_control_radar": false
+  "fire_control_radar": false,
+  "move_cycle": [2]
  }
 }
