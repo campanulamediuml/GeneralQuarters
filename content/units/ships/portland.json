@@ -6,6 +6,7 @@
  "picture": "misc/image/ship/library/USA_CA3_ship.png",
  "strength": 3,
  "card": {
+  "class": "波特兰级",
   "damage_control": 3,
   "main_gun_count": 8,
   "main_gun_caliber": 8,

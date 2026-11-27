@@ -6,6 +6,7 @@
  "picture": "misc/image/ship/library/JAP_CVL1_ship.png",
  "strength": 2,
  "card": {
+  "class": "祥凤级",
   "damage_control": 2,
   "main_gun_count": 0,
   "main_gun_caliber": 0,

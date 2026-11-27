@@ -6,6 +6,7 @@
  "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
  "strength": 1,
  "card": {
+  "class": "运输船",
   "damage_control": 0,
   "main_gun_count": 0,
   "main_gun_caliber": 0,

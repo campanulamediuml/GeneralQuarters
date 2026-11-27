@@ -6,6 +6,7 @@
  "picture": "misc/image/ship/library/USA_CA4_ship.png",
  "strength": 3,
  "card": {
+  "class": "新奥尔良级",
   "damage_control": 3,
   "main_gun_count": 8,
   "main_gun_caliber": 8,

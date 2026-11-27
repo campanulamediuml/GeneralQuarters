@@ -6,6 +6,7 @@
  "picture": "misc/image/ship/library/JAP_DE1_ship.png",
  "strength": 1,
  "card": {
+  "class": "睦月级",
   "damage_control": 1,
   "main_gun_count": 4,
   "main_gun_caliber": 4.7,

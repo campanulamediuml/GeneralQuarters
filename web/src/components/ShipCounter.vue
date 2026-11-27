@@ -24,8 +24,9 @@ const speedTitle = computed(() => {
 // 右下角交战值白字＝有火控雷达（Mk.8 这类），黑字＝没有；
 // 老存档没有 fire_control_radar 字段时回落到 surface_radar。
 const hasFireControlRadar = computed(() => (props.unit.card.fire_control_radar ?? props.unit.card.surface_radar) && props.unit.card.gunnery > 0)
-// 兵牌中部的剪影没有文字说明，这里用一行舰种中文名标注，避免只靠外形辨认。
-const shipClassLabel = computed(() => ({ CV: '航空母舰', CVL: '轻型航母', CVE: '护航航母', BB: '战列舰', BC: '战列巡洋舰', CA: '重巡洋舰', CL: '轻巡洋舰', DD: '驱逐舰', TRS: '运输船' } as Record<string, string>)[props.unit.type] || props.unit.type)
+// 兵牌中部的剪影没有文字说明，这里用一行舰级（优先）或舰种中文名标注。
+// 同名舰跨舰级时（1942 年的阿斯托里亚是重巡、1944 年那条是轻巡），舰级才是身份证。
+const shipClassLabel = computed(() => props.unit.card.class || ({ CV: '航空母舰', CVL: '轻型航母', CVE: '护航航母', BB: '战列舰', BC: '战列巡洋舰', CA: '重巡洋舰', CL: '轻巡洋舰', DD: '驱逐舰', TRS: '运输船' } as Record<string, string>)[props.unit.type] || props.unit.type)
 // 角标显示的是"这艘船最多能装多少架"（机库容量），不是当前在编数量。
 // 当前在编数量会随起降每回合变化，兵牌上要的是这艘舰的固有容量。
 const aircraftPayload = computed(() => {

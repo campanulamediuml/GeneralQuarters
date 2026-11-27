@@ -6,6 +6,7 @@
  "picture": "misc/image/ship/library/USA_CV3_ship.png",
  "strength": 3,
  "card": {
+  "class": "约克城级",
   "damage_control": 3,
   "main_gun_count": 0,
   "main_gun_caliber": 5,

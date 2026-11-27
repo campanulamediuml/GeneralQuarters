@@ -17,6 +17,8 @@ export interface GameMap {
 }
 
 export interface ShipCard {
+  /** 舰级（"克利夫兰级"…）。舰名会跨舰级重名（1942 年的阿斯托里亚是重巡，1944 年那条是轻巡），名册靠它区分。 */
+  class?: string
   /** 兵牌剪影：相对 content/ 的路径，由舰船卡下发（例如 misc/image/ship/new_orleans.png）。 */
   picture?: string
   /** 国别标识：目前用于澳大利亚舰船的土黄色兵牌；为空时按阵营上色。 */

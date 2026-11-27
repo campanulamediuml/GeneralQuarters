@@ -6,6 +6,7 @@
  "picture": "misc/image/ship/library/JAP_CA1_ship.png",
  "strength": 3,
  "card": {
+  "class": "古鹰级",
   "damage_control": 2,
   "main_gun_count": 6,
   "main_gun_caliber": 8,

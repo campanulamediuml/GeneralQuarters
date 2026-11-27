@@ -6,6 +6,7 @@
  "picture": "misc/image/ship/library/USA_CV1_ship.png",
  "strength": 4,
  "card": {
+  "class": "列克星敦级",
   "damage_control": 3,
   "main_gun_count": 0,
   "main_gun_caliber": 5,

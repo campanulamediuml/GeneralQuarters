@@ -204,6 +204,10 @@ type UnitDefinition struct {
 }
 
 type ShipCard struct {
+	// Class 是舰级（"埃塞克斯级"、"克利夫兰级"…）。舰名会跨舰级重名——1942 年的
+	// 阿斯托里亚是新奥尔良级重巡，1944 年那条是克利夫兰级轻巡——所以名册和兵牌都得
+	// 带上舰级才分得清。为空时前端只显示舰种。
+	Class string `json:"class"`
 	// Picture 由舰船卡注入（来自 units/ships/*.json 顶层的 picture 字段），
 	// 前端拿它当剪影蒙版；为空时回落到内置的按舰名映射。
 	Picture string `json:"picture"`

@@ -6,6 +6,7 @@
  "picture": "misc/image/ship/library/USA_DD1_ship.png",
  "strength": 1,
  "card": {
+  "class": "波特级",
   "damage_control": 1,
   "main_gun_count": 5,
   "main_gun_caliber": 5,
