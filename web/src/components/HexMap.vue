@@ -286,6 +286,17 @@ const STRIKE_FORMATION_PICTURES: Record<string, string> = {
 function strikeFormationPicture(faction?: string) {
   return aircraftPictureURL(STRIKE_FORMATION_PICTURES[faction === 'B' ? 'B' : 'A'])
 }
+// 编队牌上的机型图按编队自己的阵营取：观战页 playerFaction 固定是 A，
+// 之前直接拿它取图，日军编队也画成了美军 SBD，牌面和点开后的零战对不上。
+function formationFaction(task: { faction?: string }) {
+  return props.spectate && task.faction ? task.faction : props.playerFaction
+}
+function formationPicture(task: { faction?: string }) {
+  return strikeFormationPicture(formationFaction(task))
+}
+function formationPictureFile(task: { faction?: string }) {
+  return STRIKE_FORMATION_PICTURES[formationFaction(task) === 'B' ? 'B' : 'A']
+}
 
 // 距离一律按 hex 数算，而且整张图都算：服务端下发的 distance_reference 只覆盖
 // 8 格（为了控制快照体积），选中舰队要量到地图另一头就量不了。
@@ -1110,7 +1121,7 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         @click.stop="markerClick(task.current_coord || coord, () => emit('selectAirTask', task.id))"
       >
         <rect x="-24" y="-15" width="48" height="30" rx="3" />
-        <image v-if="task.kind === 'attack'" class="flight-task-picture" :href="strikeFormationPicture(playerFaction)" x="-21" y="-13" width="42" height="26" preserveAspectRatio="xMidYMid meet" :data-aircraft-picture="STRIKE_FORMATION_PICTURES[playerFaction === 'B' ? 'B' : 'A']" />
+        <image v-if="task.kind === 'attack'" class="flight-task-picture" :href="formationPicture(task)" x="-21" y="-13" width="42" height="26" preserveAspectRatio="xMidYMid meet" :data-aircraft-picture="formationPictureFile(task)" />
         <path v-else class="flight-task-symbol" :data-task-kind="task.kind" :d="task.kind === 'cover' ? aircraftSilhouette('fighter') : aircraftSilhouette('recon')" transform="translate(-14 -16) scale(.46)" />
         <text x="30" y="-3">{{ flightLabel(task) }} {{ task.airborne_count }}/{{ task.aircraft_ids.length }}{{ task.cannot_land ? ' ⚠' : '' }}</text>
         <text class="flight-task-range" x="30" y="10">航程 {{ flightRange(task) }}</text>
@@ -1163,7 +1174,7 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         @click.stop="markerClick(task.current_coord || coord, () => emit('selectAirTask', task.id))"
       >
         <rect x="-22" y="-13" width="44" height="26" rx="3" />
-        <image v-if="task.kind === 'attack'" class="flight-task-picture" :href="strikeFormationPicture(playerFaction)" x="-19" y="-11" width="38" height="22" preserveAspectRatio="xMidYMid meet" :data-aircraft-picture="STRIKE_FORMATION_PICTURES[playerFaction === 'B' ? 'B' : 'A']" />
+        <image v-if="task.kind === 'attack'" class="flight-task-picture" :href="formationPicture(task)" x="-19" y="-11" width="38" height="22" preserveAspectRatio="xMidYMid meet" :data-aircraft-picture="formationPictureFile(task)" />
         <path v-else class="flight-task-symbol" :d="aircraftSilhouette('recon')" transform="translate(-13 -11) scale(.5)" />
         <text class="ground-task-label" x="14" y="-2">{{ flightLabel(task) }} {{ task.airborne_count }}</text>
         <text class="ground-task-coord" y="10">{{ task.current_coord }}</text>
