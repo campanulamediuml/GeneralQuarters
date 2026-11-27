@@ -6,18 +6,9 @@ import type { AirfieldContact, GroundAirStatus } from './types'
 // 三档各有一张跑道符号素材（content/misc/image/airfield/{small,medium,large}.png）：
 // 小型一条跑道、中型两条交叉、大型三条；水机基地是一枚圆形徽章。
 // 服务端按机场 type 给出 picture，剧本也能用 airfields[].picture 单点覆盖。
-// 旧存档里的 field / heavy / major 由服务端归一成新名字，这里再兜一层。
-export function normalizeAirfieldType(type?: string): string {
-  const value = (type || '').trim().toLowerCase()
-  if (value === 'field' || value === 'small') return 'small'
-  if (value === 'heavy' || value === 'medium') return 'medium'
-  if (value === 'major' || value === 'large') return 'large'
-  if (value === 'seaplane') return 'seaplane'
-  return value
-}
-
+// 这里的 type 是服务端归一后的枚举；前端不再做"旧字段名 → 新名字"的兼容（那是后端的迁移）。
 export function airfieldTypeLabel(type?: string): string {
-  switch (normalizeAirfieldType(type)) {
+  switch ((type || '').trim().toLowerCase()) {
     case 'seaplane': return '水上飞机基地'
     case 'small': return '小型机场'
     case 'medium': return '中型机场'
@@ -27,7 +18,7 @@ export function airfieldTypeLabel(type?: string): string {
 
 // 悬停提示写清楚规模背后的规则含义，免得"小型/中型"变成纯美术标签。
 export function airfieldTypeHint(type?: string): string {
-  switch (normalizeAirfieldType(type)) {
+  switch ((type || '').trim().toLowerCase()) {
     case 'seaplane': return '水上飞机基地：只能操作水上飞机'
     case 'small': return '小型机场：只能起降战斗机'
     case 'medium': return '中型机场：除战略轰炸机外全部可起降'

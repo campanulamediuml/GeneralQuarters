@@ -20,15 +20,10 @@ export interface DamageMarkers {
 
 const speedNames: Record<string, string> = { fast: '快速', normal: '常速', slow: '慢速', very_slow: '极慢', disabled: '失去动力' }
 
-// effectiveSpeed 优先用服务端下发的实际档位（已算进水降档），缺失时按卡面 + 进水层数退算。
+// 实际航速档位由服务端算好下发（进水降档、失去动力都在后端判定）：
+// 前端只做"档位 → 文案"的映射，不按进水层数自己退算。
 export function effectiveSpeed(unit: Unit): SpeedClass {
-  if (unit.effective_speed) return unit.effective_speed
-  const flooding = unit.damage?.flooding?.length || 0
-  if (unit.damage?.disabled || flooding > unit.card.damage_control) return 'disabled'
-  const order: SpeedClass[] = ['very_slow', 'slow', 'normal', 'fast']
-  const base = order.indexOf((unit.card.speed_class as SpeedClass) || 'normal')
-  if (base < 0) return 'normal'
-  return order[Math.max(0, base - flooding)]
+  return (unit.effective_speed as SpeedClass) || (unit.card.speed_class as SpeedClass) || 'normal'
 }
 
 export function shipDamageMarkers(unit: Unit): DamageMarkers {

@@ -279,6 +279,13 @@ func (s *Server) actorRoom(roomID string) (*roomActor, error) {
 			game.EnsureWeather(&room.State)
 		}
 		game.BackfillCardPictures(&room.State, catalog)
+		// 旧剧本/旧存档里机场类型可能是 field/heavy/major：载入时归一一次，
+		// 前端只认 small/medium/large/seaplane，不再自己兜一层兼容。
+		for _, airfield := range room.State.Airfields {
+			if airfield != nil {
+				airfield.Type = game.NormalizeAirfieldType(airfield.Type)
+			}
+		}
 	}
 	actor.room, actor.players, actor.loaded = room, players, true
 	return actor, nil

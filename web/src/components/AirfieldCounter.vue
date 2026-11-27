@@ -2,11 +2,11 @@
 import { computed } from 'vue'
 import type { GroundAirStatus } from '../types'
 import { formatNumber } from '../format'
-import { airfieldPictureURL, airfieldTypeHint, airfieldTypeLabel, normalizeAirfieldType } from '../airfields'
+import { airfieldPictureURL, airfieldTypeHint, airfieldTypeLabel } from '../airfields'
 
 const props = defineProps<{ airfield: GroundAirStatus }>()
 const typeLabel = computed(() => airfieldTypeLabel(props.airfield.type))
-const isSeaplane = computed(() => normalizeAirfieldType(props.airfield.type) === 'seaplane')
+const isSeaplane = computed(() => props.airfield.type === 'seaplane')
 </script>
 
 <template>

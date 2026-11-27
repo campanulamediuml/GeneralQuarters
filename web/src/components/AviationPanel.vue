@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { AirTask, AirUnit, AviationView, CarrierAirStatus, GroundAirStatus, Player, ReconHeading, StrikeTarget, Unit } from '../types'
-import { airfieldTypeHint, airfieldTypeLabel, normalizeAirfieldType } from '../airfields'
+import { airfieldTypeHint, airfieldTypeLabel } from '../airfields'
 import AircraftCounter from './AircraftCounter.vue'
 import AirfieldCounter from './AirfieldCounter.vue'
 import ShipCounter from './ShipCounter.vue'
@@ -83,10 +83,11 @@ function radioTitle(taskID: string) {
 // 水机基地也是机场——它只是没有跑道，但仍然有机库、防空和生命值，不能当航母画。
 const AIRFIELD_TYPES = new Set(['small', 'medium', 'large', 'seaplane'])
 function isAirfield(carrier: CarrierAirStatus) {
-  return AIRFIELD_TYPES.has(normalizeAirfieldType(carrier.type))
+  // carrier.type 是服务端归一过的枚举（small/medium/large/seaplane），这里只做集合判断。
+  return AIRFIELD_TYPES.has(carrier.type)
 }
 function isSeaplaneBase(carrier: CarrierAirStatus) {
-  return normalizeAirfieldType(carrier.type) === 'seaplane'
+  return carrier.type === 'seaplane'
 }
 function spotsLabel(carrier: CarrierAirStatus) {
   if (isSeaplaneBase(carrier)) return `水上起降位 ${carrier.deck_length}`
