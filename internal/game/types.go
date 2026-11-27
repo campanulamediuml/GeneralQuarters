@@ -345,6 +345,9 @@ type Airfield struct {
 	HangarCapacity int     `json:"hangar_capacity"`
 	Strength       int     `json:"strength"`
 	MaxStrength    int     `json:"max_strength"`
+	// SupplyDamage 是被敌方滩头物资永久打掉的生命值：这部分修不回来，
+	// 维修上限 = MaxStrength - SupplyDamage。物资清空后机场能修，但只修得回炮击/空袭的伤。
+	SupplyDamage int `json:"supply_damage"`
 	Radar          bool    `json:"radar"`
 	HeavyAA        float64 `json:"heavy_aa"`
 	LightAA        float64 `json:"light_aa"`
@@ -453,8 +456,10 @@ type AirfieldAirStatus struct {
 	Coastal        int          `json:"coastal"`
 	HangarUsed     int          `json:"hangar_used"`
 	HangarCapacity int          `json:"hangar_capacity"`
-	// EnemySupplies 是敌方卸在本机场的滩头物资；只要还有货，机场生命值按 0 计且不修复。
-	EnemySupplies int               `json:"enemy_supplies"`
+	// EnemySupplies 是敌方卸在本机场的滩头物资：只要有货，维修就停摆，炮击清空后才恢复维修。
+	EnemySupplies int `json:"enemy_supplies"`
+	// SupplyDamage 是这批物资永久打掉的生命值：清滩之后也修不回来，维修上限 = MaxStrength - SupplyDamage。
+	SupplyDamage int               `json:"supply_damage"`
 	Aircraft      []AirfieldAirUnit `json:"aircraft"`
 }
 

@@ -23,9 +23,11 @@ type AirfieldContact struct {
 	LightAA     float64      `json:"light_aa"`
 	Coastal     int          `json:"coastal"`
 	HangarUsed  int          `json:"hangar_used"`
-	// EnemySupplies 是敌方卸在这个机场上的滩头物资：只要有货，机场就处于被压制状态。
+	// EnemySupplies 是敌方卸在这个机场上的滩头物资：只要有货，维修就停摆。
 	EnemySupplies int `json:"enemy_supplies"`
-	ContactLevel  int `json:"contact_level"`
+	// SupplyDamage 是这些物资永久打掉的生命值，清滩之后也修不回来。
+	SupplyDamage int `json:"supply_damage"`
+	ContactLevel int `json:"contact_level"`
 }
 
 // setAirfieldContact 记录/刷新敌方机场情报；每次发现把情报等级 +1（最高 4），并同步最新位置。
@@ -129,6 +131,7 @@ func airfieldContactView(state State, airfield *Airfield, contact AirfieldContac
 	contact.Coastal = airfield.Coastal
 	contact.HangarUsed = groundedAirCount(state, airfield.ID)
 	contact.EnemySupplies = enemySuppliesAt(state, airfield)
+	contact.SupplyDamage = airfield.SupplyDamage
 	return contact
 }
 
@@ -161,7 +164,7 @@ func VisibleGroundAir(state State, faction string) []AirfieldAirStatus {
 		}
 		status := AirfieldAirStatus{
 			UnitID: airfield.ID, Faction: airfield.Faction, Name: airfield.Name, Type: NormalizeAirfieldType(airfield.Type), Picture: airfield.PictureOrDefault(), Coord: airfield.Coord,
-			Strength: airfield.Strength, MaxStrength: airfield.MaxStrength, MaxRunways: airfield.Runways, EnemySupplies: enemySuppliesAt(state, airfield),
+			Strength: airfield.Strength, MaxStrength: airfield.MaxStrength, MaxRunways: airfield.Runways, EnemySupplies: enemySuppliesAt(state, airfield), SupplyDamage: airfield.SupplyDamage,
 			Runways: RunwaysAvailable(airfield.Strength, airfield.Runways), Radar: airfield.Radar,
 			HangarCapacity: airfield.HangarCapacity,
 			HeavyAA:        airfield.HeavyAA, LightAA: airfield.LightAA, Coastal: airfield.Coastal,
@@ -365,9 +368,18 @@ func AdvanceAirfields(state *State) []EngineEvent {
 	events := []EngineEvent{}
 	for _, id := range sortedAirfieldIDs(*state) {
 		airfield := state.Airfields[id]
-		if airfield.Strength < airfield.MaxStrength && d10(state) <= 2 {
+		// 敌方滩头物资还在机场上：维修暂停。炮击把物资清空之后才重新开始修。
+		if enemySuppliesAt(*state, airfield) > 0 {
+			continue
+		}
+		// 维修上限要扣掉被物资永久打掉的那部分：物资造成的伤害修不回来。
+		limit := airfield.MaxStrength - airfield.SupplyDamage
+		if limit < 0 {
+			limit = 0
+		}
+		if airfield.Strength < limit && d10(state) <= 2 {
 			airfield.Strength++
-			events = append(events, EngineEvent{Type: "airfield_repaired", Audience: airfield.Faction, Text: fmt.Sprintf("%s修复1点跑道（%d/%d）", airfield.Name, airfield.Strength, airfield.MaxStrength)})
+			events = append(events, EngineEvent{Type: "airfield_repaired", Audience: airfield.Faction, Text: fmt.Sprintf("%s修复1点跑道（%d/%d）", airfield.Name, airfield.Strength, limit)})
 		}
 		runways := RunwaysAvailable(airfield.Strength, airfield.Runways)
 		if runways == 0 {

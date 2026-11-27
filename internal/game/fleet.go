@@ -615,6 +615,11 @@ func resolveUnloading(state *State) []EngineEvent {
 				if airfield.Strength < 0 {
 					airfield.Strength = 0
 				}
+				// 这部分伤害是永久的：维修上限会跟着往下掉，清滩之后也补不回来。
+				airfield.SupplyDamage += delivered
+				if airfield.SupplyDamage > airfield.MaxStrength {
+					airfield.SupplyDamage = airfield.MaxStrength
+				}
 				if airfield.Strength == 0 {
 					events = append(events, EngineEvent{Type: "airfield_occupied", Audience: "all", Text: fmt.Sprintf("%s的跑道被滩头物资压毁，全部瘫痪", airfield.Name)})
 				}
