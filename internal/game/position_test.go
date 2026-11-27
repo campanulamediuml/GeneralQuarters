@@ -82,12 +82,29 @@ func TestCloseSpeedsCancelPosition(t *testing.T) {
 	}
 }
 
-// 编队里有航母或运输船：摆不出战列，双方都不判定。
-func TestCarrierFormationSkipsPosition(t *testing.T) {
+// appendShip 往某个阵营里再加一艘船，共用指定周期。
+func appendShip(state *State, faction, fleetID, typ string, cycle []int) *Unit {
+	id := faction + "-" + typ
+	unit := &Unit{ID: id, FleetID: fleetID, Name: faction + typ, Type: typ, Faction: faction,
+		Coord: "0101", Strength: 6, MaxStrength: 6,
+		Card: ShipCard{Gunnery: 16, DamageControl: 7, SpeedClass: "normal", MoveCycle: cycle}}
+	state.Units[id] = unit
+	return unit
+}
+
+// 编队里有航母或运输船：摆不出战列，抢不到位；但对方更快时照样会被抢位。
+func TestNoLineFormationCannotSeizeButCanBeCrossed(t *testing.T) {
 	for _, typ := range []string{"CV", "CVL", "CVE", "TRS"} {
-		state := positionState([]int{3}, []int{4}, true, false, []string{"BB", typ})
-		if seized, crossed, _ := battlePositionState(state, factionsOf(state)); seized != "" || crossed != "" {
-			t.Fatalf("编队里有 %s 时不该有阵位：seized=%q crossed=%q", typ, seized, crossed)
+		// 自己更快，但编队里带了航母/运输船：抢不到位。
+		seizing := positionState([]int{3}, []int{4}, true, false, []string{"BB"})
+		appendShip(seizing, "A", "af", typ, []int{3})
+		if seized, crossed, _ := battlePositionState(seizing, factionsOf(seizing)); seized != "" || crossed != "" {
+			t.Fatalf("编队里有 %s 时不该抢到阵位：seized=%q crossed=%q", typ, seized, crossed)
+		}
+		// 对方更快：带航母/运输船的一方还是会被穿。
+		crossedState := positionState([]int{3}, []int{4}, true, false, []string{"BB", typ})
+		if seized, crossed, _ := battlePositionState(crossedState, factionsOf(crossedState)); seized != "A" || crossed != "B" {
+			t.Fatalf("带 %s 的编队该被抢位：seized=%q crossed=%q", typ, seized, crossed)
 		}
 	}
 }

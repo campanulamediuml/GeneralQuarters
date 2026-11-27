@@ -497,7 +497,8 @@ func fleetPositionKnots(state State, members []Unit) int {
 //   - 至少有一方本回合机动（走了一格）才判定；双方都贴着不动就是正常对射；
 //   - 航速差 ≥ positionSpeedGap 节时快的一方抢到阵位，慢的一方第一轮只有一半火炮能开火；
 //   - 差距不到 3 节算咬住了，谁也没占到位；
-//   - 编队里有航母或运输船的一方摆不出战列，双方都不判定。
+//   - 编队里有航母或运输船的一方摆不出战列，抢不到位；但反过来会被抢——水面编队
+//     冲进航母/运输编队照样能压对方一轮。
 //
 // 返回 (抢占方, 被压制方, 判定依据)；不满足时全为空。
 func battlePositionState(state *State, factions map[string][]Unit) (string, string, string) {
@@ -510,9 +511,6 @@ func battlePositionState(state *State, factions map[string][]Unit) (string, stri
 	}
 	sort.Strings(names)
 	left, right := names[0], names[1]
-	if !fleetCanFormLine(factions[left]) || !fleetCanFormLine(factions[right]) {
-		return "", "", ""
-	}
 	leftMoved := fleetMovedThisTurn(state, factions[left])
 	rightMoved := fleetMovedThisTurn(state, factions[right])
 	if !leftMoved && !rightMoved {
@@ -526,10 +524,11 @@ func battlePositionState(state *State, factions map[string][]Unit) (string, stri
 		}
 		return fmt.Sprintf("%s 机动中以 %d 节压住 %s 的 %d 节", seized, seizedKnots, crossed, crossedKnots)
 	}
-	if leftKnots >= rightKnots+positionSpeedGap {
+	// 抢占方必须排得出战列：航母/运输编队跑得再快也抢不到位，只能被抢。
+	if leftKnots >= rightKnots+positionSpeedGap && fleetCanFormLine(factions[left]) {
 		return left, right, describe(left, right, leftKnots, rightKnots, rightMoved)
 	}
-	if rightKnots >= leftKnots+positionSpeedGap {
+	if rightKnots >= leftKnots+positionSpeedGap && fleetCanFormLine(factions[right]) {
 		return right, left, describe(right, left, rightKnots, leftKnots, leftMoved)
 	}
 	return "", "", ""
