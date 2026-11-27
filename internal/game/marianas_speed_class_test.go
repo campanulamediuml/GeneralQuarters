@@ -67,14 +67,16 @@ func TestMarianasSpeedClasses(t *testing.T) {
 		}
 	}
 
-	// 五支任务群同速：扶桑/山城按 25 节算常速，栗田主力也跟着 3 回合走一格。
-	for _, fleet := range []string{"TG1", "TG2", "TG3", "TG4", "TG5"} {
+	// 五支任务群按现实航速走、再按编队规模扣速，各自不同：
+	// 甲 25（信浓拖的）、乙 26（加贺）、丙 24（龙凤）、丁 22（扶桑/山城）、栗田 23（伊势/日向）。
+	wantFleetKnots := map[string]int{"TG1": 25, "TG2": 26, "TG3": 24, "TG4": 22, "TG5": 23}
+	for fleet, want := range wantFleetKnots {
 		id := firstUnitOfFleet(state, fleet)
 		if id == "" {
 			t.Fatalf("找不到舰队 %s", fleet)
 		}
-		if interval := FleetMoveInterval(state, state.Units[id]); interval != 3 {
-			t.Fatalf("%s 每 %d 回合移动一格，期望 3", fleet, interval)
+		if knots := FleetCycleKnots(state, state.Units[id]); knots != want {
+			t.Fatalf("%s 航速 %d 节，期望 %d", fleet, knots, want)
 		}
 	}
 }

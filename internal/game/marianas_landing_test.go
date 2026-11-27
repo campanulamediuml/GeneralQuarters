@@ -74,8 +74,8 @@ func TestMarianasLandingGroups(t *testing.T) {
 		"TG1": {11, []string{"天城", "葛城", "云龙", "信浓"}},
 		"TG2": {13, []string{"赤城", "加贺", "飞龙", "苍龙", "金刚", "榛名"}},
 		"TG3": {13, []string{"翔鹤", "瑞鹤", "大凤", "龙凤"}},
-		"TG4": {12, []string{"千岁", "千代田", "飞鹰", "隼鹰", "瑞凤"}},
-		"TG5": {21, []string{"大和", "武藏", "陆奥", "长门", "比叡", "雾岛", "扶桑", "山城", "伊势", "日向"}},
+		"TG4": {14, []string{"千岁", "千代田", "飞鹰", "隼鹰", "瑞凤", "扶桑", "山城"}},
+		"TG5": {19, []string{"大和", "武藏", "陆奥", "长门", "比叡", "雾岛", "伊势", "日向"}},
 	}
 	for fleet, want := range fleetWant {
 		if got := factionFleetSize(state, fleet); got != want.size {

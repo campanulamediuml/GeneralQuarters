@@ -2150,16 +2150,16 @@
    "id": "jp-bb-08",
    "faction": "B",
    "name": "扶桑",
-   "fleet_id": "TG5",
-   "fleet_name": "第一游击部队（栗田）",
+   "fleet_id": "TG4",
+   "fleet_name": "丁部队",
    "ship": "jp-bb-08"
   },
   {
    "id": "jp-bb-09",
    "faction": "B",
    "name": "山城",
-   "fleet_id": "TG5",
-   "fleet_name": "第一游击部队（栗田）",
+   "fleet_id": "TG4",
+   "fleet_name": "丁部队",
    "ship": "jp-bb-09"
   },
   {
