@@ -733,10 +733,25 @@ const hexSigs = computed(() => {
 
 // 两支舰队同格（接触状态）时反方向错开并左右挂名；单支舰队仍然居中。
 // 兵牌 52×36，位移太小的话连旗舰剪影都会被压住。
+// 同格还停着机场算子时，兵牌整体下移：机场卡收成窄条顶在格子上沿（见 AirfieldCounter 的 compact），
+// 中间才是舰队的位置——以前机场卡居中压住整个格子，兵牌 52×36 一点不露。
+const AIRFIELD_TOP = -25
+const AIRFIELD_TOP_SHARED = -40
+const UNIT_DROP_SHARED = 12
+
+function sharedWithFleet(coord: string) {
+  return fleetsAt(coord).length > 0
+}
+
+function airfieldTop(coord: string) {
+  return sharedWithFleet(coord) ? AIRFIELD_TOP_SHARED : AIRFIELD_TOP
+}
+
 function unitPosition(coord: string, index: number) {
   const point = center(coord)
-  if (!stackedAt(coord)) return { x: point.x, y: point.y }
-  return { x: point.x + index * 22 - 11, y: point.y - index * 20 + 10 }
+  const drop = airfieldsAt(coord).length ? UNIT_DROP_SHARED : 0
+  if (!stackedAt(coord)) return { x: point.x, y: point.y + drop }
+  return { x: point.x + index * 22 - 11, y: point.y - index * 20 + 10 + drop }
 }
 
 function moveOrder(fleet: FleetGroup) {
@@ -1126,13 +1141,13 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         :class="[`faction-${airfield.faction.toLowerCase()}`, { enemy: !spectate && airfield.faction !== playerFaction, unknown: !spectate && airfield.contact_level < 3 }]"
         :data-airfield-id="airfield.id"
         :x="center(coord).x - 28 + (index - (airfieldsAt(coord).length - 1) / 2) * 58"
-        :y="center(coord).y - 25"
+        :y="center(coord).y + airfieldTop(coord)"
         width="56"
         height="52"
         @click.stop="airfieldClick(airfield)"
       >
         <div xmlns="http://www.w3.org/1999/xhtml" class="map-airfield-card-inner">
-          <AirfieldCounter :airfield="airfieldContactStatus(airfield)" />
+          <AirfieldCounter :airfield="airfieldContactStatus(airfield)" :compact="sharedWithFleet(coord)" />
         </div>
       </foreignObject>
     </g>

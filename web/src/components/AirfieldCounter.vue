@@ -4,20 +4,22 @@ import type { GroundAirStatus } from '../types'
 import { formatNumber } from '../format'
 import { airfieldPictureURL, airfieldTypeHint, airfieldTypeLabel, normalizeAirfieldType } from '../airfields'
 
-const props = defineProps<{ airfield: GroundAirStatus }>()
+// compact：地图上和舰队挤在同一格时用的窄条版本，砍掉中间的机型示意图，
+// 只留跑道/雷达/生命值、防空/岸炮和名字，把格子中间让给舰队兵牌。
+const props = defineProps<{ airfield: GroundAirStatus; compact?: boolean }>()
 const typeLabel = computed(() => airfieldTypeLabel(props.airfield.type))
 const isSeaplane = computed(() => normalizeAirfieldType(props.airfield.type) === 'seaplane')
 </script>
 
 <template>
-  <figure class="airfield-counter" :data-faction="airfield.faction" :data-airfield-id="airfield.unit_id" :aria-label="`${airfield.name}机场算子`">
+  <figure class="airfield-counter" :class="{ compact }" :data-faction="airfield.faction" :data-airfield-id="airfield.unit_id" :aria-label="`${airfield.name}机场算子`">
     <header class="af-top">
       <strong v-if="isSeaplane" class="af-seaplane" title="水上飞机基地没有跑道，飞机直接在泊地起降">水机</strong>
       <strong v-else :title="`可用跑道 ${airfield.runways} / 总跑道 ${airfield.max_runways}；可用跑道 = ceil(生命值 / 5)，不超过总跑道`">{{ airfield.runways }}<small>/{{ airfield.max_runways }}</small></strong>
       <span class="af-radar" :class="{ on: airfield.radar }" :title="airfield.radar ? '装备对空搜索雷达' : '无雷达'"></span>
       <b :title="`生命值 ${airfield.strength} / ${airfield.max_strength}`">{{ airfield.strength }}<small>/{{ airfield.max_strength }}</small></b>
     </header>
-    <div class="af-middle" :title="airfieldTypeHint(airfield.type)">
+    <div class="af-middle" :class="{ 'has-supplies': airfield.enemy_supplies }" :title="airfieldTypeHint(airfield.type)">
       <b v-if="airfield.enemy_supplies" class="af-enemy-supplies" :title="`敌方已卸下 ${airfield.enemy_supplies} 点滩头物资：维修停摆，炮击清空后才恢复维修`">{{ airfield.enemy_supplies }}</b>
       <img v-if="airfieldPictureURL(airfield.picture)" class="af-image-picture" :src="airfieldPictureURL(airfield.picture)" alt="" :data-airfield-picture="airfield.picture" />
       <svg v-else class="af-image" viewBox="0 0 120 34" aria-hidden="true">
@@ -57,4 +59,14 @@ const isSeaplane = computed(() => normalizeAirfieldType(props.airfield.type) ===
 .af-type{position:absolute;right:5px;top:1px;opacity:.7;font:500 8px 'Noto Sans SC',sans-serif}.af-enemy-supplies{position:absolute;left:4px;top:0;color:#b3121f;font:800 15px 'Rajdhani',sans-serif;text-shadow:0 0 2px #fff;pointer-events:none}
 .af-bottom{display:flex;align-items:center;justify-content:space-between;padding:1px 6px;border-top:0;border-radius:0 0 3px 3px;font:700 15px 'Rajdhani',sans-serif}
 .airfield-counter figcaption{overflow:hidden;padding:3px 2px 0;color:#c3d4d0;font-size:10px;text-align:center;text-overflow:ellipsis;white-space:nowrap}
+/* 窄条模式：机场和舰队同格时用。中间那栏 42px 高的示意图正好把 52×36 的兵牌整块盖住，
+   砍掉它以后卡片只剩两行数字加名字，能顶到格子上沿、把中间让给舰队。 */
+.airfield-counter.compact>header{border-bottom:1px solid var(--af-border)}
+.airfield-counter.compact .af-middle{display:none}
+.airfield-counter.compact .af-middle.has-supplies{display:block;height:auto;padding:1px 0 0;border-top:0}
+.airfield-counter.compact .af-middle .af-image,
+.airfield-counter.compact .af-middle .af-image-picture,
+.airfield-counter.compact .af-middle .af-type{display:none}
+.airfield-counter.compact .af-enemy-supplies{position:static;display:block;text-align:center}
+.airfield-counter.compact figcaption{padding-top:1px}
 </style>
