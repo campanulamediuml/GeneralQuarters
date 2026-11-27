@@ -84,6 +84,7 @@ func TestSeaplaneBaseImmuneToShoreBombardment(t *testing.T) {
 }
 
 // TestShoreBombardmentDamagesAirfieldAndChargesConfusion 岸轰命中扣机场生命值、摧毁地面飞机，并给舰队加 4 点混乱。
+// 先把岸炮清零，让所有命中都落在跑道上（落点按剩余点数摇，见 bombardTargetIsCoastal）。
 func TestShoreBombardmentDamagesAirfieldAndChargesConfusion(t *testing.T) {
 	state := sandboxState(t)
 	airfield := state.Airfields["af-b-sentry"]
@@ -94,8 +95,8 @@ func TestShoreBombardmentDamagesAirfieldAndChargesConfusion(t *testing.T) {
 	}
 	state.FleetStays = map[string]string{"TG-A": airfield.Coord}
 	before := airfield.Strength
-	beforeCoastal := airfield.Coastal
 	beforeGround := len(sortedGroundAirIDs(state, airfield.ID))
+	airfield.Coastal = 0
 	// 用固定种子（52）保证本场齐射至少命中 2 次，否则断言"没掉血"会是测试本身失效。
 	state.RNGState = 52
 	events := resolveShoreBombardment(&state)
@@ -108,17 +109,70 @@ func TestShoreBombardmentDamagesAirfieldAndChargesConfusion(t *testing.T) {
 	if airfield.Strength < 0 {
 		t.Fatalf("机场生命值不应跌破 0：%d", airfield.Strength)
 	}
-	if airfield.Coastal >= beforeCoastal {
-		t.Fatalf("岸轰命中应削减岸炮：%d -> %d", beforeCoastal, airfield.Coastal)
-	}
-	if airfield.Coastal < 0 {
-		t.Fatalf("岸炮不应跌破 0：%d", airfield.Coastal)
+	if airfield.Coastal != 0 {
+		t.Fatalf("岸炮已清零，命中不该再落回岸炮：%d", airfield.Coastal)
 	}
 	if len(sortedGroundAirIDs(state, airfield.ID)) > beforeGround {
 		t.Fatal("岸轰不应增加地面飞机")
 	}
 	if state.Units["a-bb-01"].Confusion < 4 {
 		t.Fatalf("岸轰后舰队应获得 4 点混乱，实际 %d", state.Units["a-bb-01"].Confusion)
+	}
+}
+
+// TestBombardTargetWeightsFollowRemainingPoints 落点按岸炮:跑道剩余点数加权摇一次，不是一炮同时结算三样。
+func TestBombardTargetWeightsFollowRemainingPoints(t *testing.T) {
+	airfield := &Airfield{Coastal: 8, Strength: 15}
+	var rng uint64 = 20261127
+	const draws = 20000
+	coastal := 0
+	for i := 0; i < draws; i++ {
+		if bombardTargetIsCoastal(&rng, airfield) {
+			coastal++
+		}
+	}
+	want := 8.0 / 23.0
+	if share := float64(coastal) / draws; share < want-0.02 || share > want+0.02 {
+		t.Fatalf("命中落在岸炮的比例应约 %.3f（8/23），实际 %.3f", want, share)
+	}
+	airfield.Coastal = 0
+	for i := 0; i < 200; i++ {
+		if bombardTargetIsCoastal(&rng, airfield) {
+			t.Fatal("岸炮清零后不该再有命中落在岸炮上")
+		}
+	}
+	airfield.Coastal, airfield.Strength = 8, 0
+	for i := 0; i < 200; i++ {
+		if !bombardTargetIsCoastal(&rng, airfield) {
+			t.Fatal("跑道打空后不该再有命中落在跑道上")
+		}
+	}
+}
+
+// TestBombardHitOnCoastalSparesRunway 落在岸炮的命中只削岸炮：跑道不掉血、驻机不被摧毁。
+func TestBombardHitOnCoastalSparesRunway(t *testing.T) {
+	state := sandboxState(t)
+	airfield := state.Airfields["af-b-sentry"]
+	for _, unit := range state.Units {
+		if FleetKey(unit) == "TG-A" {
+			unit.Coord = airfield.Coord
+		}
+	}
+	state.FleetStays = map[string]string{"TG-A": airfield.Coord}
+	// 跑道已经打空：落点全在岸炮上。
+	airfield.Strength = 0
+	beforeCoastal := airfield.Coastal
+	beforeGround := len(sortedGroundAirIDs(state, airfield.ID))
+	state.RNGState = 7
+	resolveShoreBombardment(&state)
+	if airfield.Coastal >= beforeCoastal {
+		t.Fatalf("齐射应削减岸炮：%d -> %d", beforeCoastal, airfield.Coastal)
+	}
+	if airfield.Strength != 0 {
+		t.Fatalf("跑道已打空，命中不该再伤跑道：%d", airfield.Strength)
+	}
+	if got := len(sortedGroundAirIDs(state, airfield.ID)); got != beforeGround {
+		t.Fatalf("打岸炮不该摧毁驻机：%d -> %d", beforeGround, got)
 	}
 }
 

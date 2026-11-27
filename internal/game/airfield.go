@@ -2901,6 +2901,20 @@ func hexHitModifier(state State, coord string) float64 {
 	return 0
 }
 
+// bombardTargetIsCoastal 决定一次舰炮命中落在岸炮还是跑道上：按两者剩余点数
+// 加权摇一次，命中只结算被选中的那一项——不会一炮同时削岸炮、伤跑道、炸驻机。
+// 岸炮清零后全部落在跑道，跑道打空后全部落在岸炮。
+func bombardTargetIsCoastal(rng *uint64, airfield *Airfield) bool {
+	if airfield.Coastal <= 0 {
+		return false
+	}
+	total := airfield.Coastal + airfield.Strength
+	if total <= 0 {
+		return false
+	}
+	return int(nextUint64(rng)%uint64(total)) < airfield.Coastal
+}
+
 func bombardFleet(state *State, fleetID string, airfield *Airfield) []EngineEvent {
 	events := []EngineEvent{}
 	fleetFaction := ""
@@ -2943,14 +2957,19 @@ func bombardFleet(state *State, fleetID string, airfield *Airfield) []EngineEven
 			continue
 		}
 		bombardFaction = ship.Faction
+		enemyFaction := OppositeFaction(bombardFaction)
 		chance := 25.0 + hexHitModifier(*state, airfield.Coord)
 		for shot := 0; shot < ship.Card.Gunnery; shot++ {
+			// 机场和岸炮都已经打空、滩头也没货可打时，剩下的炮不必再开火：
+			// 否则命中会"凭空"落到已经报废的跑道上，继续销毁已经没有意义的驻机。
+			if airfield.Strength <= 0 && airfield.Coastal <= 0 && shoreSupplies(*state, enemyFaction, airfield.Coord) <= 0 {
+				break
+			}
 			if chance <= 0 || probabilityRoll(&state.RNGState) >= chance {
 				continue
 			}
 			gunneryHits++
 			// 规则书 520 行：只摧毁"敌方投送"的滩头物资，绝不炸自己刚卸下的货。
-			enemyFaction := OppositeFaction(bombardFaction)
 			if shoreSupplies(*state, enemyFaction, airfield.Coord) > 0 {
 				removeShoreSupplies(state, enemyFaction, airfield.Coord, 1)
 				supplyHits++
@@ -2960,27 +2979,24 @@ func bombardFleet(state *State, fleetID string, airfield *Airfield) []EngineEven
 				// 清滩只打物资：滩头清空后炮口不再对准自家机场，避免自伤跑道和岸炮。
 				continue
 			}
+			// 每次命中只结算被摇中的那一项：落在岸炮就只削岸炮，落在跑道才伤
+			// 生命值和驻机（规则书 578 行，按剩余点数加权）。
+			if bombardTargetIsCoastal(&state.RNGState, airfield) {
+				airfield.Coastal--
+				coastalLoss++
+				continue
+			}
 			damage, aircraft := 1, 1
 			if ship.Type == "BB" {
 				damage, aircraft = 2, 2
 			}
-			if airfield.Strength > 0 {
-				appliedDamage := damage
-				if airfield.Strength-appliedDamage < 0 {
-					appliedDamage = airfield.Strength
-				}
-				airfield.Strength -= appliedDamage
-				airfieldDamage += appliedDamage
+			appliedDamage := damage
+			if airfield.Strength-appliedDamage < 0 {
+				appliedDamage = airfield.Strength
 			}
+			airfield.Strength -= appliedDamage
+			airfieldDamage += appliedDamage
 			groundLoss += destroyGroundAircraft(state, airfield, aircraft)
-			// 舰炮命中也会压制岸炮：每命中一次岸炮-1，最低为 0（与空袭对地攻击一致）。
-			if airfield.Coastal > 0 {
-				airfield.Coastal--
-				coastalLoss++
-			}
-			if airfield.Strength <= 0 {
-				break
-			}
 		}
 	}
 	// 岸轰后获得 4 点混乱，必须等混乱衰减完才能再次岸轰
