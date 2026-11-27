@@ -468,52 +468,42 @@ func armoredCarrierBombEffect(state *State, target *Unit, warned bool) []EngineE
 	return events
 }
 
-// shellDamageTier 返回这艘船在"损伤阶梯"上的位置：0 = BB、1 = BC、2 = CA、
-// 3 = CL、4 = DD。舰种决定起点（航母和重巡同级），每挨一发炮弹下移一级，
-// 到 DD 封顶——挨打越多，船体越通透，后续命中越容易直接打进要害。
-func shellDamageTier(unit *Unit) int {
-	base := 4
-	switch unit.Type {
+// shellDamageRank 把舰种映射到"装甲档次"，数字越小越扛揍：
+// 1 = BB、2 = BC、3 = CA / CV（航母和重巡同级）、4 = CL / CVL（轻母和轻巡同级）、
+// 5 = DD、6 = CVE / TRS（护航航母和运输船同级，垫底）。
+func shellDamageRank(unitType string) int {
+	switch unitType {
 	case "BB":
-		base = 0
+		return 1
 	case "BC":
-		base = 1
+		return 2
 	case "CA", "CV":
-		// 航母和重巡同级。
-		base = 2
+		return 3
 	case "CL", "CVL":
-		// 轻母和轻巡同级。
-		base = 3
+		return 4
+	case "CVE", "TRS":
+		return 6
+	default:
+		return 5
 	}
-	tier := base
-	if unit.Damage != nil {
-		tier += unit.Damage.ShellHits
-	}
-	if tier > 4 {
-		tier = 4
-	}
-	return tier
 }
 
-// shellDamageChance 是这一发炮弹直接打掉 1 点生命值的概率（%）。
-// 阶梯越靠下越脆：BB 1%、BC 2%、CA（含航母）4%、CL（含轻母）8%、DD 10%，
-// 护航航母和运输船直接 12%——它们没有能挡住炮弹的结构，再往下推没有意义。
-func shellDamageChance(unit *Unit) float64 {
-	if unit.Type == "CVE" || unit.Type == "TRS" {
-		return 12
+// shellDamageChance 是这一发炮弹直接打掉 1 点生命值的概率（%），只看双方档次差：
+// 同级 1%、低一档 2%、低两档 4%、低三档 8%、低四档 10%、低五档 12%。
+// 打比自己大（或同为高一档以上）的目标是 0%——这种命中只能去摇 DCT 的伤害表。
+func shellDamageChance(attacker, target *Unit) float64 {
+	chances := []float64{1, 2, 4, 8, 10, 12}
+	diff := 0
+	if attacker != nil {
+		diff = shellDamageRank(target.Type) - shellDamageRank(attacker.Type)
 	}
-	switch shellDamageTier(unit) {
-	case 0:
-		return 1
-	case 1:
-		return 2
-	case 2:
-		return 4
-	case 3:
-		return 8
-	default:
-		return 10
+	if diff < 0 {
+		return 0
 	}
+	if diff >= len(chances) {
+		return chances[len(chances)-1]
+	}
+	return chances[diff]
 }
 
 // applyGunOrBombHit 结算炮弹和炸弹命中：两者共用防空、甲板与 DCT 流程，
@@ -550,16 +540,13 @@ func applyGunOrBombHit(state *State, hit Hit) []EngineEvent {
 	if state.Units[target.ID] == nil {
 		return events
 	}
-	// 炮弹另有一条"损伤阶梯"：不管 DCT 过不过，都按当前级别判一次直接扣 1 点生命值，
-	// 判完把这个级别往下推一级。挨打越多，后续每一发越容易打进要害——被集火的船
-	// 会越打越脆，而不是一直按初始舰种吃 1%~2% 的刮痧。
+	// 炮弹直击要害：不管 DCT 过不过，都按双方档次差再判一次直接扣 1 点生命值。
+	// 大口径砸薄壳（BB 打 DD）能一炮带走，小船还击战列舰则只有摇伤害表这条路。
 	if hit.Cause == HitShell {
-		damage := EnsureDamage(target)
-		if probabilityRoll(&state.RNGState) < shellDamageChance(target) {
+		attacker := state.Units[hit.AttackerID]
+		if chance := shellDamageChance(attacker, target); chance > 0 &&
+			probabilityRoll(&state.RNGState) < chance {
 			events = append(events, damageStrength(state, target, 1)...)
-		}
-		if state.Units[target.ID] != nil {
-			damage.ShellHits++
 		}
 	}
 	return events
