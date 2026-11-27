@@ -138,7 +138,8 @@ func LoadoutOptions(kind string, seaplane bool, antiGround, antiShip int) []Load
 // B-26 是水平轰炸机，但能挂鱼雷；B-25 / B-17 没有这个能力，仍然只有炸弹。
 func LoadoutOptionsFor(kind string, seaplane bool, antiGround, antiShip int, torpedoCapable bool) []Loadout {
 	if seaplane {
-		return []Loadout{LoadoutReconTank, LoadoutTransfer}
+		// 水上侦察机/飞行艇也能挂深弹做反潜巡逻（PBY 这类就是大西洋上的反潜主力）。
+		return []Loadout{LoadoutReconTank, LoadoutDepthChargeTank, LoadoutDepthCharge, LoadoutTransfer}
 	}
 	canBomb := antiGround > 0 || antiShip > 0
 	canTorpedo := antiShip > 0 && (kind == "torpedo_bomber" || torpedoCapable)

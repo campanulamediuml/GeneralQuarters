@@ -320,9 +320,6 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 			if order.Type == "LAUNCH_ASW" && aircraft.Kind == "fighter" {
 				return fmt.Errorf("战斗机不能执行反潜巡逻：需要轰炸机、侦察机这类能挂深水炸弹的机型")
 			}
-			if order.Type == "LAUNCH_ASW" && aircraft.Seaplane {
-				return fmt.Errorf("水上飞机没有反潜深弹挂架，不能执行反潜巡逻")
-			}
 			if order.Type == "LAUNCH_TRANSFER" && aircraft.Seaplane {
 				return fmt.Errorf("水上侦察机不能转场到其他航母")
 			}

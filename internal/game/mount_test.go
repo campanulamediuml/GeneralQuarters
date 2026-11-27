@@ -89,9 +89,10 @@ func TestLoadoutOptionsByAircraftKind(t *testing.T) {
 	if !has(fighter, LoadoutAirTank) || !has(fighter, LoadoutAir) {
 		t.Fatalf("战斗机应当有对空选项：%v", fighter)
 	}
+	// 水上飞机能挂侦察、反潜深弹（PBY 这类飞行艇也做反潜巡逻）和转场。
 	seaplane := LoadoutOptions("recon", true, 0, 0)
-	if len(seaplane) != 2 || !has(seaplane, LoadoutReconTank) || !has(seaplane, LoadoutTransfer) {
-		t.Fatalf("水上飞机只能挂侦察与转场：%v", seaplane)
+	if !has(seaplane, LoadoutReconTank) || !has(seaplane, LoadoutDepthChargeTank) || !has(seaplane, LoadoutTransfer) {
+		t.Fatalf("水上飞机应能挂侦察、反潜深弹和转场：%v", seaplane)
 	}
 }
 
