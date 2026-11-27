@@ -185,16 +185,16 @@ type ShipCard struct {
 	AirRadar       bool    `json:"air_radar"`
 	// FireControlRadar 是火控雷达（Mk.8 这类）：只有它给炮击 +10%，对海搜索看 SurfaceRadar。
 	// 用指针是为了区分"老存档没写"（nil → 回落到 SurfaceRadar）和"明确没有"（false）。
-	FireControlRadar *bool `json:"fire_control_radar,omitempty"`
-	SpeedClass     string  `json:"speed_class"`
-	TorpedoSalvos  int     `json:"torpedo_salvos"`
-	Aircraft       int     `json:"aircraft"`
-	HangarCapacity int     `json:"hangar_capacity"`
-	DeckCapacity   int     `json:"deck_capacity"`
-	ElevatorCount  int     `json:"elevator_count"`
-	DepthCharges   int     `json:"depth_charges"`
-	Cargo          int     `json:"cargo"`
-	ArmoredCarrier bool    `json:"armored_carrier"`
+	FireControlRadar *bool  `json:"fire_control_radar,omitempty"`
+	SpeedClass       string `json:"speed_class"`
+	TorpedoSalvos    int    `json:"torpedo_salvos"`
+	Aircraft         int    `json:"aircraft"`
+	HangarCapacity   int    `json:"hangar_capacity"`
+	DeckCapacity     int    `json:"deck_capacity"`
+	ElevatorCount    int    `json:"elevator_count"`
+	DepthCharges     int    `json:"depth_charges"`
+	Cargo            int    `json:"cargo"`
+	ArmoredCarrier   bool   `json:"armored_carrier"`
 	// HangarAdvantage 表示这艘航母的机库被炸弹引爆时 DCT 取优势（投两次取小）。
 	// 这是单舰属性，和国籍无关：多数美军航母有，列克星敦级没有，日军航母几乎没有。
 	HangarAdvantage bool   `json:"hangar_advantage"`
@@ -701,7 +701,15 @@ type AirUnit struct {
 	InterceptedThisTurn bool `json:"intercepted_this_turn"`
 	// Armed 表示这架飞机已经整备完毕（挂好弹、加好油），属于"整装待发"：
 	// 机库里或甲板上被炸弹命中的整装待发飞机会被摧毁（规则书 421–423 行）。
+	// 由 aircraftReady 统一推导：有挂载 + 整备回合走完 + 没损伤/检修，和具体任务无关。
 	Armed bool `json:"armed"`
+	// DeckService 表示这架飞机正在甲板上整备：status 仍然是 service，
+	// 但作业位置在甲板（占甲板位、不占机库位），整备完成后直接转成 deck 待发。
+	// 空载算子拖上甲板后再选挂载，走的就是这条路径。
+	DeckService bool `json:"deck_service"`
+	// LiftRequested 表示玩家已经把机库里的算子拖进甲板栏，等升降机把它提上去。
+	// 整备还没走完的算子会把请求留在那里，整备一完成就排队提升。
+	LiftRequested bool `json:"lift_requested"`
 	// ReturnToAirfield 是编队选定的备降机场；为空则返航回母舰（规则书 202–205 行）
 	ReturnToAirfield string `json:"return_to_airfield"`
 }
@@ -927,15 +935,15 @@ type State struct {
 	DayHours    float64 `json:"day_hours"`
 	TurnsPerDay int     `json:"turns_per_day"`
 	// WeatherTurns 是天气刷新间隔（0 = 静态天气）。
-	WeatherTurns     int                                    `json:"weather_turns"`
-	Doctrines        map[string]string                      `json:"doctrines"`
+	WeatherTurns int               `json:"weather_turns"`
+	Doctrines    map[string]string `json:"doctrines"`
 	// WithdrawDirections 是剧本给的撤离方向；退避队每回合朝它走一格（马里亚纳：美军 E、日军 W）。
-	WithdrawDirections map[string]string `json:"withdraw_directions"`
-	Map                MapDefinition     `json:"map"`
-	Units            map[string]*Unit                       `json:"units"`
-	Aircraft         map[string]*AirUnit                    `json:"aircraft"`
-	Airfields        map[string]*Airfield                   `json:"airfields"`
-	AirfieldContacts map[string]map[string]*AirfieldContact `json:"airfield_contacts"`
+	WithdrawDirections map[string]string                      `json:"withdraw_directions"`
+	Map                MapDefinition                          `json:"map"`
+	Units              map[string]*Unit                       `json:"units"`
+	Aircraft           map[string]*AirUnit                    `json:"aircraft"`
+	Airfields          map[string]*Airfield                   `json:"airfields"`
+	AirfieldContacts   map[string]map[string]*AirfieldContact `json:"airfield_contacts"`
 	// 每个舰队上一回合结束时所在的 hex，用于判断"停留满 1 回合"（岸轰条件）
 	FleetStays map[string]string                   `json:"fleet_stays"`
 	GroundAir  map[string]*AirfieldAirUnit         `json:"ground_aircraft"`

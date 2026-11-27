@@ -26,6 +26,9 @@ const (
 type Loadout string
 
 const (
+	// LoadoutNone 是"空载"：机库里的默认状态，没有弹、没有副油箱，航程就是机种基础航程。
+	// 空载算子不会自己开始整备：玩家在机库里选一套挂载才是整备的开始。
+	LoadoutNone Loadout = ""
 	// 侦察
 	LoadoutReconTank Loadout = "recon+tank"
 	LoadoutRecon     Loadout = "recon"
@@ -75,6 +78,9 @@ func (l Loadout) IsHeavyBomb() bool {
 
 // Label 是给玩家看的名字。
 func (l Loadout) Label() string {
+	if l == LoadoutNone {
+		return "无挂载"
+	}
 	names := map[Weapon]string{WeaponRecon: "侦察", WeaponAir: "对空", WeaponTorpedo: "鱼雷", WeaponBomb: "炸弹", WeaponTransfer: "转场"}
 	name := names[l.Weapon()]
 	if l.IsHeavyBomb() {
@@ -289,6 +295,10 @@ func ValidateLoadout(kind string, seaplane bool, antiGround, antiShip int, loado
 
 // ValidateLoadoutFor 校验带鱼雷挂架能力的机型。
 func ValidateLoadoutFor(kind string, seaplane bool, antiGround, antiShip int, loadout Loadout, torpedoCapable bool) error {
+	// 空载永远合法：把挂载清空等于"卸弹回机库"，是玩家的一个合法选择。
+	if loadout == LoadoutNone {
+		return nil
+	}
 	for _, option := range LoadoutOptionsFor(kind, seaplane, antiGround, antiShip, torpedoCapable) {
 		if option == loadout {
 			return nil
@@ -512,6 +522,12 @@ func validateLoadoutOrder(state State, faction string, order Order) error {
 		if aircraft.Launched || airborne(aircraft) {
 			return fmt.Errorf("已经升空的算子不能更换挂载")
 		}
+		if aircraft.Status == "elevator" {
+			return fmt.Errorf("%s正在升降机上，等这一轮提升/下降走完再换挂载", aircraft.Model)
+		}
+		if aircraft.Status == "recovery" {
+			return fmt.Errorf("%s还在排队下降，等它回到机库再换挂载", aircraft.Model)
+		}
 		if err := ValidateLoadoutFor(aircraft.Kind, aircraft.Seaplane, aircraft.AntiGround, aircraft.AntiShip, loadout, aircraft.TorpedoCapable); err != nil {
 			return err
 		}
@@ -519,7 +535,10 @@ func validateLoadoutOrder(state State, faction string, order Order) error {
 	return nil
 }
 
-// ApplyLoadoutOrder 按指定挂载重建飞机的满油航程。
+// ApplyLoadoutOrder 给选中的算子换挂载；舰载机换挂载等于"开始整备"。
+//
+// 机库里选好挂载就开始整备（不需要先拖进任务栏），整备完在机库里待发；
+// 空载算子拖上甲板后再选挂载，就在甲板上原地整备。选"无挂载"等于卸弹回机库。
 func ApplyLoadoutOrder(state *State, order Order) []EngineEvent {
 	loadout := Loadout(order.Loadout)
 	events := []EngineEvent{}
@@ -530,7 +549,7 @@ func ApplyLoadoutOrder(state *State, order Order) []EngineEvent {
 				continue
 			}
 			applyGroundLoadoutChoice(ground, loadout)
-			ground.LoadoutManual = true
+			ground.LoadoutManual = loadout != LoadoutNone
 			count++
 			continue
 		}
@@ -538,15 +557,59 @@ func ApplyLoadoutOrder(state *State, order Order) []EngineEvent {
 		if aircraft == nil || aircraft.Launched || airborne(aircraft) {
 			continue
 		}
-		applyLoadoutChoice(aircraft, loadout)
-		// 手动选择要打上标记：之后分配任务不再用默认挂载覆盖它（规则书 51 行）。
-		aircraft.LoadoutManual = true
+		if aircraft.Status == "elevator" || aircraft.Status == "recovery" {
+			continue
+		}
+		armAircraft(aircraft, loadout)
 		count++
 	}
 	if count == 0 {
 		return nil
 	}
-	return append(events, EngineEvent{Type: "loadout_changed", Audience: orderFactionFromIDs(*state, order), Text: fmt.Sprintf("%d个算子更换挂载为%s", count, loadout.Label())})
+	return append(events, EngineEvent{Type: "loadout_changed", Audience: orderFactionFromIDs(*state, order), Text: fmt.Sprintf("%d个算子挂载改为%s", count, loadout.Label())})
+}
+
+// armAircraft 把机库/甲板上的舰载机换成指定挂载并重新开始整备。
+//
+// 整备位置跟着算子现在的位置走：机库里的在机库整备（status service），
+// 甲板上的在甲板整备（status service + DeckService），整备完都变成待发。
+// 空载（LoadoutNone）不是一次整备：卸掉弹和副油箱，状态退回 hangar/deck。
+func armAircraft(aircraft *AirUnit, loadout Loadout) {
+	if aircraft == nil {
+		return
+	}
+	if loadout == LoadoutNone {
+		applyLoadoutChoice(aircraft, LoadoutNone)
+		aircraft.LoadoutManual = false
+		aircraft.Armed = false
+		aircraft.ServiceTurns = 0
+		if aircraft.Status == "service" {
+			if aircraft.DeckService {
+				aircraft.Status = "deck"
+			} else {
+				aircraft.Status = "hangar"
+			}
+		}
+		aircraft.DeckService = false
+		return
+	}
+	// 同一套挂载、而且已经整备好了：不重新开工，避免"点一下下拉框又白等一回合"。
+	if aircraft.Loadout == loadout && serviceComplete(aircraft) {
+		aircraft.LoadoutManual = true
+		return
+	}
+	applyLoadoutChoice(aircraft, loadout)
+	// 手动选择要打上标记：之后分配任务不再用默认挂载覆盖它（规则书 51 行）。
+	aircraft.LoadoutManual = true
+	aircraft.Armed = false
+	aircraft.ServiceTurns = 0
+	if aircraft.Status == "deck" || aircraft.Status == "ready" {
+		aircraft.Status = "service"
+		aircraft.DeckService = true
+		return
+	}
+	aircraft.Status = "service"
+	aircraft.DeckService = false
 }
 
 // orderFactionFromIDs 从命令里的算子反推阵营。

@@ -566,3 +566,13 @@ path.hex-wind{pointer-events:none;fill:none;stroke:#7fa6b0;stroke-width:1.3;stro
 /* 舰队面板：舰队防空值（全舰队重型防空之和），和"可移动/还需N回合"同一行 */
 .fleet-aa-value{color:#b9d6de;white-space:nowrap}
 .fleet-aa-value b{color:#f0d58d;font-size:13px;margin-left:2px}
+/* 机库/甲板里的挂载下拉：和任务栏里的那个同一套外观，只是多一项"无挂载"。
+   选挂载 = 开始整备，清空 = 卸弹回机库。 */
+.air-counter-item>.loadout-picker{display:block;width:84px;margin-top:4px;padding:3px 2px;border:1px solid #476d7a;background:#173844;color:#d5e5e3;font-size:8px}
+.air-counter-item>.loadout-picker:hover{background:#245365}
+.air-counter-item>.loadout-picker:disabled{opacity:.55}
+.air-storage-zone .lift-deck-button{align-self:stretch;min-height:85px;padding:6px;border:1px dashed #54727a;background:#132c33;color:#b6cbca;font-size:9px;line-height:1.4}
+.air-storage-zone .lift-deck-button:hover{background:#1d4750;border-color:#8de0ad;color:#d9f2e5}
+.air-storage-zone .lift-deck-button:disabled{opacity:.5}
+.mission-grid .air-counter-item>.loadout-picker{width:84px;max-width:84px;font-size:7px}
+.mission-grid .air-storage-zone .lift-deck-button{flex:0 0 84px;min-height:85px;font-size:7px}

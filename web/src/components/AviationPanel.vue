@@ -6,7 +6,7 @@ import AircraftCounter from './AircraftCounter.vue'
 import AirfieldCounter from './AirfieldCounter.vue'
 import ShipCounter from './ShipCounter.vue'
 
-type AirCommandType = 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' | 'LAUNCH_COVER' | 'LAUNCH_TRANSFER' | 'RETURN_TO_HANGAR' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK' | 'SET_AIR_CYCLE' | 'RECALL_AIR' | 'RETASK_AIR' | 'RETARGET_AIR' | 'SET_STRIKE_DISPERSION'
+type AirCommandType = 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' | 'LAUNCH_COVER' | 'LAUNCH_TRANSFER' | 'RETURN_TO_HANGAR' | 'LIFT_TO_DECK' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK' | 'SET_AIR_CYCLE' | 'RECALL_AIR' | 'RETASK_AIR' | 'RETARGET_AIR' | 'SET_STRIKE_DISPERSION'
 type CommandOptions = { heading?: ReconHeading; sector_width?: 60 | 120; task_id?: string; coord?: string; task_kind?: string; loadout?: string; disperse?: boolean; cycle?: boolean; lane?: number }
 type TaskLane = { id: string; name: string; kind: string; slot?: number }
 type AirZone = 'hangar' | 'deck' | 'elevator'
@@ -41,7 +41,9 @@ function radioActions(task: AirTask) {
 }
 
 // 挂载选项：由机种决定（攻击机无对空、战斗机无炸弹鱼雷、水上飞机只有侦察与转场）。
+// 空串是"无挂载"：机库里的默认状态，选一套挂载才是整备的开始。
 const loadoutLabels: Record<string, string> = {
+  '': '无挂载',
   'recon+tank': '侦察（副油箱）',
   recon: '侦察',
   'air+tank': '对空（副油箱）',
@@ -103,6 +105,16 @@ function loadoutName(loadout?: string, tankDropped?: boolean) {
   return parts.length ? ` · ${parts.join(' · ')}` : ''
 }
 
+// 机库/甲板上的挂载下拉比任务栏多一项"无挂载"：清空挂载就是卸弹回机库。
+function hangarLoadoutOptions(aircraft: AirUnit) {
+  return ['', ...loadoutOptionsFor(aircraft)]
+}
+
+function setLoadout(ids: string[], loadout: string) {
+  if (refuseLocked()) return
+  emit('command', 'SET_LOADOUT' as AirCommandType, ids, { loadout })
+}
+
 function radioTitle(taskID: string) {
   const status = radioStatus(taskID)
   if (!status) return ''
@@ -142,6 +154,11 @@ const selectedCarrierID = ref('')
 const selectionMode = ref<'single' | 'type'>('single')
 const expandStacks = ref(false)
 const selectedIDs = ref<string[]>([])
+// 选中的算子里哪些还在机库里：决定"提升到甲板"按钮要不要出现。
+const selectedHangarIDs = computed(() => {
+  const inHangar = new Set(aircraftAt('hangar').map((item) => item.id))
+  return selectedIDs.value.filter((id) => inHangar.has(id))
+})
 const draggingIDs = ref<string[]>([])
 const dragOver = ref('')
 const selectionHint = ref('')
@@ -487,10 +504,12 @@ function aircraftAt(zone: AirZone) {
   if (zone === 'elevator') {
     return aircraft.filter((item) => item.status === 'elevator')
   }
+  // 甲板上整备的算子（service + deck_service）算甲板那一栏：它占的是甲板位，
+  // 显示在机库里会让"机库 12/18、甲板 0/8"和实际作业位置对不上。
   if (zone === 'hangar') {
-    return aircraft.filter((item) => ['hangar', 'service'].includes(item.status))
+    return aircraft.filter((item) => ['hangar', 'service'].includes(item.status) && !(item.status === 'service' && item.deck_service))
   }
-  return aircraft.filter((item) => ['deck', 'ready', 'recovery'].includes(item.status))
+  return aircraft.filter((item) => ['deck', 'ready', 'recovery'].includes(item.status) || (item.status === 'service' && Boolean(item.deck_service)))
 }
 
 // 升降机栏：一艘船可能有多部升降机/吊车，每部一列，写着它现在在提升还是下降。
@@ -529,7 +548,7 @@ function elevatorStacks(elevator: { aircraft_ids?: string[] }) {
 // 以前 key 里没有这两个字段，一个机库里坏了一架的 B-17 会被并进健康那叠，
 // 叠卡片只画第一架的标记，"损"标签就整个消失了——舰载机和岸基机都会中招。
 function aircraftStackKey(aircraft: AirUnit, extra = '') {
-  return `${aircraft.definition_id}|${aircraft.status}|${aircraft.task_id || ''}|${aircraft.elevator_id || ''}|${aircraft.damaged ? 'dmg' : 'ok'}|${aircraft.maintenance || 0}${extra}`
+  return `${aircraft.definition_id}|${aircraft.status}|${aircraft.task_id || ''}|${aircraft.elevator_id || ''}|${aircraft.damaged ? 'dmg' : 'ok'}|${aircraft.maintenance || 0}|${aircraft.deck_service ? 'dsvc' : ''}|${aircraft.lift_requested ? 'lift' : ''}${extra}`
 }
 
 function aircraftStacks(zone: AirZone) {
@@ -559,13 +578,18 @@ function counterHint(aircraft: AirUnit) {
   // 损伤的算子优先提示原因：它拖不动、分不了任务，玩家得知道是"坏了"而不是"界面卡了"。
   if (aircraft.damaged) return '损伤 · 必须修复后才能再次出动'
   if ((aircraft.maintenance || 0) > 0) return `检修中 · 还需${aircraft.maintenance}回合`
+  if (aircraft.status === 'service' && aircraft.deck_service) return '甲板整备中 · 整备完直接待发'
+  if (aircraft.status === 'service' && aircraft.lift_requested) return '整备完成后提升到甲板'
   if (aircraft.status === 'service') return '整备中 · 可拖回机库'
   if (aircraft.status === 'elevator') return elevatorZone(aircraft.id) === 'deck' ? '提升中 · 即将上甲板' : '下降中 · 即将进机库'
   // 岸基没有升降机：落地就是在跑道上，下一步回机位，不存在"排队下降"。
   if (aircraft.status === 'recovery') return airfieldMode.value ? '已着陆 · 即将回机库' : '已着舰 · 等待升降机下降'
   if (aircraft.status === 'deck' || aircraft.status === 'ready') {
     if (airfieldMode.value) return aircraft.task_id ? '跑道待飞 · 可拖回机库取消任务' : '可拖入任务立即放飞'
-    return aircraft.task_id ? '甲板待飞 · 可拖回排队下降' : '可拖入任务立即放飞'
+    if (aircraft.task_id) return '甲板待飞 · 可拖回排队下降'
+    // 空载的甲板算子还没挂弹：要么选挂载在甲板整备，要么直接拖进任务栏自动配挂载出击。
+    if (!aircraft.loadout) return '空载 · 选挂载整备 / 拖入任务直接出击'
+    return '甲板待发 · 可拖入任务立即放飞'
   }
   const loadout = loadoutName(aircraft.loadout, aircraft.tank_dropped)
   // 在空中的算子要能分出"出击中"和"返航中"：单看 status 分不出来，
@@ -578,9 +602,43 @@ function counterHint(aircraft: AirUnit) {
 }
 
 function hangarCounterHint(aircraft: AirUnit) {
-  if (!aircraft.task_id) return counterHint(aircraft)
-  const task = tasks.value.find((item) => item.id === aircraft.task_id)
-  return `已加入${task ? taskTitle(task) : '航空任务'} · 整备中`
+  if (aircraft.task_id) {
+    const task = tasks.value.find((item) => item.id === aircraft.task_id)
+    return `已加入${task ? taskTitle(task) : '航空任务'} · 整备中`
+  }
+  if (aircraft.status === 'service' && aircraft.lift_requested) return '整备完成后提升到甲板'
+  if (aircraft.status === 'service') return '机库整备中 · 可拖回取消'
+  if (aircraft.lift_requested) return '等待升降机提升'
+  // 机场没有升降机：挂弹之后只能走"滑行到跑道"那条自动流程。
+  if (airfieldMode.value) {
+    return aircraft.loadout ? '已挂载 · 拖入任务栏安排出击' : '选挂载挂弹 · 或直接拖入任务栏'
+  }
+  // 机库里没有挂载就是没开工：选一套挂载才开始整备（空载不算整备）。
+  return aircraft.loadout ? '已整备 · 拖到甲板栏待发' : '选挂载开始整备 · 或直接拖入任务栏'
+}
+
+// 机库里的算子拖到甲板栏：只是排队提升，真正的提升动作在回合结束时由升降机执行。
+function liftToDeck() {
+  if (refuseLocked()) return
+  if (airfieldMode.value) {
+    endDrag()
+    selectionHint.value = '机场没有升降机：岸基算子直接拖进任务栏，或者拖回机库等下一轮滑行'
+    return
+  }
+  const ids = [...(draggingIDs.value.length ? draggingIDs.value : selectedIDs.value)]
+  endDrag()
+  if (!ids.length) {
+    selectionHint.value = '先把机库里的算子拖进甲板栏，再点这里'
+    return
+  }
+  const inHangar = new Set(aircraftAt('hangar').map((item) => item.id))
+  const targets = ids.filter((id) => inHangar.has(id))
+  if (!targets.length) {
+    selectionHint.value = '选中的算子已经在甲板上，拖回机库请用甲板栏的"取消任务"'
+    return
+  }
+  selectionHint.value = ''
+  emitBatch('LIFT_TO_DECK', targets)
 }
 
 // 机场没有机库（默认上限 99999 = 实际上不限），面板上写"无上限"而不是显示一个假数字；
@@ -686,15 +744,27 @@ function operationName(carrier: CarrierAirStatus) {
         <small v-if="departedCount(lane)" class="lane-departed-hint">{{ departedCount(lane) }} 支编队已出发 · 在地图上点编队牌改目标 / 召回</small>
       </section>
 
-      <section v-if="selectedCarrier" class="air-storage-zone flight-deck-zone mission-deck" data-deck-zone>
+      <section v-if="selectedCarrier" class="air-storage-zone flight-deck-zone mission-deck" :class="{ 'drop-active': dragOver === 'deck' }" data-deck-zone @dragover.prevent="dragOver = 'deck'" @dragleave="dragOver = ''" @drop.prevent="liftToDeck">
         <header><div><span class="section-kicker">{{ isSeaplaneBase(selectedCarrier) ? 'SEAPLANE BASE' : isAirfield(selectedCarrier) ? 'RUNWAY' : 'FLIGHT DECK' }}</span><h3>{{ isSeaplaneBase(selectedCarrier) ? '水上起降 / 待回收' : isAirfield(selectedCarrier) ? '跑道 / 待回收' : '飞行甲板 / 待回收' }}</h3></div><strong>{{ selectedCarrier.deck_used }} / {{ selectedCarrier.deck_length }}</strong></header>
         <div class="air-counter-grid">
           <div v-for="stack in aircraftStacks('deck')" :key="stack.aircraft.id" class="air-counter-item" :data-aircraft-id="stack.aircraft.id" :data-status="stack.aircraft.status" :data-stack-count="stack.ids.length">
             <AircraftCounter :aircraft="stack.aircraft" :stack-count="stack.ids.length" :player-faction="playerFaction" :class="{ selected: stack.ids.some((id) => selectedIDs.includes(id)), selectable: stack.aircraft.status !== 'recovery' }" :draggable="stack.aircraft.status !== 'recovery'" @click="stack.aircraft.status !== 'recovery' && selectCounter(stack.aircraft, stack.ids)" @toggle-cycle="toggleCycle(stack.aircraft, stack.ids)" @dragstart="stack.aircraft.status !== 'recovery' && startDrag(stack.aircraft, $event, stack.ids)" @dragend="endDrag" />
             <span class="air-no-action">{{ counterHint(stack.aircraft) }}</span>
+            <select
+              v-if="!stack.aircraft.task_id && ['deck', 'ready'].includes(stack.aircraft.status)"
+              class="loadout-picker"
+              :value="stack.aircraft.loadout || ''"
+              :disabled="busy || locked"
+              :title="stack.aircraft.loadout ? '在甲板上换挂载：原地整备 1 回合' : '选挂载开始在甲板整备'"
+              :aria-label="`${stack.aircraft.model} 挂载`"
+              @click.stop
+              @change="setLoadout(stack.ids, ($event.target as HTMLSelectElement).value)"
+            >
+              <option v-for="option in hangarLoadoutOptions(stack.aircraft)" :key="option" :value="option">{{ loadoutLabels[option] || option }}</option>
+            </select>
           </div>
           <button v-if="selectedIDs.length" class="return-hangar-button" :disabled="busy" @click="assignTarget('hangar')">{{ airfieldMode ? '取消任务并回机库' : '取消任务并排队下降' }}</button>
-          <span v-if="!aircraftAt('deck').length" class="empty-air-zone">{{ airfieldMode ? '跑道空置' : '甲板空置' }}</span>
+          <span v-if="!aircraftAt('deck').length" class="empty-air-zone">{{ airfieldMode ? '跑道空置' : '甲板空置 · 机库里的算子可以拖到这里待发' }}</span>
         </div>
 
       </section>
@@ -748,7 +818,21 @@ function operationName(carrier: CarrierAirStatus) {
           <div v-for="stack in aircraftStacks('hangar')" :key="stack.aircraft.id" class="air-counter-item" :data-aircraft-id="stack.aircraft.id" :data-status="stack.aircraft.status" :data-stack-count="stack.ids.length">
             <AircraftCounter :aircraft="stack.aircraft" :stack-count="stack.ids.length" :player-faction="playerFaction" :class="{ selected: stack.ids.some((id) => selectedIDs.includes(id)), selectable: !stack.aircraft.task_id }" :draggable="!stack.aircraft.task_id" @click.stop="!stack.aircraft.task_id && selectCounter(stack.aircraft, stack.ids)" @toggle-cycle="toggleCycle(stack.aircraft, stack.ids)" @dragstart="!stack.aircraft.task_id && startDrag(stack.aircraft, $event, stack.ids)" @dragend="endDrag" />
             <span class="air-no-action">{{ hangarCounterHint(stack.aircraft) }}</span>
+            <!-- 机库里选挂载就开始整备：不需要先把算子拖进任务栏。 -->
+            <select
+              v-if="!stack.aircraft.task_id"
+              class="loadout-picker"
+              :value="stack.aircraft.loadout || ''"
+              :disabled="busy || locked"
+              :title="stack.aircraft.loadout ? '换挂载：重新整备 1 回合' : '选挂载开始整备'"
+              :aria-label="`${stack.aircraft.model} 挂载`"
+              @click.stop
+              @change="setLoadout(stack.ids, ($event.target as HTMLSelectElement).value)"
+            >
+              <option v-for="option in hangarLoadoutOptions(stack.aircraft)" :key="option" :value="option">{{ loadoutLabels[option] || option }}</option>
+            </select>
           </div>
+          <button v-if="selectedHangarIDs.length && !airfieldMode" class="lift-deck-button" :disabled="busy || locked" title="把选中的机库算子提升到甲板；整备完的可以直接上，空载的上去再整备" @click.stop="liftToDeck">▲ 提升到甲板</button>
           <p v-if="!aircraftAt('hangar').length" class="empty-hangar">机库空置</p>
         </div>
       </section>

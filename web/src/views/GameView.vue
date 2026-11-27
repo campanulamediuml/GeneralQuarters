@@ -922,7 +922,7 @@ async function applyReorganization() {
   }
 }
 
-async function airCommand(type: 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' | 'LAUNCH_COVER' | 'LAUNCH_TRANSFER' | 'RETURN_TO_HANGAR' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK' | 'SET_AIR_CYCLE' | 'SET_STRIKE_TARGET' | 'SET_STRIKE_DISPERSION' | 'RECALL_AIR' | 'RETASK_AIR' | 'RETARGET_AIR' | 'SET_LOADOUT', aircraftIDs: string[], options?: { heading?: ReconHeading; sector_width?: 60 | 120; task_id?: string; coord?: string; task_kind?: string; loadout?: string; disperse?: boolean; cycle?: boolean; lane?: number }) {
+async function airCommand(type: 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' | 'LAUNCH_COVER' | 'LAUNCH_TRANSFER' | 'RETURN_TO_HANGAR' | 'LIFT_TO_DECK' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK' | 'SET_AIR_CYCLE' | 'SET_STRIKE_TARGET' | 'SET_STRIKE_DISPERSION' | 'RECALL_AIR' | 'RETASK_AIR' | 'RETARGET_AIR' | 'SET_LOADOUT', aircraftIDs: string[], options?: { heading?: ReconHeading; sector_width?: 60 | 120; task_id?: string; coord?: string; task_kind?: string; loadout?: string; disperse?: boolean; cycle?: boolean; lane?: number }) {
   if (!state.value || actionBusy.value || locked.value) return
   actionBusy.value = true
   try {

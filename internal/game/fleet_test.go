@@ -180,20 +180,30 @@ func TestBombHitDestroysReadyAircraft(t *testing.T) {
 	}
 }
 
-// 与任务挂载不符的算子在机库整备时转为未武装（规则书 258 行）。
-func TestArmedFlagFollowsTaskKind(t *testing.T) {
+// 整装待发 = 有挂载 + 整备回合走完 + 没损伤/检修（规则书 421–423 行），
+// 和任务类型无关：机库里选好挂载整备完就是待发。
+func TestArmedFlagFollowsService(t *testing.T) {
 	state := sandboxState(t)
 	fighter := state.Aircraft["a2-cv-01-fighter-x1"]
 	fighter.Status = "hangar"
-	fighter.TaskKind = "attack"
+	fighter.Loadout = LoadoutAirTank
+	fighter.ServiceTurns = 0
 	syncArmedAircraft(&state, nil)
 	if fighter.Armed {
-		t.Fatal("战斗机不能挂攻击任务，不应标记为整装待发")
+		t.Fatal("还没整备的算子不应标记为整装待发")
 	}
-	fighter.TaskKind = "cap"
+	fighter.ServiceTurns = 1
 	syncArmedAircraft(&state, nil)
 	if !fighter.Armed {
-		t.Fatal("战斗机执行 CAP 任务时应标记为整装待发")
+		t.Fatal("整备完成的算子应标记为整装待发")
+	}
+	fighter.Loadout = LoadoutNone
+	syncArmedAircraft(&state, nil)
+	if fighter.Armed {
+		t.Fatal("卸掉挂载之后不应再是整装待发")
+	}
+	if fighter.ServiceTurns != 1 {
+		t.Fatalf("整备进度不该被 Armed 同步改动：%d", fighter.ServiceTurns)
 	}
 }
 

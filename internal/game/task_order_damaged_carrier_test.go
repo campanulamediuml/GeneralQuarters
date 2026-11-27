@@ -18,6 +18,7 @@ func TestStrikeTargetAllowedWithDamagedGroupMember(t *testing.T) {
 	leader.TaskID = "strike-x"
 	leader.TargetCoord = "0708"
 	leader.Coord = "0303"
+	leader.Loadout = LoadoutBombTank
 
 	member := state.Aircraft["b-cv-02-dive_bomber-x1"]
 	member.Status = "attack_holding"
@@ -25,6 +26,7 @@ func TestStrikeTargetAllowedWithDamagedGroupMember(t *testing.T) {
 	member.TaskID = "strike-x"
 	member.TargetCoord = "0708"
 	member.Coord = "0303"
+	member.Loadout = LoadoutBombTank
 
 	// 目标要有一份真实情报，否则会被"不能盲打"拦下来（那是另一条规则，应该保留）。
 	state.Contacts["B"] = map[string]*FleetContact{

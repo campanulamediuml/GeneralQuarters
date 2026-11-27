@@ -356,11 +356,9 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		if carrier.Card.Aircraft >= carrier.Card.HangarCapacity {
 			return state, fmt.Errorf("载机舰%s的机库容量不足", carrier.ID)
 		}
-		// 挂副油箱是默认配置：航程 = 机内 + 副油箱（+30%），两部分分开记账，
-		// 这样空战后抛弃副油箱就能准确扣掉它还没烧掉的那部分里程（规则书 48 行）。
-		// 机库待命时按机种给一个合法的默认挂载（不是 air+tank），
-		// 否则侦察机/轰炸机一开始就处于"挂不了的组合"；真正出击时再按任务换成对应挂载。
-		initialLoadout := DefaultLoadoutFor(definition.Kind, definition.Seaplane, definition.AntiGround, definition.AntiShip, "cap", StrikeTargetShip, definition.TorpedoCapable)
+		// 默认空载：机库里先选挂载才开始整备（见 SET_LOADOUT / armAircraft）。
+		// 空载算子没有副油箱，航程就是机种基础航程；玩家把它拖进任务栏时再按任务自动配。
+		initialLoadout := LoadoutNone
 		fuel := MountedFuel(definition.Range, initialLoadout)
 		airCombat, antiShip := elitePilotBonus(state, carrier.Faction, definition.Kind, definition.AirCombat, definition.AntiShip)
 		// 飞行员熟练度和精英机组加成走同一条数值通道：先按国家/年份给精锐，再按部署里的熟练度修正。
@@ -469,7 +467,8 @@ func deployAirfields(state *State, scenario ScenarioDefinition, airDefinitions a
 			if !airfield.HardensFor(aircraftDef.Kind, aircraftDef.Seaplane) {
 				return fmt.Errorf("机场%s（%s）无法起降%s", definition.ID, definition.Type, aircraftDef.Model)
 			}
-			initialGroundLoadout := DefaultLoadoutFor(aircraftDef.Kind, false, aircraftDef.AntiGround, aircraftDef.AntiShip, "cap", StrikeTargetShip, aircraftDef.TorpedoCapable)
+			// 岸基机同样默认空载：挂载由玩家在机库里选（或者分配任务时按任务自动配）。
+			initialGroundLoadout := LoadoutNone
 			fuel := MountedFuel(aircraftDef.Range, initialGroundLoadout)
 			groundAirCombat, groundAntiShip := elitePilotBonus(*state, airfield.Faction, aircraftDef.Kind, aircraftDef.AirCombat, aircraftDef.AntiShip)
 			// 地面航空的熟练度写在 ID 里（af-b-yap-a6m5-rookie-1）：没有舰载部署那样的结构化条目。
@@ -1088,7 +1087,7 @@ func ApplyImmediateOrganization(state *State, order Order) []EngineEvent {
 // isAirOrderType 是航母与机场共用的一批航空命令类型。
 func isAirOrderType(orderType string) bool {
 	switch orderType {
-	case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_COVER", "LAUNCH_TRANSFER", "PREPARE_AIR", "RETURN_TO_HANGAR", "RECOVER_AIR", "PRIORITIZE_AIR_TASK", "SET_STRIKE_TARGET", "SET_STRIKE_DISPERSION", "ARM_AIR", "SET_AIR_CYCLE":
+	case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_COVER", "LAUNCH_TRANSFER", "PREPARE_AIR", "LIFT_TO_DECK", "RETURN_TO_HANGAR", "RECOVER_AIR", "PRIORITIZE_AIR_TASK", "SET_STRIKE_TARGET", "SET_STRIKE_DISPERSION", "ARM_AIR", "SET_AIR_CYCLE":
 		return true
 	}
 	return false
@@ -1149,8 +1148,9 @@ func ResolveOrders(state *State, orders []Order) []EngineEvent {
 	// 朝向已定，按风向重算甲板长度；本回合起飞/降落容量以此为基准（规则书 824 行）。
 	RefreshDeckLengths(state)
 	events = append(events, AdvanceShipConditions(state)...)
-	events = syncArmedAircraft(state, events)
 	events = append(events, AdvanceAviation(state)...)
+	// 整装待发的判定放在航空推进之后：本回合刚整备完/刚提升上甲板的算子这一回合就该是"待发"。
+	events = syncArmedAircraft(state, events)
 	events = append(events, AdvanceAirfields(state)...)
 	events = append(events, AdvanceGroundAir(state)...)
 	for _, order := range orders {
@@ -1278,18 +1278,26 @@ func syncArmedAircraft(state *State, events []EngineEvent) []EngineEvent {
 		if aircraft == nil {
 			continue
 		}
-		if !armedTaskMatches(aircraft.TaskKind, aircraft) {
-			if aircraft.Armed {
-				aircraft.Armed = false
-				events = append(events, EngineEvent{Type: "air_rearm", Audience: aircraft.Faction, Text: aircraft.Model + "任务挂载不符，需要额外1回合在机库更换挂载"})
-			}
+		ready := aircraftReady(aircraft)
+		if aircraft.Armed == ready {
 			continue
 		}
-		if !aircraft.Armed && (aircraft.Status == "hangar" || aircraft.Status == "service") {
-			aircraft.Armed = true
+		if aircraft.Armed && !ready && !airborne(aircraft) {
+			events = append(events, EngineEvent{Type: "air_rearm", Audience: aircraft.Faction, Text: aircraft.Model + "挂载已更换，需要重新整备1回合"})
 		}
+		aircraft.Armed = ready
 	}
 	return events
+}
+
+// aircraftReady 判断这架飞机是不是"整装待发"：有挂载、整备回合走完、没有损伤或检修。
+// 它只跟飞机自己的状态有关，跟它有没有任务无关——机库里选好挂载整备完就是待发，
+// 已经在甲板上等着也一样。
+func aircraftReady(aircraft *AirUnit) bool {
+	if aircraft == nil || aircraft.Loadout == LoadoutNone {
+		return false
+	}
+	return serviceComplete(aircraft)
 }
 
 // armedTaskMatches 判断机型能否直接执行某类任务：

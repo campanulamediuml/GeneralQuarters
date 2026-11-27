@@ -675,7 +675,7 @@ func (s *Server) doCommand(msg roomMsg) roomReply {
 			}
 			// 移动命令走下面 SaveOrder 的"本回合规划"通道，真正的位移在回合结算里执行。
 			return s.savePlannedOrder(ctx, actor, msg, request, order)
-		case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_COVER", "LAUNCH_TRANSFER", "PREPARE_AIR", "RETURN_TO_HANGAR", "RECOVER_AIR", "PRIORITIZE_AIR_TASK", "SET_STRIKE_TARGET", "SET_STRIKE_DISPERSION", "ARM_AIR", "SET_AIR_CYCLE":
+		case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_COVER", "LAUNCH_TRANSFER", "PREPARE_AIR", "LIFT_TO_DECK", "RETURN_TO_HANGAR", "RECOVER_AIR", "PRIORITIZE_AIR_TASK", "SET_STRIKE_TARGET", "SET_STRIKE_DISPERSION", "ARM_AIR", "SET_AIR_CYCLE":
 			if game.IsAirfieldOrder(room.State, order) {
 				events = game.ApplyGroundAirOrder(&room.State, order)
 			} else {

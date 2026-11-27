@@ -156,6 +156,16 @@ export interface AirUnit {
   confusion?: boolean
   damaged?: boolean
   maintenance?: number
+  /** 整备进度：0=还没整备完，1=整备回合已走完。 */
+  service_turns?: number
+  /** 正在甲板上整备（status 仍是 service，但占甲板位）。 */
+  deck_service?: boolean
+  /** 玩家已经把机库算子拖进甲板栏，等升降机提升。 */
+  lift_requested?: boolean
+  /** 挂载是玩家在机库里手动选的，分配任务时不会被默认值覆盖。 */
+  loadout_manual?: boolean
+  /** 整装待发：有挂载 + 整备完成 + 没损伤。 */
+  armed?: boolean
   // CAP 巡逻空域与前出接敌点（掩护范围 = 该点及周围 1 hex，不在地图绘制范围）
   patrol_coord?: string
   forward_coord?: string
@@ -279,7 +289,7 @@ export interface Player {
 }
 
 export interface Order {
-  type: 'SET_MOVE' | 'CLEAR_MOVE' | 'MERGE_FLEET' | 'REORGANIZE_HEX' | 'SET_HEADING' | 'SET_LOADOUT' | 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' | 'LAUNCH_COVER' | 'LAUNCH_TRANSFER' | 'PREPARE_AIR' | 'RETURN_TO_HANGAR' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK' | 'SET_STRIKE_TARGET' | 'SET_STRIKE_DISPERSION' | 'SET_AUTO_NAV' | 'SET_ENGAGEMENT' | 'SET_AIR_CYCLE' | 'RECALL_AIR' | 'RETASK_AIR' | 'RETARGET_AIR'
+  type: 'SET_MOVE' | 'CLEAR_MOVE' | 'MERGE_FLEET' | 'REORGANIZE_HEX' | 'SET_HEADING' | 'SET_LOADOUT' | 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' | 'LAUNCH_COVER' | 'LAUNCH_TRANSFER' | 'PREPARE_AIR' | 'LIFT_TO_DECK' | 'RETURN_TO_HANGAR' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK' | 'SET_STRIKE_TARGET' | 'SET_STRIKE_DISPERSION' | 'SET_AUTO_NAV' | 'SET_ENGAGEMENT' | 'SET_AIR_CYCLE' | 'RECALL_AIR' | 'RETASK_AIR' | 'RETARGET_AIR'
   unit_id?: string
   target_unit_id?: string
   aircraft_id?: string

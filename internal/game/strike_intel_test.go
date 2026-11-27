@@ -13,6 +13,7 @@ func TestStrikeFleetRequiresReconContact(t *testing.T) {
 	state.Aircraft["b-cv-01-dive_bomber-x1"].TaskID = "task-x"
 	state.Aircraft["b-cv-01-dive_bomber-x1"].TaskKind = "attack"
 	state.Aircraft["b-cv-01-dive_bomber-x1"].Status = "attack"
+	state.Aircraft["b-cv-01-dive_bomber-x1"].Loadout = LoadoutBombTank
 	if err := ValidateAirOrder(state, "B", Order{Type: "SET_STRIKE_TARGET", AircraftID: "task-x", Coord: "0202"}); err == nil {
 		t.Fatal("没有情报时不应允许对舰队设置打击目标")
 	}

@@ -511,6 +511,9 @@ func parkAircraftForNight(state *State) []EngineEvent {
 			aircraft.Status = "hangar"
 			aircraft.ServiceTurns = 0
 			aircraft.Armed = false
+			// 甲板整备/待发的算子天黑一律回机库：第二天重新选挂载、重新整备。
+			aircraft.DeckService = false
+			aircraft.LiftRequested = false
 			parked++
 		case "hangar":
 			clearAirTask(aircraft)

@@ -351,10 +351,13 @@ func readyAircraft(state State, carrierID string) (hangar, deck []*AirUnit) {
 		if aircraft == nil || aircraft.CarrierID != carrierID || !aircraft.Armed {
 			continue
 		}
-		switch aircraft.Status {
-		case "hangar", "service":
+		switch {
+		case aircraft.Status == "service" && aircraft.DeckService:
+			// 甲板上整备的算子就在甲板作业面上，被炸时按甲板那一批算。
+			deck = append(deck, aircraft)
+		case aircraft.Status == "hangar", aircraft.Status == "service":
 			hangar = append(hangar, aircraft)
-		case "deck", "ready":
+		case aircraft.Status == "deck", aircraft.Status == "ready":
 			deck = append(deck, aircraft)
 		}
 	}

@@ -235,7 +235,7 @@ func sameTaskAssignment(aircraftList []*AirUnit, order Order) bool {
 // 不能按"能不能起飞"判——那样 04:00 到 05:20 之间会被误拦。
 func nightBlockedAirOrder(orderType string) bool {
 	switch orderType {
-	case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_COVER", "LAUNCH_TRANSFER", "RETASK_AIR":
+	case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_COVER", "LAUNCH_TRANSFER", "RETASK_AIR", "LIFT_TO_DECK":
 		return true
 	}
 	return false
@@ -474,6 +474,26 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 			}
 		}
 		return nil
+	case "LIFT_TO_DECK":
+		// 机库 → 甲板栏：不是派任务，是把算子送上甲板待命（可以空载上去再甲板整备）。
+		for _, aircraft := range aircraftList {
+			if aircraft.DeckService {
+				return fmt.Errorf("%s正在甲板上整备，等这一轮整备完成再操作", aircraft.Model)
+			}
+			switch aircraft.Status {
+			case "hangar", "service":
+			case "deck", "ready":
+				return fmt.Errorf("%s已经在甲板上", aircraft.Model)
+			case "elevator":
+				return fmt.Errorf("%s正在升降机上", aircraft.Model)
+			default:
+				return fmt.Errorf("%s当前状态（%s）不能提升到甲板", aircraft.Model, aircraft.Status)
+			}
+			if aircraft.Damaged || aircraft.Maintenance > 0 {
+				return fmt.Errorf("损伤或检修中的算子必须完成修复后才能提升到甲板")
+			}
+		}
+		return nil
 	case "PREPARE_AIR":
 		return fmt.Errorf("整备和提升必须绑定航空任务，请把飞机拖入任务栏")
 	case "RETURN_TO_HANGAR":
@@ -550,7 +570,12 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 func deckUsed(state State, carrierID string) int {
 	used := 0
 	for _, aircraft := range state.Aircraft {
-		if aircraft.CarrierID == carrierID && (aircraft.Status == "deck" || aircraft.Status == "ready" || aircraft.Status == "recovery") {
+		if aircraft.CarrierID != carrierID {
+			continue
+		}
+		// 甲板上换弹/挂弹的算子（status service + DeckService）同样占甲板位：
+		// 它就在甲板上作业，不能一边占位一边不计入容量。
+		if aircraft.Status == "deck" || aircraft.Status == "ready" || aircraft.Status == "recovery" || (aircraft.Status == "service" && aircraft.DeckService) {
 			used++
 		}
 	}
@@ -855,6 +880,10 @@ func configureAirTask(state *State, aircraftList []*AirUnit, order Order) {
 	}
 
 	for _, aircraft := range aircraftList {
+		// 先在接单前记下"这架是不是已经整备好、挂的什么"：beginAirMission 会把整备进度清零，
+		// 但玩家已经在机库里整备好的算子再拖进任务栏，不该又白等一轮。
+		wasReady := serviceComplete(aircraft) && aircraft.Loadout != LoadoutNone
+		prevLoadout := aircraft.Loadout
 		beginAirMission(aircraft, taskID, kind, priority)
 		switch kind {
 		case MissionRecon:
@@ -892,7 +921,10 @@ func configureAirTask(state *State, aircraftList []*AirUnit, order Order) {
 		// 按任务换挂载：转场加航程、鱼雷机挂鱼雷、水平轰炸挂炸弹（规则书 43–63 行）。
 		// 目标 hex 上有敌方机场即视为对地攻击（影响默认挂载选择）。
 		applyLoadout(*state, aircraft)
-
+		// 挂载没被任务改掉、而且本来就整备完了：沿用它，直接从提升开始。
+		if wasReady && aircraft.Loadout == prevLoadout && !aircraft.Damaged && aircraft.Maintenance == 0 {
+			aircraft.ServiceTurns = 1
+		}
 	}
 	// 栏位要在 beginAirMission 之后写：它内部会 clearAirTask，而清任务会把栏位交还。
 	// 面板栏位（打击任务 I/II）跟着编队走，不按任务在列表里的位置轮排——
@@ -1130,15 +1162,20 @@ func ApplyAirOrder(state *State, order Order) []EngineEvent {
 		lowered := 0
 		cancelled := 0
 		for _, aircraft := range aircraftList {
-			if aircraft.Status == "service" {
+			if aircraft.Status == "service" && !aircraft.DeckService {
 				aircraft.Status = "hangar"
 				aircraft.ServiceTurns = 0
+				aircraft.LiftRequested = false
 				cancelled++
 			} else {
-				// 甲板算子撤回机库同样要把机数还给母舰，否则航空算子总数会凭空减少。
+				// 甲板算子（包括甲板上换弹的整备中算子）撤回机库一样要走升降机。
+				// 机数只还一次：甲板整备的算子本来就在甲板上，没有"从天上落下来"这一笔。
+				fromDeck := aircraft.Status != "service"
 				aircraft.Status = "recovery"
-				mother := state.Units[aircraft.CarrierID]
-				if mother != nil {
+				aircraft.DeckService = false
+				aircraft.ServiceTurns = 0
+				aircraft.LiftRequested = false
+				if mother := state.Units[aircraft.CarrierID]; mother != nil && fromDeck {
 					mother.Card.Aircraft++
 				}
 				lowered++
@@ -1151,6 +1188,18 @@ func ApplyAirOrder(state *State, order Order) []EngineEvent {
 			carrier.Deck.Operation = "recover"
 		}
 		return []EngineEvent{{Type: "air_returned_to_hangar", Audience: carrier.Faction, Text: fmt.Sprintf("%s取消%d个机库任务算子，%d个甲板算子等待升降机下降", carrier.Name, cancelled, lowered)}}
+	case "LIFT_TO_DECK":
+		// 只是排队提升：真正的提升动作在回合结束时由升降机执行（每部升降机每回合 4 个）。
+		// 机库里的算子先转成"整备中/待提升"（service），空载的立刻就能上去，
+		// 有挂载的要等这一轮整备走完。
+		for _, aircraft := range aircraftList {
+			aircraft.LiftRequested = true
+			if aircraft.Status == "hangar" {
+				aircraft.Status = "service"
+				aircraft.DeckService = false
+			}
+		}
+		return []EngineEvent{{Type: "air_lift_requested", Audience: carrier.Faction, Text: fmt.Sprintf("%s：%d个算子排队提升至甲板", carrier.Name, len(aircraftList))}}
 	case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_COVER", "LAUNCH_TRANSFER":
 		if sameTaskAssignment(aircraftList, order) {
 			return []EngineEvent{{Type: "air_task_unchanged", Audience: carrier.Faction, Text: "算子已在当前任务中，无需重复加入"}}
@@ -1158,10 +1207,17 @@ func ApplyAirOrder(state *State, order Order) []EngineEvent {
 		status := aircraftList[0].Status
 		configureAirTask(state, aircraftList, order)
 		if status == "deck" || status == "ready" {
+			// 甲板上的算子直接拖进任务栏就是"整备完毕、直接出击"：甲板待命本来就带着
+			// 地勤和弹药，不占机库那一轮整备。空载算子会在 configureAirTask 里按任务配好挂载。
 			return launchAirTask(state, aircraftList)
 		}
 		for _, aircraft := range aircraftList {
+			if aircraft.Status == "service" && aircraft.DeckService {
+				// 甲板上正在整备的算子：任务记上了，整备完这一轮直接参加放飞。
+				continue
+			}
 			aircraft.Status = "service"
+			aircraft.DeckService = false
 		}
 		return []EngineEvent{{Type: "air_task_assigned", Audience: carrier.Faction, Text: fmt.Sprintf("%d个算子加入%s任务并开始机库整备，后续提升由母舰升降机执行", len(aircraftList), aircraftList[0].TaskKind)}}
 	case "SET_STRIKE_TARGET":
@@ -1316,20 +1372,27 @@ func completeElevatorCycles(state *State) []EngineEvent {
 					continue
 				}
 				if elevator.Status == "lifting" {
-					if aircraft.TaskKind == "" {
-						// 没有任务类型的算子提升到甲板也放飞不了：直接退回机库，
+					if aircraft.TaskKind == "" && !aircraft.LiftRequested {
+						// 没有任务类型、也没人要求提升的算子上去也放飞不了：直接退回机库，
 						// 让它重新变成"可分配"的算子，而不是卡在甲板上占位。
 						clearAirTask(aircraft)
 						aircraft.Status = "hangar"
 						aircraft.ElevatorID = ""
 						continue
 					}
+					// 待发算子（机库里选好挂载、或者空载直接拖上甲板）到甲板就是"甲板待命"：
+					// 没有任务也可以停在甲板上，等玩家把它拖进任务栏再放飞。
 					aircraft.Status = "deck"
 					if aircraft.Seaplane {
 						aircraft.Status = "ready"
 					}
+					aircraft.LiftRequested = false
+					aircraft.DeckService = false
 				} else {
 					aircraft.Status = "hangar"
+					aircraft.LiftRequested = false
+					aircraft.DeckService = false
+					aircraft.ServiceTurns = 0
 				}
 				aircraft.ElevatorID = ""
 			}
@@ -1460,44 +1523,24 @@ func advanceAircraftService(state *State) []EngineEvent {
 	if !state.ServiceWindowOpen() {
 		return events
 	}
-	groups := map[string][]*AirUnit{}
-	for _, aircraft := range state.Aircraft {
-		if aircraft.Status == "service" && aircraft.TaskID != "" {
-			groups[aircraft.TaskID] = append(groups[aircraft.TaskID], aircraft)
-		}
-	}
-	ids := make([]string, 0, len(groups))
-	for id := range groups {
-		ids = append(ids, id)
-	}
-	sort.Strings(ids)
-	for _, taskID := range ids {
-		members := groups[taskID]
-		kind := members[0].TaskKind
-		ready := false
-		for _, aircraft := range members {
-			// 机库加油整备只要 1 回合（规则书 240–256 行：整备、提升、起飞各 1 回合）。
-			if aircraft.ServiceTurns < 1 {
-				aircraft.ServiceTurns++
-			}
-		}
-		allReady := true
-		for _, aircraft := range members {
-			if !serviceComplete(aircraft) {
-				allReady = false
-				break
-			}
-		}
-		// CAP/侦察是单机快反任务，允许逐架出动；攻击/转场必须整组一起走。
-		ready = allReady || (kind != "attack" && kind != "transfer")
-		if !ready {
+	// 逐架推进：机库里的空载算子只要选了挂载就开始整备，甲板上换弹的算子原地整备，
+	// 有没有任务都不影响这件事——整备是"这架飞机"的状态，不是任务的一个阶段。
+	for _, id := range sortedAirUnitIDs(*state) {
+		aircraft := state.Aircraft[id]
+		if aircraft == nil || aircraft.Status != "service" || aircraft.ServiceTurns >= 1 {
 			continue
 		}
-		for _, aircraft := range members {
-			if aircraft.ServiceTurns >= 1 && !aircraft.Damaged && aircraft.Maintenance == 0 {
-				events = append(events, EngineEvent{Type: "air_service_complete", Audience: aircraft.Faction, Text: aircraft.Model + "完成机库加油整备，等待提升"})
-			}
+		// 整备只要 1 回合（规则书 240–256 行：整备、提升、起飞各 1 回合）。
+		aircraft.ServiceTurns++
+		if !serviceComplete(aircraft) {
+			continue
 		}
+		if aircraft.DeckService {
+			// 甲板整备的完成战报等它真的转成"甲板待发"时再报（见 AdvanceAviation），
+			// 这里只推进计数，免得同一件事报两遍。
+			continue
+		}
+		events = append(events, EngineEvent{Type: "air_service_complete", Audience: aircraft.Faction, Text: aircraft.Model + "完成机库加油整备，等待提升"})
 	}
 	return events
 }
@@ -1538,8 +1581,24 @@ func scheduleElevators(state *State) []EngineEvent {
 	taskGroups := sortedTaskGroups(*state, func(aircraft *AirUnit) bool {
 		// TaskKind 为空的算子是"脱队残骸"（老存档里返航后类型被清掉留下的），
 		// 不能再往甲板上提升：升上去也放飞不了，只会把甲板和升降机一起堵死。
-		return aircraft.Status == "service" && serviceComplete(aircraft) && aircraft.TaskKind != "" && !taskWaitsForTarget(aircraft)
+		return aircraft.Status == "service" && !aircraft.DeckService && serviceComplete(aircraft) && aircraft.TaskKind != "" && !taskWaitsForTarget(aircraft)
 	})
+	// 待发算子的提升：玩家在机库里整备好（或者干脆空载）之后拖进了甲板栏。
+	// 空载算子没有可整备的东西，可以立刻提升；有挂载的要等这一轮整备走完。
+	soloLifts := []*AirUnit{}
+	for _, id := range sortedAirUnitIDs(*state) {
+		aircraft := state.Aircraft[id]
+		if aircraft == nil || aircraft.Status != "service" || aircraft.DeckService || aircraft.TaskKind != "" {
+			continue
+		}
+		if !aircraft.LiftRequested || aircraft.Damaged || aircraft.Maintenance > 0 {
+			continue
+		}
+		if aircraft.Loadout != LoadoutNone && !serviceComplete(aircraft) {
+			continue
+		}
+		soloLifts = append(soloLifts, aircraft)
+	}
 	// 挑选名单确定之后再推进整备计数/发整备完成战报。
 	events = append(events, advanceAircraftService(state)...)
 	for _, carrierID := range sortedUnitIDs(state.Units) {
@@ -1598,6 +1657,14 @@ func scheduleElevators(state *State) []EngineEvent {
 				}
 			}
 			if len(selectedTask) == 0 {
+				// 没有编队要提升时再提升"待发算子"：它们不属于任何任务，升上去就是甲板待命。
+				for _, candidate := range soloLifts {
+					if candidate.CarrierID == carrierID && candidate.Status == "service" {
+						selectedTask = append(selectedTask, candidate)
+					}
+				}
+			}
+			if len(selectedTask) == 0 {
 				continue
 			}
 			count := len(selectedTask)
@@ -1621,7 +1688,7 @@ func scheduleElevators(state *State) []EngineEvent {
 				elevator.AircraftIDs = append(elevator.AircraftIDs, aircraft.ID)
 			}
 			reserved += len(selected)
-			events = append(events, EngineEvent{Type: "elevator_started", Audience: carrier.Faction, Text: fmt.Sprintf("%s的%s开始提升%d个任务算子", carrier.Name, elevator.ID, len(selected))})
+			events = append(events, EngineEvent{Type: "elevator_started", Audience: carrier.Faction, Text: fmt.Sprintf("%s的%s开始提升%d个算子", carrier.Name, elevator.ID, len(selected))})
 		}
 		if delayed {
 			for _, taskMembers := range taskGroups {
@@ -1735,8 +1802,20 @@ func AdvanceAviation(state *State) []EngineEvent {
 				aircraft.Maintenance--
 			}
 			// 已经落到机库、又没有在整备的算子，整备进度归零。
-			if !airborne(aircraft) && (aircraft.Status == "hangar" || aircraft.Status == "deck") {
+			// 甲板上的算子不能归零：甲板待命的算子已经整备好了，归零会让它掉回"未整备"，
+			// 再拖进任务栏就要多等一轮；回收中的算子本来就先走 recovery → hangar 这一趟。
+			if !airborne(aircraft) && aircraft.Status == "hangar" {
 				aircraft.ServiceTurns = 0
+			}
+			// 甲板上换弹/挂弹：整备走完就地转成"甲板待发"，这一步必须赶在本次放飞之前，
+			// 否则甲板整备会比机库整备多拖一个回合。
+			if aircraft.Status == "service" && aircraft.DeckService && serviceComplete(aircraft) {
+				aircraft.Status = "deck"
+				if aircraft.Seaplane {
+					aircraft.Status = "ready"
+				}
+				aircraft.DeckService = false
+				events = append(events, EngineEvent{Type: "air_service_complete", Audience: aircraft.Faction, Text: aircraft.Model + "完成甲板加油整备，可以出击"})
 			}
 			// 任务循环：CAP／空中掩护／侦察降落后自动重新整备再升空（规则书 188 行）。
 			// 损伤、检修、时间窗未开都只是"等"，不算失败；母舰不可用或航程不够才结束循环。
@@ -2421,10 +2500,13 @@ func VisibleAviation(state State, faction string) AviationView {
 			if aircraft.Launched {
 				carrier.LaunchUsed++
 			}
-			switch aircraft.Status {
-			case "hangar", "service":
+			switch {
+			case aircraft.Status == "service" && aircraft.DeckService:
+				// 甲板上整备的算子占甲板位、不占机库位，和它显示的栏位一致。
+				carrier.DeckUsed++
+			case aircraft.Status == "hangar", aircraft.Status == "service":
 				carrier.HangarUsed++
-			case "deck", "ready", "recovery":
+			case aircraft.Status == "deck", aircraft.Status == "ready", aircraft.Status == "recovery":
 				carrier.DeckUsed++
 			}
 			projection := *aircraft

@@ -60,6 +60,8 @@ func beginAirMission(aircraft *AirUnit, taskID string, kind MissionKind, priorit
 	aircraft.CycleOptOut = false
 	// 换任务就是重新整备一轮（规则书 258 行换挂载还要额外 1 回合）。
 	aircraft.ServiceTurns = 0
+	// 任务自己会驱动提升，之前的"排队上甲板"请求就作废了，免得升降机调度重复挑同一架。
+	aircraft.LiftRequested = false
 }
 
 // assignReconMission 写死侦察任务的全部派生参数。

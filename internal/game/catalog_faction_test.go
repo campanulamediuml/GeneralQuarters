@@ -41,16 +41,17 @@ func TestFactionSpecificAircraft(t *testing.T) {
 		maxRange   int
 		radius     int
 	}{
+		// 部署时默认空载：没有副油箱，航程就是机种基础航程（挂载由玩家在机库里选）。
 		// 美军：F6F/SB2C/TBF 14，SOC 12
-		{"a2-cv-01-fighter-x1", "F4F 野猫", 10, LoadoutAirTank, 13, 6},
-		{"a2-cv-01-dive_bomber-x1", "SBD 无畏", 13, LoadoutBombTank, 17, 8},
-		{"a2-cv-01-torpedo_bomber-x1", "TBD 蹂躏者", 14, LoadoutTorpedoTank, 18, 9},
-		{"air-a-11", "SOC 海鸥", 9, LoadoutReconTank, 12, 6},
+		{"a2-cv-01-fighter-x1", "F4F 野猫", 10, LoadoutNone, 10, 5},
+		{"a2-cv-01-dive_bomber-x1", "SBD 无畏", 13, LoadoutNone, 13, 6},
+		{"a2-cv-01-torpedo_bomber-x1", "TBD 蹂躏者", 14, LoadoutNone, 14, 7},
+		{"air-a-11", "SOC 海鸥", 9, LoadoutNone, 9, 4},
 		// 日军：零战 32、B5N 20、D3A 18、E13A 16
-		{"b-cv-01-fighter-x1", "A6M2 零战", 32, LoadoutAirTank, 42, 21},
-		{"b-cv-01-dive_bomber-x1", "D3A1 九九舰爆", 16, LoadoutBombTank, 21, 10},
-		{"b-cv-01-torpedo_bomber-x1", "B5N2 九七舰攻", 16, LoadoutTorpedoTank, 21, 10},
-		{"air-b-11", "E13A 零式水侦", 14, LoadoutReconTank, 18, 9},
+		{"b-cv-01-fighter-x1", "A6M2 零战", 32, LoadoutNone, 32, 16},
+		{"b-cv-01-dive_bomber-x1", "D3A1 九九舰爆", 16, LoadoutNone, 16, 8},
+		{"b-cv-01-torpedo_bomber-x1", "B5N2 九七舰攻", 16, LoadoutNone, 16, 8},
+		{"air-b-11", "E13A 零式水侦", 14, LoadoutNone, 14, 7},
 	}
 	for _, test := range cases {
 		aircraft := state.Aircraft[test.aircraftID]
