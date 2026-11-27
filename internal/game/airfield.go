@@ -339,7 +339,7 @@ func boardGroundAircraftOnCarrier(state *State, aircraft *AirfieldAirUnit, carri
 
 func airfieldAirborne(aircraft *AirfieldAirUnit) bool {
 	switch aircraft.Status {
-	case "cap", "cover", "recon", "attack_holding", "attack", "transfer":
+	case "cap", "asw", "cover", "recon", "attack_holding", "attack", "transfer":
 		return true
 	}
 	return false
@@ -978,7 +978,7 @@ func validateGroundCycleOrder(state State, order Order, ids []string) error {
 // 无跑道机场仍必须能召回、取消任务和改优先级——这些操作不产生起飞。
 func groundOrderNeedsRunway(orderType string) bool {
 	switch orderType {
-	case "LAUNCH_CAP", "LAUNCH_COVER", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_TRANSFER":
+	case "LAUNCH_CAP", "LAUNCH_ASW", "LAUNCH_COVER", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_TRANSFER":
 		return true
 	}
 	return false
@@ -1078,7 +1078,7 @@ func ValidateGroundAirOrder(state State, order Order) error {
 		return fmt.Errorf("%s已经没有可用跑道", airfield.Name)
 	}
 	switch order.Type {
-	case "LAUNCH_CAP", "LAUNCH_COVER", "LAUNCH_RECON", "LAUNCH_STRIKE":
+	case "LAUNCH_CAP", "LAUNCH_ASW", "LAUNCH_COVER", "LAUNCH_RECON", "LAUNCH_STRIKE":
 		// 规则书 211 行：CAP 只掩护自己所在 hex 及周围 1 hex。
 		// 212 行"指派 CAP 去其他友军上空"在游戏里就是空中掩护任务（LAUNCH_COVER），
 		// 它会跟着被掩护的舰队走；CAP 不接受远程坐标，免得飞过去守一个不会跟的格子。
@@ -1120,6 +1120,9 @@ func ValidateGroundAirOrder(state State, order Order) error {
 				if order.Coord != "" && !inBounds(state.Map, order.Coord) {
 					return fmt.Errorf("掩护目标 hex 无效")
 				}
+			}
+			if order.Type == "LAUNCH_ASW" && aircraft.Kind == "fighter" {
+				return fmt.Errorf("战斗机不能执行反潜巡逻")
 			}
 			if order.Type == "LAUNCH_RECON" && (aircraft.Kind == "fighter") {
 				return fmt.Errorf("战斗机不能执行扇面搜索")
@@ -1393,7 +1396,7 @@ func ApplyGroundAirOrder(state *State, order Order) []EngineEvent {
 		return nil
 	}
 	switch order.Type {
-	case "LAUNCH_CAP", "LAUNCH_COVER", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_TRANSFER":
+	case "LAUNCH_CAP", "LAUNCH_ASW", "LAUNCH_COVER", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_TRANSFER":
 		if sameTaskAssignmentGround(list, order) {
 			return []EngineEvent{{Type: "air_task_unchanged", Audience: airfield.Faction, Text: "算子已在当前任务中，无需重复加入"}}
 		}
@@ -1457,6 +1460,11 @@ func ApplyGroundAirOrder(state *State, order Order) []EngineEvent {
 					aircraft.TargetCoord = airfield.Coord
 				}
 				aircraft.CoverUnitID = friendlyUnitIDAt(*state, aircraft.Faction, order.Coord)
+				aircraft.Returning = false
+			case MissionASW:
+				// 反潜巡逻守本机场上空：机场不会动，巡逻点固定在基地。
+				aircraft.TargetCoord = airfield.Coord
+				aircraft.Coord = airfield.Coord
 				aircraft.Returning = false
 			case MissionTransfer:
 				aircraft.TargetCoord = order.Coord
@@ -1717,6 +1725,13 @@ func AdvanceGroundAir(state *State) []EngineEvent {
 				events = append(events, advanceGroundAirReturn(state, aircraft)...)
 			} else if !processedAttack[aircraft.TaskID] {
 				events = append(events, advanceGroundPatrol(state, aircraft, "cap")...)
+				processedAttack[aircraft.TaskID] = true
+			}
+		case "asw":
+			if aircraft.Returning {
+				events = append(events, advanceGroundAirReturn(state, aircraft)...)
+			} else if !processedAttack[aircraft.TaskID] {
+				events = append(events, advanceGroundPatrol(state, aircraft, "asw")...)
 				processedAttack[aircraft.TaskID] = true
 			}
 		case "recon":
@@ -2158,6 +2173,8 @@ func advanceGroundPatrol(state *State, aircraft *AirfieldAirUnit, kind string) [
 			label := "空中掩护"
 			if kind == "cap" {
 				label = "CAP"
+			} else if kind == "asw" {
+				label = "反潜巡逻"
 			}
 			events = append(events, EngineEvent{Type: "cover_rtb", Audience: member.Faction, Text: fmt.Sprintf("%s燃料只够返航，撤出%s的%s", member.Model, member.TargetCoord, label)})
 			continue
@@ -2175,6 +2192,8 @@ func advanceGroundPatrol(state *State, aircraft *AirfieldAirUnit, kind string) [
 				label := "空中掩护"
 				if kind == "cap" {
 					label = "CAP"
+				} else if kind == "asw" {
+					label = "反潜巡逻"
 				}
 				events = append(events, EngineEvent{Type: "cover_on_station", Audience: member.Faction, Text: fmt.Sprintf("%s抵达%s上空，开始执行%s，覆盖周围1格", member.Model, member.TargetCoord, label)})
 			}

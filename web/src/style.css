@@ -589,3 +589,27 @@ path.hex-wind{pointer-events:none;fill:none;stroke:#7fa6b0;stroke-width:1.3;stro
 .mission-grid .air-counter-item>.loadout-picker{width:84px;max-width:84px;font-size:7px}
 .mission-grid .air-storage-zone .lift-deck-button{flex:0 0 84px;min-height:85px;font-size:7px}
 .escort-shortfall{display:block;margin-top:4px;color:#ff9b85;font-size:10px;letter-spacing:.3px}.apply-button:disabled{opacity:.45;cursor:not-allowed}
+
+/* —— 潜艇（【猎杀潜航】模块）—— */
+/* 地图上的潜艇小算子：部署阶段是己方要摆的艇，被发现时换成敌情样式。 */
+.map-submarine rect { fill: rgba(18, 34, 46, .92); stroke: rgba(120, 196, 255, .65); stroke-width: 1; }
+.map-submarine .submarine-mask { opacity: .85; }
+.map-submarine .submarine-caption { fill: #b9d9f2; font-size: 7px; letter-spacing: .04em; }
+.map-submarine.selected rect { stroke: #7cf0c1; stroke-width: 2; }
+.map-submarine.spotted rect { fill: rgba(74, 22, 22, .92); stroke: #ff8f6b; stroke-width: 1.6; stroke-dasharray: 4 3; }
+.map-submarine.spotted .submarine-caption { fill: #ffb49b; }
+.map-submarine:hover rect { stroke-width: 2; }
+
+/* 部署卡片：潜艇列表与反潜战报 */
+.submarine-card .submarine-hint { margin: 0 0 8px; font-size: 11px; line-height: 1.5; color: #9fb6b0; }
+.submarine-list { display: grid; gap: 6px; }
+.submarine-row { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: rgba(255,255,255,.03); color: inherit; text-align: left; cursor: pointer; }
+.submarine-row small { display: block; color: #8fa8a2; font-size: 10px; }
+.submarine-row code { font-size: 11px; color: #b9d9f2; }
+.submarine-row.placed { border-color: rgba(124, 240, 193, .35); }
+.submarine-row.active { border-color: #7cf0c1; background: rgba(124, 240, 193, .12); }
+.submarine-thumb { width: 34px; height: 20px; object-fit: contain; opacity: .85; }
+.submarine-placing { margin: 8px 0 0; font-size: 11px; color: #7cf0c1; }
+.submarine-battle-list { display: grid; gap: 6px; max-height: 200px; overflow: auto; }
+.submarine-battle-row { margin: 0; font-size: 11px; line-height: 1.5; color: #cfe3dd; }
+

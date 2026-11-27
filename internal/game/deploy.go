@@ -181,7 +181,9 @@ func StartBattle(state *State) []EngineEvent {
 	state.SurpriseLock = map[string]int{}
 	state.HeadingChanged = map[string]bool{}
 	RefreshDeckLengths(state)
-	return []EngineEvent{{Type: "battle_start", Audience: "all", Text: "双方部署完毕，第 1 回合开始"}}
+	// 潜艇从部署状态转入隐蔽巡逻：谁没摆好就随机补位，再各自掷 1d6 决定第一次巡逻的回合。
+	events := StartSubmarines(state)
+	return append(events, EngineEvent{Type: "battle_start", Audience: "all", Text: "双方部署完毕，第 1 回合开始"})
 }
 
 // DeployZoneView 把部署区投影给前端：锚点、半径，以及行优先的格位串（'1' = 区内可下水的格）。
@@ -221,7 +223,7 @@ func DeployZoneView(state State, faction string) map[string]any {
 // deployOrderAllowed 是部署阶段允许的命令：只摆船，不能开火、侦察、起降。
 func deployOrderAllowed(orderType string) bool {
 	switch orderType {
-	case "SET_MOVE", "CLEAR_MOVE", "MERGE_FLEET", "REORGANIZE_HEX":
+	case "SET_MOVE", "CLEAR_MOVE", "MERGE_FLEET", "REORGANIZE_HEX", "DEPLOY_SUB":
 		return true
 	}
 	return false

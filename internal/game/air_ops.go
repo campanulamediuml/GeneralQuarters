@@ -60,6 +60,26 @@ func advanceCover(state *State, aircraft *AirUnit) []EngineEvent {
 	return nil
 }
 
+// advanceASW 让反潜巡逻编队跟着母舰走：母舰在哪，巡逻空域就在哪。
+// 反潜巡逻只给潜艇战提供航空支援（规则书〈猎杀潜航〉），不参加防空拦截。
+func advanceASW(state *State, aircraft *AirUnit) []EngineEvent {
+	carrier := state.Units[aircraft.CarrierID]
+	if carrier == nil {
+		aircraft.Returning = true
+		return advanceAircraftReturn(state, aircraft)
+	}
+	aircraft.Coord = carrier.Coord
+	aircraft.TargetCoord = carrier.Coord
+	aircraft.PatrolCoord = carrier.Coord
+	// 和 CAP 一样：燃料只够回家就自动返航，不能一直烧到航程 -5 被销毁。
+	if hasRTBDestination(*state, aircraft) && aircraft.Range() <= rtbDistance(*state, aircraft) {
+		aircraft.Returning = true
+		return []EngineEvent{{Type: "asw_rtb", Audience: aircraft.Faction, Text: fmt.Sprintf("%s剩余航程%d不足以往返，撤出反潜巡逻返航", aircraft.Model, aircraft.Range())}}
+	}
+	aircraft.Spend(1)
+	return nil
+}
+
 // advanceTransfer 处理转场：飞到目标舰队，降落在那支舰队里有空位的航母上。
 // 舰队机库放不下时算子挂在天上（CannotLand），由玩家手动改转场目标。
 func advanceTransfer(state *State, aircraft *AirUnit) []EngineEvent {

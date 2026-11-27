@@ -235,7 +235,7 @@ func sameTaskAssignment(aircraftList []*AirUnit, order Order) bool {
 // 不能按"能不能起飞"判——那样 04:00 到 05:20 之间会被误拦。
 func nightBlockedAirOrder(orderType string) bool {
 	switch orderType {
-	case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_COVER", "LAUNCH_TRANSFER", "RETASK_AIR", "LIFT_TO_DECK":
+	case "LAUNCH_CAP", "LAUNCH_ASW", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_COVER", "LAUNCH_TRANSFER", "RETASK_AIR", "LIFT_TO_DECK":
 		return true
 	}
 	return false
@@ -284,7 +284,7 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 		return err
 	}
 	switch order.Type {
-	case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_COVER", "LAUNCH_TRANSFER":
+	case "LAUNCH_CAP", "LAUNCH_ASW", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_COVER", "LAUNCH_TRANSFER":
 		if sameTaskAssignment(aircraftList, order) {
 			return nil
 		}
@@ -317,14 +317,17 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 			if order.Type == "LAUNCH_COVER" && aircraft.Kind != "fighter" {
 				return fmt.Errorf("空中掩护只能由战斗机执行")
 			}
+			if order.Type == "LAUNCH_ASW" && aircraft.Kind == "fighter" {
+				return fmt.Errorf("战斗机不能执行反潜巡逻：需要轰炸机、侦察机这类能挂深水炸弹的机型")
+			}
 			if order.Type == "LAUNCH_TRANSFER" && aircraft.Seaplane {
 				return fmt.Errorf("水上侦察机不能转场到其他航母")
 			}
 			if order.Type == "LAUNCH_RECON" && !canSearch(*aircraft) {
 				return fmt.Errorf("战斗机不能执行扇面搜索，TBF、SB2C和侦察机可以执行搜索")
 			}
-			if (order.Type == "LAUNCH_CAP" || order.Type == "LAUNCH_COVER") && FleetKey(ship) != fleetID {
-				return fmt.Errorf("CAP和空中掩护的母舰必须属于同一舰队")
+			if (order.Type == "LAUNCH_CAP" || order.Type == "LAUNCH_COVER" || order.Type == "LAUNCH_ASW") && FleetKey(ship) != fleetID {
+				return fmt.Errorf("CAP、空中掩护和反潜巡逻的母舰必须属于同一舰队")
 			}
 			if order.Type == "LAUNCH_STRIKE" {
 				if aircraft.Seaplane || (aircraft.Kind != "dive_bomber" && aircraft.Kind != "torpedo_bomber" && aircraft.Kind != "fighter") {
@@ -926,6 +929,9 @@ func configureAirTask(state *State, aircraftList []*AirUnit, order Order) []Engi
 		case MissionCover:
 			assignCoverMission(aircraft, order.Coord)
 			aircraft.CoverUnitID = friendlyUnitIDAt(*state, aircraft.Faction, order.Coord)
+		case MissionASW:
+			assignAswMission(aircraft, order.Coord)
+			aircraft.CoverUnitID = friendlyUnitIDAt(*state, aircraft.Faction, order.Coord)
 		case MissionTransfer:
 			assignTransferMission(aircraft, order.Coord)
 			aircraft.TargetFleetID = ""
@@ -1016,7 +1022,7 @@ func taskAircraft(state State, taskID string) []*AirUnit {
 
 func airborne(aircraft *AirUnit) bool {
 	switch aircraft.Status {
-	case "cap", "recon", "attack_holding", "attack", "cover", "transfer":
+	case "cap", "asw", "recon", "attack_holding", "attack", "cover", "transfer":
 		return true
 	}
 	return false
@@ -1187,6 +1193,12 @@ func launchAirTask(state *State, aircraftList []*AirUnit) []EngineEvent {
 			// 起飞顶点一律记下来：任务卡要显示"目标 / 起飞位置"，以前只有侦察和攻击记，
 			// CAP、掩护、转场的任务卡就只剩一个当前坐标，玩家分不清它是从哪条船起飞的。
 			aircraft.OriginCoord = carrier.Coord
+			// 反潜巡逻从起飞那一刻就站在母舰上空：回合开始的潜艇战要按这个位置判定有没有航空支援。
+			if aircraft.TaskKind == "asw" {
+				aircraft.Coord = carrier.Coord
+				aircraft.TargetCoord = carrier.Coord
+				aircraft.PatrolCoord = carrier.Coord
+			}
 			if aircraft.TaskKind == "recon" || aircraft.TaskKind == "attack" {
 				aircraft.Coord = carrier.Coord
 				aircraft.ReconDistance = 0
@@ -1253,7 +1265,7 @@ func ApplyAirOrder(state *State, order Order) []EngineEvent {
 			}
 		}
 		return []EngineEvent{{Type: "air_lift_requested", Audience: carrier.Faction, Text: fmt.Sprintf("%s：%d个算子排队提升至甲板", carrier.Name, len(aircraftList))}}
-	case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_COVER", "LAUNCH_TRANSFER":
+	case "LAUNCH_CAP", "LAUNCH_ASW", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_COVER", "LAUNCH_TRANSFER":
 		if sameTaskAssignment(aircraftList, order) {
 			return []EngineEvent{{Type: "air_task_unchanged", Audience: carrier.Faction, Text: "算子已在当前任务中，无需重复加入"}}
 		}
@@ -1827,7 +1839,7 @@ func closeFinishedTasks(state *State) {
 		active := false
 		for _, aircraft := range members {
 			switch aircraft.Status {
-			case "cap", "recon", "attack", "attack_holding", "cover", "service", "elevator", "deck", "ready", "recovery":
+			case "cap", "asw", "recon", "attack", "attack_holding", "cover", "service", "elevator", "deck", "ready", "recovery":
 				active = true
 			}
 		}
@@ -2018,6 +2030,12 @@ func AdvanceAviation(state *State) []EngineEvent {
 				continue
 			}
 			events = append(events, advanceCover(state, aircraft)...)
+		case "asw":
+			if aircraft.Returning {
+				events = append(events, advanceAircraftReturn(state, aircraft)...)
+				continue
+			}
+			events = append(events, advanceASW(state, aircraft)...)
 		case "transfer":
 			events = append(events, advanceTransfer(state, aircraft)...)
 		}

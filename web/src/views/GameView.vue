@@ -8,6 +8,7 @@ import HexPanel from '../components/HexPanel.vue'
 import { airfieldContactStatus } from '../airfields'
 import { applyDisplay, label } from '../display'
 import { shipDamageBadges, shipDamageDetailLabels } from '../shipDamage'
+import { contentImageURL } from '../silhouette-masks'
 import HexMap from '../components/HexMap.vue'
 import AirfieldCounter from '../components/AirfieldCounter.vue'
 import ShipCard from '../components/ShipCard.vue'
@@ -81,6 +82,19 @@ let lastAirCombatID = readSeenCombat()
 const ownUnits = computed(() => state.value?.units.filter((unit) => unit.faction === state.value?.you.faction) || [])
 const fleets = computed(() => state.value?.fleets || [])
 const ownFleets = computed(() => fleets.value.filter((fleet) => fleet.faction === state.value?.you.faction))
+// —— 潜艇（【猎杀潜航】模块）——
+// 部署阶段服务端只下发本方的可部署潜艇；开战后只剩被本方发现并追踪的敌方潜艇。
+const submarineUnits = computed(() => state.value?.submarines || [])
+const deployableSubmarines = computed(() => submarineUnits.value.filter((sub) => !sub.discovered))
+const undeployedSubmarineCount = computed(() => deployableSubmarines.value.filter((sub) => !sub.deployed).length)
+// 正在等玩家点海图摆位的那艘潜艇：非空时，下一次点海图就是给它选位置。
+const subPlacementID = ref('')
+const placingSubmarine = computed(() => deployableSubmarines.value.find((sub) => sub.id === subPlacementID.value))
+const subBattles = computed(() => state.value?.sub_battles || [])
+// 开战之后潜艇列表只剩敌情，悬着的摆位状态一起清掉。
+watch(() => state.value?.phase, (phase) => {
+  if (phase !== 'deploy') subPlacementID.value = ''
+})
 const strikeTargets = computed<StrikeTarget[]>(() => {
   const fleets_ = fleets.value.filter((fleet) => fleet.faction !== state.value?.you.faction).map((fleet) => ({
     coord: fleet.coord,
@@ -280,7 +294,7 @@ const selectedFleetHeavyAA = computed(() => {
 })
 
 function aircraftFlightStatus(aircraft: AirUnit) {
-  const airborne = ['cap', 'recon', 'attack', 'attack_holding', 'cover', 'transfer'].includes(aircraft.status)
+  const airborne = ['cap', 'asw', 'recon', 'attack', 'attack_holding', 'cover', 'transfer'].includes(aircraft.status)
   if (airborne && aircraft.returning) return '返航中'
   if (aircraft.status === 'attack_holding') return '出击中 · 等待编队'
   if (aircraft.status === 'attack') return '出击中'
@@ -712,6 +726,11 @@ async function setStrikeTarget(coord: string, targetFleetID = '') {
 }
 
 function selectHex(coord: string) {
+  // 正在给潜艇选位置：这一下点击就是摆位，不弹"这一格有什么"的清单。
+  if (subPlacementID.value && deploying.value) {
+    void placeSubmarine(coord)
+    return
+  }
   if (strikeTargetTaskID.value) {
     // 先列出这一格里能打谁，再落目标：同格既有舰队又有机场时，随手点一下就打错对象了。
     const candidates = strikeCandidatesAt(coord)
@@ -850,6 +869,32 @@ function closeManager() {
   mergeSourceID.value = ''
   movingMemberID.value = ''
   draftAssignments.value = {}
+}
+
+// 点潜艇（侧栏列表或地图算子）＝选中它等下一次海图点击；再点一次取消。
+function selectSubmarine(id: string) {
+  if (!deploying.value || locked.value || actionBusy.value) return
+  const sub = deployableSubmarines.value.find((item) => item.id === id)
+  if (!sub) return
+  subPlacementID.value = subPlacementID.value === id ? '' : id
+  selectedID.value = ''
+  selectedAirTaskID.value = ''
+  hexCoord.value = ''
+}
+
+// 把选中的潜艇摆到某个海格。地形校验在服务端：点礁石/陆地会直接回一条错误。
+async function placeSubmarine(coord: string) {
+  if (!state.value || !deploying.value || !subPlacementID.value || actionBusy.value || locked.value) return
+  actionBusy.value = true
+  try {
+    await sendCommand({ type: 'DEPLOY_SUB', unit_id: subPlacementID.value, coord })
+    subPlacementID.value = ''
+    error.value = ''
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : '潜艇部署失败'
+  } finally {
+    actionBusy.value = false
+  }
 }
 
 async function move(coord: string) {
@@ -1040,7 +1085,7 @@ async function applyReorganization() {
   }
 }
 
-async function airCommand(type: 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' | 'LAUNCH_COVER' | 'LAUNCH_TRANSFER' | 'RETURN_TO_HANGAR' | 'LIFT_TO_DECK' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK' | 'SET_AIR_CYCLE' | 'SET_STRIKE_TARGET' | 'SET_STRIKE_DISPERSION' | 'RECALL_AIR' | 'RETASK_AIR' | 'RETARGET_AIR' | 'SET_LOADOUT', aircraftIDs: string[], options?: { heading?: ReconHeading; sector_width?: 60 | 120; task_id?: string; coord?: string; task_kind?: string; loadout?: string; disperse?: boolean; cycle?: boolean; lane?: number; target_fleet_id?: string }) {
+async function airCommand(type: 'LAUNCH_CAP' | 'LAUNCH_ASW' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' | 'LAUNCH_COVER' | 'LAUNCH_TRANSFER' | 'RETURN_TO_HANGAR' | 'LIFT_TO_DECK' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK' | 'SET_AIR_CYCLE' | 'SET_STRIKE_TARGET' | 'SET_STRIKE_DISPERSION' | 'RECALL_AIR' | 'RETASK_AIR' | 'RETARGET_AIR' | 'SET_LOADOUT', aircraftIDs: string[], options?: { heading?: ReconHeading; sector_width?: 60 | 120; task_id?: string; coord?: string; task_kind?: string; loadout?: string; disperse?: boolean; cycle?: boolean; lane?: number; target_fleet_id?: string }) {
   if (!state.value || actionBusy.value || locked.value) return
   actionBusy.value = true
   try {
@@ -1071,6 +1116,7 @@ async function toggleReady() {
     selectedID.value = ''
     selectedAirTaskID.value = ''
     menuCoord.value = ''
+    subPlacementID.value = ''
     // 战斗动画正在播时不能把面板按回地图：那样组件被卸载，定时器全部清掉，
     // 动画就停在半路。没有在播的动画时回地图等结算。
     if (!activeAirCombat.value) activePanel.value = 'map'
@@ -1165,7 +1211,7 @@ onUnmounted(() => {
         </div>
         <!-- 部署阶段横幅：说明可拖的范围和"部署不算回合"，避免玩家到处找回合按钮。 -->
         <div v-if="deploying" class="deploy-strip">
-          <span>部署阶段：把舰队拖到高亮区内（锚点 {{ state.deploy_zone?.anchor }} · 半径 {{ state.deploy_zone?.radius }} 格），可以整编、拆分、合并；点过「部署完毕」后操作锁定。</span>
+          <span>部署阶段：把舰队拖到高亮区内（锚点 {{ state.deploy_zone?.anchor }} · 半径 {{ state.deploy_zone?.radius }} 格），可以整编、拆分、合并；潜艇在左侧「潜艇」卡片里点选，再点海格摆位（开战后双方都看不见）；点过「部署完毕」后操作锁定。</span>
           <b>{{ readyCount }} / {{ state.players.length }} 已部署完毕 · 双方都点完才进第 1 回合</b>
         </div>
         <!-- 房主在等对手时，邀请 token 必须摆在明面上：它原本藏在"战局 / 房间"折叠面板里，
@@ -1200,7 +1246,7 @@ onUnmounted(() => {
                 </template>
               </div><div v-if="strikeTargetTaskID" class="strike-map-target"><span>{{ strikeTargetSelection.verb }}：{{ strikeTargetLabel }} · {{ strikeTargetSelection.hint }}</span><button @click="cancelStrikeTarget">取消</button></div><div class="map-legend"><span><i class="legend-a"></i>A 阵营</span><span><i class="legend-b"></i>B 阵营</span><span><i class="legend-move"></i>可移动</span><span><i class="legend-wind"></i>格底箭头=风吹向</span><span><svg class="legend-wx" viewBox="-10 -10 20 20" aria-hidden="true"><circle cx="-5.4" cy="1.4" r="3.4" /><circle cx="-0.6" cy="-1.2" r="4.8" /><circle cx="3.6" cy="1.2" r="3.2" /><rect x="-8.6" y="1.2" width="12.8" height="3.6" rx="1.8" /></svg>多云</span><span><svg class="legend-wx" viewBox="-10 -10 20 20" aria-hidden="true"><path d="M0 -7.4c0 0 3.2 4.8 3.2 7a3.2 3.2 0 0 1-6.4 0c0-2.2 3.2-7 3.2-7Z" /><path transform="translate(-7.6 4.2) scale(.76)" d="M0 -7.4c0 0 3.2 4.8 3.2 7a3.2 3.2 0 0 1-6.4 0c0-2.2 3.2-7 3.2-7Z" /><path transform="translate(7.6 4.2) scale(.76)" d="M0 -7.4c0 0 3.2 4.8 3.2 7a3.2 3.2 0 0 1-6.4 0c0-2.2 3.2-7 3.2-7Z" /></svg>降雨</span><span><svg class="legend-wx" viewBox="-10 -10 20 20" aria-hidden="true"><path d="M1.6 -9.6 L-5.6 0.9 H-1.4 L-2.4 9.6 L6 -1.2 H1.4 L4.8 -9.6 Z" /></svg>风暴</span></div></div>
             <div class="map-canvas">
-              <HexMap :map="state.map" :fleets="fleets" :player-faction="state.you.faction" :selected-unit="selectedUnit" :orders="state.orders" :recon-tasks="[...state.aviation.tasks, ...(state.ground_tasks || [])].filter((task) => task.kind === 'recon')" :air-tasks="state.aviation.tasks" :airfields="airfields" :ground-aircraft="groundAircraft" :ground-tasks="groundTasks" :enemy-air="state.enemy_air || []" :distance-reference="distanceReference" :distance-origin="distanceOrigin" :selected-air-task-id="mapAirTaskID" :locked="locked" :strike-targeting="Boolean(strikeTargetTaskID)" :nav-targeting="navTargeting" :wind-cells="state.wind?.cells || ''" :weather-cells="state.weather_cells || ''" @select-airfield="selectAirfield" @inspect-airfield="inspectAirfield" @select-unit="selectMapUnit" @select-hex="selectHex" @manage-hex="openFleetChoices" @move="move" @notice="mapNotice" @select-air-task="selectMapAirTask" />
+              <HexMap :map="state.map" :fleets="fleets" :player-faction="state.you.faction" :selected-unit="selectedUnit" :orders="state.orders" :recon-tasks="[...state.aviation.tasks, ...(state.ground_tasks || [])].filter((task) => task.kind === 'recon')" :air-tasks="state.aviation.tasks" :airfields="airfields" :ground-aircraft="groundAircraft" :ground-tasks="groundTasks" :enemy-air="state.enemy_air || []" :distance-reference="distanceReference" :distance-origin="distanceOrigin" :selected-air-task-id="mapAirTaskID" :locked="locked" :strike-targeting="Boolean(strikeTargetTaskID)" :nav-targeting="navTargeting" :wind-cells="state.wind?.cells || ''" :weather-cells="state.weather_cells || ''" :submarines="submarineUnits" :selected-submarine-id="subPlacementID" @select-submarine="selectSubmarine" @select-airfield="selectAirfield" @inspect-airfield="inspectAirfield" @select-unit="selectMapUnit" @select-hex="selectHex" @manage-hex="openFleetChoices" @move="move" @notice="mapNotice" @select-air-task="selectMapAirTask" />
               <HexPanel
                 v-if="hexCoord"
                 :coord="hexCoord"
@@ -1292,6 +1338,27 @@ onUnmounted(() => {
                     <div><dt>岸炮</dt><dd>{{ inspectedAirfield.coastal ?? 0 }}</dd></div>
                     <div><dt>雷达</dt><dd>{{ inspectedAirfield.radar ? '有' : '无' }}</dd></div>
                   </dl>
+                </div>
+              </section>
+              <!-- 部署阶段的潜艇：开战后从双方视野消失，位置只能在现在定。
+                   点一艘再点海图上的海格即可摆位；没摆完不能点「部署完毕」。 -->
+              <section v-if="deploying && deployableSubmarines.length" class="side-card submarine-card">
+                <div class="side-card-head"><span class="section-kicker">SUBMARINES</span><span>{{ deployableSubmarines.length - undeployedSubmarineCount }} / {{ deployableSubmarines.length }} 已部署</span></div>
+                <p class="submarine-hint">潜艇开战后对双方都不可见，每 6 回合随机巡逻 1 格；与敌方舰队同格会爆发潜艇战。先点潜艇，再点海图上的海面格。</p>
+                <div class="submarine-list">
+                  <button v-for="sub in deployableSubmarines" :key="sub.id" class="submarine-row" :class="{ active: subPlacementID === sub.id, placed: sub.deployed }" :data-submarine-id="sub.id" @click="selectSubmarine(sub.id)">
+                    <img v-if="sub.picture" class="submarine-thumb" :src="contentImageURL(sub.picture)" alt="" />
+                    <span><b>{{ sub.name }}</b><small>{{ sub.deployed ? '已进入战位' : '未部署' }}</small></span>
+                    <code>{{ sub.deployed ? sub.coord : '点选后点海图' }}</code>
+                  </button>
+                </div>
+                <p v-if="placingSubmarine" class="submarine-placing">「{{ placingSubmarine.name }}」：点击海图上的海面格放置<button type="button" class="text-button" @click="subPlacementID = ''">取消</button></p>
+              </section>
+              <!-- 潜艇战报：交战双方的舰队与潜艇已经在同一格遭遇，所以两边都看得到。 -->
+              <section v-if="subBattles.length" class="side-card submarine-battles-card">
+                <div class="side-card-head"><span class="section-kicker">SUBMARINE REPORTS</span><span>{{ subBattles.length }}</span></div>
+                <div class="submarine-battle-list">
+                  <p v-for="battle in [...subBattles].reverse().slice(0, 4)" :key="battle.id" class="submarine-battle-row">{{ battle.summary }}</p>
                 </div>
               </section>
               <aside v-if="selectedUnit && shipDetailOpen" class="side-card selection-card map-selection-card">

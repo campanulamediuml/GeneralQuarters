@@ -697,6 +697,8 @@ func (s *Server) doCommand(msg roomMsg) roomReply {
 			events = game.ApplyNavOrder(&room.State, order)
 		case "SET_ENGAGEMENT":
 			events = game.ApplyEngagementOrder(&room.State, order)
+		case "DEPLOY_SUB":
+			events = game.ApplySubDeploy(&room.State, order)
 		case "SET_MOVE":
 			if deployPhase {
 				// 部署阶段是自由摆放：整支舰队立刻挪过去，不排进本回合计划。
@@ -705,7 +707,7 @@ func (s *Server) doCommand(msg roomMsg) roomReply {
 			}
 			// 移动命令走下面 SaveOrder 的"本回合规划"通道，真正的位移在回合结算里执行。
 			return s.savePlannedOrder(ctx, actor, msg, request, order)
-		case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_COVER", "LAUNCH_TRANSFER", "PREPARE_AIR", "LIFT_TO_DECK", "RETURN_TO_HANGAR", "RECOVER_AIR", "PRIORITIZE_AIR_TASK", "SET_STRIKE_TARGET", "SET_STRIKE_DISPERSION", "ARM_AIR", "SET_AIR_CYCLE":
+		case "LAUNCH_CAP", "LAUNCH_ASW", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_COVER", "LAUNCH_TRANSFER", "PREPARE_AIR", "LIFT_TO_DECK", "RETURN_TO_HANGAR", "RECOVER_AIR", "PRIORITIZE_AIR_TASK", "SET_STRIKE_TARGET", "SET_STRIKE_DISPERSION", "ARM_AIR", "SET_AIR_CYCLE":
 			if game.IsAirfieldOrder(room.State, order) {
 				events = game.ApplyGroundAirOrder(&room.State, order)
 			} else {
@@ -944,6 +946,12 @@ func (s *Server) doReady(msg roomMsg) roomReply {
 			return roomError(http.StatusBadRequest, "这是双人对局，对手还没进房：把房间 token 发给他，两名玩家都到齐后回合才会推进")
 		}
 	}
+	// 潜艇没摆完不能点"部署完毕"：开战后就摆不了了，漏掉的艇会被随机撒到海里。
+	if deployPhase && request.Ready {
+		if remaining := game.UndeployedSubmarines(room.State, player.Faction); remaining > 0 {
+			return roomError(http.StatusBadRequest, fmt.Sprintf("还有%d艘潜艇没有部署：先摆好再点「部署完毕」", remaining))
+		}
+	}
 	if err := s.store.SetReady(ctx, player.ID, request.Ready); err != nil {
 		return roomError(http.StatusInternalServerError, "准备状态保存失败")
 	}
@@ -1083,6 +1091,9 @@ func (s *Server) privateView(ctx context.Context, room store.Room, players []sto
 		// phase = "deploy" 时双方还在部署区摆船；deploy_zone 是己方的部署区（锚点/半径/格位串）。
 		"phase":       room.State.Phase,
 		"deploy_zone": game.DeployZoneView(room.State, player.Faction),
+		// submarines：部署阶段是本方还没摆完的可部署潜艇；开战后只剩被本方发现的敌方潜艇。
+		"submarines":   game.VisibleSubmarines(room.State, player.Faction),
+		"sub_battles":  game.VisibleSubBattles(room.State),
 		"night":       room.State.Night,
 		"clock":       game.Clock(room.State),
 		"enemy_air":   game.VisibleEnemyAir(room.State, player.Faction),

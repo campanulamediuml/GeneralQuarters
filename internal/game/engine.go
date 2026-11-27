@@ -401,6 +401,10 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 	if err := deployAirfields(&state, scenario, airDefinitions, gameMap); err != nil {
 		return state, err
 	}
+	// 潜艇在机场之后展开：随机潜伏要避开机场格，得先知道机场在哪。
+	if err := deploySubmarines(&state, scenario); err != nil {
+		return state, err
+	}
 	EnsureAviation(&state)
 	// 天气系统开启的剧本开局铺一次云：70%/20%/10% 三层独立撒点。
 	EnsureWeather(&state)
@@ -795,7 +799,11 @@ func groundAirView(aircraft *AirUnit) *AirfieldAirUnit {
 func ValidateOrder(state State, faction string, order Order) error {
 	// 部署阶段只摆船：开火、侦察、起降、设航向这些都要等开战。
 	if InDeployPhase(state) && !deployOrderAllowed(order.Type) {
-		return fmt.Errorf("部署阶段只能移动和整编舰队")
+		return fmt.Errorf("部署阶段只能移动舰队、整编和摆潜艇")
+	}
+	// 潜艇不属于 state.Units，必须在舰船分支之前单独校验。
+	if order.Type == "DEPLOY_SUB" {
+		return validateSubDeploy(state, faction, order)
 	}
 	// 无线电命令按任务 ID 挂载、也带 TaskID，必须在航空命令分派之前拦下来，
 	// 否则会掉进 ValidateAirOrder 的 default 分支。
@@ -1165,7 +1173,7 @@ func ApplyImmediateOrganization(state *State, order Order) []EngineEvent {
 // isAirOrderType 是航母与机场共用的一批航空命令类型。
 func isAirOrderType(orderType string) bool {
 	switch orderType {
-	case "LAUNCH_CAP", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_COVER", "LAUNCH_TRANSFER", "PREPARE_AIR", "LIFT_TO_DECK", "RETURN_TO_HANGAR", "RECOVER_AIR", "PRIORITIZE_AIR_TASK", "SET_STRIKE_TARGET", "SET_STRIKE_DISPERSION", "ARM_AIR", "SET_AIR_CYCLE":
+	case "LAUNCH_CAP", "LAUNCH_ASW", "LAUNCH_RECON", "LAUNCH_STRIKE", "LAUNCH_COVER", "LAUNCH_TRANSFER", "PREPARE_AIR", "LIFT_TO_DECK", "RETURN_TO_HANGAR", "RECOVER_AIR", "PRIORITIZE_AIR_TASK", "SET_STRIKE_TARGET", "SET_STRIKE_DISPERSION", "ARM_AIR", "SET_AIR_CYCLE":
 		return true
 	}
 	return false
@@ -1181,7 +1189,7 @@ func needsAirValidation(orderType string) bool {
 // 注意：RETARGET_AIR 不在这里——改目标同样是无线电通信，必须按编队消耗机会，因此走回合结算。
 func IsImmediateOrder(orderType string) bool {
 	switch orderType {
-	case "SET_MOVE", "SET_AUTO_NAV", "SET_ENGAGEMENT":
+	case "SET_MOVE", "SET_AUTO_NAV", "SET_ENGAGEMENT", "DEPLOY_SUB":
 		return true
 	}
 	return false
@@ -1223,6 +1231,9 @@ func ResolveOrders(state *State, orders []Order) []EngineEvent {
 	// 先给在编算子拍个花名册，回合结束时靠它结算飞机损失。
 	snapshotAircraftRoster(state)
 	events := advanceTurnStartWithEvents(state)
+	// 潜艇：先按 1d6 相位随机巡逻，再结算同格潜艇战/反潜作业（规则书〈猎杀潜航〉）。
+	AdvanceSubmarines(state)
+	events = append(events, ResolveSubmarinePhase(state)...)
 	// 朝向已定，按风向重算甲板长度；本回合起飞/降落容量以此为基准（规则书 824 行）。
 	RefreshDeckLengths(state)
 	events = append(events, AdvanceShipConditions(state)...)
@@ -1406,6 +1417,8 @@ func armedTaskMatches(taskKind string, aircraft *AirUnit) bool {
 		return false
 	case "cap", "cover":
 		return aircraft.Kind == "fighter"
+	case "asw":
+		return aircraft.Kind != "fighter"
 	case "recon":
 		return canSearch(*aircraft)
 	case "attack":

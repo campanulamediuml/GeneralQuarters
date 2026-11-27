@@ -31,6 +31,9 @@ const (
 	MissionCover MissionKind = "cover"
 	// MissionTransfer 转场：换一艘母舰或上岸。
 	MissionTransfer MissionKind = "transfer"
+	// MissionASW 反潜巡逻：跟着母舰/机场上空盘旋，给反潜战提供航空支援；
+	// 战斗机不能执行（规则书〈猎杀潜航〉）。复用空中掩护的盘旋/返航机制，但不参与防空拦截。
+	MissionASW MissionKind = "asw"
 )
 
 // missionKindFromOrder 把命令类型翻译成任务类型。
@@ -44,6 +47,8 @@ func missionKindFromOrder(orderType string) MissionKind {
 		return MissionCover
 	case "LAUNCH_TRANSFER":
 		return MissionTransfer
+	case "LAUNCH_ASW":
+		return MissionASW
 	}
 	return MissionCap
 }
@@ -93,6 +98,16 @@ func assignStrikeMission(state *State, aircraft *AirUnit, coord string) {
 }
 
 // assignCoverMission 设置掩护点。
+// assignAswMission 设置反潜巡逻：巡逻点就是母舰/机场所在格，逐回合跟着母舰走。
+func assignAswMission(aircraft *AirUnit, coord string) {
+	if aircraft == nil {
+		return
+	}
+	aircraft.TargetCoord = coord
+	aircraft.PatrolCoord = coord
+	aircraft.ForwardCoord = ""
+}
+
 func assignCoverMission(aircraft *AirUnit, coord string) {
 	aircraft.TargetCoord = coord
 }

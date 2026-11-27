@@ -402,7 +402,7 @@ func recallLoopingAircraftBeforeNight(state *State) []EngineEvent {
 		// 只留一回合余量时，最后一刻的召回已经来不及落地：珊瑚海第 59 回合那 8 架 E13A
 		// 就是"距天黑只剩 7 回合、返航要 7 回合"被召回的，落地前一格被判失联。
 		if need+1 >= remaining-1 {
-			label := map[string]string{"cap": "CAP", "cover": "空中掩护", "recon": "侦察", "attack": "打击编队", "attack_holding": "打击编队"}[aircraft.Status]
+			label := map[string]string{"cap": "CAP", "asw": "反潜巡逻", "cover": "空中掩护", "recon": "侦察", "attack": "打击编队", "attack_holding": "打击编队"}[aircraft.Status]
 			if label == "" {
 				label = "飞行任务"
 			}
@@ -419,7 +419,7 @@ func recallLoopingAircraftBeforeNight(state *State) []EngineEvent {
 		}
 		// 还够时间，但快到天黑时自动循环的任务要收手，避免降落之后又自己飞出去一整轮。
 		// 只在最后 4 个回合（约 80 分钟）这么做：整备+提升+飞一轮再加返航，已经排不下了。
-		if aircraft.OnCycle && remaining <= 4 && (aircraft.Status == "cap" || aircraft.Status == "cover" || aircraft.Status == "recon") {
+		if aircraft.OnCycle && remaining <= 4 && (aircraft.Status == "cap" || aircraft.Status == "asw" || aircraft.Status == "cover" || aircraft.Status == "recon") {
 			aircraft.Returning = true
 			aircraft.ForwardCoord = ""
 			aircraft.TrackingFleetID = ""
@@ -559,6 +559,8 @@ func cycleKindName(kind string) string {
 		return "CAP"
 	case "cover":
 		return "空中掩护"
+	case "asw":
+		return "反潜巡逻"
 	case "recon":
 		return "侦察"
 	}

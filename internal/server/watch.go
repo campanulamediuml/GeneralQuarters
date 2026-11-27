@@ -108,6 +108,8 @@ func buildSpectateView(room store.Room, players []store.Player, events []store.E
 		"score_breakdown": game.ScoreBreakdown(state),
 		"objectives":      state.Objectives,
 		"shore_supplies":  intMapSnapshot(state.ShoreSupplies),
+		// 观战页只给潜艇战报，不给潜艇实时位置：潜艇的隐蔽性对观战者也不开放。
+		"sub_battles": game.VisibleSubBattles(state),
 		"outcome":         state.Outcome,
 		"night":           state.Night,
 		"clock":           game.Clock(state),

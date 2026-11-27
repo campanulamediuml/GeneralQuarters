@@ -187,6 +187,76 @@ type ScenarioDefinition struct {
 	// WithdrawDirections 是各阵营的撤离方向（E/W/NE/…）：舰船重创脱离、运输队卸空后，
 	// 都朝这个方向驶向地图边缘。没配的阵营退回"离开地图中心"的通用逻辑。
 	WithdrawDirections map[string]string `json:"withdraw_directions"`
+	// Submarines 是剧本给各阵营配置的潜艇（【猎杀潜航】模块）：部署阶段自由摆 N 艘，
+	// 另有 3 艘随机撒在地图里的预备潜艇。没配就是没有潜艇的常规对局。
+	Submarines []SubmarineDeployment `json:"submarines"`
+}
+
+// SubmarineDeployment 是剧本里的潜艇编制：一个阵营 N 艘，共用一套卡面。
+// 每艘潜艇按 Count 展开成独立的运行期单位（名字自动带 1、2… 序号）。
+type SubmarineDeployment struct {
+	Faction string `json:"faction"`
+	// Count 是可部署的潜艇数（N），由剧本决定。
+	Count int `json:"count"`
+	// Name 是名称前缀；Count > 1 时自动变成"名称1、名称2"。
+	Name    string `json:"name"`
+	Picture string `json:"picture"`
+	// MoveInterval 是随机巡逻节奏（每 N 回合挪 1 hex），留空按 6。
+	MoveInterval int `json:"move_interval"`
+}
+
+// Submarine 是运行期的潜艇。它不属于任何舰队，也不进 state.Units：
+// 潜艇战按自己的规则结算，不参与水面炮战、航空攻击和情报体系。
+type Submarine struct {
+	ID      string `json:"id"`
+	Faction string `json:"faction"`
+	Name    string `json:"name"`
+	Picture string `json:"picture"`
+	// Coord 为空表示部署阶段还没落位（Deployed=false）。
+	Coord string `json:"coord"`
+	// Reserve 是开局随机撒在地图里的预备潜艇：连本方也看不到、不能摆位。
+	Reserve  bool `json:"reserve"`
+	Deployed bool `json:"deployed"`
+	// FirstMoveTurn 是开战时掷出的 1d6：第一次巡逻发生在第几回合。
+	FirstMoveTurn int `json:"first_move_turn"`
+	MoveInterval  int `json:"move_interval"`
+	// Discovered 表示潜艇已经被某支舰队发现：只对该阵营显示，并被钉在原地。
+	Discovered    bool   `json:"discovered"`
+	DiscoveredBy  string `json:"discovered_by"`
+	TrackedFleetID string `json:"tracked_fleet_id"`
+}
+
+// SubmarineBattle 是一次潜艇战的完整战报：交战双方的舰队与潜艇已经同格遭遇，
+// 所以这张战报对两边公开。潜艇的实时位置仍然只在被发现后对舰队方显示。
+type SubmarineBattle struct {
+	ID               string `json:"id"`
+	Turn             int    `json:"turn"`
+	Coord            string `json:"coord"`
+	SubmarineID      string `json:"submarine_id"`
+	SubmarineName    string `json:"submarine_name"`
+	SubmarineFaction string `json:"submarine_faction"`
+	FleetID          string `json:"fleet_id"`
+	FleetName        string `json:"fleet_name"`
+	FleetFaction     string `json:"fleet_faction"`
+	// SubRoll / FleetRoll 是双方加完修正的 d10 结果；SubPoints / FleetPoints 是差额归谁。
+	SubRoll     int `json:"sub_roll"`
+	FleetRoll   int `json:"fleet_roll"`
+	SubPoints   int `json:"sub_points"`
+	FleetPoints int `json:"fleet_points"`
+	// PointsLeft 是兑换完效果后剩下的点数（不够再买任何一行）。
+	PointsLeft int `json:"points_left"`
+	// Effects 是按购买顺序记下的效果文案。
+	Effects []string `json:"effects"`
+	// 鱼雷：打了几发、命中几次、打的谁。
+	TorpedoShots    int    `json:"torpedo_shots"`
+	TorpedoHits     int    `json:"torpedo_hits"`
+	TorpedoShip     string `json:"torpedoed_ship,omitempty"`
+	TorpedoShipType string `json:"torpedoed_ship_type,omitempty"`
+	TorpedoShipSunk bool   `json:"torpedoed_ship_sunk"`
+	SubmarineSunk     bool `json:"submarine_sunk"`
+	SubmarineEscaped  bool `json:"submarine_escaped"`
+	Discovered        bool `json:"discovered"`
+	Summary           string `json:"summary"`
 }
 
 type UnitDefinition struct {
@@ -1062,6 +1132,11 @@ type State struct {
 	Turn int `json:"turn"`
 	// AirContacts 是"某个阵营已经发现的敌方飞行编队"（键：观察者 → 任务 ID）。
 	AirContacts map[string]map[string]*AirContact `json:"air_contacts"`
+	// Submarines 是运行时潜艇：部署阶段各阵营只看得见自己那几艘，开战后从双方视图里
+	// 消失，只有被发现时才对舰队方显示。
+	Submarines map[string]*Submarine `json:"submarines"`
+	// SubBattles 是潜艇战战报：交战双方的舰队与潜艇已经同格遭遇，所以双方都可见。
+	SubBattles []SubmarineBattle `json:"sub_battles"`
 	// 初始舰船数（按阵营），用于"击沉 N 艘"这类目标。
 	InitialShipCounts map[string]int `json:"initial_ship_counts"`
 	// Phase 是开局阶段标记："deploy" 表示还在部署（双方都在区内摆船，没人打完），

@@ -6,7 +6,7 @@ import AircraftCounter from './AircraftCounter.vue'
 import AirfieldCounter from './AirfieldCounter.vue'
 import ShipCounter from './ShipCounter.vue'
 
-type AirCommandType = 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' | 'LAUNCH_COVER' | 'LAUNCH_TRANSFER' | 'RETURN_TO_HANGAR' | 'LIFT_TO_DECK' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK' | 'SET_AIR_CYCLE' | 'RECALL_AIR' | 'RETASK_AIR' | 'RETARGET_AIR' | 'SET_STRIKE_DISPERSION'
+type AirCommandType = 'LAUNCH_CAP' | 'LAUNCH_ASW' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' | 'LAUNCH_COVER' | 'LAUNCH_TRANSFER' | 'RETURN_TO_HANGAR' | 'LIFT_TO_DECK' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK' | 'SET_AIR_CYCLE' | 'RECALL_AIR' | 'RETASK_AIR' | 'RETARGET_AIR' | 'SET_STRIKE_DISPERSION'
 type CommandOptions = { heading?: ReconHeading; sector_width?: 60 | 120; task_id?: string; coord?: string; task_kind?: string; loadout?: string; disperse?: boolean; cycle?: boolean; lane?: number }
 type TaskLane = { id: string; name: string; kind: string; slot?: number }
 type AirZone = 'hangar' | 'deck' | 'elevator'
@@ -131,6 +131,7 @@ const lanes: TaskLane[] = [
   { id: 'strike-2', name: '打击任务 II', kind: 'attack', slot: 1 },
   { id: 'cover-1', name: '空中掩护', kind: 'cover', slot: 0 },
   { id: 'transfer-1', name: '转场', kind: 'transfer', slot: 0 },
+  { id: 'asw-1', name: '反潜巡逻', kind: 'asw', slot: 0 },
   { id: 'cap', name: 'CAP', kind: 'cap' },
 ]
 const headings: { id: ReconHeading; arrow: string; name: string }[] = [
@@ -250,6 +251,7 @@ function assignTarget(target: string, taskID = '') {
   if (target === 'hangar') emitBatch('RETURN_TO_HANGAR', ids)
   else if (target === 'cap') emitBatch('LAUNCH_CAP', ids)
   else if (target.startsWith('cover-')) emitBatch('LAUNCH_COVER', ids)
+  else if (target.startsWith('asw-')) emitBatch('LAUNCH_ASW', ids)
   else if (target.startsWith('transfer-')) emitBatch('LAUNCH_TRANSFER', ids)
   else if (target.startsWith('strike-')) {
     const lane = lanes.find((item) => item.id === target)
@@ -274,7 +276,7 @@ function assignTarget(target: string, taskID = '') {
 // 机身还在机库/跑道上的任务算子可以直接撤回：拖回机库是同一个命令，
 // 但算子在窄任务栏里被挤掉或者手边没鼠标时，玩家得有个能点的地方——
 // 否则拖进转场以后就没有任何按钮能把这架飞机要回来。
-const airborneStatus = new Set(['cap', 'recon', 'attack', 'attack_holding', 'cover', 'transfer'])
+const airborneStatus = new Set(['cap', 'asw', 'recon', 'attack', 'attack_holding', 'cover', 'transfer'])
 function withdrawableIDs(task: AirTask) {
   return (task.aircraft || [])
     .filter((aircraft) => !airborneStatus.has(aircraft.status))
@@ -319,7 +321,7 @@ function returnHint(task: AirTask): string {
 
 // 任务级循环开关（规则书 191 行）：直接切整个任务，不用一架架点。
 function cyclicTask(task: AirTask) {
-  return ['cap', 'recon', 'cover'].includes(task.kind)
+  return ['cap', 'asw', 'recon', 'cover'].includes(task.kind)
 }
 function taskOnCycle(task: AirTask) {
   return (task.aircraft || []).some((aircraft) => aircraft.on_cycle)
@@ -370,6 +372,7 @@ function taskTitle(task: AirTask) {
   if (task.kind === 'recon') return '扇面侦察'
   if (task.kind === 'attack') return '攻击编队'
   if (task.kind === 'cover') return '空中掩护'
+  if (task.kind === 'asw') return '反潜巡逻'
   if (task.kind === 'transfer') return '转场'
   if (task.kind === 'cap') return 'CAP'
   return task.name
@@ -378,6 +381,7 @@ function taskTitle(task: AirTask) {
 function taskSummary(task: AirTask) {
   if (task.kind === 'attack') return `${task.airborne_count}/${task.aircraft_ids.length} 已升空 · ${task.current_coord || '母舰'}`
   if (task.kind === 'cover') return `${task.airborne_count}/${task.aircraft_ids.length} 已升空 · 掩护 ${task.target_coord || '未指定'}`
+  if (task.kind === 'asw') return `${task.airborne_count}/${task.aircraft_ids.length} 已升空 · 反潜巡逻 ${task.target_coord || '母舰上空'}`
   if (task.kind === 'transfer') {
     const base = `${task.airborne_count}/${task.aircraft_ids.length} 已升空 · 目标 ${task.target_coord || '未指定'}`
     return task.cannot_land ? `${base} · ⚠ 目标机库已满，无法降落` : base
@@ -638,7 +642,7 @@ function operationName(carrier: CarrierAirStatus) {
                 <AircraftCounter :aircraft="stack.aircraft" :stack-count="stack.ids.length" :player-faction="playerFaction" :class="{ selected: selectedAircraftId && stack.ids.includes(selectedAircraftId) }" :draggable="['service', 'deck', 'ready'].includes(stack.aircraft.status)" @click="selectCounter(stack.aircraft)" @toggle-cycle="toggleCycle(stack.aircraft, stack.ids)" @dragstart="['service', 'deck', 'ready'].includes(stack.aircraft.status) && startDrag(stack.aircraft, $event, stack.ids)" @dragend="endDrag" />
                 <small>{{ counterHint(stack.aircraft) }}</small>
                 <select
-                  v-if="!['cap', 'recon', 'attack', 'attack_holding'].includes(stack.aircraft.status)"
+                  v-if="!['cap', 'asw', 'recon', 'attack', 'attack_holding'].includes(stack.aircraft.status)"
                   class="loadout-picker"
                   :value="stack.aircraft.loadout"
                   :disabled="busy"
@@ -648,7 +652,7 @@ function operationName(carrier: CarrierAirStatus) {
                 >
                   <option v-for="option in loadoutOptionsFor(stack.aircraft)" :key="option" :value="option">{{ loadoutOptionLabel(stack.aircraft, option) }}</option>
                 </select>
-                <button v-if="stack.aircraft.status === 'cap'" :disabled="busy" @click.stop="recover(stack.ids)">{{ airfieldMode ? '着陆并回收' : '着舰并排队下降' }}</button>
+                <button v-if="['cap', 'asw'].includes(stack.aircraft.status)" :disabled="busy" @click.stop="recover(stack.ids)">{{ airfieldMode ? '着陆并回收' : '着舰并排队下降' }}</button>
               </div>
             </div>
             <aside class="air-task-content">

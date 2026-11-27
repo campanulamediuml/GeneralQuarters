@@ -23,6 +23,8 @@ func cycleKindForStatus(status string) string {
 		return string(MissionCover)
 	case MissionRecon:
 		return string(MissionRecon)
+	case MissionASW:
+		return string(MissionASW)
 	}
 	return ""
 }
@@ -30,7 +32,7 @@ func cycleKindForStatus(status string) string {
 // cyclicTaskKind 判断某类任务是否支持自动循环。
 func cyclicTaskKind(kind string) bool {
 	switch MissionKind(kind) {
-	case MissionCap, MissionCover, MissionRecon:
+	case MissionCap, MissionCover, MissionASW, MissionRecon:
 		return true
 	}
 	return false
@@ -83,6 +85,10 @@ func canRestartCycle(state State, aircraft *AirUnit) (bool, string) {
 	case "cap", "cover":
 		if aircraft.Kind != "fighter" {
 			return false, "机型不能执行战斗机任务"
+		}
+	case "asw":
+		if aircraft.Kind == "fighter" {
+			return false, "战斗机不能执行反潜巡逻"
 		}
 	case "recon":
 		if !canSearch(*aircraft) {
@@ -182,6 +188,8 @@ func restartCycledTask(state *State, aircraft *AirUnit) []EngineEvent {
 	case MissionCover:
 		assignCoverMission(aircraft, coverCycleTarget(*state, aircraft))
 		aircraft.CycleTarget = aircraft.TargetCoord
+	case MissionASW:
+		assignAswMission(aircraft, carrier.Coord)
 	}
 	applyLoadout(*state, aircraft)
 	return []EngineEvent{{Type: "air_cycle_restart", Audience: aircraft.Faction, Text: fmt.Sprintf("%s完成上一轮%s任务，重新进入机库整备准备再次出动", aircraft.Model, cycleKindName(kind))}}

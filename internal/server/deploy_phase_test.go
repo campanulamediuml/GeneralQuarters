@@ -91,6 +91,9 @@ func TestDeployPhaseFlow(t *testing.T) {
 		t.Fatalf("部署移动没有生效，舰队仍在原位")
 	}
 
+	// 潜艇也要摆完才能点"部署完毕"。
+	placeSubmarines(t, a, created.RoomID)
+
 	// 点过"部署完毕"就是部署结束：之后的部署操作一律拒绝，ready 也不能被撤回。
 	// 以前这里允许再拖一次并自动撤回 ready，玩家手滑挪一下舰队，准备状态就无声消失了。
 	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, nil); status != http.StatusOK {
@@ -114,6 +117,7 @@ func TestDeployPhaseFlow(t *testing.T) {
 	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, nil); status != http.StatusOK {
 		t.Fatalf("部署完毕失败：%d", status)
 	}
+	placeSubmarines(t, b, created.RoomID)
 	if status := b.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, nil); status != http.StatusOK {
 		t.Fatalf("部署完毕失败：%d", status)
 	}

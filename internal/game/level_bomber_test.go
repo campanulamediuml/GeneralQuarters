@@ -226,6 +226,8 @@ func coralCombatState(t *testing.T) State {
 	state.WeatherTurns = 0
 	state.Map.Clouds = ""
 	// 战斗用例要的是开战后的状态：直接跳过开局部署阶段。
+	// 靶场不带潜艇：否则潜艇的 1d6 与巡逻会挪动随机数序列，老用例全部失去可复现性。
+	state.Submarines = nil
 	StartBattle(&state)
 	return state
 }

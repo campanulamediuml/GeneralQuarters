@@ -24,6 +24,7 @@ func TestPlayerGetsNoPatchesBeforeFetchingBase(t *testing.T) {
 
 	// 新连接（模拟刷新后的页面）：连上了，但还没来得及拉全量。
 	fresh := dialTestWS(t, a, "/ws?room_id="+created.RoomID)
+	placeSubmarines(t, a, created.RoomID)
 	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, nil); status != http.StatusOK {
 		t.Fatalf("ready 状态码%d", status)
 	}

@@ -179,7 +179,7 @@ export interface AirUnit {
   forward_coord?: string
   /** 自动任务循环（规则书 188–191 行）：CAP、侦察、空中掩护通用 */
   on_cycle?: boolean
-  cycle_kind?: 'cap' | 'cover' | 'recon'
+  cycle_kind?: 'cap' | 'asw' | 'cover' | 'recon'
   cycle_opt_out?: boolean
   cycle_target?: string
 }
@@ -301,7 +301,7 @@ export interface Player {
 }
 
 export interface Order {
-  type: 'SET_MOVE' | 'CLEAR_MOVE' | 'MERGE_FLEET' | 'REORGANIZE_HEX' | 'SET_HEADING' | 'SET_LOADOUT' | 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' | 'LAUNCH_COVER' | 'LAUNCH_TRANSFER' | 'PREPARE_AIR' | 'LIFT_TO_DECK' | 'RETURN_TO_HANGAR' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK' | 'SET_STRIKE_TARGET' | 'SET_STRIKE_DISPERSION' | 'SET_AUTO_NAV' | 'SET_ENGAGEMENT' | 'SET_AIR_CYCLE' | 'RECALL_AIR' | 'RETASK_AIR' | 'RETARGET_AIR'
+  type: 'SET_MOVE' | 'CLEAR_MOVE' | 'MERGE_FLEET' | 'REORGANIZE_HEX' | 'SET_HEADING' | 'SET_LOADOUT' | 'DEPLOY_SUB' | 'LAUNCH_ASW' | 'LAUNCH_CAP' | 'LAUNCH_RECON' | 'LAUNCH_STRIKE' | 'LAUNCH_COVER' | 'LAUNCH_TRANSFER' | 'PREPARE_AIR' | 'LIFT_TO_DECK' | 'RETURN_TO_HANGAR' | 'RECOVER_AIR' | 'PRIORITIZE_AIR_TASK' | 'SET_STRIKE_TARGET' | 'SET_STRIKE_DISPERSION' | 'SET_AUTO_NAV' | 'SET_ENGAGEMENT' | 'SET_AIR_CYCLE' | 'RECALL_AIR' | 'RETASK_AIR' | 'RETARGET_AIR'
   unit_id?: string
   target_unit_id?: string
   aircraft_id?: string
@@ -460,7 +460,7 @@ export interface GroundAirUnit {
   maintenance?: number
   /** 自动任务循环（规则书 188–191 行）：机场算子与舰载机同一套开关 */
   on_cycle?: boolean
-  cycle_kind?: 'cap' | 'cover' | 'recon'
+  cycle_kind?: 'cap' | 'asw' | 'cover' | 'recon'
   cycle_target?: string
   cycle_opt_out?: boolean
 }
@@ -509,6 +509,54 @@ export interface DeployZone {
   cells: string
 }
 
+/**
+ * 潜艇（【猎杀潜航】模块）。
+ * 部署阶段服务端只下发本方的可部署潜艇；开战后这个列表只包含被本方发现并正在追踪的敌方潜艇。
+ */
+export interface Submarine {
+  id: string
+  faction: 'A' | 'B'
+  name: string
+  /** 尚未摆位时为空串 */
+  coord: string
+  picture?: string
+  reserve: boolean
+  deployed: boolean
+  first_move_turn: number
+  move_interval: number
+  discovered: boolean
+  discovered_by?: string
+  tracked_fleet_id?: string
+}
+
+/** 一次潜艇战的战报：交战双方的舰队与潜艇已经同格遭遇，所以两边都能看到。 */
+export interface SubmarineBattle {
+  id: string
+  turn: number
+  coord: string
+  submarine_id: string
+  submarine_name: string
+  submarine_faction: string
+  fleet_id: string
+  fleet_name: string
+  fleet_faction: string
+  sub_roll: number
+  fleet_roll: number
+  sub_points: number
+  fleet_points: number
+  points_left: number
+  effects: string[]
+  torpedo_shots: number
+  torpedo_hits: number
+  torpedoed_ship?: string
+  torpedoed_ship_type?: string
+  torpedoed_ship_sunk: boolean
+  submarine_sunk: boolean
+  submarine_escaped: boolean
+  discovered: boolean
+  summary: string
+}
+
 export interface GameView {
   room_id: string
   /** 展示文案字典：枚举 → 文案，由服务端随视图下发，前端只查表渲染。 */
@@ -536,6 +584,10 @@ export interface GameView {
   // phase = 'deploy' 时双方还在部署区摆船；deploy_zone 是己方部署区（锚点/半径/格位串）。
   phase?: string
   deploy_zone?: DeployZone
+  /** 部署阶段是本方待部署的潜艇；开战后只剩被本方发现的敌方潜艇 */
+  submarines?: Submarine[]
+  /** 潜艇战战报（双方可见） */
+  sub_battles?: SubmarineBattle[]
   wind?: {
     wind: string
     /** 逐格风向：行优先、每格一个字符，'0'..'5' 对应 NE/E/SE/SW/W/NW */

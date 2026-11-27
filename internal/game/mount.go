@@ -23,7 +23,9 @@ const (
 	WeaponAir      Weapon = "air"      // 对空：战斗机空战/护航
 	WeaponTorpedo  Weapon = "torpedo"  // 鱼雷
 	WeaponBomb     Weapon = "bomb"     // 炸弹（反舰/对地）
-	WeaponTransfer Weapon = "transfer" // 转场：不携带任何武器（战斗机除外）
+	// WeaponDepthCharge 是反潜深水炸弹：只有反潜巡逻用得上，母舰的弹药库提供。
+	WeaponDepthCharge Weapon = "depth_charge"
+	WeaponTransfer    Weapon = "transfer" // 转场：不携带任何武器（战斗机除外）
 )
 
 // Loadout 是武器 + 副油箱的组合。
@@ -45,6 +47,9 @@ const (
 	// 炸弹
 	LoadoutBombTank Loadout = "bomb+tank"
 	LoadoutBomb     Loadout = "bomb"
+	// 反潜深弹
+	LoadoutDepthChargeTank Loadout = "depth_charge+tank"
+	LoadoutDepthCharge     Loadout = "depth_charge"
 	// 转场：规则书 59 行，始终挂副油箱
 	LoadoutTransfer Loadout = "transfer+tank"
 )
@@ -60,13 +65,15 @@ func (l Loadout) Weapon() Weapon {
 		return WeaponTorpedo
 	case LoadoutBombTank, LoadoutBomb:
 		return WeaponBomb
+	case LoadoutDepthChargeTank, LoadoutDepthCharge:
+		return WeaponDepthCharge
 	}
 	return WeaponTransfer
 }
 
 // HasTank 返回该挂载是否挂副油箱。
 func (l Loadout) HasTank() bool {
-	return l == LoadoutReconTank || l == LoadoutAirTank || l == LoadoutTorpedoTank || l == LoadoutBombTank || l == LoadoutTransfer
+	return l == LoadoutReconTank || l == LoadoutAirTank || l == LoadoutTorpedoTank || l == LoadoutBombTank || l == LoadoutDepthChargeTank || l == LoadoutTransfer
 }
 
 // CarriesWeapon 判断挂载是否带弹药（决定投弹后能否获得轻载加成）。
@@ -85,7 +92,7 @@ func (l Loadout) Label() string {
 	if l == LoadoutNone {
 		return "无挂载"
 	}
-	names := map[Weapon]string{WeaponRecon: "侦察", WeaponAir: "对空", WeaponTorpedo: "鱼雷", WeaponBomb: "炸弹", WeaponTransfer: "转场"}
+	names := map[Weapon]string{WeaponRecon: "侦察", WeaponAir: "对空", WeaponTorpedo: "鱼雷", WeaponBomb: "炸弹", WeaponDepthCharge: "反潜深弹", WeaponTransfer: "转场"}
 	name := names[l.Weapon()]
 	if l.IsHeavyBomb() {
 		return "重型炸弹"
@@ -101,6 +108,7 @@ func (l Loadout) Label() string {
 
 // LoadoutOrder 是界面上的展示顺序（规则书要求的排列）。
 var LoadoutOrder = []Loadout{
+	LoadoutDepthChargeTank,
 	LoadoutReconTank,
 	LoadoutAirTank,
 	LoadoutTorpedoTank,
@@ -143,21 +151,21 @@ func LoadoutOptionsFor(kind string, seaplane bool, antiGround, antiShip int, tor
 			options = []Loadout{LoadoutAirTank, LoadoutAir, LoadoutBombTank, LoadoutBomb, LoadoutTransfer}
 		}
 	case "dive_bomber":
-		// 俯冲轰炸机只能挂炸弹：D3A1/SBD 都没有鱼雷挂架。
-		options = []Loadout{LoadoutReconTank, LoadoutBombTank, LoadoutBomb, LoadoutTransfer}
+		// 俯冲轰炸机只能挂炸弹或反潜深弹：D3A1/SBD 都没有鱼雷挂架。
+		options = []Loadout{LoadoutReconTank, LoadoutDepthChargeTank, LoadoutDepthCharge, LoadoutBombTank, LoadoutBomb, LoadoutTransfer}
 	case "level_bomber", "medium_bomber", "heavy_bomber", "strategic_bomber":
 		// 水平轰炸机默认挂炸弹；只有显式带鱼雷挂架的机型（B-26）才多出鱼雷选项。
 		// B-25 / B-17 没有鱼雷挂架，不能因为同样是水平轰炸机就跟着沾上。
 		if torpedoCapable && kind != "strategic_bomber" {
-			options = []Loadout{LoadoutReconTank, LoadoutTorpedoTank, LoadoutBombTank, LoadoutBomb, LoadoutTorpedo, LoadoutTransfer}
+			options = []Loadout{LoadoutReconTank, LoadoutDepthChargeTank, LoadoutDepthCharge, LoadoutTorpedoTank, LoadoutBombTank, LoadoutBomb, LoadoutTorpedo, LoadoutTransfer}
 		} else {
-			options = []Loadout{LoadoutReconTank, LoadoutBombTank, LoadoutBomb, LoadoutTransfer}
+			options = []Loadout{LoadoutReconTank, LoadoutDepthChargeTank, LoadoutDepthCharge, LoadoutBombTank, LoadoutBomb, LoadoutTransfer}
 		}
 	case "torpedo_bomber":
 		// 攻击机可以带侦察载荷：没有专用侦察机时，俯冲/鱼雷轰炸机就是搜索主力。
-		options = []Loadout{LoadoutReconTank, LoadoutTorpedoTank, LoadoutBombTank, LoadoutBomb, LoadoutTorpedo, LoadoutTransfer}
+		options = []Loadout{LoadoutReconTank, LoadoutDepthChargeTank, LoadoutDepthCharge, LoadoutTorpedoTank, LoadoutBombTank, LoadoutBomb, LoadoutTorpedo, LoadoutTransfer}
 	case "recon":
-		options = []Loadout{LoadoutReconTank, LoadoutTransfer}
+		options = []Loadout{LoadoutDepthChargeTank, LoadoutDepthCharge, LoadoutReconTank, LoadoutTransfer}
 	default:
 		options = []Loadout{LoadoutTransfer}
 	}
@@ -269,6 +277,12 @@ func preferredWeapon(options []Loadout, kind, taskKind string, targetKind Strike
 		}
 		return WeaponRecon
 	case "recon":
+		return WeaponRecon
+	case "asw":
+		// 反潜巡逻默认挂深弹；侦察机没有深弹挂架时退回侦察载荷。
+		if hasWeapon(WeaponDepthCharge) {
+			return WeaponDepthCharge
+		}
 		return WeaponRecon
 	case "transfer":
 		return WeaponTransfer
@@ -835,6 +849,12 @@ func loadoutTaskMismatch(kind, taskKind string, targetKind StrikeTarget, loadout
 	case "recon":
 		if weapon != WeaponRecon {
 			return "侦察任务需要侦察挂载"
+		}
+		return ""
+	case "asw":
+		// 反潜巡逻需要深弹：其他弹药挂上去只是占重量，潜艇可打不着。
+		if weapon != WeaponDepthCharge {
+			return "反潜巡逻需要挂载反潜深弹"
 		}
 		return ""
 	}

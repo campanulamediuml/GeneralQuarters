@@ -1197,5 +1197,21 @@
    ]
   }
  ],
- "wind": "SE"
+ "wind": "SE",
+ "submarines": [
+  {
+   "faction": "A",
+   "count": 1,
+   "name": "S级潜艇",
+   "picture": "misc/image/ship/library/USA_SS2_ship.png",
+   "move_interval": 6
+  },
+  {
+   "faction": "B",
+   "count": 1,
+   "name": "伊号潜艇",
+   "picture": "misc/image/ship/library/JAP_SS1b_ship.png",
+   "move_interval": 6
+  }
+ ]
 }

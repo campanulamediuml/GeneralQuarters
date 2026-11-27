@@ -69,6 +69,8 @@ function carriersOf(faction: 'A' | 'B') {
 const tasks = computed(() => state.value?.aviation?.tasks || [])
 const groundTasks = computed(() => state.value?.ground_tasks || [])
 const events = computed<GameEvent[]>(() => [...(state.value?.events || [])].reverse())
+// 潜艇战报：观战页能看到战报，但不给潜艇的实时位置（隐蔽性对观战者也不开放）。
+const subBattles = computed(() => state.value?.sub_battles || [])
 const scores = computed(() => state.value?.scores || {})
 const losses = computed(() => state.value?.losses || {})
 const clockText = computed(() => {
@@ -527,6 +529,13 @@ onUnmounted(() => {
               <small>{{ task.kind }} · {{ task.phase }} · {{ task.airborne_count }}/{{ task.aircraft_ids.length }} · {{ task.current_coord || '—' }}</small>
             </button>
           </div>
+        </section>
+
+        <section v-if="subBattles.length" class="watch-card watch-events">
+          <h2>潜艇战</h2>
+          <ol>
+            <li v-for="battle in [...subBattles].reverse().slice(0, 20)" :key="battle.id"><b>T{{ battle.turn }}</b>{{ battle.summary }}</li>
+          </ol>
         </section>
 
         <section class="watch-card watch-events">

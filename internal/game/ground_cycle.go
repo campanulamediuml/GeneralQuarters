@@ -55,6 +55,10 @@ func canRestartGroundCycle(state State, aircraft *AirfieldAirUnit) (bool, string
 		if aircraft.Kind != "fighter" {
 			return false, "机型不能执行战斗机任务"
 		}
+	case MissionASW:
+		if aircraft.Kind == "fighter" {
+			return false, "战斗机不能执行反潜巡逻"
+		}
 	case MissionRecon:
 		if aircraft.Kind == "fighter" {
 			return false, "战斗机不能执行扇面搜索"
@@ -170,6 +174,8 @@ func restartCycledGroundTask(state *State, aircraft *AirfieldAirUnit) []EngineEv
 		assignGroundCapMission(aircraft, groundCycleTarget(*state, aircraft))
 	case MissionCover:
 		aircraft.TargetCoord = groundCycleTarget(*state, aircraft)
+	case MissionASW:
+		aircraft.TargetCoord = airfield.Coord
 	case MissionRecon:
 		assignGroundReconMission(aircraft, aircraft.CycleHeading, aircraft.CycleSector)
 	}

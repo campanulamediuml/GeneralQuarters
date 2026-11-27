@@ -6593,5 +6593,21 @@
  "withdraw_directions": {
   "A": "E",
   "B": "W"
- }
+ },
+ "submarines": [
+  {
+   "faction": "A",
+   "count": 2,
+   "name": "大青花鱼",
+   "picture": "misc/image/ship/library/USA_SS1_ship.png",
+   "move_interval": 6
+  },
+  {
+   "faction": "B",
+   "count": 2,
+   "name": "伊号",
+   "picture": "misc/image/ship/library/JAP_SS1_ship.png",
+   "move_interval": 6
+  }
+ ]
 }

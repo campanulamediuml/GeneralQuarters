@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
-import type { AirTask, DistanceReference, EnemyAirContact, GameMap, Order, ReconSector, Unit } from '../types'
+import type { AirTask, DistanceReference, EnemyAirContact, GameMap, Order, ReconSector, Submarine, Unit } from '../types'
 import { contactCapitalsLabel, contactSizeLabel, fleetOrder, type FleetGroup } from '../fleet'
 import { aircraftPictureURL, shipMaskURL } from '../silhouette-masks'
 import { airfieldContactStatus } from '../airfields'
@@ -38,6 +38,10 @@ const props = defineProps<{
   weatherCells?: string
   /** 观战模式：双方都按"完整可读"画，不套用情报等级/敌方样式，也不画己方航行目的地 */
   spectate?: boolean
+  /** 潜艇：部署阶段是己方待摆位的艇，开战后只有被己方发现的敌方潜艇 */
+  submarines?: Submarine[]
+  /** 正在等玩家点海图选位置的那艘潜艇 */
+  selectedSubmarineId?: string
 }>()
 
 const emit = defineEmits<{
@@ -52,6 +56,8 @@ const emit = defineEmits<{
   inspectAirfield: [airfieldID: string]
   /** 点地图上的编队牌：打开编队详情（机型 / 状态 / 目标 / 改目标 / 召回） */
   selectAirTask: [taskID: string]
+  /** 点地图上的潜艇算子：选中它，等下一次点海格摆位 */
+  selectSubmarine: [submarineID: string]
 }>()
 
 const size = 43
@@ -646,6 +652,19 @@ const airfieldCoords = computed(() => [...airfieldsByCoord.value.keys()])
 const reconAirByCoord = computed(() => groupByCoord(reconSectors.value, (sector) => sector.current_coord || ''))
 const reconAirCoords = computed(() => [...reconAirByCoord.value.keys()])
 
+// 潜艇：部署阶段画本方已落位的艇；开战后只画被本方发现的敌艇。
+// 同格多艘按顺序横排，否则两艘叠在一起只看得见一艘。
+const visibleSubmarines = computed(() => {
+  const seen = new Map<string, number>()
+  return (props.submarines || [])
+    .filter((submarine) => submarine.deployed && submarine.coord)
+    .map((submarine) => {
+      const index = seen.get(submarine.coord) || 0
+      seen.set(submarine.coord, index + 1)
+      return { ...submarine, stack_index: index }
+    })
+})
+
 // 当前距离圈上是谁（画在地形格上的 data-recon-current-aircraft）。
 // 以前是每格 filter 一遍全部扇面：3328 × 扇面数，纯浪费。
 const reconCurrentAirByCoord = computed(() => {
@@ -1070,6 +1089,24 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         <text v-else-if="moveOrder(unit)" class="unit-order" text-anchor="middle" y="48">预定 → {{ moveOrder(unit)?.coord }}</text>
         <!-- 冷却回合数不再画在地图上：舰队面板里已经写了"还需N回合"，地图上挂一行红字太吵。 -->
         <text v-else-if="unit.moved && !stackedAt(coord)" class="unit-order" text-anchor="middle" y="48">已移动</text>
+      </g>
+    </g>
+    <!-- 潜艇小算子：部署阶段挂在本方已落位的艇上；开战后只有被发现的敌艇才会出现。
+         两者样式分开：部署阶段可点选摆位，被发现的是"钉死在原地"的敌情。 -->
+    <g v-for="submarine in visibleSubmarines" :key="'sub-' + submarine.id">
+      <g
+        class="map-submarine"
+        :class="{ selected: selectedSubmarineId === submarine.id, spotted: submarine.discovered }"
+        :data-submarine-id="submarine.id"
+        :data-submarine-coord="submarine.coord"
+        :data-submarine-discovered="submarine.discovered ? '1' : '0'"
+        :transform="`translate(${center(submarine.coord).x + 24 + submarine.stack_index * 36}, ${center(submarine.coord).y - 26})`"
+        @click.stop="emit('selectSubmarine', submarine.id)"
+      >
+        <rect x="-17" y="-9" width="34" height="18" rx="3" />
+        <image v-if="shipMaskURL(submarine.picture)" :href="shipMaskURL(submarine.picture)!" x="-15" y="-7" width="30" height="14" preserveAspectRatio="xMidYMid meet" class="submarine-mask" />
+        <text class="submarine-caption" y="20" text-anchor="middle">{{ submarine.discovered ? '发现潜艇' : submarine.name }}</text>
+        <title>{{ submarine.discovered ? `已发现敌方潜艇 · 在 ${submarine.coord} 被钉住，逐回合投放深水炸弹` : `${submarine.name} · 点击选中后再点海格部署` }}</title>
       </g>
     </g>
     <g v-for="coord in reconAirCoords" :key="`recon-aircraft-${coord}`">
