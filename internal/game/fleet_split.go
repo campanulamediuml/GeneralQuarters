@@ -3,6 +3,7 @@ package game
 import (
 	"fmt"
 	"sort"
+	"strings"
 )
 
 // —— 舰队拆分（反潜支队） ——
@@ -69,7 +70,11 @@ func ApplySplitFleet(state *State, order Order) []EngineEvent {
 	if oldName == "" {
 		oldName = leader.Name
 	}
-	newName := oldName + "反潜支队"
+	// 已经是反潜支队的舰队再拆，不要变成"反潜支队反潜支队"。
+	newName := oldName
+	if !strings.HasSuffix(oldName, "反潜支队") {
+		newName = oldName + "反潜支队"
+	}
 
 	splitIDs := []string{}
 	for _, id := range sortedUnitIDs(state.Units) {
