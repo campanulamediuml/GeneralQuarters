@@ -1591,6 +1591,12 @@ func VisibleFleets(state State, faction string) []FleetGroup {
 				fleet.ContactStaleTurns = unit.ContactStaleTurns
 			}
 		}
+		// 情报 4 级连每艘船的卡面和损伤都投影出来了，编队航速本来就是这些数据折出来的
+		// （最慢一艘 + 编队规模惩罚），所以敌我一样给；1–3 级连具体舰种都不完整，不给航速。
+		if fleet.Faction != faction && fleet.ContactLevel >= 4 {
+			fleet.MoveInterval = FleetMoveInterval(state, &leader)
+			fleet.MoveKnots = FleetCycleKnots(state, &leader)
+		}
 		if fleet.ContactLevel > 0 {
 			// 情报未到 4 级时，规模要用情报里的真实数量算，而不是投影出来的一两个占位算子：
 			// 1 级连规模都不显示，2-3 级只给"小/中/大"。

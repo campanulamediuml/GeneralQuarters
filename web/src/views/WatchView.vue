@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { api } from '../api'
 import { applyViewPatch, type ViewPatch } from '../patch'
 import { contactSizeLabel } from '../fleet'
+import { cycleKnots, speedKnots } from '../format'
 import type { AirTask, AirfieldContact, GameEvent, GameView, Unit } from '../types'
 import HexMap from '../components/HexMap.vue'
 import ShipCard from '../components/ShipCard.vue'
@@ -34,6 +35,15 @@ const selectedUnit = computed(() => {
   return selectedFleet.value?.members?.[0]
 })
 const fleetShips = computed(() => selectedFleet.value?.members || [])
+// 航速用服务端算好的编队节奏（已经含"最慢一艘"和编队规模惩罚）；只有老快照缺字段时，
+// 才按成员卡面自己折一个下界，免得面板上写成"约 节"。
+const fleetKnots = computed(() => {
+  const fleet = selectedFleet.value
+  if (!fleet) return '—'
+  if (fleet.move_knots) return fleet.move_knots
+  const knots = (fleet.members || []).map((member) => (member.card.move_cycle?.length ? cycleKnots(member.card.move_cycle) : speedKnots(member.card.speed_class)))
+  return knots.length ? Math.min(...knots) : '—'
+})
 // 航母作业只列真正的航母：BB/CA 的机库是水上飞机位（吊车），和航母甲板作业不是一回事。
 const carriers = computed(() =>
   (state.value?.aviation?.carriers || []).filter((carrier) => ['CV', 'CVL', 'CVE'].includes(carrier.type)),
@@ -369,7 +379,8 @@ onUnmounted(() => {
               <div><dt>坐标</dt><dd>{{ selectedFleet?.coord || '—' }}</dd></div>
               <div><dt>舰船</dt><dd>{{ fleetShips.length }}</dd></div>
               <div><dt>情报</dt><dd>{{ selectedFleet?.contact_level ? selectedFleet?.contact_level + ' 级' : '完整' }}</dd></div>
-              <div v-if="selectedFleetAirCover"><dt>空中掩护</dt><dd>CAP {{ selectedFleetAirCover.cap }} · 掩护 {{ selectedFleetAirCover.cover }}<template v-if="selectedFleetAirCover.returning">（返航 {{ selectedFleetAirCover.returning }}）</template></dd></div>
+              <div class="watch-meta-wide"><dt>航速</dt><dd>约 {{ fleetKnots }} 节<template v-if="selectedFleet?.move_interval">（每 {{ selectedFleet?.move_interval }} 回合 1 格）</template></dd></div>
+              <div v-if="selectedFleetAirCover" class="watch-meta-wide"><dt>空中掩护</dt><dd>CAP {{ selectedFleetAirCover.cap }} · 掩护 {{ selectedFleetAirCover.cover }}<template v-if="selectedFleetAirCover.returning">（返航 {{ selectedFleetAirCover.returning }}）</template></dd></div>
             </dl>
             <div class="watch-fleet-grid">
               <button
@@ -513,7 +524,9 @@ onUnmounted(() => {
 .watch-detail header button { background: none; border: 1px solid rgba(255,255,255,.15); color: inherit; border-radius: 6px; width: 26px; height: 26px; cursor: pointer; }
 .watch-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 10px; margin: 8px 0; }
 .watch-meta div { display: flex; justify-content: space-between; gap: 6px; font-size: 11px; border-bottom: 1px dashed rgba(255,255,255,.08); padding-bottom: 3px; }
-.watch-meta dt { opacity: .6; }
+.watch-meta dt { opacity: .6; white-space: nowrap; }
+/* 航速、空中掩护这类一行放不下两栏的条目独占整行，否则"航速"会被挤成竖排两个字。 */
+.watch-meta .watch-meta-wide { grid-column: 1 / -1; }
 .watch-meta dd { margin: 0; font-weight: 600; }
 .watch-fleet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 5px; }
 /* 兵牌原尺寸 126px 宽，观战面板里按 0.58 缩小，一屏能看完整支编队而不是翻好几页。 */
