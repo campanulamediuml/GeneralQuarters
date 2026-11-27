@@ -9417,7 +9417,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 3]
+    "move_cycle": [2, 2, 3, 2, 2, 3, 2, 3]
    }
   },
   {
@@ -9451,7 +9451,7 @@
     "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true,
-    "move_cycle": [2, 3]
+    "move_cycle": [2, 2, 3, 2, 2, 3, 2, 3]
    }
   }
  ],
