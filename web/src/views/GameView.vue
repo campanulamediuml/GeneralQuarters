@@ -873,13 +873,9 @@ function closeManager() {
 
 // 点潜艇（侧栏列表或地图算子）＝选中它等下一次海图点击；再点一次取消。
 // 舰队拆分：把带深弹的反潜舰拆成一支"反潜支队"留在原地继续反潜，主队照常行动。
-// 和整编分开：不挂 3 回合移动锁，也不动冷却。
-const fleetASWCount = computed(() => (selectedFleet.value?.members || []).filter((member) => (member.card?.depth_charges || 0) > 0).length)
-const canSplitFleet = computed(() => {
-  const fleet = selectedFleet.value
-  if (!fleet) return false
-  return fleetASWCount.value > 0 && fleetASWCount.value < fleet.members.length
-})
+// 和整编分开：不挂 3 回合移动锁，也不动冷却。拆不拆得出来交给服务端判断，
+// 界面上不预先禁用——没有反潜舰、或整支都是反潜舰，都可以正常点。
+const canSplitFleet = computed(() => Boolean(selectedFleet.value))
 
 async function splitFleet() {
   if (!state.value || !selectedFleet.value || actionBusy.value || locked.value || deploying.value) return
@@ -1080,11 +1076,6 @@ async function clearOrder(key: string) {
 function transferMember(targetFleetID: string) {
   if (!movingMemberID.value || movingMemberID.value === targetFleetID) return
   draftAssignments.value[movingMemberID.value] = targetFleetID
-  movingMemberID.value = ''
-}
-
-function splitMember(member: Unit) {
-  draftAssignments.value[member.id] = `split-${Date.now().toString(36)}`
   movingMemberID.value = ''
 }
 
@@ -1331,7 +1322,7 @@ onUnmounted(() => {
                     <span class="nav-engagement">
                       <button v-for="(label, value) in engagementLabels" :key="value" :class="{ active: selectedEngagement === value }" :disabled="actionBusy || locked || deploying" :title="locked ? '本回合已就绪，操作已锁定' : ''" @click.stop="setEngagement(value as 'aggressive' | 'advantage' | 'avoid')">{{ label }}</button>
                     </span>
-                  </div></div><div class="fleet-workbench-actions"><button @click="counterSide = counterSide === 'front' ? 'back' : 'front'">{{ counterSide === 'front' ? '查看兵牌背面' : '查看兵牌正面' }}</button><button :disabled="locked" :title="locked ? '本回合已就绪，操作已锁定' : ''" @click="openManager(selectedFleet.coord)">舰队整编</button><button :disabled="locked || deploying || !canSplitFleet" :title="deploying ? '部署阶段请用舰队整编调整编成' : !canSplitFleet ? '舰队里要有带深弹的反潜舰，并且至少留下一艘船' : '拆出反潜舰留在原地继续反潜，主队照常行动（不锁移动）'" @click="splitFleet()">舰队拆分</button><button v-if="selectedFleet.members.some((unit) => ['CV', 'CVL', 'CVE'].includes(unit.type))" :disabled="deploying" :title="deploying ? '部署阶段先摆船，开战后再安排航空作业' : ''" @click="openAviation(selectedFleet.fleet_id)">航空作业</button><button class="fleet-toggle-cards" :aria-pressed="fleetCardsCollapsed" @click="fleetCardsCollapsed = !fleetCardsCollapsed">{{ fleetCardsCollapsed ? '展开兵牌' : '收起兵牌' }}</button><button aria-label="关闭舰队详情" @click="selectedID = ''">×</button></div></header>
+                  </div></div><div class="fleet-workbench-actions"><button @click="counterSide = counterSide === 'front' ? 'back' : 'front'">{{ counterSide === 'front' ? '查看兵牌背面' : '查看兵牌正面' }}</button><button :disabled="locked" :title="locked ? '本回合已就绪，操作已锁定' : ''" @click="openManager(selectedFleet.coord)">舰队整编</button><button :disabled="locked || deploying || !canSplitFleet" :title="deploying ? '部署阶段请用舰队整编调整编成' : '拆出反潜舰留在原地继续反潜，主队照常行动（不锁移动）'" @click="splitFleet()">舰队拆分</button><button v-if="selectedFleet.members.some((unit) => ['CV', 'CVL', 'CVE'].includes(unit.type))" :disabled="deploying" :title="deploying ? '部署阶段先摆船，开战后再安排航空作业' : ''" @click="openAviation(selectedFleet.fleet_id)">航空作业</button><button class="fleet-toggle-cards" :aria-pressed="fleetCardsCollapsed" @click="fleetCardsCollapsed = !fleetCardsCollapsed">{{ fleetCardsCollapsed ? '展开兵牌' : '收起兵牌' }}</button><button aria-label="关闭舰队详情" @click="selectedID = ''">×</button></div></header>
                 <div v-show="!fleetCardsCollapsed" class="fleet-counter-grid"><button v-for="member in selectedFleet.members" :key="member.id" class="fleet-counter-button" :class="{ active: selectedUnit?.id === member.id }" :data-ship-id="member.id" @click="selectFleetMember(member)"><ShipCounter :unit="member" :side="counterSide" /></button></div>
               </section>
               <section v-if="inspectedFleet" class="fleet-workbench enemy-fleet-workbench" :data-fleet-id="inspectedFleet.fleet_id">
@@ -1444,14 +1435,13 @@ onUnmounted(() => {
     <div v-if="menuCoord" class="fleet-dialog" @click.self="closeManager">
       <section class="fleet-modal fleet-manager">
         <header><div><span class="section-kicker">HEX {{ menuCoord }} · FLEET ORGANIZATION</span><h2>舰队整编</h2></div><button aria-label="关闭" @click="closeManager">×</button></header>
-        <p class="manager-hint">选择“默认”将舰队置顶并设为操作对象。成员可以转移到其他舰队、拆出新舰队，也可以整支合并。</p>
+        <p class="manager-hint">选择“默认”将舰队置顶并设为操作对象。成员可以转移到其他舰队，也可以整支合并；要拆出反潜支队请用舰队详情里的【舰队拆分】。</p>
         <div class="fleet-columns">
           <article v-for="fleet in menuFleets" :key="fleet.fleet_id" class="fleet-column" :class="{ default: selectedFleet?.fleet_id === fleet.fleet_id, 'merge-source': mergeSourceID === fleet.fleet_id, 'transfer-target': movingMemberID && !fleet.members.some((unit) => unit.id === movingMemberID) }">
             <header><div><span class="unit-type-badge">{{ fleet.type }}</span><h3>{{ fleet.name }}</h3><small>{{ fleet.count }}艘 · 强度{{ fleet.strength }}/{{ fleet.max_strength }}</small><small v-if="draftEscortShortfall[fleet.fleet_id]" class="escort-shortfall">护航不足：{{ draftEscortShortfall[fleet.fleet_id].escorts }}/{{ draftEscortShortfall[fleet.fleet_id].need }}</small></div><button class="default-button" @click="selectedID = fleet.id">{{ selectedFleet?.fleet_id === fleet.fleet_id ? '默认' : '设为默认' }}</button></header>
             <div class="fleet-counter-grid manager-counter-grid">
               <div v-for="member in fleet.members" :key="member.id" class="manager-counter" :class="{ selected: movingMemberID === member.id }">
                 <button class="fleet-counter-button" :data-ship-id="member.id" @click="movingMemberID = movingMemberID === member.id ? '' : member.id"><ShipCounter :unit="member" /></button>
-                <button v-if="movingMemberID === member.id && fleet.count > 1" class="split-counter" @click="splitMember(member)">拆出新舰队</button>
               </div>
             </div>
             <button v-if="movingMemberID && !fleet.members.some((unit) => unit.id === movingMemberID)" class="transfer-button" @click="transferMember(fleet.fleet_id)">转移到此舰队</button>
