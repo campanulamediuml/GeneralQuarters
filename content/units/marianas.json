@@ -8227,6 +8227,38 @@
    }
   },
   {
+   "id": "jp-bb-12",
+   "faction": "B",
+   "type": "BB",
+   "name": "陆奥",
+   "strength": 6,
+   "picture": "misc/image/ship/nagato.png",
+   "card": {
+    "picture": "",
+    "nation": "",
+    "gunnery": 16,
+    "damage_control": 6,
+    "main_gun_count": 8,
+    "main_gun_caliber": 16.0,
+    "heavy_aa": 4,
+    "light_aa": 5,
+    "surface_radar": true,
+    "air_radar": false,
+    "speed_class": "normal",
+    "torpedo_salvos": 0,
+    "aircraft": 2,
+    "hangar_capacity": 2,
+    "deck_capacity": 0,
+    "elevator_count": 0,
+    "depth_charges": 0,
+    "cargo": 0,
+    "armored_carrier": false,
+    "hangar_advantage": 0,
+    "historical_loss": "",
+    "fire_control_radar": false
+   }
+  },
+  {
    "id": "jp-ca-07",
    "faction": "B",
    "type": "CA",

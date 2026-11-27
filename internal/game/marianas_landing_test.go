@@ -63,44 +63,46 @@ func TestMarianasLandingGroups(t *testing.T) {
 		}
 	}
 
-	// 日军：栗田的第一游击部队把联合舰队的家底都带上了——11 艘战列舰（含架空复活的比叡/雾岛、
-	// 老式扶桑/山城/伊势/日向）+ 3 艘重巡 + 2 艘轻巡 + 6 艘驱逐，共 22 艘。
-	if got := factionFleetSize(state, "KURITA"); got != 22 {
-		t.Fatalf("第一游击部队 %d 艘，期望 22", got)
+	// 日军五支任务群：甲/乙/丙/丁四支航母群 + 栗田的第一游击部队（含架空复活的陆奥）。
+	// 舰名逐个点名，免得以后重排编成时数字对上了、船却放错了群。
+	fleetWant := map[string]struct {
+		size    int
+		capital []string
+	}{
+		"TG1": {11, []string{"天城", "葛城", "云龙", "信浓"}},
+		"TG2": {13, []string{"赤城", "加贺", "飞龙", "苍龙", "雾岛", "比叡"}},
+		"TG3": {13, []string{"翔鹤", "瑞鹤", "大凤", "龙凤"}},
+		"TG4": {12, []string{"千岁", "千代田", "飞鹰", "隼鹰", "瑞凤"}},
+		"TG5": {21, []string{"大和", "武藏", "陆奥", "长门", "金刚", "榛名", "扶桑", "山城", "伊势", "日向"}},
 	}
-	bb := map[string]bool{}
+	for fleet, want := range fleetWant {
+		if got := factionFleetSize(state, fleet); got != want.size {
+			t.Fatalf("%s %d 艘，期望 %d", fleet, got, want.size)
+		}
+		for _, name := range want.capital {
+			found := false
+			for _, unit := range state.Units {
+				if unit.FleetID == fleet && unit.Name == name {
+					found = true
+				}
+			}
+			if !found {
+				t.Fatalf("%s 缺少 %s", fleet, name)
+			}
+		}
+	}
+	// 陆奥是架空的复活船（史实 1943-06 主炮弹药库自爆），日军战列舰共 12 艘。
+	battleships := 0
 	for _, unit := range state.Units {
-		if unit.FleetID == "KURITA" && unit.Type == "BB" {
-			bb[unit.Name] = true
+		if unit.Faction == "B" && unit.Type == "BB" {
+			battleships++
 		}
 	}
-	if len(bb) != 11 || !bb["比叡"] || !bb["雾岛"] || !bb["扶桑"] || !bb["伊势"] {
-		t.Fatalf("栗田部队战列舰 %v，期望 11 艘且含比叡/雾岛/扶桑/伊势", bb)
+	if battleships != 12 {
+		t.Fatalf("日军战列舰 %d 艘，期望 12", battleships)
 	}
-	// 甲部队把两个航空战队合编成六航母主力（20 艘，88 个航空算子挤一个 hex），丙部队仍是 3 航母编队。
-	if got := factionFleetSize(state, "TG1"); got != 20 {
-		t.Fatalf("甲部队 %d 艘，期望 20", got)
-	}
-	carriers := map[string]bool{}
-	for _, unit := range state.Units {
-		if unit.FleetID == "TG1" && unit.Type == "CV" {
-			carriers[unit.Name] = true
-		}
-	}
-	// 甲部队是复活的中途岛四艘老航母 + 两艘改装航母：精英机组只能开老飞机。
-	for _, name := range []string{"赤城", "加贺", "飞龙", "苍龙", "隼鹰", "飞鹰"} {
-		if !carriers[name] {
-			t.Fatalf("六航母主力缺少 %s：%v", name, carriers)
-		}
-	}
-	if got := factionFleetSize(state, "TG3"); got != 13 {
-		t.Fatalf("丙部队 %d 艘，期望 13", got)
-	}
-	// 丁部队：信浓 + 千岁/千代田/瑞凤 + 高雄级全家 + 阿贺野 + 4 驱逐。
-	if got := factionFleetSize(state, "TG4"); got != 14 {
-		t.Fatalf("丁部队 %d 艘，期望 14", got)
-	}
-	for _, name := range []string{"信浓", "千岁", "千代田", "瑞凤", "高雄", "爱宕", "摩耶", "鸟海"} {
+	// 丁部队的轻航母屏护：铃谷/熊野 + 阿贺野 + 4 驱逐。
+	for _, name := range []string{"铃谷", "熊野", "阿贺野"} {
 		found := false
 		for _, unit := range state.Units {
 			if unit.FleetID == "TG4" && unit.Name == name {
@@ -155,18 +157,11 @@ func TestMarianasLandingGroups(t *testing.T) {
 	if state.GroundAir["af-b-truk-a6m5-1"] == nil || state.GroundAir["af-b-truk-g4m2-1"] == nil {
 		t.Fatal("特鲁克没有驻机")
 	}
-	// 日军两个部署区：机动部队（甲/丙）在地图西北角，丁部队和栗田的第一游击部队在西南、帕劳以北。
-	if zone := deployZoneForFleet(state.DeployZones, "B", "TG1"); zone == nil || zone.Anchor != "1014" {
-		t.Fatalf("TG1 应该出生在西北角 1014：%+v", zone)
-	}
-	if zone := deployZoneForFleet(state.DeployZones, "B", "TG3"); zone == nil || zone.Anchor != "1014" {
-		t.Fatalf("丙部队应该跟甲部队同区出生：%+v", zone)
-	}
-	if zone := deployZoneForFleet(state.DeployZones, "B", "KURITA"); zone == nil || zone.Anchor != "4212" {
-		t.Fatalf("KURITA 应该出生在西南 4212：%+v", zone)
-	}
-	if zone := deployZoneForFleet(state.DeployZones, "B", "TG4"); zone == nil || zone.Anchor != "4212" {
-		t.Fatalf("丁部队应该跟栗田同区出生：%+v", zone)
+	// 日军两个部署区：甲/乙/丙三支航母群在地图西北角，丁部队和栗田的第一游击部队在西南、帕劳以北。
+	for fleet, anchor := range map[string]string{"TG1": "1014", "TG2": "1014", "TG3": "1014", "TG4": "4212", "TG5": "4212"} {
+		if zone := deployZoneForFleet(state.DeployZones, "B", fleet); zone == nil || zone.Anchor != anchor {
+			t.Fatalf("%s 应该出生在 %s：%+v", fleet, anchor, zone)
+		}
 	}
 	if zone := deployZoneForFleet(state.DeployZones, "A", "TF58.1"); zone == nil || zone.Anchor != "2365" {
 		t.Fatalf("美军部署区锚点不对：%+v", zone)

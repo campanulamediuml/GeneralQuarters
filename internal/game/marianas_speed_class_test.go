@@ -21,33 +21,34 @@ func TestMarianasSpeedClasses(t *testing.T) {
 
 	want := map[string]string{
 		// 35 节以上：驱逐舰和日本轻/重巡
-		"妙高":   "fast",
-		"高雄":   "fast",
-		"利根":   "fast",
-		"最上":   "fast",
-		"川内":   "fast",
-		"矢矧":   "fast",
+		"妙高":     "fast",
+		"高雄":     "fast",
+		"利根":     "fast",
+		"最上":     "fast",
+		"川内":     "fast",
+		"矢矧":     "fast",
 		"弗莱彻号01": "fast",
 		// 25–35 节：全部航母、战列舰、美军巡洋舰
-		"赤城":  "normal",
-		"加贺":  "normal",
-		"苍龙":  "normal",
-		"翔鹤":  "normal",
-		"大凤":  "normal",
-		"隼鹰":  "normal",
-		"龙凤":  "normal",
-		"信浓":  "normal",
-		"千岁":  "normal",
-		"瑞凤":  "normal",
+		"赤城":   "normal",
+		"加贺":   "normal",
+		"苍龙":   "normal",
+		"翔鹤":   "normal",
+		"大凤":   "normal",
+		"隼鹰":   "normal",
+		"龙凤":   "normal",
+		"信浓":   "normal",
+		"千岁":   "normal",
+		"瑞凤":   "normal",
 		"埃塞克斯": "normal",
 		"依阿华":  "normal",
 		"金刚":   "normal",
 		"大和":   "normal",
+		"陆奥":   "normal",
 		"巴尔的摩": "normal",
 		// 25 节以下：老式战列舰、护航航母、运输船
-		"扶桑":   "slow",
-		"山城":   "slow",
-		"田纳西":  "slow",
+		"扶桑":    "slow",
+		"山城":    "slow",
+		"田纳西":   "slow",
 		"卡萨布兰卡": "slow",
 	}
 
@@ -68,8 +69,8 @@ func TestMarianasSpeedClasses(t *testing.T) {
 		}
 	}
 
-	// 三个机动部队同速：每 3 回合走一格，不会再出现乙部队 6 回合、甲部队 3 回合的落差。
-	for _, fleet := range []string{"TG1", "TG3", "TG4"} {
+	// 四支航母群同速：每 3 回合走一格；栗田的第一游击部队带着扶桑/山城，整队是慢速档。
+	for _, fleet := range []string{"TG1", "TG2", "TG3", "TG4"} {
 		id := firstUnitOfFleet(state, fleet)
 		if id == "" {
 			t.Fatalf("找不到舰队 %s", fleet)
@@ -77,5 +78,10 @@ func TestMarianasSpeedClasses(t *testing.T) {
 		if interval := FleetMoveInterval(state, state.Units[id]); interval != 3 {
 			t.Fatalf("%s 每 %d 回合移动一格，期望 3", fleet, interval)
 		}
+	}
+	if id := firstUnitOfFleet(state, "TG5"); id == "" {
+		t.Fatal("找不到第一游击部队")
+	} else if interval := FleetMoveInterval(state, state.Units[id]); interval != 6 {
+		t.Fatalf("第一游击部队每 %d 回合移动一格，期望 6", interval)
 	}
 }

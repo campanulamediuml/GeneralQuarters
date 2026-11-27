@@ -79,7 +79,7 @@ type DeployZone struct {
 	Anchor  string `json:"anchor"`
 	Radius  int    `json:"radius"`
 	// Fleets 可选：这些舰队用这个部署区。为空表示该阵营没被别的区认领的舰队都落在这里。
-	// 马里亚纳日军有两个区：机动部队在帕劳以北、栗田的第一游击部队在硫磺岛西南。
+	// 马里亚纳日军有两个区：甲/乙/丙三支航母群在地图西北角，丁部队和栗田的第一游击部队在西南。
 	Fleets []string `json:"fleets,omitempty"`
 }
 
@@ -457,7 +457,7 @@ type AirfieldAirStatus struct {
 	EnemySupplies int `json:"enemy_supplies"`
 	// SupplyDamage 是这批物资永久打掉的生命值：清滩之后也修不回来，维修上限 = MaxStrength - SupplyDamage。
 	SupplyDamage int               `json:"supply_damage"`
-	Aircraft      []AirfieldAirUnit `json:"aircraft"`
+	Aircraft     []AirfieldAirUnit `json:"aircraft"`
 }
 
 // PictureOrDefault 让老存档（还没有 picture 字段）也能拿到按规模算出来的机场标识图片。
