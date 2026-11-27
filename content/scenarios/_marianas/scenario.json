@@ -1245,7 +1245,7 @@
   {
    "id": "us-ca-05",
    "faction": "A",
-   "name": "巴尔的摩",
+   "name": "堪培拉",
    "fleet_id": "TF58.1",
    "fleet_name": "第58.1特混大队",
    "ship": "us-ca-05"
@@ -1261,7 +1261,7 @@
   {
    "id": "us-cl-07",
    "faction": "A",
-   "name": "克利夫兰",
+   "name": "文森斯",
    "fleet_id": "TF58.1",
    "fleet_name": "第58.1特混大队",
    "ship": "us-cl-07"
@@ -1269,7 +1269,7 @@
   {
    "id": "us-cl-08",
    "faction": "A",
-   "name": "蒙彼利埃",
+   "name": "阿斯托里亚",
    "fleet_id": "TF58.1",
    "fleet_name": "第58.1特混大队",
    "ship": "us-cl-08"
@@ -1301,7 +1301,7 @@
   {
    "id": "us-cl-10",
    "faction": "A",
-   "name": "圣菲",
+   "name": "迈阿密",
    "fleet_id": "TF58.2",
    "fleet_name": "第58.2特混大队",
    "ship": "us-cl-10"

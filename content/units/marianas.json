@@ -4989,7 +4989,7 @@
    "id": "us-ca-05",
    "faction": "A",
    "type": "CA",
-   "name": "巴尔的摩",
+   "name": "堪培拉",
    "strength": 4,
    "picture": "misc/image/ship/library/USA_CA5_ship.png",
    "card": {
@@ -5121,7 +5121,7 @@
    "id": "us-cl-07",
    "faction": "A",
    "type": "CL",
-   "name": "克利夫兰",
+   "name": "文森斯",
    "strength": 2,
    "picture": "misc/image/ship/library/USA_CL3_ship.png",
    "card": {
@@ -5154,7 +5154,7 @@
    "id": "us-cl-08",
    "faction": "A",
    "type": "CL",
-   "name": "蒙彼利埃",
+   "name": "阿斯托里亚",
    "strength": 2,
    "picture": "misc/image/ship/library/USA_CL3_ship.png",
    "card": {
@@ -5220,7 +5220,7 @@
    "id": "us-cl-10",
    "faction": "A",
    "type": "CL",
-   "name": "圣菲",
+   "name": "迈阿密",
    "strength": 2,
    "picture": "misc/image/ship/library/USA_CL3_ship.png",
    "card": {
