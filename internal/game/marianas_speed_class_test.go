@@ -46,7 +46,7 @@ func TestMarianasSpeedClasses(t *testing.T) {
 		"陆奥":   "normal",
 		"巴尔的摩": "normal",
 		// 25 节以下：美军老式战列舰、护航航母、运输船
-		"田纳西":   "slow",
+		"田纳西":  "slow",
 		"纳托马湾": "slow",
 	}
 

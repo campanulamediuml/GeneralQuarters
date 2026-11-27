@@ -61,3 +61,31 @@ func TestCoastalFireStopsAtZero(t *testing.T) {
 		t.Fatalf("岸炮清零后不该再有射击事件：%+v", events)
 	}
 }
+
+// 同一格里有两支敌方舰队时，岸炮对每一支各打一遍（两条事件），
+// 不是把整格的舰船混在一起只开一轮。
+func TestCoastalFireHitsEachFleetOnce(t *testing.T) {
+	state := sandboxState(t)
+	airfield := state.Airfields["af-b-sentry"]
+	airfield.Coastal = 40
+	state.Units["a-fleet-one"] = &Unit{
+		ID: "a-fleet-one", FleetID: "TF-ONE", FleetName: "第一编队", Name: "驱逐舰", Type: "DD",
+		Faction: "A", Coord: airfield.Coord, Strength: 200, MaxStrength: 200,
+		Card: ShipCard{DamageControl: 20},
+	}
+	state.Units["a-fleet-two"] = &Unit{
+		ID: "a-fleet-two", FleetID: "TF-TWO", FleetName: "第二编队", Name: "驱逐舰", Type: "DD",
+		Faction: "A", Coord: airfield.Coord, Strength: 200, MaxStrength: 200,
+		Card: ShipCard{DamageControl: 20},
+	}
+	state.RNGState = 11
+	volleys := 0
+	for _, event := range resolveCoastalFire(&state) {
+		if event.Type == "coastal_fire" {
+			volleys++
+		}
+	}
+	if volleys != 2 {
+		t.Fatalf("两支舰队应当各打一轮，实际 %d 轮", volleys)
+	}
+}

@@ -3007,8 +3007,10 @@ func resolveShoreBombardment(state *State) []EngineEvent {
 }
 
 // resolveCoastalFire 结算岸炮的常备射击：岸炮不是只在挨打时才还击，而是每回合对停在
-// 自己格子里的敌方舰队开火（每点 30%，天气修正）。岸轰会给参与的舰船 +4 混乱，一轮齐射后要等四回合
-// 才能再打；中间那几回合岸炮照常轰，所以小型舰队硬咬岸防炮就是白挨。
+// 自己格子里的每一支敌方舰队各开火一次（每点 30%，天气修正）。同格三支舰队就是三遍齐射，
+// 所以把零散舰队堆在一个机场格上会被各自开灵一遍。
+// 岸轰会给参与的舰船 +4 混乱，一轮齐射后要等四回合才能再打；中间那几回合岸炮照常轰，
+// 所以小型舰队硬咬岸防炮就是白挨。
 func resolveCoastalFire(state *State) []EngineEvent {
 	events := []EngineEvent{}
 	ids := make([]string, 0, len(state.Airfields))
@@ -3021,37 +3023,56 @@ func resolveCoastalFire(state *State) []EngineEvent {
 		if airfield == nil || airfield.Coastal <= 0 {
 			continue
 		}
-		targets := []*Unit{}
+		// 按舰队分组：岸炮对每一支舰队各打一遍，不是把整格的舰船混在一起抓阑。
+		groups := map[string][]*Unit{}
+		names := map[string]string{}
 		for _, unit := range state.Units {
-			if unit.Faction != airfield.Faction && unit.Coord == airfield.Coord && unit.Strength > 0 {
-				targets = append(targets, unit)
-			}
-		}
-		if len(targets) == 0 {
-			continue
-		}
-		sort.Slice(targets, func(i, j int) bool { return targets[i].ID < targets[j].ID })
-		chance := 30 + hexHitModifier(*state, airfield.Coord)
-		hits := 0
-		for shots := airfield.Coastal; shots > 0; shots-- {
-			if chance <= 0 || probabilityRoll(&state.RNGState) >= chance {
+			if unit.Faction == airfield.Faction || unit.Coord != airfield.Coord || unit.Strength <= 0 {
 				continue
 			}
-			alive := make([]*Unit, 0, len(targets))
-			for _, unit := range targets {
-				if state.Units[unit.ID] != nil {
-					alive = append(alive, unit)
-				}
+			key := FleetKey(unit)
+			groups[key] = append(groups[key], unit)
+			if names[key] == "" {
+				names[key] = unit.FleetName
 			}
-			if len(alive) == 0 {
-				break
-			}
-			target := alive[int(nextUint64(&state.RNGState)%uint64(len(alive)))]
-			hits++
-			events = append(events, applyHits(state, []Hit{{AttackerID: airfield.ID, TargetID: target.ID, Cause: HitShell}})...)
 		}
-		if hits > 0 {
-			events = append(events, EngineEvent{Type: "coastal_fire", Audience: "all", Text: fmt.Sprintf("%s的岸炮对格内敌舰开火：每点%.0f%%，命中%d次", airfield.Name, chance, hits)})
+		if len(groups) == 0 {
+			continue
+		}
+		fleetIDs := make([]string, 0, len(groups))
+		for key := range groups {
+			fleetIDs = append(fleetIDs, key)
+		}
+		sort.Strings(fleetIDs)
+		chance := 30 + hexHitModifier(*state, airfield.Coord)
+		for _, fleetID := range fleetIDs {
+			members := groups[fleetID]
+			sort.Slice(members, func(i, j int) bool { return members[i].ID < members[j].ID })
+			hits := 0
+			for shots := airfield.Coastal; shots > 0; shots-- {
+				if chance <= 0 || probabilityRoll(&state.RNGState) >= chance {
+					continue
+				}
+				alive := make([]*Unit, 0, len(members))
+				for _, unit := range members {
+					if state.Units[unit.ID] != nil {
+						alive = append(alive, unit)
+					}
+				}
+				if len(alive) == 0 {
+					break
+				}
+				target := alive[int(nextUint64(&state.RNGState)%uint64(len(alive)))]
+				hits++
+				events = append(events, applyHits(state, []Hit{{AttackerID: airfield.ID, TargetID: target.ID, Cause: HitShell}})...)
+			}
+			if hits > 0 {
+				label := names[fleetID]
+				if label == "" {
+					label = fleetID
+				}
+				events = append(events, EngineEvent{Type: "coastal_fire", Audience: "all", Text: fmt.Sprintf("%s的岸炮对%s开火：每点%.0f%%，命中%d次", airfield.Name, label, chance, hits)})
+			}
 		}
 	}
 	return events

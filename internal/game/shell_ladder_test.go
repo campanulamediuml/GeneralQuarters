@@ -89,6 +89,7 @@ func TestNonShellHitsSkipCaliberCheck(t *testing.T) {
 		t.Fatal("炸弹不该吃炮弹的口径判定")
 	}
 }
+
 // 小口径打不穿大船的船体：CA 的炮弹打不出战列舰的严重进水，CL/DD 连船体损伤都打不出。
 func TestSmallCaliberCannotRollHeavyHullDamage(t *testing.T) {
 	bb := shellTestShip("t", "BB", 8, 6)
@@ -118,6 +119,7 @@ func TestSmallCaliberCannotRollHeavyHullDamage(t *testing.T) {
 		t.Fatal("鱼雷该能打出战列舰的严重进水和船体损伤")
 	}
 }
+
 // 航母没有装甲防护，不吃小口径豁免：驱逐舰的炮弹照样能打出航母的严重进水和弹药爆炸。
 func TestCarrierTakesFullTableFromSmallCaliber(t *testing.T) {
 	carrier := shellTestShip("cv", "CV", 4, 4)
@@ -132,6 +134,7 @@ func TestCarrierTakesFullTableFromSmallCaliber(t *testing.T) {
 		t.Fatal("重巡的炮弹当然也能打出航母的严重进水")
 	}
 }
+
 // BC 比 BB 低一档，同一条规则平移到它身上：CA 打 BC 照常判定，CL 开始才封致命条目。
 func TestBattlecruiserProtectionShiftsByOneTier(t *testing.T) {
 	bcTarget := shellTestShip("t", "BC", 6, 5)
