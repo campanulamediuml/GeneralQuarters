@@ -550,16 +550,16 @@
    "id": "jp-bb-04",
    "faction": "B",
    "name": "金刚",
-   "fleet_id": "TG5",
-   "fleet_name": "第一游击部队（栗田）",
+   "fleet_id": "TG2",
+   "fleet_name": "乙部队",
    "ship": "jp-bb-04"
   },
   {
    "id": "jp-bb-05",
    "faction": "B",
    "name": "榛名",
-   "fleet_id": "TG5",
-   "fleet_name": "第一游击部队（栗田）",
+   "fleet_id": "TG2",
+   "fleet_name": "乙部队",
    "ship": "jp-bb-05"
   },
   {
@@ -2014,16 +2014,16 @@
    "id": "jp-bb-06",
    "faction": "B",
    "name": "比叡",
-   "fleet_id": "TG2",
-   "fleet_name": "乙部队",
+   "fleet_id": "TG5",
+   "fleet_name": "第一游击部队（栗田）",
    "ship": "jp-bb-06"
   },
   {
    "id": "jp-bb-07",
    "faction": "B",
    "name": "雾岛",
-   "fleet_id": "TG2",
-   "fleet_name": "乙部队",
+   "fleet_id": "TG5",
+   "fleet_name": "第一游击部队（栗田）",
    "ship": "jp-bb-07"
   },
   {
