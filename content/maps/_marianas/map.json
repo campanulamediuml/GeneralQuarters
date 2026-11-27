@@ -1,9 +1,9 @@
 {
  "id": "_marianas",
- "version": 2,
- "name": "马里亚纳 · 1944（60×60）",
+ "version": 3,
+ "name": "马里亚纳 · 1944（80×60）",
  "rows": 60,
- "cols": 60,
+ "cols": 80,
  "cells": [
   {
    "coord": "0433",

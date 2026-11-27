@@ -142,9 +142,9 @@ func TestMarianasLandingGroups(t *testing.T) {
 		}
 	}
 
-	// 60×60 的地图，加上特鲁克/硫磺岛两座日军基地。
-	if state.Map.Rows != 60 || state.Map.Cols != 60 {
-		t.Fatalf("地图尺寸 %dx%d，期望 60x60", state.Map.Rows, state.Map.Cols)
+	// 80×60 的地图（2026-11 往东加宽到 80 列），加上特鲁克/硫磺岛两座日军基地。
+	if state.Map.Rows != 60 || state.Map.Cols != 80 {
+		t.Fatalf("地图尺寸 %dx%d，期望 60x80", state.Map.Rows, state.Map.Cols)
 	}
 	if state.Airfields["af-b-truk"] == nil || state.Airfields["af-b-iwo"] == nil {
 		t.Fatal("缺少特鲁克/硫磺岛机场")
@@ -165,7 +165,7 @@ func TestMarianasLandingGroups(t *testing.T) {
 	if zone := deployZoneForFleet(state.DeployZones, "B", "TG4"); zone == nil || zone.Anchor != "1226" {
 		t.Fatalf("丁部队应该跟栗田同区出生：%+v", zone)
 	}
-	if zone := deployZoneForFleet(state.DeployZones, "A", "TF58.1"); zone == nil || zone.Anchor != "2353" {
+	if zone := deployZoneForFleet(state.DeployZones, "A", "TF58.1"); zone == nil || zone.Anchor != "2365" {
 		t.Fatalf("美军部署区锚点不对：%+v", zone)
 	}
 
