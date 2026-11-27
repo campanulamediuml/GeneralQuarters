@@ -132,3 +132,22 @@ func TestCarrierTakesFullTableFromSmallCaliber(t *testing.T) {
 		t.Fatal("重巡的炮弹当然也能打出航母的严重进水")
 	}
 }
+// BC 比 BB 低一档，同一条规则平移到它身上：CA 打 BC 照常判定，CL 开始才封致命条目。
+func TestBattlecruiserProtectionShiftsByOneTier(t *testing.T) {
+	bcTarget := shellTestShip("t", "BC", 6, 5)
+	ca := shellTestShip("ca", "CA", 6, 5)
+	cl := shellTestShip("cl", "CL", 4, 5)
+	dd := shellTestShip("dd", "DD", 2, 5)
+	if table := severeDamageTableFrom(HitShell, bcTarget, ca); !containsDamage(table, "severe_flooding") ||
+		!containsDamage(table, "ammo_explosion") || !containsDamage(table, "hull_damage") {
+		t.Fatal("重巡打战巡应该照常判定：严重进水/弹药爆炸/船体损伤都还在")
+	}
+	if table := severeDamageTableFrom(HitShell, bcTarget, cl); containsDamage(table, "severe_flooding") ||
+		containsDamage(table, "ammo_explosion") || !containsDamage(table, "hull_damage") {
+		t.Fatal("轻巡打战巡：封严重进水和弹药爆炸，船体损伤保留")
+	}
+	if table := severeDamageTableFrom(HitShell, bcTarget, dd); containsDamage(table, "severe_flooding") ||
+		containsDamage(table, "ammo_explosion") || containsDamage(table, "hull_damage") {
+		t.Fatal("驱逐打战巡：三条都该封掉")
+	}
+}
