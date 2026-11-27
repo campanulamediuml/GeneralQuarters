@@ -1,10 +1,44 @@
 package game
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
 )
+
+// HangarAdvantageLevel 是机库油气爆炸判定的骰子优势档位：
+//
+//	0 = 劣势（投两次取大，默认）
+//	1 = 单投（中性）
+//	2 = 2 骰优势（投两次取小）
+//	3 = 3 骰优势（投三次取小）
+//
+// 老存档里这个字段是布尔值（true/false），反序列化时按 true→2、false→0 兼容。
+// 档位由剧本的时代决定：1942 珊瑚海的美军航母是 2 骰，1944 马里亚纳是 3 骰（损管与
+// 机库通风设计在改进），日军航母基本没有优势。
+type HangarAdvantageLevel int
+
+func (l *HangarAdvantageLevel) UnmarshalJSON(data []byte) error {
+	switch string(data) {
+	case "true":
+		*l = 2
+		return nil
+	case "false", "null":
+		*l = 0
+		return nil
+	}
+	var level int
+	if err := json.Unmarshal(data, &level); err != nil {
+		return err
+	}
+	*l = HangarAdvantageLevel(level)
+	return nil
+}
+
+func (l HangarAdvantageLevel) MarshalJSON() ([]byte, error) {
+	return json.Marshal(int(l))
+}
 
 type MapCell struct {
 	Coord   string `json:"coord"`
@@ -95,19 +129,19 @@ type DeployBox struct {
 
 // DeploymentOverrides 是单舰属性覆盖。全部用指针，nil 表示"沿用单位库"。
 type DeploymentOverrides struct {
-	Strength        *int     `json:"strength"`
-	DeckLength      *int     `json:"deck_length"`
-	HangarCapacity  *int     `json:"hangar_capacity"`
-	ElevatorCount   *int     `json:"elevator_count"`
-	HeavyAA         *float64 `json:"heavy_aa"`
-	LightAA         *float64 `json:"light_aa"`
-	MainGunCount    *int     `json:"main_gun_count"`
-	MainGunCaliber  *int     `json:"main_gun_caliber"`
-	DamageControl   *int     `json:"damage_control"`
-	SpeedClass      *string  `json:"speed_class"`
-	Gunnery         *int     `json:"gunnery"`
-	ArmoredCarrier  *bool    `json:"armored_carrier"`
-	HangarAdvantage *bool    `json:"hangar_advantage"`
+	Strength        *int                  `json:"strength"`
+	DeckLength      *int                  `json:"deck_length"`
+	HangarCapacity  *int                  `json:"hangar_capacity"`
+	ElevatorCount   *int                  `json:"elevator_count"`
+	HeavyAA         *float64              `json:"heavy_aa"`
+	LightAA         *float64              `json:"light_aa"`
+	MainGunCount    *int                  `json:"main_gun_count"`
+	MainGunCaliber  *int                  `json:"main_gun_caliber"`
+	DamageControl   *int                  `json:"damage_control"`
+	SpeedClass      *string               `json:"speed_class"`
+	Gunnery         *int                  `json:"gunnery"`
+	ArmoredCarrier  *bool                 `json:"armored_carrier"`
+	HangarAdvantage *HangarAdvantageLevel `json:"hangar_advantage"`
 }
 
 type AirDeployment struct {
@@ -195,10 +229,11 @@ type ShipCard struct {
 	DepthCharges     int    `json:"depth_charges"`
 	Cargo            int    `json:"cargo"`
 	ArmoredCarrier   bool   `json:"armored_carrier"`
-	// HangarAdvantage 表示这艘航母的机库被炸弹引爆时 DCT 取优势（投两次取小）。
-	// 这是单舰属性，和国籍无关：多数美军航母有，列克星敦级没有，日军航母几乎没有。
-	HangarAdvantage bool   `json:"hangar_advantage"`
-	HistoricalLoss  string `json:"historical_loss"`
+	// HangarAdvantage 是机库爆炸判定的骰子优势档位：0 = 劣势（两投取大）、
+	// 2 = 2 骰优势（两投取小）、3 = 3 骰优势（三投取小）。这是单舰属性，和国籍无关：
+	// 美军航母在 1942 珊瑚海是 2 骰、1944 马里亚纳是 3 骰，列克星敦级没有优势。
+	HangarAdvantage HangarAdvantageLevel `json:"hangar_advantage"`
+	HistoricalLoss  string               `json:"historical_loss"`
 }
 
 type AircraftDefinition struct {

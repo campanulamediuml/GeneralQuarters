@@ -5,12 +5,13 @@ import (
 	"testing"
 )
 
-// 舰船卡取值来自 content/units/marianas.json：
+// 舰船卡取值来自 content/units/marianas.json（1944）：
 //
-//	埃塞克斯：DCT 4 + 机库优势（hangar_advantage，两投取小，机库油气更难点着）
+//	埃塞克斯：DCT 4 + 3 骰机库优势（三投取小，机库油气更难点着）
 //	翔鹤：    DCT 3、没有机库优势（两投取大）
-//	大凤：    DCT 4，但是装甲航母（炸弹不打机库组，只结算甲板组）
-func factionProbeCard(dc int, hangarAdvantage, armored bool, hangar int) ShipCard {
+//	大凤：    DCT 4，装甲航母：机库要先过一次击穿 DCT，打穿后机库爆炸强制劣势
+//	信浓：    DCT 7，装甲航母（装甲更厚，更难被击穿）
+func factionProbeCard(dc int, hangarAdvantage HangarAdvantageLevel, armored bool, hangar int) ShipCard {
 	return ShipCard{
 		DamageControl:    dc,
 		HangarAdvantage:  hangarAdvantage,
@@ -81,10 +82,10 @@ func TestFactionHangarBombDifference(t *testing.T) {
 			burning:  float64(burning) * 100 / float64(runs),
 		}
 	}
-	us := factionProbeCard(4, true, false, 24)
-	jp := factionProbeCard(3, false, false, 18)
-	armored := factionProbeCard(4, false, true, 20) // 大凤：装甲航母，DCT 4
-	shinano := factionProbeCard(7, false, true, 15) // 信浓：装甲航母，DCT 7
+	us := factionProbeCard(4, 3, false, 24)
+	jp := factionProbeCard(3, 0, false, 18)
+	armored := factionProbeCard(4, 0, true, 20) // 大凤：装甲航母，DCT 4
+	shinano := factionProbeCard(7, 0, true, 15) // 信浓：装甲航母，DCT 7
 
 	usArmed := measure(us, "A", 18, true)
 	usEmpty := measure(us, "A", 18, false)

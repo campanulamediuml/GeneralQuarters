@@ -9,7 +9,7 @@ func TestArmoredDeckPenetrationRequiresDCT(t *testing.T) {
 	const runs = 20000
 	// 返回每发命中的平均毁机数：击穿才会毁 2 架，所以它约等于 2 × 击穿率。
 	lossPerHit := func(dc int) float64 {
-		card := factionProbeCard(dc, false, true, 20)
+		card := factionProbeCard(dc, 0, true, 20)
 		lost := 0
 		for run := 0; run < runs; run++ {
 			destroyed, _, _ := factionHangarHit(card, "B", doctrines, 18, true, uint64(run)*2654435761+19)

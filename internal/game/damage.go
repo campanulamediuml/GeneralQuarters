@@ -391,11 +391,19 @@ var hangarExplosionTable = []string{"avgas_explosion", "ammo_explosion", "small_
 // sealed 表示机库被装甲甲板封死（装甲航母被打穿）：油气排不出去，爆炸判定强制劣势，
 // 就算卡面上有 hangar_advantage 也不给优势。
 func hangarDCTRoll(state *State, unit *Unit, sealed bool) int {
-	first, second := d10(state), d10(state)
-	if unit.Card.HangarAdvantage && !sealed {
-		return min(first, second)
+	// 封闭机库（装甲航母被打穿）强制劣势，卡面上的优势档位不让用。
+	if sealed || unit.Card.HangarAdvantage <= 0 {
+		return max(d10(state), d10(state))
 	}
-	return max(first, second)
+	// 2 骰优势投两次取小，3 骰优势投三次取小。
+	dice := int(unit.Card.HangarAdvantage)
+	best := d10(state)
+	for index := 1; index < dice; index++ {
+		if roll := d10(state); roll < best {
+			best = roll
+		}
+	}
+	return best
 }
 
 // bombHangarDeckEffect 是炸弹命中航母时的"整装待发飞机"结算（规则书 421–423 行）：

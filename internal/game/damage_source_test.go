@@ -1,6 +1,7 @@
 package game
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -180,31 +181,40 @@ func TestBombAircraftGroupsSplitEffects(t *testing.T) {
 	}
 }
 
-// 机库形式是卡面属性：开放机库取优势（两投取小），封闭机库取劣势（两投取大）。
-// 同样一发炸弹、同样 50% 的失败线，开放机库 25% 会失败，封闭机库 75%。
+// 机库形式是卡面属性：0 = 劣势（两投取大）、2 = 2 骰优势（两投取小）、3 = 3 骰优势（三投取小）。
+// 同样 DCT 5 的失败线：劣势 75%、2 骰 25%、3 骰 12.5%。
 func TestHangarDCTAdvantageByCard(t *testing.T) {
-	trials := 400
-	failRate := func(openHangar bool) float64 {
+	trials := 2000
+	failRate := func(level HangarAdvantageLevel, sealed bool) float64 {
 		state := &State{RNGState: 1}
-		unit := &Unit{ID: "cv", Type: "CV", Faction: "A", Card: ShipCard{DamageControl: 5, HangarAdvantage: openHangar}}
+		unit := &Unit{ID: "cv", Type: "CV", Faction: "A", Card: ShipCard{DamageControl: 5, HangarAdvantage: level}}
 		failures := 0
 		for i := 0; i < trials; i++ {
-			if hangarDCTRoll(state, unit, false) > unit.Card.DamageControl {
+			if hangarDCTRoll(state, unit, sealed) > unit.Card.DamageControl {
 				failures++
 			}
 		}
 		return float64(failures) / float64(trials)
 	}
-	open := failRate(true)
-	closed := failRate(false)
-	if open < 0.18 || open > 0.32 {
-		t.Fatalf("开放机库的失败率应接近 25%%，实际 %.2f", open)
+	disadvantage := failRate(0, false)
+	advantage2 := failRate(2, false)
+	advantage3 := failRate(3, false)
+	if disadvantage < 0.70 || disadvantage > 0.80 {
+		t.Fatalf("劣势（两投取大）的失败率应接近 75%%，实际 %.2f", disadvantage)
 	}
-	if closed < 0.68 || closed > 0.82 {
-		t.Fatalf("封闭机库的失败率应接近 75%%，实际 %.2f", closed)
+	if advantage2 < 0.21 || advantage2 > 0.29 {
+		t.Fatalf("2 骰优势的失败率应接近 25%%，实际 %.2f", advantage2)
 	}
-	if !(closed > open) {
-		t.Fatalf("封闭机库应该更容易被炸：open=%.2f closed=%.2f", open, closed)
+	if advantage3 < 0.09 || advantage3 > 0.16 {
+		t.Fatalf("3 骰优势的失败率应接近 12.5%%，实际 %.2f", advantage3)
+	}
+	if !(disadvantage > advantage2 && advantage2 > advantage3) {
+		t.Fatalf("优势档位越高越不容易被炸：劣势 %.2f / 2 骰 %.2f / 3 骰 %.2f", disadvantage, advantage2, advantage3)
+	}
+	// 装甲航母被打穿后机库封闭：就算卡面是 3 骰优势，也按劣势结算。
+	sealed := failRate(3, true)
+	if sealed < 0.70 || sealed > 0.80 {
+		t.Fatalf("封闭机库应强制劣势（75%%），实际 %.2f", sealed)
 	}
 }
 
@@ -220,7 +230,7 @@ func TestHangarAdvantageInScenario(t *testing.T) {
 	}
 	openCount := 0
 	for _, unit := range state.Units {
-		if unit.Card.HangarAdvantage {
+		if unit.Card.HangarAdvantage > 0 {
 			openCount++
 		}
 	}
@@ -228,11 +238,37 @@ func TestHangarAdvantageInScenario(t *testing.T) {
 		t.Fatal("珊瑚海剧本里应该有取优势的航母（约克城）")
 	}
 	for _, unit := range state.Units {
-		if unit.DefinitionID == "lexington" && unit.Card.HangarAdvantage {
+		// 1942 珊瑚海：美军航母是 2 骰优势。
+		if unit.DefinitionID == "yorktown" && unit.Card.HangarAdvantage != 2 {
+			t.Fatalf("1942 珊瑚海的约克城应是 2 骰优势，实际 %d", unit.Card.HangarAdvantage)
+		}
+		if unit.DefinitionID == "lexington" && unit.Card.HangarAdvantage > 0 {
 			t.Fatal("列克星敦级没有机库优势")
 		}
-		if unit.DefinitionID == "shokaku" && unit.Card.HangarAdvantage {
+		if unit.DefinitionID == "shokaku" && unit.Card.HangarAdvantage > 0 {
 			t.Fatal("翔鹤级没有机库优势")
+		}
+	}
+}
+
+// 老存档里 hangar_advantage 是布尔值：true 按 2 骰、false 按劣势兼容。
+func TestHangarAdvantageLegacyBoolDecode(t *testing.T) {
+	cases := []struct {
+		input string
+		want  HangarAdvantageLevel
+	}{
+		{"{\"hangar_advantage\": true}", 2},
+		{"{\"hangar_advantage\": false}", 0},
+		{"{\"hangar_advantage\": 3}", 3},
+		{"{}", 0},
+	}
+	for _, item := range cases {
+		var card ShipCard
+		if err := json.Unmarshal([]byte(item.input), &card); err != nil {
+			t.Fatalf("%s 解码失败：%v", item.input, err)
+		}
+		if card.HangarAdvantage != item.want {
+			t.Fatalf("%s 解出 %d，期望 %d", item.input, card.HangarAdvantage, item.want)
 		}
 	}
 }

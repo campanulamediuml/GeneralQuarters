@@ -29,7 +29,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": true,
+    "hangar_advantage": 3,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -61,7 +61,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": true,
+    "hangar_advantage": 3,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -93,7 +93,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": true,
+    "hangar_advantage": 3,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -125,7 +125,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": true,
+    "hangar_advantage": 3,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -157,7 +157,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": true,
+    "hangar_advantage": 3,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -189,7 +189,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": true,
+    "hangar_advantage": 3,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -221,7 +221,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": true,
+    "hangar_advantage": 3,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -253,7 +253,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": true,
+    "hangar_advantage": 3,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -285,7 +285,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -317,7 +317,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -349,7 +349,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -381,7 +381,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -413,7 +413,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -445,7 +445,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -477,7 +477,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -509,7 +509,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -541,7 +541,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -573,7 +573,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -605,7 +605,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -637,7 +637,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -669,7 +669,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -701,7 +701,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -733,7 +733,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -765,7 +765,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -797,7 +797,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -829,7 +829,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -861,7 +861,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -893,7 +893,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -925,7 +925,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -957,7 +957,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -989,7 +989,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -1021,7 +1021,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -1053,7 +1053,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -1085,7 +1085,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -1117,7 +1117,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -1149,7 +1149,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -1181,7 +1181,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -1213,7 +1213,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -1245,7 +1245,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": true,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -1277,7 +1277,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -1309,7 +1309,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -1341,7 +1341,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -1373,7 +1373,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -1405,7 +1405,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -1437,7 +1437,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -1469,7 +1469,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -1501,7 +1501,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -1533,7 +1533,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -1565,7 +1565,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -1597,7 +1597,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -1629,7 +1629,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -1661,7 +1661,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -1693,7 +1693,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -1725,7 +1725,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -1757,7 +1757,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -1789,7 +1789,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -1821,7 +1821,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -1853,7 +1853,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -1885,7 +1885,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -1917,7 +1917,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -1949,7 +1949,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -1981,7 +1981,7 @@
     "depth_charges": 4,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2013,7 +2013,7 @@
     "depth_charges": 4,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2045,7 +2045,7 @@
     "depth_charges": 4,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2077,7 +2077,7 @@
     "depth_charges": 4,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2109,7 +2109,7 @@
     "depth_charges": 4,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2141,7 +2141,7 @@
     "depth_charges": 4,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2173,7 +2173,7 @@
     "depth_charges": 4,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2205,7 +2205,7 @@
     "depth_charges": 4,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2237,7 +2237,7 @@
     "depth_charges": 4,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2269,7 +2269,7 @@
     "depth_charges": 4,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2301,7 +2301,7 @@
     "depth_charges": 4,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2333,7 +2333,7 @@
     "depth_charges": 4,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2365,7 +2365,7 @@
     "depth_charges": 4,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2397,7 +2397,7 @@
     "depth_charges": 4,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2429,7 +2429,7 @@
     "depth_charges": 4,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2461,7 +2461,7 @@
     "depth_charges": 4,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2493,7 +2493,7 @@
     "depth_charges": 4,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2525,7 +2525,7 @@
     "depth_charges": 4,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2557,7 +2557,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2589,7 +2589,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2621,7 +2621,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2653,7 +2653,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2685,7 +2685,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2717,7 +2717,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2749,7 +2749,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2781,7 +2781,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2813,7 +2813,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2845,7 +2845,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2877,7 +2877,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2909,7 +2909,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2941,7 +2941,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -2973,7 +2973,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -3005,7 +3005,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -3037,7 +3037,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -3069,7 +3069,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3101,7 +3101,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3133,7 +3133,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3165,7 +3165,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3197,7 +3197,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3229,7 +3229,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3261,7 +3261,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3293,7 +3293,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3325,7 +3325,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3357,7 +3357,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3389,7 +3389,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3421,7 +3421,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3453,7 +3453,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3485,7 +3485,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3517,7 +3517,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3549,7 +3549,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3581,7 +3581,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3613,7 +3613,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3645,7 +3645,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3677,7 +3677,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3709,7 +3709,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3741,7 +3741,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3773,7 +3773,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3805,7 +3805,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3837,7 +3837,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3869,7 +3869,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3901,7 +3901,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3933,7 +3933,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3965,7 +3965,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -3997,7 +3997,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4029,7 +4029,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4061,7 +4061,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4093,7 +4093,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4125,7 +4125,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4157,7 +4157,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4189,7 +4189,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4221,7 +4221,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4253,7 +4253,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4285,7 +4285,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4317,7 +4317,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4349,7 +4349,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4381,7 +4381,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4413,7 +4413,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4445,7 +4445,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4477,7 +4477,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4509,7 +4509,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4541,7 +4541,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4573,7 +4573,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4605,7 +4605,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4637,7 +4637,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4669,7 +4669,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4701,7 +4701,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4733,7 +4733,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4765,7 +4765,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4797,7 +4797,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4829,7 +4829,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4861,7 +4861,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4893,7 +4893,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4925,7 +4925,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4957,7 +4957,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -4989,7 +4989,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -5021,7 +5021,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -5053,7 +5053,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -5085,7 +5085,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -5117,7 +5117,7 @@
     "depth_charges": 8,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -5149,7 +5149,7 @@
     "depth_charges": 8,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -5181,7 +5181,7 @@
     "depth_charges": 8,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -5213,7 +5213,7 @@
     "depth_charges": 8,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -5245,7 +5245,7 @@
     "depth_charges": 8,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -5277,7 +5277,7 @@
     "depth_charges": 8,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -5309,7 +5309,7 @@
     "depth_charges": 8,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -5341,7 +5341,7 @@
     "depth_charges": 8,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -5373,7 +5373,7 @@
     "depth_charges": 8,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -5405,7 +5405,7 @@
     "depth_charges": 8,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -5437,7 +5437,7 @@
     "depth_charges": 8,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -5469,7 +5469,7 @@
     "depth_charges": 8,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -5501,7 +5501,7 @@
     "depth_charges": 8,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -5533,7 +5533,7 @@
     "depth_charges": 8,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -5565,7 +5565,7 @@
     "depth_charges": 8,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -5597,7 +5597,7 @@
     "depth_charges": 8,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -5629,7 +5629,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -5661,7 +5661,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -5693,7 +5693,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -5725,7 +5725,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -5757,7 +5757,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -5789,7 +5789,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -5821,7 +5821,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -5853,7 +5853,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -5885,7 +5885,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -5917,7 +5917,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -5949,7 +5949,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -5981,7 +5981,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -6013,7 +6013,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -6045,7 +6045,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -6077,7 +6077,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -6109,7 +6109,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -6141,7 +6141,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -6173,7 +6173,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -6205,7 +6205,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -6237,7 +6237,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -6269,7 +6269,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -6301,7 +6301,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -6333,7 +6333,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -6365,7 +6365,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -6397,7 +6397,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -6429,7 +6429,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -6461,7 +6461,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -6493,7 +6493,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -6525,7 +6525,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -6557,7 +6557,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -6589,7 +6589,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -6621,7 +6621,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -6653,7 +6653,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -6685,7 +6685,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -6717,7 +6717,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -6749,7 +6749,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -6781,7 +6781,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -6813,7 +6813,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -6845,7 +6845,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -6877,7 +6877,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -6909,7 +6909,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -6941,7 +6941,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -6973,7 +6973,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -7005,7 +7005,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -7037,7 +7037,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -7069,7 +7069,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -7101,7 +7101,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -7133,7 +7133,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -7165,7 +7165,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -7197,7 +7197,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -7229,7 +7229,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -7261,7 +7261,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -7293,7 +7293,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -7325,7 +7325,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -7357,7 +7357,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -7389,7 +7389,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -7421,7 +7421,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -7453,7 +7453,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -7485,7 +7485,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -7517,7 +7517,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -7549,7 +7549,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -7581,7 +7581,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -7613,7 +7613,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -7645,7 +7645,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -7677,7 +7677,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -7709,7 +7709,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -7741,7 +7741,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -7773,7 +7773,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -7805,7 +7805,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -7837,7 +7837,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -7869,7 +7869,7 @@
     "depth_charges": 0,
     "cargo": 12,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -7901,7 +7901,7 @@
     "depth_charges": 6,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": true
    }
@@ -7933,7 +7933,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -7965,7 +7965,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -7997,7 +7997,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": true,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8029,7 +8029,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8061,7 +8061,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8093,7 +8093,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8125,7 +8125,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8157,7 +8157,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8189,7 +8189,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8221,7 +8221,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8253,7 +8253,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8285,7 +8285,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8317,7 +8317,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8349,7 +8349,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8381,7 +8381,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8413,7 +8413,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8445,7 +8445,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8477,7 +8477,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8509,7 +8509,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8541,7 +8541,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8573,7 +8573,7 @@
     "depth_charges": 4,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8605,7 +8605,7 @@
     "depth_charges": 4,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8637,7 +8637,7 @@
     "depth_charges": 4,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8669,7 +8669,7 @@
     "depth_charges": 4,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8701,7 +8701,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8733,7 +8733,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8765,7 +8765,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
@@ -8797,7 +8797,7 @@
     "depth_charges": 0,
     "cargo": 0,
     "armored_carrier": false,
-    "hangar_advantage": false,
+    "hangar_advantage": 0,
     "historical_loss": "",
     "fire_control_radar": false
    }
