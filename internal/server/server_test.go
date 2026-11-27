@@ -75,9 +75,6 @@ func setupTestServer(t *testing.T, options ...func(*Server)) (*testClient, strin
 		t.Fatal(err)
 	}
 	app := New(database, testContentRoot(t), false)
-	// 观战页模板现在只从磁盘读：测试默认用仓库里的 web/public/watch.html，
-	// 单个用例还能用 SetWatchTemplate 覆盖成临时文件。
-	app.SetWatchTemplate(filepath.Join("..", "..", "web", "public", "watch.html"))
 	for _, option := range options {
 		option(app)
 	}

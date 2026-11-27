@@ -36,6 +36,8 @@ const props = defineProps<{
   windCells?: string
   /** 逐格天气：行优先、每格一个字符 '0'..'3'（晴/多云/降雨/风暴）；空串=无天气层 */
   weatherCells?: string
+  /** 观战模式：双方都按"完整可读"画，不套用情报等级/敌方样式，也不画己方航行目的地 */
+  spectate?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -1029,10 +1031,10 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         v-for="(task, index) in flightTasksAt(coord)"
         :key="task.id"
         class="map-flight-task"
-        :class="[task.kind, `faction-${playerFaction.toLowerCase()}`, { selected: selectedAirTaskId === task.id, returning: task.returning }]"
+        :class="[task.kind, `faction-${(spectate && task.faction ? task.faction : playerFaction).toLowerCase()}`, { selected: selectedAirTaskId === task.id, returning: task.returning }]"
         :data-flight-task-id="task.id"
         :data-task-kind="task.kind"
-        :data-task-faction="playerFaction"
+        :data-task-faction="spectate && task.faction ? task.faction : playerFaction"
         :data-display-coord="task.current_coord"
         :data-target-coord="task.target_coord"
         :transform="`translate(${flightPosition(coord, index, flightTasksAt(coord).length).x}, ${flightPosition(coord, index, flightTasksAt(coord).length).y})`"
@@ -1067,7 +1069,7 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         v-for="(airfield, index) in airfieldsAt(coord)"
         :key="airfield.id"
         class="map-airfield-card"
-        :class="[`faction-${airfield.faction.toLowerCase()}`, { enemy: airfield.faction !== playerFaction, unknown: airfield.contact_level < 3 }]"
+        :class="[`faction-${airfield.faction.toLowerCase()}`, { enemy: !spectate && airfield.faction !== playerFaction, unknown: !spectate && airfield.contact_level < 3 }]"
         :data-airfield-id="airfield.id"
         :x="center(coord).x - 28 + (index - (airfieldsAt(coord).length - 1) / 2) * 58"
         :y="center(coord).y - 25"
@@ -1085,9 +1087,9 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         v-for="(task, index) in groundFlightAt(coord)"
         :key="task.id"
         class="map-ground-task"
-        :class="[task.kind, `faction-${playerFaction.toLowerCase()}`, { selected: selectedAirTaskId === task.id, returning: task.returning }]"
+        :class="[task.kind, `faction-${(spectate && task.faction ? task.faction : playerFaction).toLowerCase()}`, { selected: selectedAirTaskId === task.id, returning: task.returning }]"
         :data-ground-task-id="task.id"
-        :data-task-faction="playerFaction"
+        :data-task-faction="spectate && task.faction ? task.faction : playerFaction"
         :transform="`translate(${flightPosition(coord, index, groundFlightAt(coord).length).x}, ${flightPosition(coord, index, groundFlightAt(coord).length).y})`"
         @click.stop="markerClick(task.current_coord || coord, () => emit('selectAirTask', task.id))"
       >

@@ -205,6 +205,8 @@ export interface ReconSector {
 
 export interface AirTask {
   id: string
+  /** 观战视图合并双方任务时补上的阵营标记；玩家视图里为空。 */
+  faction?: Player['faction']
   kind: 'cap' | 'recon' | 'asw' | 'attack' | 'transfer' | 'cover'
   phase: 'servicing' | 'lifting' | 'taxiing' | 'preparing' | 'launching' | 'assembling' | 'active' | 'recovering'
   name: string

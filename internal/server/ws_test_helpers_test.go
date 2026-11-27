@@ -12,7 +12,7 @@ import (
 )
 
 // applyTestPatch 按补丁协议把补丁合并回底座，用来验证"客户端照这个协议合并能还原新视图"。
-// 和 web/src/patch.ts、watch.html 里的实现是同一套语义。
+// 和 web/src/patch.ts 里的实现是同一套语义。
 func applyTestPatch(base, patch any) any {
 	switch typed := patch.(type) {
 	case map[string]any:

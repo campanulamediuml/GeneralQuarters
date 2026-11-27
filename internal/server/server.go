@@ -35,12 +35,7 @@ type Server struct {
 	hub        *hub
 	actors     sync.Map
 	secure     bool
-	// watchPath 非空时观战页按 mtime 从磁盘读：改 HTML 刷新浏览器就生效，不用重启进程。
-	// 这样"页面"和"服务"是分开的两份东西，联调时只动前端。
-	watchPath  string
-	watchMu    sync.Mutex
-	watchBody  []byte
-	watchMtime time.Time
+	// 观战页已经是前端 SPA 路由（/watch/{token}），服务端只负责把 token 解析成 room_id。
 }
 
 // roomKind 是房间 worker 能受理的消息种类。
@@ -414,7 +409,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/rooms/join", s.joinRoom)
 	mux.HandleFunc("GET /api/v1/rooms/", s.roomRoutes)
 	mux.HandleFunc("POST /api/v1/rooms/", s.roomRoutes)
-	mux.HandleFunc("GET /watch/", s.watchPage)
+	mux.HandleFunc("GET /api/v1/watch/", s.resolveWatchRoom)
 	mux.HandleFunc("GET /ws", s.webSocket)
 	// content/ 下的静态素材（兵牌剪影等）：路径由舰船卡的 picture 字段给出，
 	// 例如 /content/misc/image/ship/new_orleans.png。换图只要替换数据目录里的文件，

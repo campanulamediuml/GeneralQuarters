@@ -25,8 +25,9 @@
 | GET | `/api/v1/rooms/{roomID}/events` | 最近100条当前阵营可见事件，按时间正序（旧→新）；同上 |
 | POST | `/api/v1/rooms/{roomID}/commands` | 设置或取消单位命令；同上，语义与 WS RPC 一致 |
 | POST | `/api/v1/rooms/{roomID}/ready` | 设置或取消ready；同上 |
-| GET | `/watch/{token}` | 只读观战页面：路径里直接放房间 token（如 `XXXX-XXXX-XXXX`），服务端解析成房间并通过 WebSocket 实时接收快照 |
-| GET | `/watch/{roomID}/{token}` | 观战页兼容形式：房间 ID 与 token 都放在路径里 |
+| GET | `/watch/{token}` | 只读观战页面（前端 SPA 路由）：页面自己调 `/api/v1/watch/{token}` 换 room_id，再接 `/ws?mode=spectator` 订阅 |
+| GET | `/api/v1/watch/{token}` | 观战链接解析：把 join_token 换成 `{room_id}`；token 无效回 404 |
+| GET | `/watch/{roomID}/{token}` | 观战页兼容形式：前端路由同样接受，房间 ID 由 token 解析得出 |
 | GET | `/api/v1/rooms/{roomID}/spectate?token=...` | 兼容旧客户端的观战 HTTP 快照：用房间join_token认证 |
 | GET | `/api/v1/openapi.yaml` | 机器可读OpenAPI定义 |
 
@@ -183,7 +184,7 @@
 
   `{"type":"subscribe","room_id":"ROOM","token":"XXXX-XXXX-XXXX"}`
 
-  `token` 是房间的 join_token（观战页 `/watch/{token}` 会把它注入页面）。订阅失败回 `{"type":"error","error":"..."}` 并关闭连接。观战不占玩家席位、不改在线状态。
+  `token` 是房间的 join_token（观战页 `/watch/{token}` 从 `/api/v1/watch/{token}` 拿到 room_id，再带同一 token 订阅）。订阅失败回 `{"type":"error","error":"..."}` 并关闭连接。观战不占玩家席位、不改在线状态，快照里 `spectator:true`、双方内容都完整下发。
 
 所有帧都是**文本帧**，单帧上限 1 MB。服务端每 30 秒发一次 ping，90 秒收不到 pong 即断开（客户端只需按标准 WebSocket 回 pong）。
 

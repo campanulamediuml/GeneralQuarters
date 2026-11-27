@@ -47,12 +47,12 @@ JSON 在每次建局/读取时从磁盘加载（新开房间就生效）。
 
 - 改 Vue/CSS：`cd web && npm run build`（不到 1 秒）→ 刷新浏览器。想连这一步都省，就挂着
   `npm run watch`（`vite build --watch`），存盘即重建，刷新即可见。
-- 改观战页 `web/public/watch.html`：构建时复制到 `dist/watch.html`，服务端按 mtime 读盘，保存后刷新就有。
+- 改观战页：和普通页面一样是 `/watch/:token` 路由（`views/WatchView.vue`），复用海图和兵牌，改完刷新即可。
 - 真要改 .vue 还不想刷新，再 `npm run dev`（Vite 在 5173 热更新，把 `/api`、`/ws`、`/watch`、
   `/content` 代理给 8100）。
 
-`web_dir` 留空时按 `web/dist` 处理；目录不存在会拒绝启动。观战页就是 dist 根目录下的
-`watch.html`（源码在 `web/public/`），`watch_html` 只在想把它放到别处时才用。部署/联调统一用 `http://127.0.0.1:8100`。
+`web_dir` 留空时按 `web/dist` 处理；目录不存在会拒绝启动。观战链接是 `/watch/{token}`，
+页面调 `/api/v1/watch/{token}` 解析房间，之后连 `/ws?mode=spectator` 收双方完整快照。部署/联调统一用 `http://127.0.0.1:8100`。
 
 ## 剧本
 

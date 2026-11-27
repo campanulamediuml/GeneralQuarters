@@ -24,7 +24,7 @@ type patchNoneType struct{}
 var patchNone patchNoneType
 
 // patchKeyFields 是主键候选字段，按顺序认第一个非空的。
-// 客户端（web/src/patch.ts、watch.html）必须用同一套顺序。
+// 客户端（web/src/patch.ts）必须用同一套顺序。
 var patchKeyFields = []string{"id", "unit_id", "task_id", "carrier_id", "fleet_id", "coord"}
 
 // patchKey 从一个元素里取主键（字段名 + 值）；认不出来返回空串，调用方会退回整块替换。

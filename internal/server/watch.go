@@ -1,14 +1,9 @@
 package server
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"fmt"
 	"net/http"
-	"os"
 	"strings"
-	"time"
 
 	"generalquarters/internal/game"
 	"generalquarters/internal/store"
@@ -71,7 +66,11 @@ func buildSpectateView(room store.Room, players []store.Player, events []store.E
 		}
 		aviation := game.VisibleAviation(state, faction)
 		carriers = append(carriers, aviation.Carriers...)
-		tasks = append(tasks, aviation.Tasks...)
+		// 观战页把双方编队画在同一张图上，任务要带阵营才能按阵营上色；玩家视图里这个字段为空。
+		for _, task := range aviation.Tasks {
+			task.Faction = faction
+			tasks = append(tasks, task)
+		}
 		for _, airfield := range game.VisibleAirfields(state, faction) {
 			if airfield.Faction == faction {
 				airfields = append(airfields, airfield)
@@ -167,59 +166,20 @@ func spectatorGroundTasks(state game.State) []game.AirTask {
 	return tasks
 }
 
-// watchPage 是给旁观者看的只读海图：一个自带渲染脚本的静态页，放在前端产物目录里
-// （web/public/watch.html → dist/watch.html），和 Vue 页面一起从磁盘下发，不编进二进制。
-func (s *Server) SetWatchTemplate(path string) {
-	s.watchPath = path
-	s.watchMu.Lock()
-	s.watchBody, s.watchMtime = nil, time.Time{}
-	s.watchMu.Unlock()
-}
-
-// watchDocument 按 mtime 读磁盘上的观战页（每帧请求都读盘没必要），改完 HTML 刷新即可。
-// 模板缺失/读不出来直接报错：与其悄悄退回一份旧页面，不如让部署问题当场暴露。
-func (s *Server) watchDocument() ([]byte, error) {
-	path := s.watchPath
-	if path == "" {
-		return nil, fmt.Errorf("观战页模板没有配置")
-	}
-	s.watchMu.Lock()
-	defer s.watchMu.Unlock()
-	info, err := os.Stat(path)
-	if err != nil {
-		return nil, fmt.Errorf("观战页模板不存在：%s", path)
-	}
-	if s.watchBody != nil && info.ModTime().Equal(s.watchMtime) && info.Size() == int64(len(s.watchBody)) {
-		return s.watchBody, nil
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("观战页模板读不出来：%s", path)
-	}
-	s.watchBody, s.watchMtime = data, info.ModTime()
-	return data, nil
-}
-
-func (s *Server) watchPage(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-store")
-	w.Header().Set("Referrer-Policy", "no-referrer")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	page, err := s.watchDocument()
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+// resolveWatchRoom 把观战链接里的 token 解析成房间 ID。
+// 前端 /watch/{token} 是 SPA 路由（不再是服务端渲染的独立页面）：
+// 它先调这个接口拿 room_id，再连 /ws?mode=spectator 并 subscribe。
+// token 无效/不存在一律 404，页面据此显示"观战链接无效"。
+func (s *Server) resolveWatchRoom(w http.ResponseWriter, r *http.Request) {
+	token := game.NormalizeToken(strings.TrimPrefix(r.URL.Path, "/api/v1/watch/"))
+	if len(token) != 12 {
+		writeError(w, http.StatusNotFound, "房间 token 无效")
 		return
 	}
-	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-	if len(parts) == 2 && r.URL.Query().Get("token") == "" {
-		token := game.NormalizeToken(parts[1])
-		roomID, err := s.store.RoomIDByToken(r.Context(), token)
-		if err != nil || len(token) != 12 {
-			http.Error(w, "房间 token 无效", http.StatusNotFound)
-			return
-		}
-		encoded, _ := json.Marshal(roomID)
-		page = bytes.Replace(page, []byte("var room = parts[1] || '';"), []byte("var room = "+string(encoded)+";"), 1)
+	roomID, err := s.store.RoomIDByToken(r.Context(), token)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "房间 token 无效")
+		return
 	}
-	_, _ = w.Write(page)
+	writeJSON(w, http.StatusOK, map[string]string{"room_id": roomID})
 }

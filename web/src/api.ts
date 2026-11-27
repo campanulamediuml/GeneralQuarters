@@ -103,6 +103,16 @@ function commandID() {
 }
 
 export const api = {
+  // 观战链接 /watch/{token}：token 换 room_id，之后连 /ws?mode=spectator 订阅。
+  watchRoom(token: string) {
+    return request<{ room_id: string }>('/api/v1/watch/' + encodeURIComponent(token))
+  },
+  // 观战首帧走 HTTP：WebSocket 抖动时页面也能先画出战场，之后再用推送增量更新。
+  spectate(roomID: string, token: string) {
+    return request<Record<string, unknown>>(
+      '/api/v1/rooms/' + roomID + '/spectate?token=' + encodeURIComponent(token),
+    )
+  },
   createRoom(name: string, scenarioID = '_coral_real', solo = false, faction: 'A' | 'B' = 'A') {
     return request<RoomResponse>('/api/v1/rooms', { method: 'POST', body: JSON.stringify({ name, scenario_id: scenarioID, solo, faction }) })
   },
