@@ -6037,6 +6037,66 @@
    "unit": "tbf",
    "carrier": "us-cvl-06",
    "skill": "veteran"
+  },
+  {
+   "id": "us-cl-01-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-cl-01",
+   "skill": "regular"
+  },
+  {
+   "id": "us-cl-02-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-cl-02",
+   "skill": "regular"
+  },
+  {
+   "id": "us-cl-03-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-cl-03",
+   "skill": "regular"
+  },
+  {
+   "id": "us-cl-04-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-cl-04",
+   "skill": "regular"
+  },
+  {
+   "id": "us-cl-05-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-cl-05",
+   "skill": "regular"
+  },
+  {
+   "id": "us-cl-06-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-cl-06",
+   "skill": "regular"
+  },
+  {
+   "id": "us-cl-07-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-cl-07",
+   "skill": "regular"
+  },
+  {
+   "id": "us-cl-08-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-cl-08",
+   "skill": "regular"
+  },
+  {
+   "id": "us-cl-09-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-cl-09",
+   "skill": "regular"
+  },
+  {
+   "id": "us-cl-10-os2u-x1",
+   "unit": "os2u",
+   "carrier": "us-cl-10",
+   "skill": "regular"
   }
  ],
  "airfields": [
