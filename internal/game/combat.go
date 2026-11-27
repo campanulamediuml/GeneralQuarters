@@ -349,7 +349,7 @@ func gunneryChance(state State, attacker, target *Unit, enemies []Unit) float64 
 	return math.Max(0, math.Min(100, chance))
 }
 
-// gunneryVolley 结算一轮齐射。halfGuns 为真时是 T 劣的第一轮炮战：
+// gunneryVolley 结算一轮齐射。halfGuns 为真时是被压住阵位的第一轮炮战：
 // 只有一半火炮能开火，每艘船的炮击值向下取整（炮击值 1 的船这一轮打不出来）。
 func gunneryVolley(state *State, attackers, enemies []Unit, halfGuns bool) ([]Hit, []EngineEvent) {
 	hits := []Hit{}
@@ -389,7 +389,7 @@ func gunneryVolley(state *State, attackers, enemies []Unit, halfGuns bool) ([]Hi
 		}
 		label := ""
 		if halfGuns {
-			label = "（T 劣，半数火炮）"
+			label = "（阵位被压住，半数火炮）"
 		}
 		events = append(events, EngineEvent{Type: "gunnery_volley", Audience: "all", Text: fmt.Sprintf("%s%s炮击%s：%d次判定，命中率%.1f%%，命中%d次", weapon.Name, label, target.Name, shots, chance, count)})
 	}
@@ -448,11 +448,10 @@ func torpedoVolley(state *State, attackers, enemies []Unit) ([]Hit, []EngineEven
 	return hits, events
 }
 
-// tCrossingStayTurns 是"战列线已展开"要求的连续停留回合数。
-// FleetSessions 按到达当回合记 1，所以 3 表示已经原地摆了 3 回合。
-const tCrossingStayTurns = 3
+// positionSpeedGap 是抢到阵位所需的航速差（节）：差不到这个数就算咬住了。
+const positionSpeedGap = 3
 
-// fleetMovedThisTurn 判断一支舰队本回合有没有移动过（主动抢入 vs 原地待机）。
+// fleetMovedThisTurn 判断一支舰队本回合有没有移动过（机动 vs 原地待机）。
 func fleetMovedThisTurn(state *State, members []Unit) bool {
 	for _, member := range members {
 		if unit := state.Units[member.ID]; unit != nil && unit.Moved {
@@ -462,7 +461,7 @@ func fleetMovedThisTurn(state *State, members []Unit) bool {
 	return false
 }
 
-// fleetCanFormLine 判断编队能不能摆战列线：有航母或运输船就没法排纵队。
+// fleetCanFormLine 判断编队能不能排成水面战列：有航母或运输船就摆不出来。
 func fleetCanFormLine(members []Unit) bool {
 	for _, member := range members {
 		switch member.Type {
@@ -473,16 +472,35 @@ func fleetCanFormLine(members []Unit) bool {
 	return true
 }
 
-// battleLineTState 判断这次炮战里谁摆好了战列线。
+// fleetPositionKnots 取编队里最慢那支舰队的航速：几支舰队挤在同一个 hex 时，
+// 慢的拖住全队，阵位按最慢的算。
+func fleetPositionKnots(state State, members []Unit) int {
+	knots := -1
+	for _, member := range members {
+		unit := state.Units[member.ID]
+		if unit == nil {
+			continue
+		}
+		if k := FleetCycleKnots(state, unit); knots < 0 || k < knots {
+			knots = k
+		}
+	}
+	if knots < 0 {
+		return 0
+	}
+	return knots
+}
+
+// battlePositionState 判断这次炮战里谁抢到了阵位。
 //
-// 条件（规则书"战列线（T 优 / T 劣）"）：
-//   - 守方本回合没动，且已经在同一 hex 连续停留 ≥3 回合——有时间摆队；
-//   - 守方编队里没有航母和运输船（航母在场就不会按战列线摆队，运输船是护航队形）；
-//   - 守方在交战前就发现了对方（prior[守方]），不是被摸到脸上才反应；
-//   - 对方是本回合主动移动进来的。
+// 取代旧的"原地停留 3 回合 = T 优"：停船本身不再带来任何好处，阵位只看机动和航速。
+//   - 至少有一方本回合机动（走了一格）才判定；双方都贴着不动就是正常对射；
+//   - 航速差 ≥ positionSpeedGap 节时快的一方抢到阵位，慢的一方第一轮只有一半火炮能开火；
+//   - 差距不到 3 节算咬住了，谁也没占到位；
+//   - 编队里有航母或运输船的一方摆不出战列，双方都不判定。
 //
-// 返回 (T优阵营, T劣阵营, 判定依据)；不满足时全为空。
-func battleLineTState(state *State, factions map[string][]Unit, prior map[string]bool) (string, string, string) {
+// 返回 (抢占方, 被压制方, 判定依据)；不满足时全为空。
+func battlePositionState(state *State, factions map[string][]Unit) (string, string, string) {
 	names := make([]string, 0, len(factions))
 	for faction := range factions {
 		names = append(names, faction)
@@ -491,29 +509,28 @@ func battleLineTState(state *State, factions map[string][]Unit, prior map[string
 		return "", "", ""
 	}
 	sort.Strings(names)
-	for _, defender := range names {
-		attacker := names[0]
-		if defender == names[0] {
-			attacker = names[1]
+	left, right := names[0], names[1]
+	if !fleetCanFormLine(factions[left]) || !fleetCanFormLine(factions[right]) {
+		return "", "", ""
+	}
+	leftMoved := fleetMovedThisTurn(state, factions[left])
+	rightMoved := fleetMovedThisTurn(state, factions[right])
+	if !leftMoved && !rightMoved {
+		return "", "", ""
+	}
+	leftKnots := fleetPositionKnots(*state, factions[left])
+	rightKnots := fleetPositionKnots(*state, factions[right])
+	describe := func(seized, crossed string, seizedKnots, crossedKnots int, crossedMoved bool) string {
+		if crossedMoved {
+			return fmt.Sprintf("%s 以 %d 节撞进 %s 的 %d 节横队", crossed, crossedKnots, seized, seizedKnots)
 		}
-		members := factions[defender]
-		if len(members) == 0 || fleetMovedThisTurn(state, members) {
-			continue
-		}
-		if !fleetCanFormLine(members) || !prior[defender] {
-			continue
-		}
-		sessions := 0
-		if state.FleetSessions != nil {
-			sessions = state.FleetSessions[FleetKey(&members[0])]
-		}
-		if sessions < tCrossingStayTurns {
-			continue
-		}
-		if !fleetMovedThisTurn(state, factions[attacker]) {
-			continue
-		}
-		return defender, attacker, fmt.Sprintf("已原地停留 %d 回合、编队无航母/运输船、交战前已发现对方", sessions)
+		return fmt.Sprintf("%s 机动中以 %d 节压住 %s 的 %d 节", seized, seizedKnots, crossed, crossedKnots)
+	}
+	if leftKnots >= rightKnots+positionSpeedGap {
+		return left, right, describe(left, right, leftKnots, rightKnots, rightMoved)
+	}
+	if rightKnots >= leftKnots+positionSpeedGap {
+		return right, left, describe(right, left, rightKnots, leftKnots, leftMoved)
 	}
 	return "", "", ""
 }
@@ -540,12 +557,12 @@ func resolveSurfaceBattle(state *State, coord string, factions map[string][]Unit
 		winner, surprised = right, left
 	}
 	hitTargets := map[string]map[string]bool{left: {}, right: {}}
-	// 战列线（T 优 / T 劣）：守方原地摆好队形、抢入的那一方只影响自己的第一轮炮战。
-	tAdvantage, tDisadvantaged, tReason := battleLineTState(state, factions, prior)
+	// 接战阵位：机动中抢到对方射界死角的一方，让对方第一轮只开一半火炮。
+	seized, crossed, positionReason := battlePositionState(state, factions)
 	halfGuns := map[string]bool{}
-	if tAdvantage != "" {
-		halfGuns[tDisadvantaged] = true
-		events = append(events, EngineEvent{Type: "t_crossing", Audience: "all", Text: fmt.Sprintf("%s 在 %s 展开战列线（%s），%s 抢入炮战即 T 劣：第一轮只有一半火炮能开火", tAdvantage, coord, tReason, tDisadvantaged)})
+	if seized != "" {
+		halfGuns[crossed] = true
+		events = append(events, EngineEvent{Type: "position_seized", Audience: "all", Text: fmt.Sprintf("%s：%s 抢到阵位（%s），%s 第一轮只有一半火炮能开火", coord, seized, positionReason, crossed)})
 	}
 	takeHalf := func(faction string) bool {
 		if halfGuns[faction] {
