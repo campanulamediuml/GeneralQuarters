@@ -8,7 +8,7 @@ import "testing"
 //
 // 这条分档的直接后果：二战能跑 35 节以上基本只有驱逐舰和日本那批 35 节级巡洋舰，
 // 所以航母、战列舰（包括依阿华 33 节、金刚级 30 节）全部是 normal，
-// 扶桑/山城 24.7 节跌进 slow（6 回合走一格）。
+// 扶桑/山城 24.7 节按 25 节取整，同样算 normal（3 回合走一格）。
 func TestMarianasSpeedClasses(t *testing.T) {
 	scenario, gameMap, catalog, err := LoadScenario("../../content", "_marianas")
 	if err != nil {
@@ -45,9 +45,7 @@ func TestMarianasSpeedClasses(t *testing.T) {
 		"大和":   "normal",
 		"陆奥":   "normal",
 		"巴尔的摩": "normal",
-		// 25 节以下：老式战列舰、护航航母、运输船
-		"扶桑":    "slow",
-		"山城":    "slow",
+		// 25 节以下：美军老式战列舰、护航航母、运输船
 		"田纳西":   "slow",
 		"卡萨布兰卡": "slow",
 	}
@@ -69,8 +67,8 @@ func TestMarianasSpeedClasses(t *testing.T) {
 		}
 	}
 
-	// 四支航母群同速：每 3 回合走一格；栗田的第一游击部队带着扶桑/山城，整队是慢速档。
-	for _, fleet := range []string{"TG1", "TG2", "TG3", "TG4"} {
+	// 五支任务群同速：扶桑/山城按 25 节算常速，栗田主力也跟着 3 回合走一格。
+	for _, fleet := range []string{"TG1", "TG2", "TG3", "TG4", "TG5"} {
 		id := firstUnitOfFleet(state, fleet)
 		if id == "" {
 			t.Fatalf("找不到舰队 %s", fleet)
@@ -78,10 +76,5 @@ func TestMarianasSpeedClasses(t *testing.T) {
 		if interval := FleetMoveInterval(state, state.Units[id]); interval != 3 {
 			t.Fatalf("%s 每 %d 回合移动一格，期望 3", fleet, interval)
 		}
-	}
-	if id := firstUnitOfFleet(state, "TG5"); id == "" {
-		t.Fatal("找不到第一游击部队")
-	} else if interval := FleetMoveInterval(state, state.Units[id]); interval != 6 {
-		t.Fatalf("第一游击部队每 %d 回合移动一格，期望 6", interval)
 	}
 }
