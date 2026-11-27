@@ -66,7 +66,7 @@ func TestAttackMovesTowardTargetAndConsumesRange(t *testing.T) {
 func TestAttackWaitsForTargetBeforeDeparture(t *testing.T) {
 	state := sandboxState(t)
 	state.Contacts["B"] = map[string]*FleetContact{}
-	setAircraftReady(&state, "b-cv-01-dive_bomber-x1")
+	setAircraftReady(&state, "attack", "b-cv-01-dive_bomber-x1")
 	ApplyAirOrder(&state, Order{Type: "LAUNCH_STRIKE", AircraftID: "b-cv-01-dive_bomber-x1"})
 	if state.Aircraft["b-cv-01-dive_bomber-x1"].Status != "attack_holding" {
 		t.Fatalf("未设目标的编队不应离场：%+v", state.Aircraft["b-cv-01-dive_bomber-x1"])

@@ -430,6 +430,18 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 			}
 		}
 		if status == "deck" || status == "ready" {
+			// 甲板上还没整备完的算子（空载、或者刚换过挂载）不立刻放飞：
+			// 它在甲板上原地整备一轮，整备完的下一回合才开始受放飞时间窗和容量限制。
+			ready := true
+			for _, aircraft := range aircraftList {
+				if !aircraftReadyToLaunch(aircraft) {
+					ready = false
+					break
+				}
+			}
+			if !ready {
+				return nil
+			}
 			// 甲板/待发算子会立刻起飞，同样受剧本的放飞时间窗限制。
 			if !state.LaunchWindowOpen() {
 				return fmt.Errorf("%s", state.launchWindowHint())
@@ -1207,9 +1219,23 @@ func ApplyAirOrder(state *State, order Order) []EngineEvent {
 		status := aircraftList[0].Status
 		configureAirTask(state, aircraftList, order)
 		if status == "deck" || status == "ready" {
-			// 甲板上的算子直接拖进任务栏就是"整备完毕、直接出击"：甲板待命本来就带着
-			// 地勤和弹药，不占机库那一轮整备。空载算子会在 configureAirTask 里按任务配好挂载。
-			return launchAirTask(state, aircraftList)
+			// 甲板上已经整备好的算子直接拖进任务栏就是"整备完毕、直接出击"。
+			// 空载（没有油弹）或者刚被任务换了挂载的算子还不能飞：在甲板上原地整备一轮。
+			launchable := true
+			for _, aircraft := range aircraftList {
+				if !aircraftReadyToLaunch(aircraft) {
+					launchable = false
+					break
+				}
+			}
+			if launchable {
+				return launchAirTask(state, aircraftList)
+			}
+			for _, aircraft := range aircraftList {
+				aircraft.Status = "service"
+				aircraft.DeckService = true
+			}
+			return []EngineEvent{{Type: "air_task_assigned", Audience: carrier.Faction, Text: fmt.Sprintf("%d个甲板算子加入%s任务并开始甲板整备", len(aircraftList), aircraftList[0].TaskKind)}}
 		}
 		for _, aircraft := range aircraftList {
 			if aircraft.Status == "service" && aircraft.DeckService {
@@ -1545,6 +1571,31 @@ func advanceAircraftService(state *State) []EngineEvent {
 	return events
 }
 
+// taskNeedsWholeGroup 判断这类任务是不是"整队一起走"：攻击和转场必须全员到齐再提升，
+// CAP／侦察／掩护是单机快反任务，谁整备好谁先走。
+func taskNeedsWholeGroup(kind string) bool {
+	return kind == string(MissionStrike) || kind == string(MissionTransfer)
+}
+
+// wholeTaskServiced 判断一个任务组是不是全员整备完毕（含没损伤、没在检修）。
+func wholeTaskServiced(state State, taskID string) bool {
+	for _, member := range taskAircraft(state, taskID) {
+		if !serviceComplete(member) || member.Damaged || member.Maintenance > 0 {
+			return false
+		}
+	}
+	return true
+}
+
+// aircraftReadyToLaunch 判断甲板/跑道上的算子能不能直接放飞：整备完了、而且真带着油弹。
+// 空载算子没有挂弹也没有副油箱，必须先在甲板整备一轮（规则书 273 行：换挂载要重新整备）。
+func aircraftReadyToLaunch(aircraft *AirUnit) bool {
+	if aircraft == nil || aircraft.Loadout == LoadoutNone {
+		return false
+	}
+	return serviceComplete(aircraft)
+}
+
 // aircraftRepairChance 是损伤算子回机库后每回合的修复概率（规则书 387 行）：美军 10%，日军 3%。
 // 具体数值在 FactionRules 里（按 doctrine 解析），这里只是给调用点一个短名字。
 func aircraftRepairChance(state State, faction string) float64 {
@@ -1583,6 +1634,16 @@ func scheduleElevators(state *State) []EngineEvent {
 		// 不能再往甲板上提升：升上去也放飞不了，只会把甲板和升降机一起堵死。
 		return aircraft.Status == "service" && !aircraft.DeckService && serviceComplete(aircraft) && aircraft.TaskKind != "" && !taskWaitsForTarget(aircraft)
 	})
+	// 攻击/转场是整队一起走的任务：只要同组还有一个成员没整备完，已经整备好的也得在机库等。
+	// 先提上去又不放飞，只会占住甲板，玩家看到的就是"编队卡在甲板上一动不动"。
+	wholeGroupLifts := taskGroups[:0]
+	for _, members := range taskGroups {
+		if taskNeedsWholeGroup(members[0].TaskKind) && !wholeTaskServiced(*state, members[0].TaskID) {
+			continue
+		}
+		wholeGroupLifts = append(wholeGroupLifts, members)
+	}
+	taskGroups = wholeGroupLifts
 	// 待发算子的提升：玩家在机库里整备好（或者干脆空载）之后拖进了甲板栏。
 	// 空载算子没有可整备的东西，可以立刻提升；有挂载的要等这一轮整备走完。
 	soloLifts := []*AirUnit{}

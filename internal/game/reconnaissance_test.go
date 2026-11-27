@@ -105,7 +105,7 @@ func TestReconWeatherFactorIsMultiplicative(t *testing.T) {
 func TestLaunchReconValidationAndProjection(t *testing.T) {
 	state := sandboxState(t)
 	reconInitial := state.Units["b-cv-04"].Card.Aircraft
-	setAircraftReady(&state, "b-cv-04-dive_bomber-x1", "air-b-11")
+	setAircraftReady(&state, "recon", "b-cv-04-dive_bomber-x1", "air-b-11")
 	valid := Order{Type: "LAUNCH_RECON", AircraftID: "b-cv-04-dive_bomber-x1", Heading: "W", SectorWidth: 60}
 	if err := ValidateAirOrder(state, "B", valid); err != nil {
 		t.Fatal(err)
@@ -151,13 +151,13 @@ func TestLaunchReconValidationAndProjection(t *testing.T) {
 
 func TestReconSectorsArePerAircraftAndEmbarkedPositionFollowsCarrier(t *testing.T) {
 	state := sandboxState(t)
-	setAircraftReady(&state, "b-cv-01-dive_bomber-x1")
+	setAircraftReady(&state, "recon", "b-cv-01-dive_bomber-x1")
 	first := Order{Type: "LAUNCH_RECON", AircraftID: "b-cv-01-dive_bomber-x1", Heading: "W", SectorWidth: 60}
 	ApplyAirOrder(&state, first)
 	firstCarrier := state.Units[state.Aircraft["b-cv-01-dive_bomber-x1"].CarrierID]
 	firstCarrier.Coord = "0308"
 	firstCarrier.Deck.Operation = ""
-	setAircraftReady(&state, "b-cv-01-torpedo_bomber-x1")
+	setAircraftReady(&state, "recon", "b-cv-01-torpedo_bomber-x1")
 	reconTaskID := state.Aircraft["b-cv-01-dive_bomber-x1"].TaskID
 	second := Order{Type: "LAUNCH_RECON", AircraftID: "b-cv-01-torpedo_bomber-x1", TaskID: reconTaskID, Heading: "W", SectorWidth: 60}
 	ApplyAirOrder(&state, second)
@@ -211,7 +211,7 @@ func TestReconSectorsArePerAircraftAndEmbarkedPositionFollowsCarrier(t *testing.
 func TestReconDetectionContactAndReturn(t *testing.T) {
 	state := sandboxState(t)
 	reconInitial := state.Units["b-cv-04"].Card.Aircraft
-	setAircraftReady(&state, "b-cv-04-dive_bomber-x1", "air-b-11")
+	setAircraftReady(&state, "recon", "b-cv-04-dive_bomber-x1", "air-b-11")
 	for _, unit := range state.Units {
 		if unit.Faction == "A" {
 			unit.Type = "BB"
@@ -292,7 +292,7 @@ func TestReconDetectionContactAndReturn(t *testing.T) {
 
 func TestReconRadiusDefaultsToAircraftLimit(t *testing.T) {
 	state := sandboxState(t)
-	setAircraftReady(&state, "b-cv-04-dive_bomber-x1", "air-b-11")
+	setAircraftReady(&state, "recon", "b-cv-04-dive_bomber-x1", "air-b-11")
 	order := Order{Type: "LAUNCH_RECON", AircraftID: "b-cv-04-dive_bomber-x1", Heading: "W", SectorWidth: 60}
 	if err := ValidateAirOrder(state, "B", order); err != nil {
 		t.Fatal(err)
@@ -315,7 +315,7 @@ func TestAttackAircraftCanLaunchSectorSearch(t *testing.T) {
 	} {
 		t.Run(test.model, func(t *testing.T) {
 			state := sandboxState(t)
-			setAircraftReady(&state, test.id)
+			setAircraftReady(&state, "recon", test.id)
 			var projected *AirUnit
 			for _, carrier := range VisibleAviation(state, "B").Carriers {
 				for index := range carrier.Aircraft {

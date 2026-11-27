@@ -611,7 +611,8 @@ function hangarCounterHint(aircraft: AirUnit) {
   if (aircraft.lift_requested) return '等待升降机提升'
   // 机场没有升降机：挂弹之后只能走"滑行到跑道"那条自动流程。
   if (airfieldMode.value) {
-    return aircraft.loadout ? '已挂载 · 拖入任务栏安排出击' : '选挂载挂弹 · 或直接拖入任务栏'
+    // 岸基提前挂好弹的话，拖进任务栏可以直接滑行（省掉机库整备那一回合）。
+    return aircraft.loadout ? '已挂载 · 拖入任务栏可直接滑行' : '选挂载挂弹 · 或直接拖入任务栏'
   }
   // 机库里没有挂载就是没开工：选一套挂载才开始整备（空载不算整备）。
   return aircraft.loadout ? '已整备 · 拖到甲板栏待发' : '选挂载开始整备 · 或直接拖入任务栏'
@@ -620,11 +621,7 @@ function hangarCounterHint(aircraft: AirUnit) {
 // 机库里的算子拖到甲板栏：只是排队提升，真正的提升动作在回合结束时由升降机执行。
 function liftToDeck() {
   if (refuseLocked()) return
-  if (airfieldMode.value) {
-    endDrag()
-    selectionHint.value = '机场没有升降机：岸基算子直接拖进任务栏，或者拖回机库等下一轮滑行'
-    return
-  }
+  // 岸基没有升降机：同一栏就是"滑行到跑道"，不占跑道起降名额，也没有甲板容量。
   const ids = [...(draggingIDs.value.length ? draggingIDs.value : selectedIDs.value)]
   endDrag()
   if (!ids.length) {
@@ -634,7 +631,7 @@ function liftToDeck() {
   const inHangar = new Set(aircraftAt('hangar').map((item) => item.id))
   const targets = ids.filter((id) => inHangar.has(id))
   if (!targets.length) {
-    selectionHint.value = '选中的算子已经在甲板上，拖回机库请用甲板栏的"取消任务"'
+    selectionHint.value = airfieldMode.value ? '选中的算子已经在跑道上了' : '选中的算子已经在甲板上，拖回机库请用甲板栏的"取消任务"'
     return
   }
   selectionHint.value = ''
@@ -832,7 +829,7 @@ function operationName(carrier: CarrierAirStatus) {
               <option v-for="option in hangarLoadoutOptions(stack.aircraft)" :key="option" :value="option">{{ loadoutLabels[option] || option }}</option>
             </select>
           </div>
-          <button v-if="selectedHangarIDs.length && !airfieldMode" class="lift-deck-button" :disabled="busy || locked" title="把选中的机库算子提升到甲板；整备完的可以直接上，空载的上去再整备" @click.stop="liftToDeck">▲ 提升到甲板</button>
+          <button v-if="selectedHangarIDs.length" class="lift-deck-button" :disabled="busy || locked" :title="airfieldMode ? '把选中的机库算子滑行到跑道；岸基没有升降机，滑行不占跑道起降名额' : '把选中的机库算子提升到甲板；整备完的可以直接上，空载的上去再整备'" @click.stop="liftToDeck">{{ airfieldMode ? '▲ 滑行到跑道' : '▲ 提升到甲板' }}</button>
           <p v-if="!aircraftAt('hangar').length" class="empty-hangar">机库空置</p>
         </div>
       </section>

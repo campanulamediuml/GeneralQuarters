@@ -2,14 +2,31 @@ package game
 
 import "testing"
 
-func setAircraftReady(state *State, ids ...string) {
+// setAircraftReady 把算子摆成"甲板待命、已经整备好"：状态 deck/ready、整备进度写满，
+// 并按接下来要执行的任务配一套挂载。没有油弹的甲板算子按规则不能直接出击，
+// 夹具里必须把这三样都给齐，否则测的就不是"甲板待发"了。
+func setAircraftReady(state *State, taskKind string, ids ...string) {
 	for _, id := range ids {
-		aircraft := state.Aircraft[id]
-		aircraft.Status = "deck"
-		if aircraft.Seaplane {
-			aircraft.Status = "ready"
-		}
+		setAircraftReadyFor(state, id, taskKind)
 	}
+}
+
+func setAircraftReadyFor(state *State, id, taskKind string) {
+	aircraft := state.Aircraft[id]
+	if aircraft == nil {
+		return
+	}
+	aircraft.Status = "deck"
+	if aircraft.Seaplane {
+		aircraft.Status = "ready"
+	}
+	if taskKind == "" {
+		taskKind = "cap"
+	}
+	applyLoadoutChoice(aircraft, DefaultLoadoutFor(aircraft.Kind, aircraft.Seaplane, aircraft.AntiGround, aircraft.AntiShip, taskKind, StrikeTargetShip, aircraft.TorpedoCapable))
+	aircraft.LoadoutManual = true
+	aircraft.ServiceTurns = 1
+	aircraft.Armed = aircraftReady(aircraft)
 }
 
 func TestAviationProjectionIncludesIndependentShipDecks(t *testing.T) {
@@ -65,7 +82,7 @@ func TestAviationProjectionIncludesIndependentShipDecks(t *testing.T) {
 func TestCAPLaunchPriorityAndElevatorRecovery(t *testing.T) {
 	state := sandboxState(t)
 	initialCarrierAircraft := state.Units["b-cv-01"].Card.Aircraft
-	setAircraftReady(&state, "b-cv-01-fighter-x1", "b-cv-01-fighter-x2")
+	setAircraftReady(&state, "cap", "b-cv-01-fighter-x1", "b-cv-01-fighter-x2")
 	for _, id := range []string{"b-cv-01-fighter-x1", "b-cv-01-fighter-x2"} {
 		order := Order{Type: "LAUNCH_CAP", AircraftID: id}
 		if err := ValidateAirOrder(state, "B", order); err != nil {
@@ -112,7 +129,7 @@ func TestCAPLaunchPriorityAndElevatorRecovery(t *testing.T) {
 
 func TestAviationRejectsNonFighterAndDeckLaunchOverflow(t *testing.T) {
 	state := sandboxState(t)
-	setAircraftReady(&state, "b-cv-01-fighter-x1", "b-cv-01-fighter-x2", "b-cv-01-dive_bomber-x1")
+	setAircraftReady(&state, "cap", "b-cv-01-fighter-x1", "b-cv-01-fighter-x2", "b-cv-01-dive_bomber-x1")
 	if err := ValidateAirOrder(state, "B", Order{Type: "LAUNCH_CAP", AircraftID: "b-cv-01-dive_bomber-x1"}); err == nil {
 		t.Fatal("非战斗机被允许执行CAP")
 	}
@@ -140,7 +157,7 @@ func TestDistanceReferenceProjection(t *testing.T) {
 	if reference == nil || reference.Origin != "0202" || reference.MaxDistance != 8 || len(reference.Cells) != 59 {
 		t.Fatalf("舰队距离参考投影错误：%+v", reference)
 	}
-	setAircraftReady(&state, "b-cv-01-fighter-x1")
+	setAircraftReady(&state, "cap", "b-cv-01-fighter-x1")
 	ApplyAirOrder(&state, Order{Type: "LAUNCH_CAP", AircraftID: "b-cv-01-fighter-x1"})
 	tasks := VisibleAviation(state, "B").Tasks
 	if len(tasks) != 1 || tasks[0].CurrentCoord != "0208" || tasks[0].DistanceReference == nil {
@@ -381,14 +398,14 @@ func TestReturningAssignedAircraftCancelsOrQueuesDescent(t *testing.T) {
 	if aircraft.Status != "hangar" || aircraft.TaskID != "" || aircraft.TaskKind != "" || aircraft.Priority != 0 {
 		t.Fatalf("机库整备任务未取消：%+v", aircraft)
 	}
-	setAircraftReady(&state, "b-cv-01-fighter-x2")
+	setAircraftReady(&state, "cap", "b-cv-01-fighter-x2")
 	ApplyAirOrder(&state, Order{Type: "LAUNCH_CAP", AircraftID: "b-cv-01-fighter-x2"})
-	setAircraftReady(&state, "b-cv-01-torpedo_bomber-x1")
+	setAircraftReady(&state, "attack", "b-cv-01-torpedo_bomber-x1")
 	ApplyAirOrder(&state, Order{Type: "LAUNCH_STRIKE", AircraftID: "b-cv-01-torpedo_bomber-x1"})
 	// 甲板本回合在做起飞作业，也要允许把甲板上的算子收回机库：
 	// 起飞和下降走的是不同机构（甲板 vs 升降机），以前一刀切拒绝，
 	// 表现就是"甲板上有飞机却拖不回机库"。
-	setAircraftReady(&state, "b-cv-01-fighter-x1")
+	setAircraftReady(&state, "cap", "b-cv-01-fighter-x1")
 	if err := ValidateAirOrder(state, "B", returnOrder); err != nil {
 		t.Fatalf("甲板起飞作业中应仍允许安排下降：%v", err)
 	}
@@ -421,7 +438,7 @@ func TestRepeatedJoinOfCurrentTaskIsIdempotent(t *testing.T) {
 
 func TestReconGroupsAcceptDifferentAircraftAndRepeatedJoins(t *testing.T) {
 	state := sandboxState(t)
-	setAircraftReady(&state, "b-cv-01-dive_bomber-x1", "b-cv-01-torpedo_bomber-x1", "b-cv-03-torpedo_bomber-x1", "b-cv-04-dive_bomber-x1")
+	setAircraftReady(&state, "recon", "b-cv-01-dive_bomber-x1", "b-cv-01-torpedo_bomber-x1", "b-cv-03-torpedo_bomber-x1", "b-cv-04-dive_bomber-x1")
 	first := Order{Type: "LAUNCH_RECON", AircraftID: "b-cv-01-dive_bomber-x1", Heading: "W", SectorWidth: 60}
 	if err := ValidateAirOrder(state, "B", first); err != nil {
 		t.Fatal(err)
@@ -481,7 +498,7 @@ func TestReconGroupsAcceptDifferentAircraftAndRepeatedJoins(t *testing.T) {
 
 func TestReconGroupsAreScopedToFleet(t *testing.T) {
 	state := sandboxState(t)
-	setAircraftReady(&state, "air-b-14", "air-b-15", "air-b-16", "b-cv-01-dive_bomber-x1")
+	setAircraftReady(&state, "recon", "air-b-14", "air-b-15", "air-b-16", "b-cv-01-dive_bomber-x1")
 	for _, id := range []string{"air-b-14", "air-b-15"} {
 		order := Order{Type: "LAUNCH_RECON", AircraftID: id, Heading: "W", SectorWidth: 60}
 		if err := ValidateAirOrder(state, "B", order); err != nil {
@@ -511,7 +528,7 @@ func TestReconGroupsAreScopedToFleet(t *testing.T) {
 
 func TestRecoverCAPAcrossCarriers(t *testing.T) {
 	state := sandboxState(t)
-	setAircraftReady(&state, "b-cv-02-fighter-x1", "b-cv-03-fighter-x1")
+	setAircraftReady(&state, "cap", "b-cv-02-fighter-x1", "b-cv-03-fighter-x1")
 	for _, id := range []string{"b-cv-02-fighter-x1", "b-cv-03-fighter-x1"} {
 		ApplyAirOrder(&state, Order{Type: "LAUNCH_CAP", AircraftID: id})
 	}

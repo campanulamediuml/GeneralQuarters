@@ -1170,6 +1170,23 @@ func ValidateGroundAirOrder(state State, order Order) error {
 			}
 		}
 		return nil
+	case "LIFT_TO_DECK":
+		// 岸基没有升降机：这一栏就是"滑行到跑道"。跑道作业次数只算起降，
+		// 整备和滑行不占名额（规则书 258 行），所以这里不设容量限制。
+		for _, aircraft := range list {
+			switch aircraft.Status {
+			case "hangar":
+			case "service":
+				return fmt.Errorf("%s还在机库整备，整备完成后会自动滑行到跑道", aircraft.Model)
+			case "deck":
+				return fmt.Errorf("%s已经在滑行", aircraft.Model)
+			case "ready":
+				return fmt.Errorf("%s已经在跑道上", aircraft.Model)
+			default:
+				return fmt.Errorf("%s当前状态（%s）不能滑行到跑道", aircraft.Model, groundStatusLabel(aircraft.Status))
+			}
+		}
+		return nil
 	case "RETURN_TO_HANGAR":
 		for _, aircraft := range list {
 			if aircraft.Status == "cap" || aircraft.Status == "recon" || aircraft.Status == "attack" || aircraft.Status == "attack_holding" {
@@ -1373,7 +1390,13 @@ func ApplyGroundAirOrder(state *State, order Order) []EngineEvent {
 			// 按任务换挂载：对舰优先鱼雷、对地挂炸弹（规则书 43–63 行）。
 			applyGroundLoadout(*state, aircraft)
 			if aircraft.Status == "hangar" {
-				aircraft.Status = "service"
+				// 机库里已经挂好弹的算子不用再走一遍整备：直接滑行到跑道，少一回合。
+				// 岸基没有升降机，"提前整备好"省的就是这一回合。
+				if aircraft.LoadoutManual && aircraft.Loadout != LoadoutNone {
+					aircraft.Status = "deck"
+				} else {
+					aircraft.Status = "service"
+				}
 			}
 			if aircraft.Status == "ready" && !((kind == MissionStrike || kind == MissionTransfer) && aircraft.TargetCoord == "") {
 				if !state.LaunchWindowOpen() {
@@ -1441,6 +1464,12 @@ func ApplyGroundAirOrder(state *State, order Order) []EngineEvent {
 			aircraft.Disperse = order.Disperse
 		}
 		return []EngineEvent{{Type: "strike_dispersion_set", Audience: airfield.Faction, Text: "攻击编队改为" + mode}}
+	case "LIFT_TO_DECK":
+		// 岸基版"拖进甲板栏"：机库里的算子手动滑行到跑道（下一步跑道上待命）。
+		for _, aircraft := range list {
+			aircraft.Status = "deck"
+		}
+		return []EngineEvent{{Type: "airfield_taxi", Audience: airfield.Faction, Text: fmt.Sprintf("%d个岸基算子开始滑行到%s跑道", len(list), airfield.Name)}}
 	case "RETURN_TO_HANGAR":
 		for _, aircraft := range list {
 			aircraft.Status = "hangar"
