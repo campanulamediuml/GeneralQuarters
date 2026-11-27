@@ -173,39 +173,66 @@ function reconAircraftAt(coord: string) {
   return reconAirByCoord.value.get(coord) || []
 }
 
-// CAP：掩护 = 巡逻点/前出点及周围 1 hex（共 7 格），但巡逻范围不绘制。
-// 同样一格只画一面 CAP 牌子：以前一个算子一张牌，一队 10 架 CAP 就横着一排 10 个牌子，
-// 把海图盖住一大片。现在按格子聚合成一面牌，牌上写"CAP ×10"，具体架数和状态放在 title 里。
-type CapBadge = { coord: string; total: number; returning: number; forward: number; models: string[] }
+// CAP / 掩护：巡逻点/前出点及周围 1 hex（共 7 格），但巡逻范围不绘制。
+// 同样一格只画一面牌：以前一个算子一张牌，一队 10 架 CAP 就横着一排 10 个牌子，
+// 把海图盖住一大片。现在按"阵营 + 格子"聚合，牌上写"CAP ×10"或"掩护 ×4"，
+// 具体机型和状态放在 title 里；观战时双方各一面，不会把两支舰队的 CAP 加成一个数。
+type CapBadge = {
+  key: string
+  coord: string
+  faction: string
+  total: number
+  returning: number
+  forward: number
+  cap: number
+  cover: number
+  models: string[]
+}
 const capBadges = computed(() => {
   const badges = new Map<string, CapBadge>()
   for (const task of props.airTasks) {
-    if (task.kind !== 'cap') continue
+    if (task.kind !== 'cap' && task.kind !== 'cover') continue
+    const faction = (task.faction || props.playerFaction).toLowerCase()
     for (const aircraft of task.aircraft) {
-      if (!['cap', 'attack', 'recon'].includes(aircraft.status)) continue
+      if (!['cap', 'cover', 'attack', 'recon'].includes(aircraft.status)) continue
       const coord = aircraft.forward_coord || aircraft.coord || ''
       if (!coord) continue
-      const badge = badges.get(coord) || { coord, total: 0, returning: 0, forward: 0, models: [] }
+      const key = faction + ':' + coord
+      const badge = badges.get(key) || { key, coord, faction, total: 0, returning: 0, forward: 0, cap: 0, cover: 0, models: [] }
       badge.total += 1
       if (aircraft.returning) badge.returning += 1
       if (aircraft.forward_coord) badge.forward += 1
+      if (task.kind === 'cover') badge.cover += 1
+      else badge.cap += 1
       if (!badge.models.includes(aircraft.model)) badge.models.push(aircraft.model)
-      badges.set(coord, badge)
+      badges.set(key, badge)
     }
   }
   return badges
 })
-function capBadgeAt(coord: string) {
-  return capBadges.value.get(coord)
-}
-// 牌上只写状态和架数：全员返航就写"返航"，有前出就写"拦截"，否则"CAP"。
+// 同一格有双方巡逻时并排摆两面牌：牌的宽度 50，间距 54 刚好不叠。
+// 缩放很低时牌子在屏幕上只有几个像素：按当前缩放补一个放大系数，最高 2.5 倍。
+// 高缩放时保持 1，不会在正常视角下变成一块挡视线的色带。
+const capBadgeScale = computed(() => Math.min(2.5, Math.max(1, 2.5 / Math.max(1, zoom.value * 0.6))))
+const capBadgeList = computed(() => {
+  const list = [...capBadges.value.values()].sort((left, right) => (left.coord === right.coord ? left.faction.localeCompare(right.faction) : left.coord.localeCompare(right.coord)))
+  return list.map((badge) => {
+    const same = list.filter((item) => item.coord === badge.coord)
+    const point = center(badge.coord)
+    const slot = same.findIndex((item) => item.key === badge.key)
+    return { ...badge, x: point.x + (slot - (same.length - 1) / 2) * 62, y: point.y - 40 }
+  })
+})
+// 牌上只写状态和架数：全员返航就写"返航"，有前出就写"拦截"，纯掩护编队写"掩护"，否则"CAP"。
 function capBadgeLabel(badge: CapBadge) {
-  const state = badge.forward > 0 ? '拦截' : badge.returning === badge.total ? '返航' : 'CAP'
-  return `${state} ×${badge.total}`
+  const state = badge.forward > 0 ? '拦截' : badge.returning === badge.total ? '返航' : badge.cover > badge.cap ? '掩护' : 'CAP'
+  return state + ' ×' + badge.total
 }
 function capBadgeTitle(badge: CapBadge) {
-  const detail = [badge.forward ? `前出拦截 ${badge.forward}` : '', badge.returning ? `返航 ${badge.returning}` : ''].filter(Boolean).join(' · ')
-  return `${badge.models.join(' / ')} · CAP ${badge.total} 个算子${detail ? `（${detail}）` : ''} · ${badge.coord}`
+  const detail = [badge.forward ? '前出拦截 ' + badge.forward : '', badge.returning ? '返航 ' + badge.returning : ''].filter(Boolean).join(' · ')
+  const side = props.spectate ? (badge.faction === 'b' ? '日军' : '美军') + ' · ' : ''
+  const kind = badge.cover > badge.cap ? '掩护' : 'CAP'
+  return side + badge.models.join(' / ') + ' · ' + kind + ' ' + badge.total + ' 个算子' + (detail ? '（' + detail + '）' : '') + ' · ' + badge.coord
 }
 
 function reconCurrentAircraftAt(coord: string) {
@@ -635,7 +662,6 @@ const reconCurrentAirByCoord = computed(() => {
 const flightTaskByCoord = computed(() => groupByCoord(flightTasks.value, (task) => task.current_coord || ''))
 const flightTaskCoords = computed(() => [...flightTaskByCoord.value.keys()])
 
-const capCoords = computed(() => [...capBadges.value.keys()])
 
 const groundFlightByCoord = computed(() => groupByCoord(
   groundAirTaskTasks.value.filter((task) => task.airborne_count > 0 && (task.kind === 'attack' || task.kind === 'transfer')),
@@ -1077,19 +1103,19 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         <title>{{ flightModels(task) }} · {{ flightLabel(task) }} · {{ task.airborne_count }}/{{ task.aircraft_ids.length }} 已升空 · 当前 {{ task.current_coord }} · 目标 {{ task.target_coord || '未设置' }} · 剩余航程 {{ flightRange(task) }}</title>
       </g>
     </g>
-    <g v-for="coord in capCoords" :key="`cap-${coord}`">
+    <g v-for="badge in capBadgeList" :key="`cap-${badge.key}`">
       <g
-        v-if="capBadgeAt(coord)"
         class="map-cap-aircraft"
-        :class="{ returning: capBadgeAt(coord)!.returning === capBadgeAt(coord)!.total, forward: capBadgeAt(coord)!.forward > 0 }"
-        :data-cap-coord="coord"
-        :data-cap-count="capBadgeAt(coord)!.total"
-        :transform="`translate(${center(coord).x}, ${center(coord).y - 34})`"
+        :class="[spectate && badge.faction ? `faction-${badge.faction}` : '', { returning: badge.returning === badge.total, forward: badge.forward > 0 }]"
+        :data-cap-coord="badge.coord"
+        :data-cap-faction="badge.faction"
+        :data-cap-count="badge.total"
+        :transform="`translate(${badge.x}, ${badge.y}) scale(${capBadgeScale})`"
       >
-        <rect x="-25" y="-8" width="50" height="16" rx="3" />
-        <path class="cap-symbol" :d="aircraftSilhouette('fighter')" transform="translate(-21 -5) scale(.23)" />
-        <text x="9" y="2">{{ capBadgeLabel(capBadgeAt(coord)!) }}</text>
-        <title>{{ capBadgeTitle(capBadgeAt(coord)!) }}</title>
+        <rect x="-29" y="-10" width="58" height="20" rx="3" />
+        <path class="cap-symbol" :d="aircraftSilhouette('fighter')" transform="translate(-24 -7) scale(.26)" />
+        <text x="11" y="3">{{ capBadgeLabel(badge) }}</text>
+        <title>{{ capBadgeTitle(badge) }}</title>
       </g>
     </g>
     <g v-for="coord in airfieldCoords" :key="`airfield-${coord}`">
@@ -1132,9 +1158,9 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         v-for="(task, index) in groundPatrolAt(coord)"
         :key="`ground-patrol-${task.id}`"
         class="map-ground-patrol"
-        :class="task.kind"
+        :class="[task.kind, spectate && task.faction ? `faction-${task.faction.toLowerCase()}` : '']"
         :data-ground-task-id="task.id"
-        :transform="`translate(${center(coord).x + (index - 1) * 16}, ${center(coord).y - 34})`"
+        :transform="`translate(${center(coord).x + (index - 1) * 16 * capBadgeScale}, ${center(coord).y - 34}) scale(${capBadgeScale})`"
       >
         <rect x="-14" y="-8" width="28" height="16" rx="3" />
         <path class="cap-symbol" :d="aircraftSilhouette('fighter')" transform="translate(-7 -5) scale(.23)" />

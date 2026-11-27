@@ -111,7 +111,79 @@ function selectAirTaskForAirfield(airfield: AirfieldContact) {
 }
 
 const detailAirfield = ref<AirfieldContact | null>(null)
+// 机场牌子的详情要能看到"现在停着哪些飞机"：airfields 只给到驻机数，
+// 真正的算子列表在 ground_air 里按 unit_id 对应，这里按机型 + 状态归并。
+const groundAir = computed(() => state.value?.ground_air || [])
+const detailAirfieldStatus = computed(() => {
+  const airfield = detailAirfield.value
+  if (!airfield) return null
+  return groundAir.value.find((entry) => entry.unit_id === airfield.id) || null
+})
+const airfieldAirGroups = computed(() => {
+  const entry = detailAirfieldStatus.value
+  if (!entry) return []
+  const groups = new Map<string, { model: string; status: string; count: number }>()
+  for (const aircraft of entry.aircraft || []) {
+    const status = aircraft.status || ""
+    const key = aircraft.model + "|" + status
+    const group = groups.get(key) || { model: aircraft.model, status, count: 0 }
+    group.count += 1
+    groups.set(key, group)
+  }
+  return [...groups.values()].sort((left, right) => left.model.localeCompare(right.model) || left.status.localeCompare(right.status))
+})
+function groundStatusLabel(status: string) {
+  const labels: Record<string, string> = { hangar: "待命", ready: "整备完毕", service: "整备中", launching: "起飞中", attack: "出击中", cap: "CAP", recon: "侦察", cover: "掩护", returning: "返航", recovery: "着陆" }
+  return labels[status] || status || "—"
+}
 const selectedAirTask = computed(() => tasks.value.find((task) => task.id === selectedAirTaskID.value) || groundTasks.value.find((task) => task.id === selectedAirTaskID.value))
+// 舰队详情里补一行“空中掩护”：地图上那面 CAP 牌子在整张马里亚纳缩到 100% 时只有 7px 宽，
+// 看不清字；面板里给出准确的 CAP／掩护架数。
+// 船牌下面的空白：航母／战列舰的机库到底装了什么，就从这里补上。
+// 观战视图的 aviation.carriers 已经把每艘带机库的船（CV/CVL/CVE/BB/BC/CA）连同
+// 全部舰载机／水上飞机算子和甲板、机库占用一起下发。
+const selectedShipAir = computed(() => {
+  const unit = selectedUnit.value
+  if (!unit) return null
+  const entry = (state.value?.aviation?.carriers || []).find((item) => item.unit_id === unit.id)
+  if (!entry) return null
+  const groups = new Map<string, { model: string; status: string; count: number }>()
+  for (const aircraft of entry.aircraft || []) {
+    const status = aircraft.status || ""
+    const key = aircraft.model + "|" + status
+    const group = groups.get(key) || { model: aircraft.model, status, count: 0 }
+    group.count += 1
+    groups.set(key, group)
+  }
+  return {
+    deckUsed: entry.deck_used ?? 0,
+    deckCapacity: entry.deck_capacity ?? 0,
+    hangarUsed: entry.hangar_used ?? 0,
+    hangarCapacity: entry.hangar_capacity ?? 0,
+    groups: [...groups.values()].sort((left, right) => left.model.localeCompare(right.model) || left.status.localeCompare(right.status)),
+  }
+})
+const selectedFleetAirCover = computed(() => {
+  const fleet = selectedFleet.value
+  if (!fleet) return null
+  let cap = 0
+  let cover = 0
+  let returning = 0
+  for (const task of tasks.value) {
+    if (task.kind !== "cap" && task.kind !== "cover") continue
+    if (task.faction && task.faction !== fleet.faction) continue
+    for (const aircraft of task.aircraft || []) {
+      if (!aircraft.coord || aircraft.coord !== fleet.coord) continue
+      const status = String(aircraft.status)
+      if (status !== "cap" && status !== "cover") continue
+      if (task.kind === "cover") cover += 1
+      else cap += 1
+      if (aircraft.returning) returning += 1
+    }
+  }
+  if (!cap && !cover) return null
+  return { cap, cover, returning }
+})
 const selectedReconSector = computed(() => selectedAirTask.value?.recon_sectors?.find((sector) => sector.aircraft_id === selectedAirTaskID.value))
 // 距离环：和玩家页同一套口径，原点取侦察扇面 / 空中编队 / 选中舰队。
 // 早期版本（独立的 watch.html）带距离环，并进 SPA 后漏了这个属性，观战页就量不了距离。
@@ -261,8 +333,16 @@ onUnmounted(() => {
               <div><dt>坐标</dt><dd>{{ detailAirfield.coord }}</dd></div>
               <div><dt>生命</dt><dd>{{ detailAirfield.strength }} / {{ detailAirfield.max_strength }}</dd></div>
               <div><dt>岸炮</dt><dd>{{ detailAirfield.coastal }}</dd></div>
-              <div><dt>驻机</dt><dd>{{ detailAirfield.hangar_used ?? 0 }} / {{ detailAirfield.hangar_capacity ?? '—' }}</dd></div>
+              <div><dt>驻机</dt><dd>{{ detailAirfield.hangar_used ?? 0 }} 架</dd></div>
             </dl>
+            <div v-if="detailAirfieldStatus" class="watch-airfield-air">
+              <p v-if="!airfieldAirGroups.length" class="watch-empty">机场上没有飞机</p>
+              <ul v-else>
+                <li v-for="group in airfieldAirGroups" :key="group.model + group.status">
+                  <span>{{ group.model }}</span><b>×{{ group.count }}</b><small>{{ groundStatusLabel(group.status) }}</small>
+                </li>
+              </ul>
+            </div>
           </template>
 
           <template v-else-if="selectedAirTask">
@@ -289,6 +369,7 @@ onUnmounted(() => {
               <div><dt>坐标</dt><dd>{{ selectedFleet?.coord || '—' }}</dd></div>
               <div><dt>舰船</dt><dd>{{ fleetShips.length }}</dd></div>
               <div><dt>情报</dt><dd>{{ selectedFleet?.contact_level ? selectedFleet?.contact_level + ' 级' : '完整' }}</dd></div>
+              <div v-if="selectedFleetAirCover"><dt>空中掩护</dt><dd>CAP {{ selectedFleetAirCover.cap }} · 掩护 {{ selectedFleetAirCover.cover }}<template v-if="selectedFleetAirCover.returning">（返航 {{ selectedFleetAirCover.returning }}）</template></dd></div>
             </dl>
             <div class="watch-fleet-grid">
               <button
@@ -304,6 +385,20 @@ onUnmounted(() => {
               </button>
             </div>
             <ShipCard v-if="selectedUnit" :unit="selectedUnit" />
+            <section v-if="selectedShipAir" class="watch-ship-air">
+              <header>
+                <span>舰载机 / 机库</span>
+                <small>
+                  <template v-if="selectedUnit?.type === 'CV' || selectedUnit?.type === 'CVL' || selectedUnit?.type === 'CVE'">甲板 {{ selectedShipAir.deckUsed }}/{{ selectedShipAir.deckCapacity }} · </template>机库 {{ selectedShipAir.hangarUsed }}/{{ selectedShipAir.hangarCapacity }}
+                </small>
+              </header>
+              <p v-if="!selectedShipAir.groups.length" class="watch-empty">舰上没有飞机</p>
+              <ul v-else>
+                <li v-for="group in selectedShipAir.groups" :key="group.model + group.status">
+                  <span>{{ group.model }}</span><b>×{{ group.count }}</b><small>{{ groundStatusLabel(group.status) }}</small>
+                </li>
+              </ul>
+            </section>
           </template>
         </aside>
       </section>
@@ -430,6 +525,29 @@ onUnmounted(() => {
 .watch-ship.selected { border-color: #58b6c9; background: rgba(88,182,201,.1); }
 .watch-ship small { font-size: 9px; line-height: 1.2; opacity: .75; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .watch-air-strip { display: flex; flex-wrap: wrap; gap: 8px; }
+.watch-ship-air { margin-top: 8px; padding: 8px; border: 1px solid rgba(255,255,255,.08); border-radius: 8px; background: rgba(255,255,255,.02); }
+.watch-ship-air header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.watch-ship-air header span { font: 600 10px 'Rajdhani', sans-serif; letter-spacing: .12em; color: #9fc4be; }
+.watch-ship-air header small { font-size: 10px; opacity: .6; }
+.watch-ship-air ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.watch-ship-air li { display: flex; align-items: baseline; gap: 6px; padding: 3px 6px; border-radius: 5px; background: rgba(255,255,255,.04); font-size: 11px; }
+.watch-ship-air li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.watch-ship-air li b { font: 600 12px 'Rajdhani', sans-serif; color: #9fd7ea; }
+.watch-ship-air li small { opacity: .6; font-size: 10px; }
+/* 观战面板窄：把共用船牌的内边距压紧，省掉大段空白 */
+.watch-detail :deep(.ship-card) { margin-top: 10px; }
+.watch-detail :deep(.ship-card-head) { padding: 8px 10px; }
+.watch-detail :deep(.ship-card-head h3) { font-size: 15px; }
+.watch-detail :deep(.ship-identity) { padding: 8px 10px; }
+.watch-detail :deep(.ship-stats) { padding: 2px 10px; }
+.watch-detail :deep(.ship-stats>div) { padding: 5px 0; }
+.watch-detail :deep(.carrier-systems) { padding: 6px 10px; }
+.watch-detail :deep(.ship-card>footer) { padding: 6px 10px; }
+.watch-airfield-air ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.watch-airfield-air li { display: flex; align-items: baseline; gap: 6px; padding: 3px 6px; border-radius: 5px; background: rgba(255,255,255,.04); font-size: 11px; }
+.watch-airfield-air li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.watch-airfield-air li b { font: 600 12px 'Rajdhani', sans-serif; color: #9fd7ea; }
+.watch-airfield-air li small { opacity: .6; font-size: 10px; }
 .watch-side { min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 2px; }
 .watch-card { border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 10px 12px; background: rgba(255,255,255,.02); }
 .watch-card h2 { margin: 0 0 8px; font-size: 13px; letter-spacing: .08em; color: #9fc4be; }
