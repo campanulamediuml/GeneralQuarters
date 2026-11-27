@@ -3,7 +3,7 @@
  "faction": "B",
  "type": "DD",
  "name": "夕暮",
- "picture": "misc/image/ship/shiratsuyu.png",
+ "picture": "misc/image/ship/library/JAP_DE1_ship.png",
  "strength": 1,
  "card": {
   "damage_control": 1,

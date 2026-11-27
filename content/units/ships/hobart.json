@@ -3,7 +3,7 @@
  "faction": "A",
  "type": "CL",
  "name": "霍巴特",
- "picture": "misc/image/ship/leander.png",
+ "picture": "misc/image/ship/library/USA_CL2_ship.png",
  "strength": 1,
  "card": {
   "damage_control": 2,

@@ -3,7 +3,7 @@
  "faction": "A",
  "type": "CV",
  "name": "列克星敦",
- "picture": "misc/image/ship/lexington.png",
+ "picture": "misc/image/ship/library/USA_CV1_ship.png",
  "strength": 4,
  "card": {
   "damage_control": 3,

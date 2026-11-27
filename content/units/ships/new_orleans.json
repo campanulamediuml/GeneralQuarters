@@ -3,7 +3,7 @@
  "faction": "A",
  "type": "CA",
  "name": "新奥尔良",
- "picture": "misc/image/ship/new_orleans.png",
+ "picture": "misc/image/ship/library/USA_CA4_ship.png",
  "strength": 3,
  "card": {
   "damage_control": 3,

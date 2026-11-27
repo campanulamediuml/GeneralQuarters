@@ -57,13 +57,20 @@ const LEGACY_BY_NAME: Record<string, string> = {
   夕暮: 'misc/image/ship/shiratsuyu.png',
 }
 
+// 素材库里的原始文件名带空格（JAP_CV1 Akagi_ship.png 这类），URL 里必须逐段转义，
+// 否则 CSS url() 和 <img src> 都会截断到空格处。只转义本机路径，外链原样返回（可能自带 query）。
+function encodeContentPath(path: string): string {
+  return path.split('/').map((segment) => encodeURIComponent(segment)).join('/')
+}
+
 // picture 既有可能是 content 相对路径，也可能已经是站内绝对 URL。
 // 舰船和航空算子共用同一套解析规则：misc/image/... → /content/misc/image/...。
 export function contentImageURL(picture?: string): string | undefined {
   const path = (picture || '').trim()
   if (!path) return undefined
-  if (path.startsWith('/') || path.startsWith('http')) return path
-  return '/content/' + path
+  if (path.startsWith('http://') || path.startsWith('https://')) return path
+  if (path.startsWith('/')) return encodeContentPath(path)
+  return '/content/' + encodeContentPath(path)
 }
 
 export function shipMaskURL(picture?: string, name?: string): string | undefined {

@@ -3,7 +3,7 @@
  "faction": "B",
  "type": "CVL",
  "name": "祥凤",
- "picture": "misc/image/ship/jap_cvl1.png",
+ "picture": "misc/image/ship/library/JAP_CVL1_ship.png",
  "strength": 2,
  "card": {
   "damage_control": 2,

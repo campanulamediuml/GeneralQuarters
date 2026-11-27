@@ -3,7 +3,7 @@
  "faction": "A",
  "type": "CV",
  "name": "约克城",
- "picture": "misc/image/ship/yorktown.png",
+ "picture": "misc/image/ship/library/USA_CV3_ship.png",
  "strength": 3,
  "card": {
   "damage_control": 3,

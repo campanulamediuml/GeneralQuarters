@@ -85,7 +85,7 @@ const modelTitle = computed(() => skillBadge.value ? `${props.aircraft.model} ·
         aria-hidden="true"
         :data-aircraft-kind="aircraft.kind"
         :data-aircraft-picture="aircraft.picture"
-        :style="{ '--aircraft-picture': `url(${pictureURL})` }"
+        :style="{ '--aircraft-picture': `url('${pictureURL}')` }"
       />
       <svg v-else class="aircraft-symbol" viewBox="0 0 62 44" aria-hidden="true" :data-aircraft-kind="aircraft.kind">
         <path :d="silhouette" />

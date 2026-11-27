@@ -3,7 +3,7 @@
  "faction": "B",
  "type": "CA",
  "name": "加古",
- "picture": "misc/image/ship/furutaka.png",
+ "picture": "misc/image/ship/library/JAP_CA1_ship.png",
  "strength": 3,
  "card": {
   "damage_control": 2,

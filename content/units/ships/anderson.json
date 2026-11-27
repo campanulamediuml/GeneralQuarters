@@ -3,7 +3,7 @@
  "faction": "A",
  "type": "DD",
  "name": "安德森",
- "picture": "misc/image/ship/farragut.png",
+ "picture": "misc/image/ship/library/USA_DD1_ship.png",
  "strength": 1,
  "card": {
   "damage_control": 1,

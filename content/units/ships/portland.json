@@ -3,7 +3,7 @@
  "faction": "A",
  "type": "CA",
  "name": "波特兰",
- "picture": "misc/image/ship/portland.png",
+ "picture": "misc/image/ship/library/USA_CA3_ship.png",
  "strength": 3,
  "card": {
   "damage_control": 3,

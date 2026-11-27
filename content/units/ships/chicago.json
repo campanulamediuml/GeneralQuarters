@@ -3,7 +3,7 @@
  "faction": "A",
  "type": "CA",
  "name": "芝加哥",
- "picture": "misc/image/ship/northampton.png",
+ "picture": "misc/image/ship/library/USA_CA2_ship.png",
  "strength": 3,
  "card": {
   "damage_control": 3,

@@ -27,7 +27,7 @@
     "gunnery": 16,
     "fire_control_radar": true
    },
-   "picture": "misc/image/ship/north_carolina.png"
+   "picture": "misc/image/ship/library/USA_BB7-1_ship.png"
   },
   {
    "id": "bc",
@@ -54,7 +54,7 @@
     "gunnery": 15,
     "fire_control_radar": true
    },
-   "picture": "misc/image/ship/usa_bc1.png"
+   "picture": "misc/image/ship/library/USA_BC1_ship.png"
   },
   {
    "id": "ca",
@@ -81,7 +81,7 @@
     "gunnery": 7,
     "fire_control_radar": true
    },
-   "picture": "misc/image/ship/northampton.png"
+   "picture": "misc/image/ship/library/USA_CA2_ship.png"
   },
   {
    "id": "cl",
@@ -108,7 +108,7 @@
     "gunnery": 4,
     "fire_control_radar": true
    },
-   "picture": "misc/image/ship/leander.png"
+   "picture": "misc/image/ship/library/USA_CL2_ship.png"
   },
   {
    "id": "dd",
@@ -135,7 +135,7 @@
     "gunnery": 3,
     "fire_control_radar": true
    },
-   "picture": "misc/image/ship/farragut.png"
+   "picture": "misc/image/ship/library/USA_DD1_ship.png"
   },
   {
    "id": "cv",
@@ -163,7 +163,7 @@
     "hangar_capacity": 24,
     "fire_control_radar": true
    },
-   "picture": "misc/image/ship/lexington.png"
+   "picture": "misc/image/ship/library/USA_CV1_ship.png"
   },
   {
    "id": "cvl",
@@ -191,7 +191,7 @@
     "hangar_capacity": 9,
     "fire_control_radar": false
    },
-   "picture": "misc/image/ship/usa_cvl1.png"
+   "picture": "misc/image/ship/library/USA_CVL1_ship.png"
   },
   {
    "id": "cve",
@@ -219,7 +219,7 @@
     "hangar_capacity": 9,
     "fire_control_radar": false
    },
-   "picture": "misc/image/ship/usa_cve0.png"
+   "picture": "misc/image/ship/library/USA_CVE0_ship.png"
   },
   {
    "id": "trs",
@@ -246,7 +246,7 @@
     "gunnery": 0,
     "fire_control_radar": false
    },
-   "picture": "misc/image/ship/cmn_ms1_3.png"
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png"
   },
   {
    "id": "bb",
@@ -273,7 +273,7 @@
     "gunnery": 16,
     "fire_control_radar": false
    },
-   "picture": "misc/image/ship/nagato.png"
+   "picture": "misc/image/ship/library/JAP_BB4_ship.png"
   },
   {
    "id": "bc",
@@ -300,7 +300,7 @@
     "gunnery": 15,
     "fire_control_radar": false
    },
-   "picture": "misc/image/ship/kongo.png"
+   "picture": "misc/image/ship/library/JAP_BC1_ship.png"
   },
   {
    "id": "ca",
@@ -327,7 +327,7 @@
     "gunnery": 7,
     "fire_control_radar": false
    },
-   "picture": "misc/image/ship/myoko.png"
+   "picture": "misc/image/ship/library/JAP_CA1_ship.png"
   },
   {
    "id": "cl",
@@ -354,7 +354,7 @@
     "gunnery": 4,
     "fire_control_radar": false
    },
-   "picture": "misc/image/ship/yubari.png"
+   "picture": "misc/image/ship/library/JAP_CL1_ship.png"
   },
   {
    "id": "dd",
@@ -381,7 +381,7 @@
     "gunnery": 3,
     "fire_control_radar": false
    },
-   "picture": "misc/image/ship/jap_dd1.png"
+   "picture": "misc/image/ship/library/JAP_DD1_ship.png"
   },
   {
    "id": "cv",
@@ -409,7 +409,7 @@
     "gunnery": 0,
     "fire_control_radar": false
    },
-   "picture": "misc/image/ship/shokaku.png"
+   "picture": "misc/image/ship/library/JAP_CV8_ship.png"
   },
   {
    "id": "cvl",
@@ -437,7 +437,7 @@
     "hangar_capacity": 9,
     "fire_control_radar": false
    },
-   "picture": "misc/image/ship/jap_cvl1.png"
+   "picture": "misc/image/ship/library/JAP_CVL1_ship.png"
   },
   {
    "id": "cve",
@@ -465,7 +465,7 @@
     "hangar_capacity": 9,
     "fire_control_radar": false
    },
-   "picture": "misc/image/ship/jap_cve0.png"
+   "picture": "misc/image/ship/library/JAP_CVE0_ship.png"
   },
   {
    "id": "trs",
@@ -492,7 +492,7 @@
     "gunnery": 0,
     "fire_control_radar": false
    },
-   "picture": "misc/image/ship/cmn_ms1_3.png"
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png"
   }
  ],
  "aircraft": [

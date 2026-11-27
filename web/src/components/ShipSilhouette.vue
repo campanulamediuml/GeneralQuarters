@@ -16,7 +16,7 @@ const mask = computed(() => shipMaskURL(props.picture, props.name))
     class="ship-silhouette-mask"
     aria-hidden="true"
     :data-ship-type="type"
-    :style="{ maskImage: `url(${mask})`, WebkitMaskImage: `${mask}` }"
+    :style="{ maskImage: `url('${mask}')`, WebkitMaskImage: `url('${mask}')` }"
   ></span>
   <svg v-else class="ship-silhouette-drawing" viewBox="0 0 120 40" preserveAspectRatio="xMidYMid meet" aria-hidden="true" :data-ship-type="type">
     <path class="sil-hull" :d="shape.hull" />

@@ -3,7 +3,7 @@
  "faction": "B",
  "type": "CV",
  "name": "瑞鹤",
- "picture": "misc/image/ship/shokaku.png",
+ "picture": "misc/image/ship/library/JAP_CV8_ship.png",
  "strength": 4,
  "card": {
   "damage_control": 3,

@@ -8,7 +8,7 @@
    "type": "CV",
    "name": "埃塞克斯",
    "strength": 4,
-   "picture": "misc/image/ship/essex.png",
+   "picture": "misc/image/ship/library/USA_CV5_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -40,7 +40,7 @@
    "type": "CV",
    "name": "邦克山",
    "strength": 4,
-   "picture": "misc/image/ship/essex.png",
+   "picture": "misc/image/ship/library/USA_CV5_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -72,7 +72,7 @@
    "type": "CV",
    "name": "大黄蜂",
    "strength": 4,
-   "picture": "misc/image/ship/essex.png",
+   "picture": "misc/image/ship/library/USA_CV5_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -104,7 +104,7 @@
    "type": "CV",
    "name": "约克城",
    "strength": 4,
-   "picture": "misc/image/ship/essex.png",
+   "picture": "misc/image/ship/library/USA_CV5_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -136,7 +136,7 @@
    "type": "CV",
    "name": "黄蜂",
    "strength": 4,
-   "picture": "misc/image/ship/essex.png",
+   "picture": "misc/image/ship/library/USA_CV5_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -168,7 +168,7 @@
    "type": "CV",
    "name": "富兰克林",
    "strength": 4,
-   "picture": "misc/image/ship/essex.png",
+   "picture": "misc/image/ship/library/USA_CV5_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -200,7 +200,7 @@
    "type": "CV",
    "name": "企业",
    "strength": 4,
-   "picture": "misc/image/ship/yorktown.png",
+   "picture": "misc/image/ship/library/USA_CV3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -232,7 +232,7 @@
    "type": "CV",
    "name": "汉考克",
    "strength": 4,
-   "picture": "misc/image/ship/essex.png",
+   "picture": "misc/image/ship/library/USA_CV5_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -264,7 +264,7 @@
    "type": "BB",
    "name": "北卡罗来纳",
    "strength": 6,
-   "picture": "misc/image/ship/north_carolina.png",
+   "picture": "misc/image/ship/library/USA_BB7-1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -296,7 +296,7 @@
    "type": "BB",
    "name": "华盛顿",
    "strength": 6,
-   "picture": "misc/image/ship/north_carolina.png",
+   "picture": "misc/image/ship/library/USA_BB7-1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -328,7 +328,7 @@
    "type": "BB",
    "name": "南达科他",
    "strength": 6,
-   "picture": "misc/image/ship/south_dakota.png",
+   "picture": "misc/image/ship/library/USA_BB7-2_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -360,7 +360,7 @@
    "type": "BB",
    "name": "印第安纳",
    "strength": 6,
-   "picture": "misc/image/ship/south_dakota.png",
+   "picture": "misc/image/ship/library/USA_BB7-2_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -392,7 +392,7 @@
    "type": "CA",
    "name": "巴尔的摩",
    "strength": 4,
-   "picture": "misc/image/ship/baltimore.png",
+   "picture": "misc/image/ship/library/USA_CA5_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -424,7 +424,7 @@
    "type": "CA",
    "name": "威奇塔",
    "strength": 4,
-   "picture": "misc/image/ship/new_orleans.png",
+   "picture": "misc/image/ship/library/USA_CA4_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -456,7 +456,7 @@
    "type": "CA",
    "name": "旧金山",
    "strength": 4,
-   "picture": "misc/image/ship/new_orleans.png",
+   "picture": "misc/image/ship/library/USA_CA4_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -488,7 +488,7 @@
    "type": "CA",
    "name": "昆西",
    "strength": 4,
-   "picture": "misc/image/ship/baltimore.png",
+   "picture": "misc/image/ship/library/USA_CA5_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -520,7 +520,7 @@
    "type": "CL",
    "name": "克利夫兰",
    "strength": 2,
-   "picture": "misc/image/ship/cleveland.png",
+   "picture": "misc/image/ship/library/USA_CL3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -552,7 +552,7 @@
    "type": "CL",
    "name": "蒙彼利埃",
    "strength": 2,
-   "picture": "misc/image/ship/cleveland.png",
+   "picture": "misc/image/ship/library/USA_CL3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -584,7 +584,7 @@
    "type": "CL",
    "name": "丹佛",
    "strength": 2,
-   "picture": "misc/image/ship/cleveland.png",
+   "picture": "misc/image/ship/library/USA_CL3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -616,7 +616,7 @@
    "type": "CL",
    "name": "圣菲",
    "strength": 2,
-   "picture": "misc/image/ship/cleveland.png",
+   "picture": "misc/image/ship/library/USA_CL3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -648,7 +648,7 @@
    "type": "CL",
    "name": "伯明翰",
    "strength": 2,
-   "picture": "misc/image/ship/cleveland.png",
+   "picture": "misc/image/ship/library/USA_CL3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -680,7 +680,7 @@
    "type": "CL",
    "name": "莫比尔",
    "strength": 2,
-   "picture": "misc/image/ship/cleveland.png",
+   "picture": "misc/image/ship/library/USA_CL3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -712,7 +712,7 @@
    "type": "DD",
    "name": "弗莱彻号01",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -744,7 +744,7 @@
    "type": "DD",
    "name": "弗莱彻号02",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -776,7 +776,7 @@
    "type": "DD",
    "name": "弗莱彻号03",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -808,7 +808,7 @@
    "type": "DD",
    "name": "弗莱彻号04",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -840,7 +840,7 @@
    "type": "DD",
    "name": "弗莱彻号05",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -872,7 +872,7 @@
    "type": "DD",
    "name": "弗莱彻号06",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -904,7 +904,7 @@
    "type": "DD",
    "name": "弗莱彻号07",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -936,7 +936,7 @@
    "type": "DD",
    "name": "弗莱彻号08",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -968,7 +968,7 @@
    "type": "DD",
    "name": "弗莱彻号09",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1000,7 +1000,7 @@
    "type": "DD",
    "name": "弗莱彻号10",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1032,7 +1032,7 @@
    "type": "DD",
    "name": "弗莱彻号11",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1064,7 +1064,7 @@
    "type": "DD",
    "name": "弗莱彻号12",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1096,7 +1096,7 @@
    "type": "DD",
    "name": "弗莱彻号13",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1128,7 +1128,7 @@
    "type": "DD",
    "name": "弗莱彻号14",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1160,7 +1160,7 @@
    "type": "DD",
    "name": "弗莱彻号15",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1192,7 +1192,7 @@
    "type": "DD",
    "name": "弗莱彻号16",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1224,7 +1224,7 @@
    "type": "CV",
    "name": "大凤",
    "strength": 4,
-   "picture": "misc/image/ship/taiho.png",
+   "picture": "misc/image/ship/library/JAP_CV4_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1256,7 +1256,7 @@
    "type": "CV",
    "name": "翔鹤",
    "strength": 4,
-   "picture": "misc/image/ship/shokaku.png",
+   "picture": "misc/image/ship/library/JAP_CV8_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1288,7 +1288,7 @@
    "type": "CV",
    "name": "瑞鹤",
    "strength": 4,
-   "picture": "misc/image/ship/shokaku.png",
+   "picture": "misc/image/ship/library/JAP_CV8_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1320,7 +1320,7 @@
    "type": "CV",
    "name": "隼鹰",
    "strength": 4,
-   "picture": "misc/image/ship/hiyo.png",
+   "picture": "misc/image/ship/library/JAP_CV2_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1352,7 +1352,7 @@
    "type": "CV",
    "name": "飞鹰",
    "strength": 4,
-   "picture": "misc/image/ship/hiyo.png",
+   "picture": "misc/image/ship/library/JAP_CV2_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1384,7 +1384,7 @@
    "type": "CV",
    "name": "龙凤",
    "strength": 2,
-   "picture": "misc/image/ship/ryuho.png",
+   "picture": "misc/image/ship/library/JAP_CVL4_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1416,7 +1416,7 @@
    "type": "CV",
    "name": "云龙",
    "strength": 4,
-   "picture": "misc/image/ship/unryu.png",
+   "picture": "misc/image/ship/library/JAP_CV3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1448,7 +1448,7 @@
    "type": "CV",
    "name": "天城",
    "strength": 4,
-   "picture": "misc/image/ship/unryu.png",
+   "picture": "misc/image/ship/library/JAP_CV3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1480,7 +1480,7 @@
    "type": "CV",
    "name": "葛城",
    "strength": 4,
-   "picture": "misc/image/ship/unryu.png",
+   "picture": "misc/image/ship/library/JAP_CV3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1512,7 +1512,7 @@
    "type": "BB",
    "name": "大和",
    "strength": 8,
-   "picture": "misc/image/ship/yamato.png",
+   "picture": "misc/image/ship/library/JAP_BB5_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1544,7 +1544,7 @@
    "type": "BB",
    "name": "武藏",
    "strength": 8,
-   "picture": "misc/image/ship/yamato.png",
+   "picture": "misc/image/ship/library/JAP_BB5_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1576,7 +1576,7 @@
    "type": "BB",
    "name": "长门",
    "strength": 6,
-   "picture": "misc/image/ship/nagato.png",
+   "picture": "misc/image/ship/library/JAP_BB4_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1608,7 +1608,7 @@
    "type": "BB",
    "name": "金刚",
    "strength": 5,
-   "picture": "misc/image/ship/kongo.png",
+   "picture": "misc/image/ship/library/JAP_BC1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1640,7 +1640,7 @@
    "type": "BB",
    "name": "榛名",
    "strength": 5,
-   "picture": "misc/image/ship/haruna.png",
+   "picture": "misc/image/ship/library/JAP_BC1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1672,7 +1672,7 @@
    "type": "CA",
    "name": "妙高",
    "strength": 3,
-   "picture": "misc/image/ship/myoko.png",
+   "picture": "misc/image/ship/library/JAP_CA1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1704,7 +1704,7 @@
    "type": "CA",
    "name": "羽黑",
    "strength": 3,
-   "picture": "misc/image/ship/myoko.png",
+   "picture": "misc/image/ship/library/JAP_CA1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1736,7 +1736,7 @@
    "type": "CA",
    "name": "高雄",
    "strength": 3,
-   "picture": "misc/image/ship/takao.png",
+   "picture": "misc/image/ship/library/JAP_CA2_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1768,7 +1768,7 @@
    "type": "CA",
    "name": "爱宕",
    "strength": 3,
-   "picture": "misc/image/ship/takao.png",
+   "picture": "misc/image/ship/library/JAP_CA2_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1800,7 +1800,7 @@
    "type": "CA",
    "name": "利根",
    "strength": 3,
-   "picture": "misc/image/ship/tone.png",
+   "picture": "misc/image/ship/library/JAP_CA10_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1832,7 +1832,7 @@
    "type": "CA",
    "name": "筑摩",
    "strength": 3,
-   "picture": "misc/image/ship/tone.png",
+   "picture": "misc/image/ship/library/JAP_CA10_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1864,7 +1864,7 @@
    "type": "CL",
    "name": "矢矧",
    "strength": 2,
-   "picture": "misc/image/ship/agano.png",
+   "picture": "misc/image/ship/library/JAP_CL2_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1896,7 +1896,7 @@
    "type": "CL",
    "name": "大淀",
    "strength": 2,
-   "picture": "misc/image/ship/agano.png",
+   "picture": "misc/image/ship/library/JAP_CL2_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1928,7 +1928,7 @@
    "type": "CL",
    "name": "能代",
    "strength": 2,
-   "picture": "misc/image/ship/agano.png",
+   "picture": "misc/image/ship/library/JAP_CL2_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1960,7 +1960,7 @@
    "type": "DD",
    "name": "驱逐舰01",
    "strength": 1,
-   "picture": "misc/image/ship/jap_dd1.png",
+   "picture": "misc/image/ship/library/JAP_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -1992,7 +1992,7 @@
    "type": "DD",
    "name": "驱逐舰02",
    "strength": 1,
-   "picture": "misc/image/ship/jap_dd1.png",
+   "picture": "misc/image/ship/library/JAP_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2024,7 +2024,7 @@
    "type": "DD",
    "name": "驱逐舰03",
    "strength": 1,
-   "picture": "misc/image/ship/jap_dd1.png",
+   "picture": "misc/image/ship/library/JAP_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2056,7 +2056,7 @@
    "type": "DD",
    "name": "驱逐舰04",
    "strength": 1,
-   "picture": "misc/image/ship/jap_dd1.png",
+   "picture": "misc/image/ship/library/JAP_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2088,7 +2088,7 @@
    "type": "DD",
    "name": "驱逐舰05",
    "strength": 1,
-   "picture": "misc/image/ship/jap_dd1.png",
+   "picture": "misc/image/ship/library/JAP_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2120,7 +2120,7 @@
    "type": "DD",
    "name": "驱逐舰06",
    "strength": 1,
-   "picture": "misc/image/ship/jap_dd1.png",
+   "picture": "misc/image/ship/library/JAP_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2152,7 +2152,7 @@
    "type": "DD",
    "name": "驱逐舰07",
    "strength": 1,
-   "picture": "misc/image/ship/jap_dd1.png",
+   "picture": "misc/image/ship/library/JAP_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2184,7 +2184,7 @@
    "type": "DD",
    "name": "驱逐舰08",
    "strength": 1,
-   "picture": "misc/image/ship/jap_dd1.png",
+   "picture": "misc/image/ship/library/JAP_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2216,7 +2216,7 @@
    "type": "DD",
    "name": "驱逐舰09",
    "strength": 1,
-   "picture": "misc/image/ship/jap_dd1.png",
+   "picture": "misc/image/ship/library/JAP_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2248,7 +2248,7 @@
    "type": "DD",
    "name": "驱逐舰10",
    "strength": 1,
-   "picture": "misc/image/ship/jap_dd1.png",
+   "picture": "misc/image/ship/library/JAP_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2280,7 +2280,7 @@
    "type": "DD",
    "name": "驱逐舰11",
    "strength": 1,
-   "picture": "misc/image/ship/jap_dd1.png",
+   "picture": "misc/image/ship/library/JAP_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2312,7 +2312,7 @@
    "type": "DD",
    "name": "驱逐舰12",
    "strength": 1,
-   "picture": "misc/image/ship/jap_dd1.png",
+   "picture": "misc/image/ship/library/JAP_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2344,7 +2344,7 @@
    "type": "DD",
    "name": "驱逐舰13",
    "strength": 1,
-   "picture": "misc/image/ship/jap_dd1.png",
+   "picture": "misc/image/ship/library/JAP_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2376,7 +2376,7 @@
    "type": "DD",
    "name": "驱逐舰14",
    "strength": 1,
-   "picture": "misc/image/ship/jap_dd1.png",
+   "picture": "misc/image/ship/library/JAP_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2408,7 +2408,7 @@
    "type": "DD",
    "name": "驱逐舰15",
    "strength": 1,
-   "picture": "misc/image/ship/jap_dd1.png",
+   "picture": "misc/image/ship/library/JAP_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2440,7 +2440,7 @@
    "type": "DD",
    "name": "驱逐舰16",
    "strength": 1,
-   "picture": "misc/image/ship/jap_dd1.png",
+   "picture": "misc/image/ship/library/JAP_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2472,7 +2472,7 @@
    "type": "DD",
    "name": "驱逐舰17",
    "strength": 1,
-   "picture": "misc/image/ship/jap_dd1.png",
+   "picture": "misc/image/ship/library/JAP_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2504,7 +2504,7 @@
    "type": "DD",
    "name": "驱逐舰18",
    "strength": 1,
-   "picture": "misc/image/ship/jap_dd1.png",
+   "picture": "misc/image/ship/library/JAP_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2536,7 +2536,7 @@
    "type": "CVE",
    "name": "甘比尔湾",
    "strength": 1,
-   "picture": "misc/image/ship/usa_cve0.png",
+   "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2568,7 +2568,7 @@
    "type": "CVE",
    "name": "卡萨布兰卡",
    "strength": 1,
-   "picture": "misc/image/ship/usa_cve0.png",
+   "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2600,7 +2600,7 @@
    "type": "CVE",
    "name": "方肖湾",
    "strength": 1,
-   "picture": "misc/image/ship/usa_cve0.png",
+   "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2632,7 +2632,7 @@
    "type": "CVE",
    "name": "白平原",
    "strength": 1,
-   "picture": "misc/image/ship/usa_cve0.png",
+   "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2664,7 +2664,7 @@
    "type": "CVE",
    "name": "基特昆湾",
    "strength": 1,
-   "picture": "misc/image/ship/usa_cve0.png",
+   "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2696,7 +2696,7 @@
    "type": "CVE",
    "name": "图拉吉",
    "strength": 1,
-   "picture": "misc/image/ship/usa_cve0.png",
+   "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2728,7 +2728,7 @@
    "type": "CVE",
    "name": "科雷吉多尔",
    "strength": 1,
-   "picture": "misc/image/ship/usa_cve0.png",
+   "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2760,7 +2760,7 @@
    "type": "CVE",
    "name": "曼纳湾",
    "strength": 1,
-   "picture": "misc/image/ship/usa_cve0.png",
+   "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2792,7 +2792,7 @@
    "type": "CVE",
    "name": "萨金特湾",
    "strength": 1,
-   "picture": "misc/image/ship/usa_cve0.png",
+   "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2824,7 +2824,7 @@
    "type": "CVE",
    "name": "卡德",
    "strength": 1,
-   "picture": "misc/image/ship/usa_cve0.png",
+   "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2856,7 +2856,7 @@
    "type": "CVE",
    "name": "苏万尼",
    "strength": 1,
-   "picture": "misc/image/ship/usa_cve0.png",
+   "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2888,7 +2888,7 @@
    "type": "CVE",
    "name": "桑加蒙",
    "strength": 1,
-   "picture": "misc/image/ship/usa_cve0.png",
+   "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2920,7 +2920,7 @@
    "type": "CVE",
    "name": "陈纳德湾",
    "strength": 1,
-   "picture": "misc/image/ship/usa_cve0.png",
+   "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2952,7 +2952,7 @@
    "type": "CVE",
    "name": "香格里拉",
    "strength": 1,
-   "picture": "misc/image/ship/usa_cve0.png",
+   "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -2984,7 +2984,7 @@
    "type": "CVE",
    "name": "温丹湾",
    "strength": 1,
-   "picture": "misc/image/ship/usa_cve0.png",
+   "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3016,7 +3016,7 @@
    "type": "CVE",
    "name": "斯蒂默湾",
    "strength": 1,
-   "picture": "misc/image/ship/usa_cve0.png",
+   "picture": "misc/image/ship/library/USA_CVE0_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3048,7 +3048,7 @@
    "type": "BB",
    "name": "田纳西",
    "strength": 5,
-   "picture": "misc/image/ship/tennessee.png",
+   "picture": "misc/image/ship/library/USA_BB5_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3080,7 +3080,7 @@
    "type": "BB",
    "name": "加利福尼亚",
    "strength": 5,
-   "picture": "misc/image/ship/pennsylvania.png",
+   "picture": "misc/image/ship/library/USA_BB3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3112,7 +3112,7 @@
    "type": "BB",
    "name": "马里兰",
    "strength": 5,
-   "picture": "misc/image/ship/colorado.png",
+   "picture": "misc/image/ship/library/USA_BB6_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3144,7 +3144,7 @@
    "type": "BB",
    "name": "科罗拉多",
    "strength": 5,
-   "picture": "misc/image/ship/colorado.png",
+   "picture": "misc/image/ship/library/USA_BB6_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3176,7 +3176,7 @@
    "type": "BB",
    "name": "新墨西哥",
    "strength": 5,
-   "picture": "misc/image/ship/new_mexico.png",
+   "picture": "misc/image/ship/library/USA_BB4_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3208,7 +3208,7 @@
    "type": "BB",
    "name": "爱达荷",
    "strength": 5,
-   "picture": "misc/image/ship/new_mexico.png",
+   "picture": "misc/image/ship/library/USA_BB4_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3240,7 +3240,7 @@
    "type": "BB",
    "name": "密西西比",
    "strength": 5,
-   "picture": "misc/image/ship/new_mexico.png",
+   "picture": "misc/image/ship/library/USA_BB4_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3272,7 +3272,7 @@
    "type": "BB",
    "name": "宾夕法尼亚",
    "strength": 5,
-   "picture": "misc/image/ship/pennsylvania.png",
+   "picture": "misc/image/ship/library/USA_BB3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3304,7 +3304,7 @@
    "type": "BB",
    "name": "新泽西",
    "strength": 7,
-   "picture": "misc/image/ship/iowa.png",
+   "picture": "misc/image/ship/library/USA_BB8_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3336,7 +3336,7 @@
    "type": "BB",
    "name": "依阿华",
    "strength": 7,
-   "picture": "misc/image/ship/iowa.png",
+   "picture": "misc/image/ship/library/USA_BB8_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3368,7 +3368,7 @@
    "type": "BB",
    "name": "马萨诸塞",
    "strength": 6,
-   "picture": "misc/image/ship/south_dakota.png",
+   "picture": "misc/image/ship/library/USA_BB7-2_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3400,7 +3400,7 @@
    "type": "BB",
    "name": "阿拉巴马",
    "strength": 6,
-   "picture": "misc/image/ship/south_dakota.png",
+   "picture": "misc/image/ship/library/USA_BB7-2_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3432,7 +3432,7 @@
    "type": "DD",
    "name": "弗莱彻号17",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3464,7 +3464,7 @@
    "type": "DD",
    "name": "弗莱彻号18",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3496,7 +3496,7 @@
    "type": "DD",
    "name": "弗莱彻号19",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3528,7 +3528,7 @@
    "type": "DD",
    "name": "弗莱彻号20",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3560,7 +3560,7 @@
    "type": "DD",
    "name": "弗莱彻号21",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3592,7 +3592,7 @@
    "type": "DD",
    "name": "弗莱彻号22",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3624,7 +3624,7 @@
    "type": "DD",
    "name": "弗莱彻号23",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3656,7 +3656,7 @@
    "type": "DD",
    "name": "弗莱彻号24",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3688,7 +3688,7 @@
    "type": "DD",
    "name": "弗莱彻号25",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3720,7 +3720,7 @@
    "type": "DD",
    "name": "弗莱彻号26",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3752,7 +3752,7 @@
    "type": "DD",
    "name": "弗莱彻号27",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3784,7 +3784,7 @@
    "type": "DD",
    "name": "弗莱彻号28",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3816,7 +3816,7 @@
    "type": "CVL",
    "name": "独立",
    "strength": 2,
-   "picture": "misc/image/ship/usa_cvl1.png",
+   "picture": "misc/image/ship/library/USA_CVL1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3848,7 +3848,7 @@
    "type": "CVL",
    "name": "普林斯顿",
    "strength": 2,
-   "picture": "misc/image/ship/usa_cvl1.png",
+   "picture": "misc/image/ship/library/USA_CVL1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3880,7 +3880,7 @@
    "type": "CVL",
    "name": "贝劳伍德",
    "strength": 2,
-   "picture": "misc/image/ship/usa_cvl1.png",
+   "picture": "misc/image/ship/library/USA_CVL1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3912,7 +3912,7 @@
    "type": "CVL",
    "name": "考彭斯",
    "strength": 2,
-   "picture": "misc/image/ship/usa_cvl1.png",
+   "picture": "misc/image/ship/library/USA_CVL1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3944,7 +3944,7 @@
    "type": "DD",
    "name": "弗莱彻号29",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -3976,7 +3976,7 @@
    "type": "DD",
    "name": "弗莱彻号30",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4008,7 +4008,7 @@
    "type": "DD",
    "name": "弗莱彻号31",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4040,7 +4040,7 @@
    "type": "DD",
    "name": "弗莱彻号32",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4072,7 +4072,7 @@
    "type": "DD",
    "name": "弗莱彻号33",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4104,7 +4104,7 @@
    "type": "DD",
    "name": "弗莱彻号34",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4136,7 +4136,7 @@
    "type": "DD",
    "name": "弗莱彻号35",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4168,7 +4168,7 @@
    "type": "DD",
    "name": "弗莱彻号36",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4200,7 +4200,7 @@
    "type": "DD",
    "name": "弗莱彻号37",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4232,7 +4232,7 @@
    "type": "DD",
    "name": "弗莱彻号38",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4264,7 +4264,7 @@
    "type": "DD",
    "name": "弗莱彻号39",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4296,7 +4296,7 @@
    "type": "DD",
    "name": "弗莱彻号40",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4328,7 +4328,7 @@
    "type": "DD",
    "name": "弗莱彻号41",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4360,7 +4360,7 @@
    "type": "DD",
    "name": "弗莱彻号42",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4392,7 +4392,7 @@
    "type": "DD",
    "name": "弗莱彻号43",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4424,7 +4424,7 @@
    "type": "DD",
    "name": "弗莱彻号44",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4456,7 +4456,7 @@
    "type": "DD",
    "name": "弗莱彻号45",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4488,7 +4488,7 @@
    "type": "DD",
    "name": "弗莱彻号46",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4520,7 +4520,7 @@
    "type": "DD",
    "name": "弗莱彻号47",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4552,7 +4552,7 @@
    "type": "DD",
    "name": "弗莱彻号48",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4584,7 +4584,7 @@
    "type": "DD",
    "name": "弗莱彻号49",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4616,7 +4616,7 @@
    "type": "DD",
    "name": "弗莱彻号50",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4648,7 +4648,7 @@
    "type": "DD",
    "name": "弗莱彻号51",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4680,7 +4680,7 @@
    "type": "DD",
    "name": "弗莱彻号52",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4712,7 +4712,7 @@
    "type": "DD",
    "name": "弗莱彻号53",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4744,7 +4744,7 @@
    "type": "DD",
    "name": "弗莱彻号54",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4776,7 +4776,7 @@
    "type": "DD",
    "name": "弗莱彻号55",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4808,7 +4808,7 @@
    "type": "DD",
    "name": "弗莱彻号56",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4840,7 +4840,7 @@
    "type": "CA",
    "name": "巴尔的摩",
    "strength": 4,
-   "picture": "misc/image/ship/baltimore.png",
+   "picture": "misc/image/ship/library/USA_CA5_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4872,7 +4872,7 @@
    "type": "CA",
    "name": "波士顿",
    "strength": 4,
-   "picture": "misc/image/ship/baltimore.png",
+   "picture": "misc/image/ship/library/USA_CA5_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4904,7 +4904,7 @@
    "type": "CA",
    "name": "芝加哥",
    "strength": 4,
-   "picture": "misc/image/ship/baltimore.png",
+   "picture": "misc/image/ship/library/USA_CA5_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4936,7 +4936,7 @@
    "type": "CA",
    "name": "休斯顿",
    "strength": 4,
-   "picture": "misc/image/ship/baltimore.png",
+   "picture": "misc/image/ship/library/USA_CA5_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -4968,7 +4968,7 @@
    "type": "CL",
    "name": "克利夫兰",
    "strength": 2,
-   "picture": "misc/image/ship/cleveland.png",
+   "picture": "misc/image/ship/library/USA_CL3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5000,7 +5000,7 @@
    "type": "CL",
    "name": "蒙彼利埃",
    "strength": 2,
-   "picture": "misc/image/ship/cleveland.png",
+   "picture": "misc/image/ship/library/USA_CL3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5032,7 +5032,7 @@
    "type": "CL",
    "name": "丹佛",
    "strength": 2,
-   "picture": "misc/image/ship/cleveland.png",
+   "picture": "misc/image/ship/library/USA_CL3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5064,7 +5064,7 @@
    "type": "CL",
    "name": "圣菲",
    "strength": 2,
-   "picture": "misc/image/ship/cleveland.png",
+   "picture": "misc/image/ship/library/USA_CL3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5096,7 +5096,7 @@
    "type": "DD",
    "name": "护航驱逐舰01",
    "strength": 1,
-   "picture": "misc/image/ship/usa_de1.png",
+   "picture": "misc/image/ship/library/USA_DE1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5128,7 +5128,7 @@
    "type": "DD",
    "name": "护航驱逐舰02",
    "strength": 1,
-   "picture": "misc/image/ship/usa_de1.png",
+   "picture": "misc/image/ship/library/USA_DE1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5160,7 +5160,7 @@
    "type": "DD",
    "name": "护航驱逐舰03",
    "strength": 1,
-   "picture": "misc/image/ship/usa_de1.png",
+   "picture": "misc/image/ship/library/USA_DE1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5192,7 +5192,7 @@
    "type": "DD",
    "name": "护航驱逐舰04",
    "strength": 1,
-   "picture": "misc/image/ship/usa_de1.png",
+   "picture": "misc/image/ship/library/USA_DE1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5224,7 +5224,7 @@
    "type": "DD",
    "name": "护航驱逐舰05",
    "strength": 1,
-   "picture": "misc/image/ship/usa_de1.png",
+   "picture": "misc/image/ship/library/USA_DE1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5256,7 +5256,7 @@
    "type": "DD",
    "name": "护航驱逐舰06",
    "strength": 1,
-   "picture": "misc/image/ship/usa_de1.png",
+   "picture": "misc/image/ship/library/USA_DE1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5288,7 +5288,7 @@
    "type": "DD",
    "name": "护航驱逐舰07",
    "strength": 1,
-   "picture": "misc/image/ship/usa_de1.png",
+   "picture": "misc/image/ship/library/USA_DE1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5320,7 +5320,7 @@
    "type": "DD",
    "name": "护航驱逐舰08",
    "strength": 1,
-   "picture": "misc/image/ship/usa_de1.png",
+   "picture": "misc/image/ship/library/USA_DE1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5352,7 +5352,7 @@
    "type": "DD",
    "name": "护航驱逐舰09",
    "strength": 1,
-   "picture": "misc/image/ship/usa_de1.png",
+   "picture": "misc/image/ship/library/USA_DE1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5384,7 +5384,7 @@
    "type": "DD",
    "name": "护航驱逐舰10",
    "strength": 1,
-   "picture": "misc/image/ship/usa_de1.png",
+   "picture": "misc/image/ship/library/USA_DE1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5416,7 +5416,7 @@
    "type": "DD",
    "name": "护航驱逐舰11",
    "strength": 1,
-   "picture": "misc/image/ship/usa_de1.png",
+   "picture": "misc/image/ship/library/USA_DE1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5448,7 +5448,7 @@
    "type": "DD",
    "name": "护航驱逐舰12",
    "strength": 1,
-   "picture": "misc/image/ship/usa_de1.png",
+   "picture": "misc/image/ship/library/USA_DE1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5480,7 +5480,7 @@
    "type": "DD",
    "name": "护航驱逐舰13",
    "strength": 1,
-   "picture": "misc/image/ship/usa_de1.png",
+   "picture": "misc/image/ship/library/USA_DE1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5512,7 +5512,7 @@
    "type": "DD",
    "name": "护航驱逐舰14",
    "strength": 1,
-   "picture": "misc/image/ship/usa_de1.png",
+   "picture": "misc/image/ship/library/USA_DE1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5544,7 +5544,7 @@
    "type": "DD",
    "name": "护航驱逐舰15",
    "strength": 1,
-   "picture": "misc/image/ship/usa_de1.png",
+   "picture": "misc/image/ship/library/USA_DE1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5576,7 +5576,7 @@
    "type": "DD",
    "name": "护航驱逐舰16",
    "strength": 1,
-   "picture": "misc/image/ship/usa_de1.png",
+   "picture": "misc/image/ship/library/USA_DE1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5608,7 +5608,7 @@
    "type": "TRS",
    "name": "大型运输船01",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5640,7 +5640,7 @@
    "type": "DD",
    "name": "弗莱彻号57",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5672,7 +5672,7 @@
    "type": "TRS",
    "name": "大型运输船02",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5704,7 +5704,7 @@
    "type": "DD",
    "name": "弗莱彻号58",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5736,7 +5736,7 @@
    "type": "TRS",
    "name": "大型运输船03",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5768,7 +5768,7 @@
    "type": "DD",
    "name": "弗莱彻号59",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5800,7 +5800,7 @@
    "type": "TRS",
    "name": "大型运输船04",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5832,7 +5832,7 @@
    "type": "DD",
    "name": "弗莱彻号60",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5864,7 +5864,7 @@
    "type": "TRS",
    "name": "大型运输船05",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5896,7 +5896,7 @@
    "type": "DD",
    "name": "弗莱彻号61",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5928,7 +5928,7 @@
    "type": "TRS",
    "name": "大型运输船06",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5960,7 +5960,7 @@
    "type": "DD",
    "name": "弗莱彻号62",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -5992,7 +5992,7 @@
    "type": "TRS",
    "name": "大型运输船07",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6024,7 +6024,7 @@
    "type": "DD",
    "name": "弗莱彻号63",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6056,7 +6056,7 @@
    "type": "TRS",
    "name": "大型运输船08",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6088,7 +6088,7 @@
    "type": "DD",
    "name": "弗莱彻号64",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6120,7 +6120,7 @@
    "type": "TRS",
    "name": "大型运输船09",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6152,7 +6152,7 @@
    "type": "DD",
    "name": "弗莱彻号65",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6184,7 +6184,7 @@
    "type": "TRS",
    "name": "大型运输船10",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6216,7 +6216,7 @@
    "type": "DD",
    "name": "弗莱彻号66",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6248,7 +6248,7 @@
    "type": "TRS",
    "name": "大型运输船11",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6280,7 +6280,7 @@
    "type": "DD",
    "name": "弗莱彻号67",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6312,7 +6312,7 @@
    "type": "TRS",
    "name": "大型运输船12",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6344,7 +6344,7 @@
    "type": "DD",
    "name": "弗莱彻号68",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6376,7 +6376,7 @@
    "type": "TRS",
    "name": "大型运输船13",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6408,7 +6408,7 @@
    "type": "DD",
    "name": "弗莱彻号69",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6440,7 +6440,7 @@
    "type": "TRS",
    "name": "大型运输船14",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6472,7 +6472,7 @@
    "type": "DD",
    "name": "弗莱彻号70",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6504,7 +6504,7 @@
    "type": "TRS",
    "name": "大型运输船15",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6536,7 +6536,7 @@
    "type": "DD",
    "name": "弗莱彻号71",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6568,7 +6568,7 @@
    "type": "TRS",
    "name": "大型运输船16",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6600,7 +6600,7 @@
    "type": "DD",
    "name": "弗莱彻号72",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6632,7 +6632,7 @@
    "type": "TRS",
    "name": "大型运输船17",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6664,7 +6664,7 @@
    "type": "DD",
    "name": "弗莱彻号73",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6696,7 +6696,7 @@
    "type": "TRS",
    "name": "大型运输船18",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6728,7 +6728,7 @@
    "type": "DD",
    "name": "弗莱彻号74",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6760,7 +6760,7 @@
    "type": "TRS",
    "name": "大型运输船19",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6792,7 +6792,7 @@
    "type": "DD",
    "name": "弗莱彻号75",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6824,7 +6824,7 @@
    "type": "TRS",
    "name": "大型运输船20",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6856,7 +6856,7 @@
    "type": "DD",
    "name": "弗莱彻号76",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6888,7 +6888,7 @@
    "type": "TRS",
    "name": "大型运输船21",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6920,7 +6920,7 @@
    "type": "DD",
    "name": "弗莱彻号77",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6952,7 +6952,7 @@
    "type": "TRS",
    "name": "大型运输船22",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -6984,7 +6984,7 @@
    "type": "DD",
    "name": "弗莱彻号78",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7016,7 +7016,7 @@
    "type": "TRS",
    "name": "大型运输船23",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7048,7 +7048,7 @@
    "type": "DD",
    "name": "弗莱彻号79",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7080,7 +7080,7 @@
    "type": "TRS",
    "name": "大型运输船24",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7112,7 +7112,7 @@
    "type": "DD",
    "name": "弗莱彻号80",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7144,7 +7144,7 @@
    "type": "TRS",
    "name": "大型运输船25",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7176,7 +7176,7 @@
    "type": "DD",
    "name": "弗莱彻号81",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7208,7 +7208,7 @@
    "type": "TRS",
    "name": "大型运输船26",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7240,7 +7240,7 @@
    "type": "DD",
    "name": "弗莱彻号82",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7272,7 +7272,7 @@
    "type": "TRS",
    "name": "大型运输船27",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7304,7 +7304,7 @@
    "type": "DD",
    "name": "弗莱彻号83",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7336,7 +7336,7 @@
    "type": "TRS",
    "name": "大型运输船28",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7368,7 +7368,7 @@
    "type": "DD",
    "name": "弗莱彻号84",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7400,7 +7400,7 @@
    "type": "TRS",
    "name": "大型运输船29",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7432,7 +7432,7 @@
    "type": "DD",
    "name": "弗莱彻号85",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7464,7 +7464,7 @@
    "type": "TRS",
    "name": "大型运输船30",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7496,7 +7496,7 @@
    "type": "DD",
    "name": "弗莱彻号86",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7528,7 +7528,7 @@
    "type": "TRS",
    "name": "大型运输船31",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7560,7 +7560,7 @@
    "type": "DD",
    "name": "弗莱彻号87",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7592,7 +7592,7 @@
    "type": "TRS",
    "name": "大型运输船32",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7624,7 +7624,7 @@
    "type": "DD",
    "name": "弗莱彻号88",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7656,7 +7656,7 @@
    "type": "TRS",
    "name": "大型运输船33",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7688,7 +7688,7 @@
    "type": "DD",
    "name": "弗莱彻号89",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7720,7 +7720,7 @@
    "type": "TRS",
    "name": "大型运输船34",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7752,7 +7752,7 @@
    "type": "DD",
    "name": "弗莱彻号90",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7784,7 +7784,7 @@
    "type": "TRS",
    "name": "大型运输船35",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7816,7 +7816,7 @@
    "type": "DD",
    "name": "弗莱彻号91",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7848,7 +7848,7 @@
    "type": "TRS",
    "name": "大型运输船36",
    "strength": 2,
-   "picture": "misc/image/ship/cmn_ms1_3.png",
+   "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7880,7 +7880,7 @@
    "type": "DD",
    "name": "弗莱彻号92",
    "strength": 1,
-   "picture": "misc/image/ship/fletcher.png",
+   "picture": "misc/image/ship/library/USA_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7912,7 +7912,7 @@
    "type": "BB",
    "name": "比叡",
    "strength": 5,
-   "picture": "misc/image/ship/hiei.png",
+   "picture": "misc/image/ship/library/JAP_BC1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7944,7 +7944,7 @@
    "type": "BB",
    "name": "雾岛",
    "strength": 5,
-   "picture": "misc/image/ship/kirishima.png",
+   "picture": "misc/image/ship/library/JAP_BC1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -7976,7 +7976,7 @@
    "type": "CV",
    "name": "信浓",
    "strength": 7,
-   "picture": "misc/image/ship/shinano.png",
+   "picture": "misc/image/ship/library/JAP_CV5_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8008,7 +8008,7 @@
    "type": "CVL",
    "name": "千岁",
    "strength": 2,
-   "picture": "misc/image/ship/jap_cvl1.png",
+   "picture": "misc/image/ship/library/JAP_CVL1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8040,7 +8040,7 @@
    "type": "CVL",
    "name": "千代田",
    "strength": 2,
-   "picture": "misc/image/ship/jap_cvl1.png",
+   "picture": "misc/image/ship/library/JAP_CVL1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8072,7 +8072,7 @@
    "type": "CVL",
    "name": "瑞凤",
    "strength": 2,
-   "picture": "misc/image/ship/jap_cvl1.png",
+   "picture": "misc/image/ship/library/JAP_CVL1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8104,7 +8104,7 @@
    "type": "BB",
    "name": "扶桑",
    "strength": 5,
-   "picture": "misc/image/ship/fuso.png",
+   "picture": "misc/image/ship/library/JAP_BB1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8136,7 +8136,7 @@
    "type": "BB",
    "name": "山城",
    "strength": 5,
-   "picture": "misc/image/ship/fuso.png",
+   "picture": "misc/image/ship/library/JAP_BB1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8168,7 +8168,7 @@
    "type": "BB",
    "name": "伊势",
    "strength": 5,
-   "picture": "misc/image/ship/ise.png",
+   "picture": "misc/image/ship/library/JAP_BB2_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8200,7 +8200,7 @@
    "type": "BB",
    "name": "日向",
    "strength": 5,
-   "picture": "misc/image/ship/ise.png",
+   "picture": "misc/image/ship/library/JAP_BB2_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8232,7 +8232,7 @@
    "type": "BB",
    "name": "陆奥",
    "strength": 6,
-   "picture": "misc/image/ship/nagato.png",
+   "picture": "misc/image/ship/library/JAP_BB4_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8264,7 +8264,7 @@
    "type": "CA",
    "name": "摩耶",
    "strength": 3,
-   "picture": "misc/image/ship/takao.png",
+   "picture": "misc/image/ship/library/JAP_CA2_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8296,7 +8296,7 @@
    "type": "CA",
    "name": "鸟海",
    "strength": 3,
-   "picture": "misc/image/ship/takao.png",
+   "picture": "misc/image/ship/library/JAP_CA2_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8328,7 +8328,7 @@
    "type": "CA",
    "name": "那智",
    "strength": 3,
-   "picture": "misc/image/ship/myoko.png",
+   "picture": "misc/image/ship/library/JAP_CA1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8360,7 +8360,7 @@
    "type": "CA",
    "name": "足柄",
    "strength": 3,
-   "picture": "misc/image/ship/myoko.png",
+   "picture": "misc/image/ship/library/JAP_CA1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8392,7 +8392,7 @@
    "type": "CA",
    "name": "铃谷",
    "strength": 3,
-   "picture": "misc/image/ship/mogami.png",
+   "picture": "misc/image/ship/library/JAP_CA3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8424,7 +8424,7 @@
    "type": "CA",
    "name": "熊野",
    "strength": 3,
-   "picture": "misc/image/ship/mogami.png",
+   "picture": "misc/image/ship/library/JAP_CA3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8456,7 +8456,7 @@
    "type": "CA",
    "name": "最上",
    "strength": 3,
-   "picture": "misc/image/ship/mogami.png",
+   "picture": "misc/image/ship/library/JAP_CA3_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8488,7 +8488,7 @@
    "type": "CL",
    "name": "阿贺野",
    "strength": 2,
-   "picture": "misc/image/ship/agano.png",
+   "picture": "misc/image/ship/library/JAP_CL2_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8520,7 +8520,7 @@
    "type": "CL",
    "name": "神通",
    "strength": 2,
-   "picture": "misc/image/ship/yubari.png",
+   "picture": "misc/image/ship/library/JAP_CL1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8552,7 +8552,7 @@
    "type": "CL",
    "name": "川内",
    "strength": 2,
-   "picture": "misc/image/ship/yubari.png",
+   "picture": "misc/image/ship/library/JAP_CL1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8584,7 +8584,7 @@
    "type": "DD",
    "name": "驱逐舰19",
    "strength": 1,
-   "picture": "misc/image/ship/jap_dd1.png",
+   "picture": "misc/image/ship/library/JAP_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8616,7 +8616,7 @@
    "type": "DD",
    "name": "驱逐舰20",
    "strength": 1,
-   "picture": "misc/image/ship/jap_dd1.png",
+   "picture": "misc/image/ship/library/JAP_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8648,7 +8648,7 @@
    "type": "DD",
    "name": "驱逐舰21",
    "strength": 1,
-   "picture": "misc/image/ship/jap_dd1.png",
+   "picture": "misc/image/ship/library/JAP_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8680,7 +8680,7 @@
    "type": "DD",
    "name": "驱逐舰22",
    "strength": 1,
-   "picture": "misc/image/ship/jap_dd1.png",
+   "picture": "misc/image/ship/library/JAP_DD1_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8712,7 +8712,7 @@
    "type": "CV",
    "name": "赤城",
    "strength": 4,
-   "picture": "misc/image/ship/akagi.png",
+   "picture": "misc/image/ship/library/JAP_CV1 Akagi_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8744,7 +8744,7 @@
    "type": "CV",
    "name": "加贺",
    "strength": 4,
-   "picture": "misc/image/ship/kaga.png",
+   "picture": "misc/image/ship/library/JAP_CV1 Kaga_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8776,7 +8776,7 @@
    "type": "CV",
    "name": "飞龙",
    "strength": 2,
-   "picture": "misc/image/ship/hiryu.png",
+   "picture": "misc/image/ship/library/JAP_CV7_ship.png",
    "card": {
     "picture": "",
     "nation": "",
@@ -8808,7 +8808,7 @@
    "type": "CV",
    "name": "苍龙",
    "strength": 2,
-   "picture": "misc/image/ship/soryu.png",
+   "picture": "misc/image/ship/library/JAP_CV6_ship.png",
    "card": {
     "picture": "",
     "nation": "",

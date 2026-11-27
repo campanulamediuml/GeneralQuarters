@@ -3,7 +3,7 @@
  "faction": "B",
  "type": "TRS",
  "name": "运输船",
- "picture": "misc/image/ship/cmn_ms1_3.png",
+ "picture": "misc/image/ship/library/CMN_MS1-3_ship.png",
  "strength": 1,
  "card": {
   "damage_control": 0,

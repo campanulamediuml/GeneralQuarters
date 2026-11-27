@@ -3,7 +3,7 @@
  "faction": "B",
  "type": "CA",
  "name": "羽黑",
- "picture": "misc/image/ship/myoko.png",
+ "picture": "misc/image/ship/library/JAP_CA1_ship.png",
  "strength": 4,
  "card": {
   "damage_control": 3,

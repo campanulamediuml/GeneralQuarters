@@ -3,7 +3,7 @@
  "faction": "A",
  "type": "CA",
  "name": "澳大利亚",
- "picture": "misc/image/ship/australia.png",
+ "picture": "misc/image/ship/library/GBR_CA1-2_ship.png",
  "strength": 3,
  "card": {
   "damage_control": 3,

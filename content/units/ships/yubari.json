@@ -3,7 +3,7 @@
  "faction": "B",
  "type": "CL",
  "name": "夕张",
- "picture": "misc/image/ship/yubari.png",
+ "picture": "misc/image/ship/library/JAP_CL1_ship.png",
  "strength": 2,
  "card": {
   "damage_control": 1,
