@@ -241,7 +241,7 @@
     "deck_capacity": 0,
     "elevator_count": 0,
     "depth_charges": 0,
-    "cargo": 12,
+    "cargo": 6,
     "armored_carrier": false,
     "gunnery": 0,
     "fire_control_radar": false
@@ -487,7 +487,7 @@
     "deck_capacity": 0,
     "elevator_count": 0,
     "depth_charges": 0,
-    "cargo": 12,
+    "cargo": 6,
     "armored_carrier": false,
     "gunnery": 0,
     "fire_control_radar": false
