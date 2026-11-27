@@ -108,9 +108,8 @@ func buildSpectateView(room store.Room, players []store.Player, events []store.E
 		"outcome":         state.Outcome,
 		"night":           state.Night,
 		"clock":           game.Clock(state),
-		"wind":            game.PrevailingWind(state),
-		// 逐格风向/天气：行优先字符串，观战页按格画箭头和云层。
-		"wind_cells":    game.WindCells(state),
+		// 和玩家视图一样发对象：前端按 wind.cells 画逐格风向箭头，发纯字符串时观战页拿不到逐格风。
+		"wind":          game.WindView{Wind: game.PrevailingWind(state), Cells: game.WindCells(state)},
 		"weather_cells": game.CloudCells(state.Map),
 		"players":       playersSnapshot(players),
 		"events":        events,

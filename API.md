@@ -157,7 +157,7 @@
 - `deploy_zone`：己方部署区，`{anchor,radius,cells}`。`cells` 是行优先的 `'0'/'1'` 串，标出可以摆船的格位；前端已经改用`legal_moves`的绿色高亮来画可放区域，这个字段留给脚本/第三方客户端。剧本可以给同一阵营划多个部署区（剧本里 `deploy_zones[].fleets` 指定哪几支舰队用哪个区）：此时 `anchor/radius` 是第一个区，`cells` 是所有区的并集，每支舰队的实际可落点看它自己的 `legal_moves`；
 - `airfields`：当前可见的机场，包含 `coord`、`type`（small/medium/large/seaplane）、`runways`、`strength`、`heavy_aa/light_aa/coastal`（`coastal` 是岸炮点数，舰队岸轰时先开火，每点 30% 命中随机舰船；舰炮每次命中按「岸炮:机场生命值」的剩余点数加权摇落点，落在岸炮才 -1，落在跑道就只扣生命值和驻机）、`enemy_supplies`（敌方卸在这里的滩头物资点数；只要有货，该机场维修停摆，炮击清空后恢复维修）等；
 - `weather_cells`：行优先、每格一个字符 `'0'..'3'`（晴/多云/降雨/风暴）。服务端内部是按"压了几层云"记账的（3 层以上就是风暴），**4 层以上到前端同样显示 3**；
-- `wind` 和 `wind_cells`：`wind` 是盛行风与本回合各己方舰队所在格的朝向关系（`wind.cells`、`wind.fleets`），`wind_cells` 是行优先、每格一个数字 `0`–`5`，依次对应 NE/E/SE/SW/W/NW（气象惯例记来向：SE = 风从东南吹来）；
+- `wind`：对象，`wind.wind` 是盛行风名，`wind.cells` 是行优先、每格一个数字 `0`–`5`，依次对应 NE/E/SE/SW/W/NW（气象惯例记来向：SE = 风从东南吹来），`wind.fleets` 是本回合各己方舰队所在格与风向的朝向关系（观战视图不下发舰队朝向，这里为空）。
 - `night`：剧本有没有昼夜循环时的夜间标记；`clock` 见下条；
 - `you`和`players`；
 - 当前阵营可见的`units`；己方单位额外包含`legal_moves`。每艘舰船包含`definition_id`、当前/初始生命值、服务端生成的`card`角色卡、`move_cooldown`、`confusion`和当前`damage`，字段涵盖火炮、防空、损管、雷达、航速、鱼雷、航空设施、货物、火灾、进水及设备损伤等。`card.surface_radar` 是对海搜索雷达，`card.fire_control_radar` 才是火控雷达（只有它给炮击 +10%；老存档没有这个字段时按 `surface_radar` 回落），兵牌右下角交战值白字/黑字就按它区分；
