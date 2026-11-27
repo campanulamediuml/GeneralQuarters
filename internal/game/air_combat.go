@@ -1300,6 +1300,11 @@ func nightGroundLandingCrash(state *State, aircraft *AirfieldAirUnit) (bool, []E
 	if state == nil || aircraft == nil || !state.Night {
 		return false, nil
 	}
+	// 水上飞机基地不判这道：水机贴着水面降落，没有"冲出道面"这回事（规则书
+	// "夜间航空行动"一节）。舰队带的水侦不在这个函数里，照旧按舰上回收判。
+	if fromSeaplaneBase(*state, aircraft) {
+		return false, nil
+	}
 	if probabilityRoll(&state.RNGState) >= 20 {
 		return false, nil
 	}
@@ -1352,7 +1357,9 @@ func advanceAircraftReturn(state *State, aircraft *AirUnit) []EngineEvent {
 	}
 	// 夜航摔毁判定（规则书 520–524 行）：夜间降落航母每个算子额外 70% 摔毁，
 	// 机场 20%（机场落地在 landAtAirfield 里做）。摔毁先于降落判定，否则夜间返航永远是安全的。
-	if state.Night && !aircraft.Seaplane && probabilityRoll(&state.RNGState) < 70 {
+	// 舰队自带的水上飞机也走这条：夜里吊车回收照样难，只有"从水上飞机基地出发的水上飞机"
+	// 回基地时才免判（那一类走 landAtAirfield）。
+	if state.Night && probabilityRoll(&state.RNGState) < 70 {
 		model := aircraft.Model
 		// 同 resolveLandingRisk：摔毁的算子不占机库位置，放飞时已经扣过了。
 		delete(state.Aircraft, aircraft.ID)

@@ -403,7 +403,7 @@ function scoreLineTag(line: { kind: string; faction: string }): string {
 const clockWindowLabel = computed(() => {
   const clock = state.value?.clock
   if (!clock) return ''
-  if (clock.night) return `夜间 · 航空任务已全部取消，${clock.service_start} 整备后再分配`
+  if (clock.night) return `夜间 · 只有水上飞机基地的水上飞机还能出动，${clock.service_start} 起恢复整备`
   if (!clock.service_open) return `${clock.service_start} 开始整备`
   if (!clock.launch_open) return `${clock.launch_start} 后放飞`
   return `放飞中 · ${clock.recover_by} 前回收`

@@ -431,6 +431,10 @@ func recallLoopingAircraftBeforeNight(state *State) []EngineEvent {
 		if aircraft.Returning {
 			continue
 		}
+		// 水上飞机基地的水上飞机可以夜里接着飞，不参与"天黑前必须回家"的召回。
+		if fromSeaplaneBase(*state, aircraft) {
+			continue
+		}
 		need := groundTurnsToLanded(*state, aircraft)
 		// 机场编队的转场同样不参与入夜召回：那是跨多日的移动。
 		if aircraft.Status == "transfer" {
@@ -524,6 +528,11 @@ func parkAircraftForNight(state *State) []EngineEvent {
 	for _, id := range sortedGroundAirIDsAll(*state) {
 		aircraft := state.GroundAir[id]
 		if aircraft == nil || airfieldAirborne(aircraft) {
+			continue
+		}
+		// 水上飞机基地的水上飞机夜里照常值班：不撤任务、不回机库（规则书"夜间航空行动"）。
+		// 别的机场算子还是天一黑就收场，第二天重新选挂载。
+		if fromSeaplaneBase(*state, aircraft) {
 			continue
 		}
 		if aircraft.TaskID == "" && aircraft.TaskKind == "" && aircraft.Status == "hangar" {

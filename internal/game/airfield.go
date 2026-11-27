@@ -25,7 +25,7 @@ type AirfieldContact struct {
 	HangarUsed  int          `json:"hangar_used"`
 	// EnemySupplies 是敌方卸在这个机场上的滩头物资：只要有货，维修就停摆。
 	EnemySupplies int `json:"enemy_supplies"`
-	ContactLevel int `json:"contact_level"`
+	ContactLevel  int `json:"contact_level"`
 }
 
 // setAirfieldContact 记录/刷新敌方机场情报；每次发现把情报等级 +1（最高 4），并同步最新位置。
@@ -203,6 +203,17 @@ func unitIsSeaplane(state State, aircraft *AirfieldAirUnit) bool {
 		return true
 	}
 	return false
+}
+
+// fromSeaplaneBase 判断这个机场算子是不是"从水上飞机基地出发的水上飞机"。
+// 夜间航空规则（规则书"夜间航空行动"一节）只给这一类开口子：它们贴着水面降落，
+// 夜间回场不判摔毁、天黑不收场；舰队带的水侦和陆基机场都不算，夜里照旧难。
+func fromSeaplaneBase(state State, aircraft *AirfieldAirUnit) bool {
+	if !unitIsSeaplane(state, aircraft) {
+		return false
+	}
+	airfield := airfieldFor(&state, aircraft.AirfieldID)
+	return airfield != nil && NormalizeAirfieldType(airfield.Type) == AirfieldSeaplane
 }
 
 // AirfieldHangarUnlimited 是机场的默认上限：机场没有机库，飞机停在露天停机位，
@@ -1004,9 +1015,28 @@ func groundAircraftForOrderID(state *State, id string, taskLevel bool) *Airfield
 	return nil
 }
 
+// seaplaneNightOrder 判断这条航空命令是不是只涉及"从水上飞机基地出发的水上飞机"。
+// 夜间窗口关闭时只有它们还能安排航空行动；一条命令里混进别的机种就整体不放行。
+func seaplaneNightOrder(state State, order Order) bool {
+	ids := airOrderIDs(order)
+	if len(ids) == 0 {
+		return false
+	}
+	taskLevel := groundTaskLevelOrder(order.Type)
+	for _, id := range ids {
+		aircraft := groundAircraftForOrderID(&state, id, taskLevel)
+		if aircraft == nil || !fromSeaplaneBase(state, aircraft) {
+			return false
+		}
+	}
+	return true
+}
+
 // ValidateGroundAirOrder 校验机场航空命令：LAUNCH_CAP / LAUNCH_RECON / LAUNCH_STRIKE / PRIORITIZE_AIR_TASK / SET_STRIKE_TARGET。
 func ValidateGroundAirOrder(state State, order Order) error {
-	if !state.ServiceWindowOpen() && nightBlockedAirOrder(order.Type) {
+	// 夜间窗口关闭时只有一个例外：水上飞机基地的水上飞机可以夜间出动（规则书
+	// "夜间航空行动"一节）。其余机种 19:40–04:00 之间照旧不许重新安排。
+	if !state.ServiceWindowOpen() && nightBlockedAirOrder(order.Type) && !seaplaneNightOrder(state, order) {
 		return fmt.Errorf("夜间无法执行航空任务")
 	}
 	ids := airOrderIDs(order)
@@ -1196,7 +1226,7 @@ func ValidateGroundAirOrder(state State, order Order) error {
 				return err
 			}
 			// 改目标不自动换挂载：岸基算子同理，挂鱼雷就是炸不动跑道。
-		return nil
+			return nil
 		case "cover":
 			// 掩护改目标：舰队所在格或机场格都行，只要求是地图内合法 hex。
 			if order.Coord == "" || !inBounds(state.Map, order.Coord) {
@@ -2417,6 +2447,10 @@ func resolveGroundTracking(state *State, aircraft *AirfieldAirUnit, members []Un
 		}
 	}
 	chance *= weatherFactor(weatherAt(state.Map, members[0].Coord))
+	// 和发现率同一条夜间规则：水上飞机基地的水上飞机，夜间跟踪成功率最终 ×50%。
+	if state.Night && fromSeaplaneBase(*state, aircraft) {
+		chance *= 0.5
+	}
 	if chance < 0 {
 		chance = 0
 	}
@@ -2472,6 +2506,11 @@ func groundReconChance(state State, aircraft *AirfieldAirUnit, members []Unit) f
 	// 与舰载机同一顺序：宽扇面的 ÷2 放在最后，120 度永远正好是 60 度的一半。
 	if aircraft.SectorWidth == 120 {
 		chance /= 2
+	}
+	// 水上飞机基地的水上飞机能在夜间出动，但夜里看不清：全部修正之后的最终发现率再 ×50%。
+	// 这一刀排在水上飞机的 ×2、天气系数和扇面折半之后，是最后一道修正（规则书"夜间航空行动"）。
+	if state.Night && fromSeaplaneBase(state, aircraft) {
+		chance *= 0.5
 	}
 	if chance < 0 {
 		return 0

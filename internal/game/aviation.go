@@ -2427,7 +2427,8 @@ func landAtAirfield(state *State, aircraft *AirUnit, airfield *Airfield) []Engin
 	}
 	delete(state.Aircraft, aircraft.ID)
 	// 夜间着陆机场：每个算子额外 20% 摔毁（规则书 535 行）。
-	if state.Night && probabilityRoll(&state.RNGState) < 20 {
+	// 水上飞机基地例外：水机贴水面降落，没有冲出道面的风险。
+	if state.Night && NormalizeAirfieldType(airfield.Type) != AirfieldSeaplane && probabilityRoll(&state.RNGState) < 20 {
 		delete(state.GroundAir, aircraft.ID)
 		return []EngineEvent{{Type: "night_landing_crash", Audience: aircraft.Faction, Text: aircraft.Model + "夜间降落失败，冲出跑道"}}
 	}
