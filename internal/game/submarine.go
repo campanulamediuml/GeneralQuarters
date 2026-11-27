@@ -476,8 +476,18 @@ func buySubmarineEffect(state *State, sub *Submarine, fleetID string, cost int, 
 		report.SubmarineEscaped = true
 		return events
 	case 2:
+		// 近距离打完鱼雷再"下潜逃避"：这一潜等于自己暴露了——舰队看着它下去，
+		// 从下回合起就进入被发现状态、被钉在原地挨深水炸弹。
 		events := submarineTorpedoAttack(state, sub, fleetID, report, false)
-		report.SubmarineEscaped = true
+		fleet := fleetMembers(state, fleetID)
+		if len(fleet) > 0 {
+			sub.Discovered = true
+			sub.DiscoveredBy = fleet[0].Faction
+			sub.TrackedFleetID = fleetID
+			report.Discovered = true
+			report.Effects = append(report.Effects, "下潜逃避：潜艇暴露，从下回合起被反潜作业锁定")
+			events = append(events, EngineEvent{Type: "submarine_discovered", Audience: fleet[0].Faction, Text: fmt.Sprintf("在%s发现下潜中的敌方潜艇%s", sub.Coord, sub.Name)})
+		}
 		return events
 	default:
 		setFleetContactLevel(state, sub.Faction, fleetID, 3)
