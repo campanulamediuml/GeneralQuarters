@@ -1,24 +1,11 @@
 <script setup lang="ts">
 import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import type { AirCombatReport } from '../types'
-import { aircraftSilhouette } from '../silhouettes'
 import { aircraftPictureURL } from '../silhouette-masks'
 import ShipSilhouette from './ShipSilhouette.vue'
 
-// 报告里只有机型名（如 "SB2C 地狱俯冲者" / "F6F 地狱猫"），按二战美军机代号反推剪影类型。
-function kindOf(model: string) {
-  const code = model.split(' ')[0].toUpperCase()
-  if (code.startsWith('F4U') || code.startsWith('F6F') || code.startsWith('FM') || code === 'ZERO' || code.startsWith('A6M')) return 'fighter'
-  if (code.startsWith('SBD') || code.startsWith('SB2C') || code.startsWith('D3A') || code.startsWith('D4Y')) return 'dive_bomber'
-  if (code.startsWith('TBF') || code.startsWith('TBM') || code.startsWith('B5N')) return 'torpedo_bomber'
-  // 水平轰炸机（B-25 / B-17 / B-24）没有专用剪影，借用俯冲轰炸机的轮廓。
-  if (code.startsWith('B17') || code.startsWith('B-17') || code.startsWith('B24') || code.startsWith('B-24') || code.startsWith('B25') || code.startsWith('B-25')) return 'dive_bomber'
-  if (code.startsWith('SOC') || code.startsWith('OS2U') || code.startsWith('E13A')) return 'seaplane'
-  return 'recon'
-}
-
-// 动画里的算子优先用 units/*.json 里配置的机型图片（content/misc/image/aircraft/*.png），
-// 图片缺失时才回退到内置矢量剪影，老存档和临时单位不会渲染成空白。
+// 动画里的算子只用服务端下发的机型图片（content/misc/image/aircraft/*.png）：
+// 战报自带 attacker_pictures / defender_pictures，前端不再按机型名猜剪影。
 function formation(models: string[], pictures: string[] | undefined, count: number, ids: string[] = []) {
   const types = models.length ? models : ['F6F']
   const shots = pictures && pictures.length ? pictures : []
@@ -30,7 +17,6 @@ function formation(models: string[], pictures: string[] | undefined, count: numb
       id: ids[index] || `slot-${index}`,
       model,
       picture: shots.length ? aircraftPictureURL(shots[index % shots.length]) : undefined,
-      path: aircraftSilhouette(kindOf(model)),
     }
   })
 }
@@ -170,12 +156,12 @@ function bomberLane(index: number) {
       <template v-if="showCAPScene">
         <div class="combat-formation formation-left" aria-hidden="true">
           <div v-for="plane in attacker" :key="plane.key" class="plane" :class="{ down: showLosses && plane.key < attackerDown }" :style="{ '--row': ((plane.key % 2) - 0.5) }">
-            <img v-if="plane.picture" class="plane-art" :src="plane.picture" :alt="plane.model" /><svg v-else viewBox="0 0 62 44"><path :d="plane.path" /></svg>
+            <img v-if="plane.picture" class="plane-art" :src="plane.picture" :alt="plane.model" />
           </div>
         </div>
         <div class="combat-formation formation-right" aria-hidden="true">
           <div v-for="plane in defender" :key="plane.key" class="plane" :class="{ down: showLosses && plane.key < lossCount(report.defender_losses, report.defender_count) }">
-            <img v-if="plane.picture" class="plane-art" :src="plane.picture" :alt="plane.model" /><svg v-else viewBox="0 0 62 44"><path :d="plane.path" /></svg>
+            <img v-if="plane.picture" class="plane-art" :src="plane.picture" :alt="plane.model" />
           </div>
         </div>
       </template>
@@ -184,7 +170,7 @@ function bomberLane(index: number) {
       <template v-if="showStrikeScene">
         <div class="strike-air" aria-hidden="true">
           <div v-for="(plane, index) in attacker" :key="plane.key" class="dive-plane" :class="{ 'lost': attackerHitIDs.has(plane.id), 'show-loss': showLosses }" :style="{ ...bomberLane(index) }">
-            <img v-if="plane.picture" class="plane-art" :src="plane.picture" :alt="plane.model" /><svg v-else viewBox="0 0 62 44"><path :d="plane.path" /></svg>
+            <img v-if="plane.picture" class="plane-art" :src="plane.picture" :alt="plane.model" />
             <span v-if="bomberLane(index).target" class="dive-target">{{ bomberLane(index).target }}</span>
           </div>
         </div>

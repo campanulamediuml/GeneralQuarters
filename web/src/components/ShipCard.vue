@@ -59,7 +59,7 @@ function number(value: number) {
     </header>
 
     <div class="ship-identity">
-      <ShipSilhouette class="ship-silhouette" :type="unit.type" :name="unit.name" :picture="unit.card?.picture" />
+      <ShipSilhouette class="ship-silhouette" :picture="unit.card?.picture" />
       <div class="ship-vitals">
         <span>结构生命值</span>
         <strong>{{ unit.strength }}<small> / {{ unit.max_strength }}</small></strong>

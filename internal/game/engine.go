@@ -61,6 +61,33 @@ func LoadScenario(contentDir, scenarioID string) (ScenarioDefinition, MapDefinit
 	return scenario, gameMap, catalog, nil
 }
 
+// BackfillCardPictures 给老存档里"卡上没有 picture"的舰船补上单位库里的素材路径。
+//
+// 素材路径必须由后端给：前端不该靠"舰名 → 图片文件"的硬编码表兜底。
+// 老存档的卡是部署时快照下来的，那时可能还没有下发 picture，载入房间时补一次即可。
+func BackfillCardPictures(state *State, catalog UnitCatalog) bool {
+	byID := map[string]string{}
+	for _, definition := range catalog.Units {
+		if definition.Picture == "" {
+			continue
+		}
+		if _, exists := byID[definition.ID]; !exists {
+			byID[definition.ID] = definition.Picture
+		}
+	}
+	changed := false
+	for _, unit := range state.Units {
+		if unit == nil || unit.Card.Picture != "" {
+			continue
+		}
+		if picture, ok := byID[unit.DefinitionID]; ok {
+			unit.Card.Picture = picture
+			changed = true
+		}
+	}
+	return changed
+}
+
 // loadShipCards 读取 units/ships/*.json：每艘舰一份完整卡，id 是舰名标识（lexington、shokaku…）。
 func loadShipCards(dir string) ([]UnitDefinition, error) {
 	entries, err := os.ReadDir(dir)

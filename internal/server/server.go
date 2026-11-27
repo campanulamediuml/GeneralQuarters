@@ -269,13 +269,16 @@ func (s *Server) actorRoom(roomID string) (*roomActor, error) {
 	if err != nil {
 		return nil, err
 	}
-	// 老存档没记 weather_turns（以前 NewState 漏拷这个字段），天气层因此一直是空的。
-	// 载入时从剧本定义补回来，并铺一次云；已经有的房间不受影响。
-	if room.State.WeatherTurns == 0 && room.State.Map.Clouds == "" {
-		if scenario, _, _, loadErr := game.LoadScenario(s.contentDir, room.State.ScenarioID); loadErr == nil && scenario.WeatherTurns > 0 {
+	// 老存档的补丁都在这里做，只跑一次（第一次访问房间时）：
+	//   - weather_turns：NewState 以前漏拷这个字段，天气层一直是空的；
+	//   - card.picture：素材路径必须由后端下发，老卡上的 picture 是空的，
+	//     以前靠前端按舰名硬编码的图片表兜底，那张表要删掉。
+	if scenario, _, catalog, loadErr := game.LoadScenario(s.contentDir, room.State.ScenarioID); loadErr == nil {
+		if room.State.WeatherTurns == 0 && room.State.Map.Clouds == "" && scenario.WeatherTurns > 0 {
 			room.State.WeatherTurns = scenario.WeatherTurns
 			game.EnsureWeather(&room.State)
 		}
+		game.BackfillCardPictures(&room.State, catalog)
 	}
 	actor.room, actor.players, actor.loaded = room, players, true
 	return actor, nil

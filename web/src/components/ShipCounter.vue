@@ -54,7 +54,7 @@ const aircraftPayload = computed(() => {
         <!-- 损伤标记：橙条=失去动力、白条=推进器受损，垫在剪影后面，和实体卡牌一个画法 -->
         <i v-if="markers.disabled" class="counter-band counter-band-disabled" title="失去动力"></i>
         <i v-else-if="markers.slow" class="counter-band counter-band-slow" :title="markers.slowLabel"></i>
-        <span class="counter-silhouette" :class="{ tilted: markers.tilt, sunk: markers.sunk }" :title="unit.name"><ShipSilhouette :type="unit.type" :name="unit.name" :picture="unit.card?.picture" /></span>
+        <span class="counter-silhouette" :class="{ tilted: markers.tilt, sunk: markers.sunk }" :title="unit.name"><ShipSilhouette :picture="unit.card?.picture" /></span>
         <!-- 红圈横杠：甲板损伤/摧毁、进水倾斜 -->
         <span v-if="markers.deck || markers.tilt" class="counter-deny" :class="{ destroyed: markers.deckDestroyed }" :title="markers.deck ? (markers.deckDestroyed ? '飞行甲板摧毁' : '飞行甲板损伤') : '进水倾斜'"></span>
         <!-- 起火：烟 + 火焰 -->
@@ -78,7 +78,7 @@ const aircraftPayload = computed(() => {
       </header>
       <div class="counter-middle">
         <span class="counter-back-speed" :title="speedTitle">{{ speedValue }}</span>
-        <span class="counter-silhouette counter-silhouette-back"><ShipSilhouette :type="unit.type" :name="unit.name" :picture="unit.card?.picture" /></span>
+        <span class="counter-silhouette counter-silhouette-back"><ShipSilhouette :picture="unit.card?.picture" /></span>
         <span v-if="isCarrier" class="counter-payload aircraft counter-back-deck" title="基础甲板长度：每回合可起降的航空算子数，实际按风向修正">{{ unit.card.deck_capacity }}</span>
       </div>
       <footer class="counter-bottom counter-back-bottom">

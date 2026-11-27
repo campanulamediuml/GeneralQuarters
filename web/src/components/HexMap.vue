@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
-import type { AirTask, DistanceReference, GameMap, Order, ReconSector, Unit } from '../types'
+import type { AirTask, DistanceReference, EnemyAirContact, GameMap, Order, ReconSector, Unit } from '../types'
 import { contactCapitalsLabel, contactSizeLabel, fleetOrder, type FleetGroup } from '../fleet'
 import { aircraftPictureURL, shipMaskURL } from '../silhouette-masks'
 import { airfieldContactStatus } from '../airfields'
-import { aircraftSilhouette, shipSilhouette } from '../silhouettes'
 import AircraftCounter from './AircraftCounter.vue'
 import AirfieldCounter from './AirfieldCounter.vue'
 
@@ -278,26 +277,16 @@ function flightModels(task: AirTask) {
   return [...new Set(task.aircraft.map((aircraft) => aircraft.model))].join(' / ')
 }
 
-// 打击编队算子用"素材图标"而不是矢量剪影：编队本身是混编的（俯冲、鱼雷、护航机都有），
-// 挑成员里的哪一架都不代表这支编队，所以美军统一给蓝底 SBD、日军统一给粉底零战，
-// 和航空界面的飞机兵牌用同一套素材，一眼分得出敌我。
-const STRIKE_FORMATION_PICTURES: Record<string, string> = {
-  A: 'misc/image/aircraft/sbd.png',
-  B: 'misc/image/aircraft/a6m2.png',
+// 编队牌上的机型图直接用编队里第一架飞机的素材（服务端下发的 picture），
+// 前端不再按阵营挑一张硬编码的"代表机型"图。
+function taskPicture(task: AirTask) {
+  return aircraftPictureURL(task.aircraft?.[0]?.picture)
 }
-function strikeFormationPicture(faction?: string) {
-  return aircraftPictureURL(STRIKE_FORMATION_PICTURES[faction === 'B' ? 'B' : 'A'])
+function taskPictureFile(task: AirTask) {
+  return task.aircraft?.[0]?.picture || ''
 }
-// 编队牌上的机型图按编队自己的阵营取：观战页 playerFaction 固定是 A，
-// 之前直接拿它取图，日军编队也画成了美军 SBD，牌面和点开后的零战对不上。
-function formationFaction(task: { faction?: string }) {
-  return props.spectate && task.faction ? task.faction : props.playerFaction
-}
-function formationPicture(task: { faction?: string }) {
-  return strikeFormationPicture(formationFaction(task))
-}
-function formationPictureFile(task: { faction?: string }) {
-  return STRIKE_FORMATION_PICTURES[formationFaction(task) === 'B' ? 'B' : 'A']
+function enemyAirPicture(contact: EnemyAirContact) {
+  return aircraftPictureURL(contact.pictures?.[0])
 }
 
 // 距离一律按 hex 数算，而且整张图都算：服务端下发的 distance_reference 只覆盖
@@ -905,29 +894,20 @@ onUnmounted(() => {
   endMapPan()
 })
 
-// 地图上的舰队算子：优先用带头两艘舰的真实剪影（旗舰 + 次舰）
+// 地图上的舰队算子：用服务端下发的舰船卡素材（旗舰 + 次舰），没有素材就不画剪影。
 function leadMasks(unit: FleetGroup) {
   const members = unit.members?.length ? unit.members : [unit as unknown as Unit]
   return members
-    .map((member) => ({ id: member.id, name: member.name, mask: shipMaskURL(member.card?.picture, member.name), picture: member.card?.picture }))
+    .map((member) => ({ id: member.id, mask: shipMaskURL(member.card?.picture) }))
     .filter((item) => item.mask)
-    .slice(0, 2) as { id: string; name: string; mask: string }[]
+    .slice(0, 2) as { id: string; mask: string }[]
 }
 
 function singleMask(unit: Unit) {
   // 拆分出来的单舰编队：编队投影本身没有 card.picture，旗舰图只挂在成员上。
-  // 以前直接读编队的 card，拆分后取不到图，地图算子会掉进兜底分支。
   const members = (unit as unknown as FleetGroup).members
-  if (members?.length) return shipMaskURL(members[0].card?.picture, members[0].name)
-  return shipMaskURL(unit.card?.picture, unit.name)
-}
-
-// 没有舰船素材时手绘的剪影。必须自己缩放：
-// 以前这里塞的是 ShipSilhouette 组件，它渲染的是宽高 100% 的 <svg>，
-// 放进地图这层 SVG 里就会撑满整个视口——拆分舰队后单舰编队一多，
-// 地图上直接糊出一大块白色舰影。
-function shipShape(type?: string) {
-  return shipSilhouette(type)
+  if (members?.length) return shipMaskURL(members[0].card?.picture)
+  return shipMaskURL(unit.card?.picture)
 }
 
 function headingAngle(heading?: string) {
@@ -1075,14 +1055,9 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
                 class="fleet-ship-mask"
               />
             </template>
-            <template v-else><path d="M-21 5h42l-6 5h-29zM-5 0H6v5H-5zM-2-5H1V0H-2z" /><path d="M-21 5h42l-6 5h-29zM-5 0H6v5H-5zM-2-5H1V0H-2z" transform="translate(0 -7)" /></template>
           </g>
           <g v-else class="unit-ship-mark">
             <image v-if="singleMask(unit)" :href="singleMask(unit)!" x="-24" y="-13" width="48" height="20" preserveAspectRatio="xMidYMax meet" class="fleet-ship-mask" />
-            <g v-else :transform="`scale(0.4 0.5) translate(-60 -20)`" class="fleet-ship-drawing">
-              <path class="sil-hull" :d="shipShape(unit.type).hull" />
-              <path v-for="(part, index) in shipShape(unit.type).parts" :key="`${part.tone}-${index}`" :class="`sil-${part.tone}`" :d="part.d" />
-            </g>
           </g>
           <text class="unit-strength" x="-20" y="-7">{{ unit.count }}</text>
         </template>
@@ -1109,7 +1084,6 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
       >
         <circle r="8" />
         <path d="M-6 3 0-7 6 3 0 1Z" />
-        <path class="recon-aircraft-mark" :d="aircraftSilhouette('recon')" transform="translate(-7 -5) scale(.23)" />
         <text x="10" y="3">{{ sector.status === 'recon' ? '侦察' : '舰上' }}</text>
         <title>{{ sector.aircraft_id }} · {{ sector.status === 'recon' ? `第${sector.recon_distance || 0}距离圈` : '随母舰移动' }}</title>
       </g>
@@ -1129,8 +1103,7 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         @click.stop="markerClick(task.current_coord || coord, () => emit('selectAirTask', task.id))"
       >
         <rect x="-23" y="-15" width="46" height="30" rx="3" />
-        <image v-if="task.kind === 'attack'" class="flight-task-picture" :href="formationPicture(task)" x="-20" y="-13" width="40" height="26" preserveAspectRatio="xMidYMid meet" :data-aircraft-picture="formationPictureFile(task)" />
-        <path v-else class="flight-task-symbol" :data-task-kind="task.kind" :d="task.kind === 'cover' ? aircraftSilhouette('fighter') : aircraftSilhouette('recon')" transform="translate(-14 -15) scale(.46)" />
+        <image v-if="taskPicture(task)" class="flight-task-picture" :href="taskPicture(task)" x="-20" y="-13" width="40" height="26" preserveAspectRatio="xMidYMid meet" :data-aircraft-picture="taskPictureFile(task)" />
         <text class="flight-task-count" x="21" y="13">{{ task.airborne_count }}/{{ task.aircraft_ids.length }}</text>
         <text class="flight-task-caption" y="23">{{ flightLabel(task) }} · {{ task.current_coord }}{{ task.cannot_land ? ' ⚠' : '' }}</text>
         <title>{{ flightModels(task) }} · {{ flightLabel(task) }} · {{ task.airborne_count }}/{{ task.aircraft_ids.length }} 已升空 · 当前 {{ task.current_coord }} · 目标 {{ task.target_coord || '未设置' }} · 剩余航程 {{ flightRange(task) }}</title>
@@ -1162,8 +1135,7 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         @click.stop="markerClick(task.current_coord || coord, () => emit('selectAirTask', task.id))"
       >
         <rect x="-22" y="-13" width="44" height="26" rx="3" />
-        <image v-if="task.kind === 'attack'" class="flight-task-picture" :href="formationPicture(task)" x="-19" y="-11" width="38" height="22" preserveAspectRatio="xMidYMid meet" :data-aircraft-picture="formationPictureFile(task)" />
-        <path v-else class="flight-task-symbol" :d="aircraftSilhouette('recon')" transform="translate(-13 -11) scale(.5)" />
+        <image v-if="taskPicture(task)" class="flight-task-picture" :href="taskPicture(task)" x="-19" y="-11" width="38" height="22" preserveAspectRatio="xMidYMid meet" :data-aircraft-picture="taskPictureFile(task)" />
         <text class="ground-task-count" x="20" y="11">{{ task.airborne_count }}</text>
         <text class="ground-task-caption" y="21">{{ flightLabel(task) }} · {{ task.current_coord }}</text>
         <title>{{ flightModels(task) }} · {{ flightLabel(task) }} · 来自机场 · {{ task.current_coord }}{{ task.target_coord ? ' → ' + task.target_coord : '' }}</title>
@@ -1193,10 +1165,7 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         :transform="`translate(${center(coord).x - 34 + index * 22}, ${center(coord).y + 30})`"
       >
         <rect x="-10" y="-7" width="20" height="14" rx="2" />
-        <template v-if="contact.kind === 'attack'">
-          <image class="flight-task-picture enemy-air-picture" :href="strikeFormationPicture(contact.faction)" x="-9" y="-6" width="18" height="12" preserveAspectRatio="xMidYMid meet" :data-aircraft-picture="STRIKE_FORMATION_PICTURES[contact.faction === 'B' ? 'B' : 'A']" />
-        </template>
-        <path v-else class="enemy-air-symbol" :d="aircraftSilhouette(contact.kind === 'recon' ? 'recon' : 'fighter')" transform="translate(-6 -5) scale(.22)" />
+        <image v-if="enemyAirPicture(contact)" class="flight-task-picture enemy-air-picture" :href="enemyAirPicture(contact)" x="-9" y="-6" width="18" height="12" preserveAspectRatio="xMidYMid meet" :data-aircraft-picture="contact.pictures?.[0] || ''" />
         <text x="0" y="13">{{ contact.count }}</text>
         <title>敌方编队 · {{ contact.models?.join('/') }} · 约 {{ contact.count }} 个算子 · {{ contact.coord }} · 由{{ { radar: '雷达', recon: '侦察机', visual: '目视' }[contact.detected_by] || contact.detected_by }}发现</title>
       </g>
@@ -1204,13 +1173,8 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
     <g v-if="dragging && draggedUnit" ref="ghostElement" class="map-unit drag-ghost" :class="`faction-${draggedUnit.faction.toLowerCase()}`" transform="translate(-1000, -1000)">
       <rect x="-26" y="-18" width="52" height="36" rx="3" />
       <path class="unit-stripe" d="M-26 11h52v7h-52z" />
-      <g v-if="draggedUnit.count > 1" class="fleet-silhouettes"><path d="M-21 5h42l-6 5h-29zM-5 0H6v5H-5zM-2-5H1V0H-2z" /><path d="M-21 5h42l-6 5h-29zM-5 0H6v5H-5zM-2-5H1V0H-2z" transform="translate(0 -7)" /></g>
-      <g v-else class="unit-ship-mark">
+      <g class="unit-ship-mark">
         <image v-if="singleMask(draggedUnit)" :href="singleMask(draggedUnit)!" x="-24" y="-13" width="48" height="20" preserveAspectRatio="xMidYMax meet" class="fleet-ship-mask" />
-        <g v-else :transform="`scale(0.4 0.5) translate(-60 -20)`" class="fleet-ship-drawing">
-          <path class="sil-hull" :d="shipShape(draggedUnit.type).hull" />
-          <path v-for="(part, index) in shipShape(draggedUnit.type).parts" :key="`${part.tone}-${index}`" :class="`sil-${part.tone}`" :d="part.d" />
-        </g>
       </g>
       <text class="unit-strength" x="-20" y="-7">{{ draggedUnit.count }}</text>
       <path class="unit-heading" :transform="`translate(19 -7) rotate(${headingAngle(draggedUnit.heading)})`" d="M0 -9 L3.4 5 L-3.4 5 Z" />

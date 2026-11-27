@@ -19,10 +19,13 @@ import (
 
 // AirContact 是"我看到的一支敌方飞行编队"。
 type AirContact struct {
-	TaskID        string   `json:"task_id"`
-	Faction       string   `json:"faction"`
-	Kind          string   `json:"kind"`
-	Models        []string `json:"models"`
+	TaskID  string   `json:"task_id"`
+	Faction string   `json:"faction"`
+	Kind    string   `json:"kind"`
+	Models  []string `json:"models"`
+	// Pictures 是这些机型的素材路径（content/ 相对路径）：地图上的敌机图标直接用它，
+	// 前端不再按"机型名 → 内置矢量剪影"猜图。
+	Pictures      []string `json:"pictures"`
 	Count         int      `json:"count"`
 	Coord         string   `json:"coord"`
 	Heading       string   `json:"heading"`
@@ -59,6 +62,7 @@ func revealAirTask(state *State, observer string, aircraft *AirUnit, how string)
 	markAirContact(state, observer, aircraft.TaskID, how)
 	contact := state.AirContacts[observer][aircraft.TaskID]
 	models := map[string]bool{}
+	pictures := map[string]bool{}
 	count := 0
 	for _, member := range state.Aircraft {
 		if member.Faction != aircraft.Faction || member.TaskID != aircraft.TaskID || member.TaskID == "" {
@@ -68,6 +72,9 @@ func revealAirTask(state *State, observer string, aircraft *AirUnit, how string)
 			continue
 		}
 		models[member.Model] = true
+		if member.Picture != "" {
+			pictures[member.Picture] = true
+		}
 		count++
 	}
 	if count == 0 {
@@ -79,6 +86,12 @@ func revealAirTask(state *State, observer string, aircraft *AirUnit, how string)
 	}
 	sort.Strings(names)
 	contact.Models = names
+	picturePaths := make([]string, 0, len(pictures))
+	for path := range pictures {
+		picturePaths = append(picturePaths, path)
+	}
+	sort.Strings(picturePaths)
+	contact.Pictures = picturePaths
 	contact.Count = count
 	contact.Faction = aircraft.Faction
 	contact.Kind = aircraft.TaskKind

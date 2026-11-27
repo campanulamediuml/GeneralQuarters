@@ -616,6 +616,8 @@ export interface EnemyAirContact {
   faction: 'A' | 'B'
   kind: string
   models: string[]
+  /** 机型素材（content 相对路径）：敌机图标直接用它，前端不按机型名猜剪影。 */
+  pictures?: string[]
   count: number
   coord: string
   heading?: string

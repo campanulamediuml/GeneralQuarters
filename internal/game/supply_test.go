@@ -83,7 +83,6 @@ func TestAirfieldSupplyBlocksTorpedo(t *testing.T) {
 	}
 }
 
-
 // 视图要把"能挂什么 + 当前挂的是什么"都算好下发：前端只渲染，
 // 不再维护机种规则和 id→中文名映射表。
 func TestWithLoadoutViewSendsOptionsAndLabel(t *testing.T) {
