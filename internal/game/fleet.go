@@ -437,6 +437,25 @@ func exposeFleetAtMaxIntel(state *State, fleetID, reason string) []EngineEvent {
 
 // —— 运输卸载（规则书 493–497 行）——
 
+// 卸载节奏：在目标 hex 停满 3 回合才开始卸货，之后每 3 回合卸 1 点；
+// 风暴天整队翻倍，变成每 6 回合卸 1 点（不按每回合掷骰，免得同一支舰队时快时慢）。
+const (
+	unloadStartTurns = 3
+	unloadInterval   = 3
+)
+
+// unloadDue 判断这一回合是不是"卸货回合"：sessions 是舰队在该 hex 的连续停留回合数（到达当回合算 1）。
+func unloadDue(sessions int, storm bool) bool {
+	if sessions < unloadStartTurns {
+		return false
+	}
+	step := unloadInterval
+	if storm {
+		step *= 2
+	}
+	return (sessions-unloadStartTurns)%step == 0
+}
+
 // unitUnloading 判断一艘运输船本回合能不能卸载物资：
 // 船上有货、舰队在敌方机场 hex 停留满 3 回合、舰队没有翻沉/停滞。
 func unitUnloading(state State, unit *Unit) *Airfield {
@@ -573,34 +592,32 @@ func resolveUnloading(state *State) []EngineEvent {
 		done[fleetID] = true
 		storm := weatherAt(state.Map, unit.Coord) == "storm"
 		delivered := 0
-		for _, member := range fleetMembers(state, fleetID) {
-			ship := state.Units[member.ID]
-			if ship == nil || ship.Type != "TRS" || ship.Card.Cargo <= 0 || unitSmoking(ship) {
-				continue
-			}
-			amount := 1
-			if storm {
-				// 风暴天每 2 回合卸 1 物资：奇偶回合交替，跨回合状态存在 FleetSessions 之外的计数器里
-				if nextUint64(&state.RNGState)%2 == 1 {
-					amount = 0
+		if unloadDue(SessionOf(*state, fleetID), storm) {
+			for _, member := range fleetMembers(state, fleetID) {
+				ship := state.Units[member.ID]
+				if ship == nil || ship.Type != "TRS" || ship.Card.Cargo <= 0 || unitSmoking(ship) {
+					continue
 				}
+				ship.Card.Cargo--
+				if ship.Card.Cargo < 0 {
+					ship.Card.Cargo = 0
+				}
+				delivered++
 			}
-			if amount == 0 {
-				continue
-			}
-			ship.Card.Cargo -= amount
-			if ship.Card.Cargo < 0 {
-				ship.Card.Cargo = 0
-			}
-			delivered += amount
 		}
 		if delivered > 0 {
 			total := addShoreSupplies(state, unit.Faction, unit.Coord, delivered)
 			events = append(events, EngineEvent{Type: "troop_unloading", Audience: unit.Faction, Text: fmt.Sprintf("%s在%s卸载物资%d点（累计%d点）", unit.FleetName, airfield.Name, delivered, total)})
-			// 货一落地，机场就进入被压制状态：生命值归 0、跑道全废，清滩之前修不回来。
+			// 每 1 点物资让机场生命值 -1：卸 12 点就是把跑道打掉 12 点。
+			// 不再"卸一点就整座机场停摆"——以前哪怕只送上去 1 点，跑道也当场归 0。
 			if airfield.Strength > 0 {
-				airfield.Strength = 0
-				events = append(events, EngineEvent{Type: "airfield_occupied", Audience: "all", Text: fmt.Sprintf("%s被敌方滩头物资压制，跑道全部瘫痪（清滩前无法修复）", airfield.Name)})
+				airfield.Strength -= delivered
+				if airfield.Strength < 0 {
+					airfield.Strength = 0
+				}
+				if airfield.Strength == 0 {
+					events = append(events, EngineEvent{Type: "airfield_occupied", Audience: "all", Text: fmt.Sprintf("%s的跑道被滩头物资压毁，全部瘫痪", airfield.Name)})
+				}
 			}
 		}
 		// 卸货的舰队对敌方完全暴露（规则书 535 行），无论白天黑夜。

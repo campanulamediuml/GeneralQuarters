@@ -365,15 +365,6 @@ func AdvanceAirfields(state *State) []EngineEvent {
 	events := []EngineEvent{}
 	for _, id := range sortedAirfieldIDs(*state) {
 		airfield := state.Airfields[id]
-		// 敌方滩头物资还压在这个机场上：生命值按 0 计、跑道全废，清滩之前完全不走修复逻辑。
-		// 运输船把货卸在你的机场上，等于机场正在被占领——不修好也不放行作业。
-		if enemySuppliesAt(*state, airfield) > 0 {
-			if airfield.Strength > 0 {
-				airfield.Strength = 0
-				events = append(events, EngineEvent{Type: "airfield_occupied", Audience: airfield.Faction, Text: fmt.Sprintf("%s被敌方滩头物资压制，跑道全部瘫痪（清滩前无法修复）", airfield.Name)})
-			}
-			continue
-		}
 		if airfield.Strength < airfield.MaxStrength && d10(state) <= 2 {
 			airfield.Strength++
 			events = append(events, EngineEvent{Type: "airfield_repaired", Audience: airfield.Faction, Text: fmt.Sprintf("%s修复1点跑道（%d/%d）", airfield.Name, airfield.Strength, airfield.MaxStrength)})

@@ -2,8 +2,9 @@ package game
 
 import "testing"
 
-// 敌方滩头物资还压在机场上：生命值归 0、跑道全废、修复停摆——等于机场正在被占领。
-func TestAirfieldOccupiedByEnemySuppliesBlocksRepair(t *testing.T) {
+// 滩头物资不再把机场生命值按 0 计：卸一点就整座机场停摆是旧规则，
+// 现在每点物资只扣 1 点生命值，机场照常走修复逻辑。
+func TestEnemySuppliesDoNotZeroAirfield(t *testing.T) {
 	state := coralCombatState(t)
 	state.Timeline = nil
 	airfield := state.Airfields["af-a-moresby"]
@@ -11,46 +12,48 @@ func TestAirfieldOccupiedByEnemySuppliesBlocksRepair(t *testing.T) {
 	state.ShoreSupplies = map[string]int{"B|" + airfield.Coord: 6}
 
 	events := AdvanceAirfields(&state)
-	if airfield.Strength != 0 {
-		t.Fatalf("被敌方滩头物资压制的机场生命值应为 0，实际 %d", airfield.Strength)
+	if airfield.Strength == 0 {
+		t.Fatal("滩头物资不该把机场直接打成 0")
 	}
-	if RunwaysAvailable(airfield.Strength, airfield.Runways) != 0 {
-		t.Fatal("被压制的机场不应还有可用跑道")
-	}
-	found := false
 	for _, event := range events {
 		if event.Type == "airfield_occupied" {
-			found = true
+			t.Fatal("机场没有被压毁时不该发 airfield_occupied 战报")
 		}
-		if event.Type == "airfield_repaired" {
-			t.Fatal("被压制期间不该出现修复事件")
-		}
-	}
-	if !found {
-		t.Fatal("机场被压制时应发一条 airfield_occupied 战报")
 	}
 }
 
-// 清滩之后修复逻辑要能自己恢复，不用再等额外回合。
-func TestAirfieldRepairsAfterSuppliesCleared(t *testing.T) {
+// 每点物资 -1 生命值：一次卸 3 点就掉 3 点，打空之后才瘫痪。
+func TestUnloadingDamagesAirfieldPerPoint(t *testing.T) {
 	state := coralCombatState(t)
 	state.Timeline = nil
 	airfield := state.Airfields["af-a-moresby"]
-	airfield.Strength = 1
-	state.ShoreSupplies = map[string]int{"B|" + airfield.Coord: 6}
-	AdvanceAirfields(&state)
-	if airfield.Strength != 0 {
-		t.Fatalf("压制期间生命值应为 0，实际 %d", airfield.Strength)
+	airfield.Strength = 5
+	state.ShoreSupplies = map[string]int{}
+	state.FleetSessions = map[string]int{"TRS-B": unloadStartTurns}
+	state.FleetStays = map[string]string{"TRS-B": airfield.Coord}
+	state.Units = map[string]*Unit{
+		"t1": {ID: "t1", FleetID: "TRS-B", FleetName: "运输队", Name: "运输船1", Type: "TRS", Faction: "B",
+			Coord: airfield.Coord, Strength: 2, MaxStrength: 2, Card: ShipCard{Cargo: 3, SpeedClass: "normal", DamageControl: 3}},
+		"t2": {ID: "t2", FleetID: "TRS-B", FleetName: "运输队", Name: "运输船2", Type: "TRS", Faction: "B",
+			Coord: airfield.Coord, Strength: 2, MaxStrength: 2, Card: ShipCard{Cargo: 3, SpeedClass: "normal", DamageControl: 3}},
+		"t3": {ID: "t3", FleetID: "TRS-B", FleetName: "运输队", Name: "运输船3", Type: "TRS", Faction: "B",
+			Coord: airfield.Coord, Strength: 2, MaxStrength: 2, Card: ShipCard{Cargo: 3, SpeedClass: "normal", DamageControl: 3}},
 	}
-	delete(state.ShoreSupplies, "B|"+airfield.Coord)
-	for turn := 0; turn < 60 && airfield.Strength == 0; turn++ {
-		AdvanceAirfields(&state)
+	events := resolveUnloading(&state)
+	if airfield.Strength != 2 {
+		t.Fatalf("3 点物资应扣 3 点机场生命值：5 -> %d", airfield.Strength)
 	}
-	if airfield.Strength == 0 {
-		t.Fatal("清滩之后机场应恢复修复逻辑")
+	unloaded := false
+	for _, event := range events {
+		if event.Type == "troop_unloading" {
+			unloaded = true
+		}
+		if event.Type == "airfield_occupied" {
+			t.Fatal("机场还有 2 点生命值，不该判瘫痪")
+		}
 	}
-	if airfield.Strength > airfield.MaxStrength {
-		t.Fatalf("修复不应超过最大生命值：%d/%d", airfield.Strength, airfield.MaxStrength)
+	if !unloaded {
+		t.Fatal("应产生卸载战报")
 	}
 }
 
