@@ -34,7 +34,13 @@ const selectedUnit = computed(() => {
   return selectedFleet.value?.members?.[0]
 })
 const fleetShips = computed(() => selectedFleet.value?.members || [])
-const carriers = computed(() => state.value?.aviation?.carriers || [])
+// 航母作业只列真正的航母：BB/CA 的机库是水上飞机位（吊车），和航母甲板作业不是一回事。
+const carriers = computed(() =>
+  (state.value?.aviation?.carriers || []).filter((carrier) => ['CV', 'CVL', 'CVE'].includes(carrier.type)),
+)
+function carriersOf(faction: 'A' | 'B') {
+  return carriers.value.filter((carrier) => (carrier.faction || 'A') === faction)
+}
 const tasks = computed(() => state.value?.aviation?.tasks || [])
 const groundTasks = computed(() => state.value?.ground_tasks || [])
 const events = computed<GameEvent[]>(() => [...(state.value?.events || [])].reverse())
@@ -326,14 +332,18 @@ onUnmounted(() => {
         <section class="watch-card">
           <h2>航母作业</h2>
           <div v-if="!carriers.length" class="watch-empty">暂无航母</div>
-          <div
-            v-for="carrier in carriers"
-            :key="carrier.unit_id"
-            class="watch-carrier"
-          >
-            <span>{{ carrier.name }}</span>
-            <small>机库 {{ carrier.hangar_used }}/{{ carrier.hangar_capacity }} · 甲板 {{ carrier.deck_used }}/{{ carrier.deck_length }} · {{ carrier.blocked_reason || carrier.operation || '正常' }}</small>
-          </div>
+          <template v-for="faction in ['A', 'B'] as const" :key="faction">
+            <h3 v-if="carriersOf(faction).length">{{ factionName(faction) }} · {{ carriersOf(faction).length }} 艘</h3>
+            <div
+              v-for="carrier in carriersOf(faction)"
+              :key="carrier.unit_id"
+              class="watch-carrier"
+              :class="`ship-${faction.toLowerCase()}`"
+            >
+              <span>{{ carrier.name }} <em>{{ carrier.type }}</em></span>
+              <small>机库 {{ carrier.hangar_used }}/{{ carrier.hangar_capacity }} · 甲板 {{ carrier.deck_used }}/{{ carrier.deck_length }} · {{ carrier.blocked_reason || carrier.operation || '正常' }}</small>
+            </div>
+          </template>
           <div v-if="tasks.length" class="watch-task-list">
             <h3>在编任务</h3>
             <button
@@ -411,6 +421,9 @@ onUnmounted(() => {
 .watch-fleet-row:hover, .watch-carrier:hover, .watch-task:hover { background: rgba(255,255,255,.04); }
 .watch-fleet-row.selected, .watch-task.selected { border-color: #58b6c9; background: rgba(88,182,201,.1); }
 .watch-fleet-row small, .watch-carrier small, .watch-task small { font-size: 11px; opacity: .65; }
+.watch-carrier em { font-style: normal; font-size: 10px; opacity: .55; margin-left: 4px; }
+.watch-carrier.ship-a span { color: #9fd7ea; }
+.watch-carrier.ship-b span { color: #f0b3a6; }
 .watch-empty { font-size: 12px; opacity: .55; }
 .watch-task-list { margin-top: 8px; border-top: 1px dashed rgba(255,255,255,.08); padding-top: 6px; }
 .watch-events ol { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow: auto; display: flex; flex-direction: column; gap: 3px; font-size: 11px; }

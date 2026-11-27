@@ -259,6 +259,8 @@ export interface AirTask {
 
 export interface CarrierAirStatus {
   unit_id: string
+  /** 阵营：观战视图把双方航母放在同一张列表里，靠它分组。 */
+  faction?: 'A' | 'B'
   name: string
   type: string
   hangar_used: number
