@@ -10,7 +10,7 @@ import (
 //
 // 剧本里的风向是"来向"（气象习惯：SE = 风从东南吹来，吹向西北）。
 // 甲板长度修正看舰艏与风的夹角：
-//   para  逆风：舰艏朝着来风方向，甲板相对风速最大    +2
+//   para  逆风：舰艏朝着来风方向，甲板相对风速最大    +1
 //   same  顺风：舰艏与风同向跑，几乎没有相对风速      -2
 //   ortho 侧逆风：偏离来风 60°，仍有迎面分量         +1
 //   meta  侧顺风：偏离来风 120°，带顺风分量           -1
@@ -49,7 +49,7 @@ func windRelation(wind, heading string) string {
 	step := int((diff+30)/60) % 6
 	switch step {
 	case 0:
-		return "para" // 顶着风：逆风 +2
+		return "para" // 顶着风：逆风 +1
 	case 1, 5:
 		return "ortho" // 侧向，仍带一点迎面分量 +1
 	case 2, 4:
