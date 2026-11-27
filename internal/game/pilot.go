@@ -45,18 +45,34 @@ func PilotSkillLabel(skill string) string {
 	return "普通"
 }
 
-// pilotSkillBonus 是熟练度对卡面数值的修正：
-// 新手 -1、普通 0、老兵 +1、王牌 +2。空战值最低压到 1，避免新手把自己的空战值打到 0 以下。
-func pilotSkillBonus(skill string) int {
+// PilotDiceAdvantage 返回熟练度在 DC 判定上的骰子档位：
+// 新手 0 = 劣势（2 骰取劣）、普通 1 = 单骰、老兵 2 = 2 骰取优、王牌 3 = 3 骰取优。
+//
+// 熟练度不再加减卡面数值：机型值定死在卡上，飞行员之间的差别只体现在 DC 这一掷——
+// 通过就给这一次出手 +1，没过就没有。和机库优势用的是同一套"骰子优/劣"语言。
+func PilotDiceAdvantage(skill string) int {
 	switch NormalizePilotSkill(skill) {
 	case PilotRookie:
-		return -1
+		return 0
 	case PilotVeteran:
-		return 1
-	case PilotAce:
 		return 2
+	case PilotAce:
+		return 3
 	}
-	return 0
+	return 1
+}
+
+// PilotAdvantageLabel 是给界面看的档位名：劣势 / 普通 / 2 骰优势 / 3 骰优势。
+func PilotAdvantageLabel(skill string) string {
+	switch PilotDiceAdvantage(skill) {
+	case 0:
+		return "劣势"
+	case 2:
+		return "2 骰优势"
+	case 3:
+		return "3 骰优势"
+	}
+	return "普通"
 }
 
 // pilotSkillFromID 从机场算子的 ID 里读熟练度（例如 af-b-saipan-a6m5-rookie-1）。
@@ -72,23 +88,4 @@ func pilotSkillFromID(id string) string {
 	return PilotRegular
 }
 
-// applyPilotSkill 把熟练度折进卡面数值：所有机种加对空，俯冲/鱼雷机再加对舰。
-// 轰炸机对地值不动——对地空袭的命中表已经在规则书里按"机场防空/混乱"调过一遍，
-// 再叠熟练度会让陆攻一轮抹平机场。
-func applyPilotSkill(skill string, kind string, airCombat, antiShip int) (int, int) {
-	bonus := pilotSkillBonus(skill)
-	if bonus == 0 {
-		return airCombat, antiShip
-	}
-	airCombat += bonus
-	if airCombat < 1 {
-		airCombat = 1
-	}
-	if kind == "dive_bomber" || kind == "torpedo_bomber" {
-		antiShip += bonus
-		if antiShip < 0 {
-			antiShip = 0
-		}
-	}
-	return airCombat, antiShip
-}
+

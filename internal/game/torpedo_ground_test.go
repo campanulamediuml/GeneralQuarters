@@ -38,11 +38,7 @@ func TestTorpedoLoadoutZeroesAntiGround(t *testing.T) {
 // 熟练度加成也不能把鱼雷机的对地值救回来：王牌飞行员的 +2 只走对空/对舰，
 // 挂鱼雷时对地仍然是 0——否则"精英机组带鱼雷炸机场"就成了规则漏洞。
 func TestPilotSkillCannotRestoreTorpedoGroundAttack(t *testing.T) {
-	airCombat, antiShip := applyPilotSkill(PilotAce, "torpedo_bomber", 6, 5)
-	if airCombat != 8 || antiShip != 7 {
-		t.Fatalf("王牌应给对空 +2、鱼雷机对舰 +2：%d %d", airCombat, antiShip)
-	}
-	unit := AirUnit{Model: "九七舰攻", Skill: PilotAce, AirCombat: airCombat, AntiShip: antiShip,
+	unit := AirUnit{Model: "九七舰攻", Skill: PilotAce, AirCombat: 6, AntiShip: 5,
 		AntiGround: 4, Loadout: LoadoutTorpedo}
 	if view := withLoadoutAttack(unit); view.AntiGround != 0 {
 		t.Fatalf("王牌挂鱼雷时对地仍应为 0，实际 %d", view.AntiGround)

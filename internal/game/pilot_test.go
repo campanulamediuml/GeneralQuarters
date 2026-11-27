@@ -17,26 +17,34 @@ func TestPilotSkillFromID(t *testing.T) {
 	}
 }
 
-// 熟练度直接改写卡面数值：对空全机种修正，俯冲/鱼雷机再加对舰；新手不会把数值压到 0 以下。
-func TestApplyPilotSkill(t *testing.T) {
-	if ac, as := applyPilotSkill(PilotVeteran, "fighter", 4, 0); ac != 5 || as != 0 {
-		t.Fatalf("老兵战斗机对空应为 5，实际 %d/%d", ac, as)
+// 熟练度不再是卡面数值的加减，而是 DC 判定的骰子档位：
+// 劣势（新手）= 2 骰取劣，普通 = 单骰，2 骰优势（老兵），3 骰优势（王牌）。
+func TestPilotDiceAdvantageTiers(t *testing.T) {
+	cases := map[string]struct {
+		level int
+		label string
+	}{
+		PilotRookie:  {0, "劣势"},
+		PilotRegular: {1, "普通"},
+		PilotVeteran: {2, "2 骰优势"},
+		PilotAce:     {3, "3 骰优势"},
 	}
-	if ac, as := applyPilotSkill(PilotRookie, "torpedo_bomber", 1, 3); ac != 1 || as != 2 {
-		t.Fatalf("新手鱼雷机应为 1/2，实际 %d/%d", ac, as)
+	for skill, want := range cases {
+		if got := PilotDiceAdvantage(skill); got != want.level {
+			t.Fatalf("%s 骰子档位应为 %d，实际 %d", skill, want.level, got)
+		}
+		if got := PilotAdvantageLabel(skill); got != want.label {
+			t.Fatalf("%s 档位名应为 %s，实际 %s", skill, want.label, got)
+		}
 	}
-	if ac, _ := applyPilotSkill(PilotRookie, "fighter", 1, 0); ac != 1 {
-		t.Fatalf("新手空战值最低压到 1，实际 %d", ac)
-	}
-	if ac, as := applyPilotSkill(PilotAce, "dive_bomber", 2, 2); ac != 4 || as != 4 {
-		t.Fatalf("王牌俯冲轰炸机应为 4/4，实际 %d/%d", ac, as)
-	}
-	if ac, as := applyPilotSkill(PilotRegular, "fighter", 3, 0); ac != 3 || as != 0 {
-		t.Fatalf("普通机组不应改动数值，实际 %d/%d", ac, as)
+	// 认不出来的写法按普通。
+	if got := PilotDiceAdvantage("weird"); got != 1 {
+		t.Fatalf("未知熟练度应按普通，实际 %d", got)
 	}
 }
 
-// 部署时把熟练度落到算子上：同一机型的两种熟练度，对空值必须拉开，且 Skill 字段要能投影出去。
+// 部署时把熟练度落到算子上：同一机型的两种熟练度卡面数值一样（差值只在 DC 掷骰里），
+// 但 Skill 字段必须能投影出去，前端角标和 DC 判定都要认它。
 func TestDeploymentAppliesPilotSkill(t *testing.T) {
 	scenario := ScenarioDefinition{
 		ID: "t", Version: 1, Units: "t",
@@ -62,13 +70,16 @@ func TestDeploymentAppliesPilotSkill(t *testing.T) {
 	if vet == nil || rook == nil || plain == nil {
 		t.Fatal("熟练度部署没有生成算子")
 	}
-	if vet.Skill != PilotVeteran || vet.AirCombat != 5 {
-		t.Fatalf("老兵应为 5 空战，实际 %s/%d", vet.Skill, vet.AirCombat)
+	if vet.Skill != PilotVeteran || vet.AirCombat != 4 {
+		t.Fatalf("老兵卡面空战值仍是机型原值 4，实际 %s/%d", vet.Skill, vet.AirCombat)
 	}
-	if rook.Skill != PilotRookie || rook.AirCombat != 3 {
-		t.Fatalf("新手应为 3 空战，实际 %s/%d", rook.Skill, rook.AirCombat)
+	if rook.Skill != PilotRookie || rook.AirCombat != 4 {
+		t.Fatalf("新手卡面空战值仍是机型原值 4，实际 %s/%d", rook.Skill, rook.AirCombat)
 	}
 	if plain.Skill != PilotRegular || plain.AirCombat != 4 {
 		t.Fatalf("缺省应是普通 4 空战，实际 %s/%d", plain.Skill, plain.AirCombat)
+	}
+	if PilotDiceAdvantage(vet.Skill) != 2 || PilotDiceAdvantage(rook.Skill) != 0 {
+		t.Fatal("老兵/新手的骰子档位没有拉开")
 	}
 }

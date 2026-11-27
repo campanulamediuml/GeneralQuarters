@@ -45,10 +45,12 @@ const canCycle = computed(() => friendly.value && ['cap', 'cover', 'recon'].incl
 const cycleOn = computed(() => Boolean(props.aircraft.on_cycle))
 const cycleLabel = computed(() => (cycleOn.value ? '自动循环已开启，点击取消' : '自动循环已关闭，点击开启'))
 // 飞行员熟练度：普通不画角标，新/老/精三档各占一个字，放在机型名前面。
-// 熟练度在部署时已经折进对空/对舰数值了，角标只负责让人一眼看出这队是谁在飞。
+// 熟练度不改卡面数值，只决定 DC 临场发挥那一掷的骰子档位，角标负责让人一眼看出这队是谁在飞。
 const skillBadge = computed(() => ({ rookie: '新', veteran: '老', ace: '精' } as Record<string, string>)[props.aircraft.skill || ''] || '')
 const skillLabel = computed(() => ({ rookie: '新手', regular: '普通', veteran: '老兵', ace: '王牌' } as Record<string, string>)[props.aircraft.skill || 'regular'] || '普通')
-const modelTitle = computed(() => skillBadge.value ? `${props.aircraft.model} · 飞行员：${skillLabel.value}` : props.aircraft.model)
+// 档位名和规则书同一套：劣势 / 普通 / 2 骰优势 / 3 骰优势。
+const skillTier = computed(() => ({ rookie: '劣势（2 骰取劣）', regular: '普通', veteran: '2 骰优势', ace: '3 骰优势' } as Record<string, string>)[props.aircraft.skill || 'regular'] || '普通')
+const modelTitle = computed(() => skillBadge.value ? `${props.aircraft.model} · 飞行员：${skillLabel.value}（${skillTier.value}）` : props.aircraft.model)
 </script>
 
 <template>

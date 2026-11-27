@@ -45,13 +45,41 @@ var dcCheckRate = 50.0
 // dcCheck 掷一次 DC 判定：一半概率通过。
 // 0/100 这两种"必不过/必过"的值不消耗随机数，测试固定结果时不会打乱后续掷骰序列。
 func dcCheck(state *State) bool {
+	return dcCheckWithSkill(state, PilotRegular)
+}
+
+// dcCheckWithSkill 按飞行员熟练度掷 DC：普通单骰（50%），老兵 2 骰取优（75%），
+// 王牌 3 骰取优（87.5%），新手 2 骰取劣（25%）。过了这一次，该次出手的对空/对舰值 +1。
+//
+// 熟练度不再加减卡面数值：机型值写死在卡上，人的差别全在这一掷里。
+func dcCheckWithSkill(state *State, skill string) bool {
 	if dcCheckRate <= 0 {
 		return false
 	}
 	if dcCheckRate >= 100 {
 		return true
 	}
-	return probabilityRoll(&state.RNGState) < dcCheckRate
+	advantage := PilotDiceAdvantage(skill)
+	rolls := advantage
+	if advantage <= 0 {
+		// 劣势：2 骰取劣，通过率 25%。
+		rolls = 2
+	}
+	if rolls < 1 {
+		rolls = 1
+	}
+	best := probabilityRoll(&state.RNGState)
+	for i := 1; i < rolls; i++ {
+		roll := probabilityRoll(&state.RNGState)
+		if advantage >= 2 {
+			if roll < best {
+				best = roll
+			}
+		} else if roll > best {
+			best = roll
+		}
+	}
+	return best < dcCheckRate
 }
 
 // rollDCBonus 为一场空战里的每架飞机各掷一次 DC，成功的记 +1 空战值。
@@ -63,7 +91,7 @@ func rollDCBonus(state *State, groups ...[]*AirUnit) map[string]int {
 			if !operationalAircraft(state, aircraft) {
 				continue
 			}
-			if dcCheck(state) {
+			if dcCheckWithSkill(state, aircraft.Skill) {
 				bonus[aircraft.ID] = 1
 			}
 		}
@@ -982,7 +1010,8 @@ func resolveBombingOn(state *State, attacker *AirUnit, target *Unit, mixed, capR
 		antiShip--
 	}
 	// 投弹前每架飞机掷一次 DC：过了这一次的对舰攻击值 +1（原版"投弹 DC"）。
-	if dcCheck(state) {
+	// 熟练度决定这一掷的骰子档位，而不是给卡面数值加减。
+	if dcCheckWithSkill(state, attacker.Skill) {
 		antiShip++
 	}
 	chance := strikeHitChance(*state, attacker, target, mixed, capRemaining)

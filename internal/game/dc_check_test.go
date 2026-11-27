@@ -27,6 +27,30 @@ func TestDCCheckPassRate(t *testing.T) {
 	}
 }
 
+// 熟练度决定 DC 掷骰的档位：普通 50%、老兵 2 骰取优 75%、王牌 3 骰取优 87.5%、新手 2 骰取劣 25%。
+func TestDCCheckByPilotSkill(t *testing.T) {
+	cases := map[string]float64{
+		PilotRookie:  25,
+		PilotRegular: 50,
+		PilotVeteran: 75,
+		PilotAce:     87.5,
+	}
+	for skill, want := range cases {
+		state := State{RNGState: 424242}
+		passed := 0
+		const rolls = 4000
+		for i := 0; i < rolls; i++ {
+			if dcCheckWithSkill(&state, skill) {
+				passed++
+			}
+		}
+		rate := float64(passed) / rolls * 100
+		if rate < want-3 || rate > want+3 {
+			t.Fatalf("%s 的 DC 通过率应接近 %.1f%%，实际 %.1f%%", PilotSkillLabel(skill), want, rate)
+		}
+	}
+}
+
 // 美军侦察基础值 +10%：同样的目标、同样的机型，只有阵营不同。
 func TestUSReconBaseBonus(t *testing.T) {
 	state := State{RNGState: 1, Year: 1944, Doctrines: map[string]string{"A": "us", "B": "japan"},

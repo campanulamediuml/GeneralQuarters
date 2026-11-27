@@ -361,9 +361,9 @@ func NewState(scenario ScenarioDefinition, gameMap MapDefinition, catalog UnitCa
 		initialLoadout := LoadoutNone
 		fuel := MountedFuel(definition.Range, initialLoadout)
 		airCombat, antiShip := elitePilotBonus(state, carrier.Faction, definition.Kind, definition.AirCombat, definition.AntiShip)
-		// 飞行员熟练度和精英机组加成走同一条数值通道：先按国家/年份给精锐，再按部署里的熟练度修正。
+		// 卡面数值只含国家/年份的精锐机组加成；飞行员熟练度不改数值，
+		// 只决定 DC 判定的骰子档位（PilotDiceAdvantage）。
 		skill := NormalizePilotSkill(deployment.Skill)
-		airCombat, antiShip = applyPilotSkill(skill, definition.Kind, airCombat, antiShip)
 		state.Aircraft[deployment.ID] = &AirUnit{
 			ID: deployment.ID, DefinitionID: definition.ID, CarrierID: carrier.ID, Faction: carrier.Faction,
 			Name: definition.Name, Model: definition.Model, Kind: definition.Kind, Skill: skill, Picture: definition.Picture, PictureMode: definition.PictureMode, Status: "hangar", Strength: definition.Strength,
@@ -473,7 +473,6 @@ func deployAirfields(state *State, scenario ScenarioDefinition, airDefinitions a
 			groundAirCombat, groundAntiShip := elitePilotBonus(*state, airfield.Faction, aircraftDef.Kind, aircraftDef.AirCombat, aircraftDef.AntiShip)
 			// 地面航空的熟练度写在 ID 里（af-b-yap-a6m5-rookie-1）：没有舰载部署那样的结构化条目。
 			groundSkill := pilotSkillFromID(aircraftID)
-			groundAirCombat, groundAntiShip = applyPilotSkill(groundSkill, aircraftDef.Kind, groundAirCombat, groundAntiShip)
 			state.GroundAir[aircraftID] = &AirfieldAirUnit{
 				ID: aircraftID, DefinitionID: aircraftDef.ID, AirfieldID: airfield.ID, Faction: airfield.Faction,
 				Model: aircraftDef.Model, Kind: aircraftDef.Kind, Skill: groundSkill, Picture: aircraftDef.Picture, PictureMode: aircraftDef.PictureMode, Status: "hangar", Strength: aircraftDef.Strength,
