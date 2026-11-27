@@ -69,9 +69,6 @@ type FactionRules struct {
 	HeavyAALateBonus float64
 	// FleetLightAAMerge：航母能否并入同格舰队的最高轻防空。
 	FleetLightAAMerge bool
-	// FleetHeavyAA：整支舰队的重型防空合在一起结算（美军雷达火控 + VT 引信）。
-	// 没有这条的阵营（日军）只能各自为战：重防空只打正在攻击自己这艘舰的机群。
-	FleetHeavyAA bool
 
 	// 水面战先手（突袭）判定里的阵营加成，单位是点数。
 	SurpriseEliteBonus   int
@@ -153,7 +150,6 @@ func rulesForDoctrine(doctrine string, year int, night bool) FactionRules {
 		rules.ReconBaseBonus = 10
 		rules.DeckDestroyChance = 1
 		rules.FleetLightAAMerge = true
-		rules.FleetHeavyAA = true
 		rules.SurpriseRadarBonus = 1
 		if year > 0 && year < 1944 {
 			rules.EarlyRadarPenalty = 20

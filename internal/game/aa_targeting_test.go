@@ -2,7 +2,7 @@ package game
 
 import "testing"
 
-// TestHeavyAAHitsEscortFighters 规则书 689 行：重型防空从“当前参与空袭的算子”里随机选目标，
+// TestHeavyAAHitsEscortFighters 规则书 865 行：重型防空从“当前参与空袭的算子”里随机选目标，
 // 护航战斗机不是免疫的。之前 resolveHeavyAA 只收到轰炸机列表，护航机怎么都挨不到打。
 func TestHeavyAAHitsEscortFighters(t *testing.T) {
 	state := sandboxState(t)
@@ -31,7 +31,7 @@ func TestHeavyAAHitsEscortFighters(t *testing.T) {
 	}
 }
 
-// TestLightAANeverTargetsEscorts 规则书 685–697 行：轻型防空只对“以本舰为目标的飞机”结算，
+// TestLightAANeverTargetsEscorts 规则书 866 行：轻型防空只对“以本舰为目标的飞机”结算，
 // 护航战斗机不参与投弹，所以轻防空威胁不到它们；重防空才是全员平等。
 func TestLightAANeverTargetsEscorts(t *testing.T) {
 	state := sandboxState(t)

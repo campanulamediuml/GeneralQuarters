@@ -736,7 +736,7 @@ func resolveGroundStrike(state *State, taskID, coord string) []EngineEvent {
 			events = append(events, EngineEvent{Type: "ground_strike_blocked", Audience: "all", Text: fmt.Sprintf("挂鱼雷的%s无法对地攻击（对地值按 0 计），这一趟炸不动%s的跑道", strings.Join(models, "、"), airfield.Name)})
 		}
 	}
-	// 规则书 689 行：重防空的目标池是“当前参与空袭的算子”，护航战斗机也算。
+	// 规则书 865 行：重防空的目标池是“当前参与空袭的算子”，护航战斗机也算。
 	events = append(events, airfieldHeavyAA(state, attackers, airfield, &report)...)
 	capRemaining := false
 	for _, group := range groups {
