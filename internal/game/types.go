@@ -345,9 +345,6 @@ type Airfield struct {
 	HangarCapacity int     `json:"hangar_capacity"`
 	Strength       int     `json:"strength"`
 	MaxStrength    int     `json:"max_strength"`
-	// SupplyDamage 是被敌方滩头物资永久打掉的生命值：这部分修不回来，
-	// 维修上限 = MaxStrength - SupplyDamage。物资清空后机场能修，但只修得回炮击/空袭的伤。
-	SupplyDamage int `json:"supply_damage"`
 	Radar          bool    `json:"radar"`
 	HeavyAA        float64 `json:"heavy_aa"`
 	LightAA        float64 `json:"light_aa"`

@@ -25,8 +25,6 @@ type AirfieldContact struct {
 	HangarUsed  int          `json:"hangar_used"`
 	// EnemySupplies 是敌方卸在这个机场上的滩头物资：只要有货，维修就停摆。
 	EnemySupplies int `json:"enemy_supplies"`
-	// SupplyDamage 是这些物资永久打掉的生命值，清滩之后也修不回来。
-	SupplyDamage int `json:"supply_damage"`
 	ContactLevel int `json:"contact_level"`
 }
 
@@ -131,7 +129,6 @@ func airfieldContactView(state State, airfield *Airfield, contact AirfieldContac
 	contact.Coastal = airfield.Coastal
 	contact.HangarUsed = groundedAirCount(state, airfield.ID)
 	contact.EnemySupplies = enemySuppliesAt(state, airfield)
-	contact.SupplyDamage = airfield.SupplyDamage
 	return contact
 }
 
@@ -164,7 +161,7 @@ func VisibleGroundAir(state State, faction string) []AirfieldAirStatus {
 		}
 		status := AirfieldAirStatus{
 			UnitID: airfield.ID, Faction: airfield.Faction, Name: airfield.Name, Type: NormalizeAirfieldType(airfield.Type), Picture: airfield.PictureOrDefault(), Coord: airfield.Coord,
-			Strength: airfield.Strength, MaxStrength: airfield.MaxStrength, MaxRunways: airfield.Runways, EnemySupplies: enemySuppliesAt(state, airfield), SupplyDamage: airfield.SupplyDamage,
+			Strength: airfield.Strength, MaxStrength: airfield.MaxStrength, MaxRunways: airfield.Runways, EnemySupplies: enemySuppliesAt(state, airfield),
 			Runways: RunwaysAvailable(airfield.Strength, airfield.Runways), Radar: airfield.Radar,
 			HangarCapacity: airfield.HangarCapacity,
 			HeavyAA:        airfield.HeavyAA, LightAA: airfield.LightAA, Coastal: airfield.Coastal,
@@ -372,11 +369,7 @@ func AdvanceAirfields(state *State) []EngineEvent {
 		if enemySuppliesAt(*state, airfield) > 0 {
 			continue
 		}
-		// 维修上限要扣掉被物资永久打掉的那部分：物资造成的伤害修不回来。
-		limit := airfield.MaxStrength - airfield.SupplyDamage
-		if limit < 0 {
-			limit = 0
-		}
+		limit := airfield.MaxStrength
 		if airfield.Strength < limit && d10(state) <= 2 {
 			airfield.Strength++
 			events = append(events, EngineEvent{Type: "airfield_repaired", Audience: airfield.Faction, Text: fmt.Sprintf("%s修复1点跑道（%d/%d）", airfield.Name, airfield.Strength, limit)})

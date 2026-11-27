@@ -400,8 +400,6 @@ export interface AirfieldContact {
   hangar_capacity?: number
   /** 敌方卸在这个机场上的滩头物资；有货时机场瘫痪 */
   enemy_supplies?: number
-  /** 滩头物资永久打掉的生命值：清滩后也修不回来，维修上限 = max_strength - supply_damage。 */
-  supply_damage?: number
   contact_level: number
 }
 
@@ -473,8 +471,6 @@ export interface GroundAirStatus {
   /** 停机上限（航空算子数）：跑道数×6，剧本可覆盖；转场进入已满机场会被拒绝 */
   hangar_capacity: number
   enemy_supplies?: number
-  /** 滩头物资永久打掉的生命值：清滩后也修不回来，维修上限 = max_strength - supply_damage。 */
-  supply_damage?: number
   aircraft: GroundAirUnit[]
 }
 

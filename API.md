@@ -154,7 +154,7 @@
 - `fleet_max_ships`：本局一支舰队的舰船上限（整编与合并都按它校验）。剧本没写时默认 20；马里亚纳是 45；
 - `withdraw_directions`：各阵营的撤离方向（`E/W/NE/…`），重创脱离和运输队卸空后的退避队朝它走，速度仍按舰队自身航速（每 N 回合 1 hex，和正常移动同一套冷却）。马里亚纳是 `{"A":"E","B":"W"}`；没配时退回"离开地图中心"的通用方向；
 - `deploy_zone`：己方部署区，`{anchor,radius,cells}`。`cells` 是行优先的 `'0'/'1'` 串，标出可以摆船的格位；前端已经改用`legal_moves`的绿色高亮来画可放区域，这个字段留给脚本/第三方客户端。剧本可以给同一阵营划多个部署区（剧本里 `deploy_zones[].fleets` 指定哪几支舰队用哪个区）：此时 `anchor/radius` 是第一个区，`cells` 是所有区的并集，每支舰队的实际可落点看它自己的 `legal_moves`；
-- `airfields`：当前可见的机场，包含 `coord`、`type`（small/medium/large/seaplane）、`runways`、`strength`、`heavy_aa/light_aa/coastal`（`coastal` 是岸炮点数，舰队岸轰时先开火，每点 30% 命中随机舰船，被舰炮命中一次 -1）、`enemy_supplies`（敌方卸在这里的滩头物资点数；只要有货，该机场维修停摆）、`supply_damage`（被这些物资永久打掉的生命值，清滩后也修不回来，维修上限 = `max_strength - supply_damage`）等；
+- `airfields`：当前可见的机场，包含 `coord`、`type`（small/medium/large/seaplane）、`runways`、`strength`、`heavy_aa/light_aa/coastal`（`coastal` 是岸炮点数，舰队岸轰时先开火，每点 30% 命中随机舰船，被舰炮命中一次 -1）、`enemy_supplies`（敌方卸在这里的滩头物资点数；只要有货，该机场维修停摆，炮击清空后恢复维修）等；
 - `weather_cells`：行优先、每格一个字符 `'0'..'3'`（晴/多云/降雨/风暴）。服务端内部是按"压了几层云"记账的（3 层以上就是风暴），**4 层以上到前端同样显示 3**；
 - `wind` 和 `wind_cells`：`wind` 是盛行风与本回合各己方舰队所在格的朝向关系（`wind.cells`、`wind.fleets`），`wind_cells` 是行优先、每格一个数字 `0`–`5`，依次对应 NE/E/SE/SW/W/NW（气象惯例记来向：SE = 风从东南吹来）；
 - `night`：剧本有没有昼夜循环时的夜间标记；`clock` 见下条；

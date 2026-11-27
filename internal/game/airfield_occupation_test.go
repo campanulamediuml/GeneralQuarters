@@ -29,20 +29,19 @@ func TestEnemySuppliesDoNotZeroAirfield(t *testing.T) {
 	}
 }
 
-// 物资造成的伤害是永久的：清滩之后能修，但只能修回 MaxStrength - SupplyDamage。
-func TestSupplyDamageNeverRepairsBack(t *testing.T) {
+// 物资打掉的生命值不是永久损失：清滩之后能一路修回满值。
+func TestSuppliesOnlyPauseRepair(t *testing.T) {
 	state := coralCombatState(t)
 	state.Timeline = nil
 	airfield := state.Airfields["af-a-moresby"]
 	airfield.MaxStrength = 8
 	airfield.Strength = 3
-	airfield.SupplyDamage = 3
 	state.ShoreSupplies = map[string]int{}
 	for turn := 0; turn < 200 && airfield.Strength < airfield.MaxStrength; turn++ {
 		AdvanceAirfields(&state)
 	}
-	if airfield.Strength != 5 {
-		t.Fatalf("维修上限应为 8-3=5，实际 %d", airfield.Strength)
+	if airfield.Strength != 8 {
+		t.Fatalf("清滩后应修回满值，实际 %d", airfield.Strength)
 	}
 }
 
@@ -90,9 +89,6 @@ func TestUnloadingDamagesAirfieldPerPoint(t *testing.T) {
 	events := resolveUnloading(&state)
 	if airfield.Strength != 2 {
 		t.Fatalf("3 点物资应扣 3 点机场生命值：5 -> %d", airfield.Strength)
-	}
-	if airfield.SupplyDamage != 3 {
-		t.Fatalf("物资伤害应记 3 点永久损毁，实际 %d", airfield.SupplyDamage)
 	}
 	unloaded := false
 	for _, event := range events {
