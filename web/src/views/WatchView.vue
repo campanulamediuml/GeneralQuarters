@@ -62,10 +62,10 @@ const clockText = computed(() => {
   return `第${clock.day}天 ${clock.time}`
 })
 const windText = computed(() => state.value?.wind?.wind || '—')
-const scoreLines = computed(() => {
-  const breakdown = state.value?.score_breakdown || {}
-  return (['A', 'B'] as const).map((faction) => ({ faction, lines: breakdown[faction] || [] })).filter((row) => row.lines.length)
-})
+// 战果按阵营拆成两栏：以前两个阵营的战果串成一段长文，击沉一串挤在一起根本读不出来。
+function scoreLinesFor(faction: 'A' | 'B') {
+  return state.value?.score_breakdown?.[faction] || []
+}
 
 function factionName(faction?: string) {
   return faction === 'B' ? '日军' : '美军'
@@ -418,20 +418,22 @@ onUnmounted(() => {
       <aside class="watch-side">
         <section class="watch-card">
           <h2>战况</h2>
-          <div class="watch-scores">
-            <div v-for="faction in ['A', 'B'] as const" :key="faction">
-              <b>{{ factionName(faction) }}</b>
-              <strong>{{ scores[faction] ?? 0 }}</strong>
+          <div class="watch-scoreboard">
+            <section v-for="faction in ['A', 'B'] as const" :key="faction" class="watch-score-col">
+              <header>
+                <b>{{ factionName(faction) }}</b>
+                <strong>{{ scores[faction] ?? 0 }}</strong>
+              </header>
               <small>VP · 沉 {{ lossSummary(faction).ships }} / 机 {{ lossSummary(faction).aircraft }}</small>
-            </div>
+              <ul v-if="scoreLinesFor(faction).length" class="watch-score-lines">
+                <li v-for="(line, index) in scoreLinesFor(faction)" :key="line.text + index">
+                  <span>{{ line.text }}</span><b>+{{ line.points }}</b>
+                </li>
+              </ul>
+              <p v-else class="watch-empty">暂无战果</p>
+            </section>
           </div>
           <p v-if="state.outcome" class="watch-outcome">{{ state.outcome.reason }}</p>
-          <ul v-if="scoreLines.length" class="watch-score-lines">
-            <li v-for="row in scoreLines" :key="row.faction">
-              <span>{{ factionName(row.faction) }}：</span>
-              <em v-for="line in row.lines" :key="line.text">{{ line.text }} +{{ line.points }}</em>
-            </li>
-          </ul>
           <ul v-if="state.objectives?.length" class="watch-objectives">
             <li v-for="objective in state.objectives" :key="objective.id">
               {{ objective.text || objective.id }}<b v-if="objective.value">（{{ objective.value }}）</b>
@@ -568,13 +570,21 @@ onUnmounted(() => {
 .watch-card { border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 10px 12px; background: rgba(255,255,255,.02); }
 .watch-card h2 { margin: 0 0 8px; font-size: 13px; letter-spacing: .08em; color: #9fc4be; }
 .watch-card h3 { margin: 8px 0 4px; font-size: 11px; color: #7fa39d; }
-.watch-scores { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.watch-scores > div { display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border-radius: 8px; background: rgba(255,255,255,.04); }
-.watch-scores strong { font: 700 20px/1 'Rajdhani', system-ui, sans-serif; }
-.watch-scores small { font-size: 11px; opacity: .7; }
+/* 战果两栏：左美军、右日军，各自一条一条列，长文串成一段根本没法读 */
+.watch-scoreboard { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.watch-score-col { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 7px 8px; border-radius: 8px; background: rgba(255,255,255,.04); }
+.watch-score-col header { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+.watch-score-col header b { font-size: 11px; font-weight: 600; color: #9fc4be; }
+.watch-score-col header strong { font: 700 19px/1 'Rajdhani', system-ui, sans-serif; }
+.watch-score-col small { font-size: 10px; opacity: .7; }
+/* 两栏不等高很正常（一边打死得多），列表不再单独滚动：整块侧栏本来就能滚，
+   里面再套一层滚动条反而滚不到底。 */
+.watch-score-lines { list-style: none; display: flex; flex-direction: column; gap: 2px; margin: 4px 0 0; padding: 6px 0 0; border-top: 1px dashed rgba(255,255,255,.12); font-size: 10px; }
+.watch-score-lines li { display: flex; justify-content: space-between; gap: 6px; line-height: 1.45; }
+.watch-score-lines li span { min-width: 0; opacity: .85; }
+.watch-score-lines li b { flex: none; color: #f0d58d; font-weight: 600; }
 .watch-outcome { margin: 8px 0 0; font-size: 12px; color: #f0c274; }
-.watch-score-lines, .watch-objectives { list-style: none; margin: 8px 0 0; padding: 0; font-size: 11px; display: flex; flex-direction: column; gap: 3px; }
-.watch-score-lines em { font-style: normal; opacity: .8; margin-left: 6px; }
+.watch-objectives { list-style: none; margin: 8px 0 0; padding: 0; font-size: 11px; display: flex; flex-direction: column; gap: 3px; }
 .watch-objectives li { opacity: .8; }
 .watch-fleet-group { margin-bottom: 8px; }
 .watch-fleet-row, .watch-carrier, .watch-task { width: 100%; display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 5px 6px; margin: 2px 0; border: 1px solid transparent; border-radius: 6px; background: none; color: inherit; cursor: pointer; }

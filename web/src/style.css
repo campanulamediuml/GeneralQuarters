@@ -48,8 +48,8 @@ path.hex-wind{pointer-events:none;fill:none;stroke:#7fa6b0;stroke-width:1.3;stro
 .fleet-silhouettes{fill:#c7dfe3;pointer-events:none}.faction-b .fleet-silhouettes{fill:#edb5ab}
 .map-cap-aircraft{pointer-events:none}
 .map-cap-aircraft rect{fill:#2a4a56;stroke:#9fd7e6;stroke-width:1}
-.map-cap-aircraft .cap-symbol{fill:#d9f0f6;stroke:none}
-.map-cap-aircraft text{fill:#cfe8ee;font:700 8.5px 'Noto Sans SC',sans-serif;text-anchor:middle}
+
+.map-cap-aircraft text{fill:#cfe8ee;font:700 8px 'Noto Sans SC',sans-serif;text-anchor:middle}
 /* 观战：CAP／掩护按阵营上色（美军蓝、日军红），和侦察扇面同一套阵营色。 */
 .map-cap-aircraft.faction-a rect{fill:#1d3a52;stroke:#7fb8ff}
 .map-cap-aircraft.faction-a text{fill:#bfe0ff}
@@ -81,7 +81,7 @@ path.hex-wind{pointer-events:none;fill:none;stroke:#7fa6b0;stroke-width:1.3;stro
 
 .map-ground-patrol{pointer-events:none}
 .map-ground-patrol rect{fill:#2a4a56;stroke:#9fd7e6;stroke-width:1}
-.map-ground-patrol .cap-symbol{fill:#d9f0f6;stroke:none}
+
 .map-ground-patrol text{fill:#cfe8ee;font:700 7px 'Noto Sans SC',sans-serif;text-anchor:middle}
 .map-ground-patrol.faction-a rect{fill:#1d3a52;stroke:#7fb8ff}
 .map-ground-patrol.faction-a text{fill:#bfe0ff}

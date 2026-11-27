@@ -210,23 +210,24 @@ const capBadges = computed(() => {
   }
   return badges
 })
-// 同一格有双方巡逻时并排摆两面牌：牌的宽度 50，间距 54 刚好不叠。
-// 缩放很低时牌子在屏幕上只有几个像素：按当前缩放补一个放大系数，最高 2.5 倍。
-// 高缩放时保持 1，不会在正常视角下变成一块挡视线的色带。
-const capBadgeScale = computed(() => Math.min(2.5, Math.max(1, 2.5 / Math.max(1, zoom.value * 0.6))))
+// CAP/COV 牌固定 1 倍：牌面 48×18，本身就在一个 hex 宽度以内。
+// 以前按缩放补到 2.5 倍，一块牌比两个 hex 还宽，压到隔壁格上分不清是谁的巡逻。
+const capBadgeScale = 1
 const capBadgeList = computed(() => {
   const list = [...capBadges.value.values()].sort((left, right) => (left.coord === right.coord ? left.faction.localeCompare(right.faction) : left.coord.localeCompare(right.coord)))
   return list.map((badge) => {
     const same = list.filter((item) => item.coord === badge.coord)
     const point = center(badge.coord)
     const slot = same.findIndex((item) => item.key === badge.key)
-    return { ...badge, x: point.x + (slot - (same.length - 1) / 2) * 62, y: point.y - 40 }
+    // 42×16 的牌子放在 -31..-15 这一段：六边形在这个高度还有 42 宽，整块牌刚好装进去，
+    // 又只压住兵牌顶上 3px。再往上牌子就骑到三个 hex 的交界上，看不出是谁的巡逻。
+    return { ...badge, x: point.x + (slot - (same.length - 1) / 2) * 46, y: point.y - 23 }
   })
 })
-// 牌上只写状态和架数：全员返航就写"返航"，有前出就写"拦截"，纯掩护编队写"掩护"，否则"CAP"。
+// 牌面只要两件事：是 CAP 还是掩护(COV)、几个算子。前出/返航这些细节放悬停提示，
+// 不再往牌上塞矢量飞机图——48px 宽的牌里放机型图，字和图都看不清。
 function capBadgeLabel(badge: CapBadge) {
-  const state = badge.forward > 0 ? '拦截' : badge.returning === badge.total ? '返航' : badge.cover > badge.cap ? '掩护' : 'CAP'
-  return state + ' ×' + badge.total
+  return (badge.cover > badge.cap ? 'COV' : 'CAP') + ' ×' + badge.total
 }
 function capBadgeTitle(badge: CapBadge) {
   const detail = [badge.forward ? '前出拦截 ' + badge.forward : '', badge.returning ? '返航 ' + badge.returning : ''].filter(Boolean).join(' · ')
@@ -1152,9 +1153,8 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         :data-cap-count="badge.total"
         :transform="`translate(${badge.x}, ${badge.y}) scale(${capBadgeScale})`"
       >
-        <rect x="-29" y="-10" width="58" height="20" rx="3" />
-        <path class="cap-symbol" :d="aircraftSilhouette('fighter')" transform="translate(-24 -7) scale(.26)" />
-        <text x="11" y="3">{{ capBadgeLabel(badge) }}</text>
+        <rect x="-21" y="-8" width="42" height="16" rx="3" />
+        <text x="0" y="3">{{ capBadgeLabel(badge) }}</text>
         <title>{{ capBadgeTitle(badge) }}</title>
       </g>
     </g>
@@ -1182,11 +1182,10 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         class="map-ground-patrol"
         :class="[task.kind, spectate && task.faction ? `faction-${task.faction.toLowerCase()}` : '']"
         :data-ground-task-id="task.id"
-        :transform="`translate(${center(coord).x + (index - 1) * 16 * capBadgeScale}, ${center(coord).y - 34}) scale(${capBadgeScale})`"
+        :transform="`translate(${center(coord).x + (index - (groundPatrolAt(coord).length - 1) / 2) * 40}, ${center(coord).y - 34}) scale(${capBadgeScale})`"
       >
-        <rect x="-14" y="-8" width="28" height="16" rx="3" />
-        <path class="cap-symbol" :d="aircraftSilhouette('fighter')" transform="translate(-7 -5) scale(.23)" />
-        <text x="0" y="2">{{ task.kind === 'cover' ? '掩护' : 'CAP' }}</text>
+        <rect x="-19" y="-8" width="38" height="16" rx="3" />
+        <text x="0" y="3">{{ task.kind === 'cover' ? 'COV' : 'CAP' }} ×{{ task.airborne_count }}</text>
         <title>{{ flightModels(task) }} · 来自机场 · {{ task.current_coord }}{{ task.target_coord ? ' → ' + task.target_coord : '' }}</title>
       </g>
     </g>
