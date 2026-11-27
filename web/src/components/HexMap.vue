@@ -999,7 +999,8 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
           </g>
           <text class="unit-strength" x="-20" y="-7">{{ unit.count }}</text>
         </template>
-        <text class="unit-heading" :transform="`rotate(${headingAngle(unit.heading)} 19 -7)`" x="19" y="-7">▲</text>
+        <!-- 航向用锐角三角形：重心靠近顶点，一眼能看出朝哪边，等边三角形和兵牌方框容易混。 -->
+        <path class="unit-heading" :transform="`translate(19 -7) rotate(${headingAngle(unit.heading)})`" d="M0 -9 L3.4 5 L-3.4 5 Z" />
         <!-- 情报 4 级时编成已知，标记上直接写舰队/旗舰名，别再写"情报4"这种没信息量的字。 -->
         <text class="unit-name" :text-anchor="stackedAt(coord) ? (index === 0 ? 'end' : 'start') : 'middle'" :x="stackedAt(coord) ? (index === 0 ? -10 : 10) : 0" y="34">{{ unit.contact_level && unit.contact_level < 4 ? `情报${unit.contact_level}` : unit.name }}</text>
         <text v-if="unit.contact_level && unit.contact_level < 4" class="unit-order" text-anchor="middle" y="48">最后已知</text>
@@ -1146,7 +1147,7 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         </g>
       </g>
       <text class="unit-strength" x="-20" y="-7">{{ draggedUnit.count }}</text>
-      <text class="unit-heading" :transform="`rotate(${headingAngle(draggedUnit.heading)} 19 -7)`" x="19" y="-7">▲</text>
+      <path class="unit-heading" :transform="`translate(19 -7) rotate(${headingAngle(draggedUnit.heading)})`" d="M0 -9 L3.4 5 L-3.4 5 Z" />
     </g>
     <!-- 天气图案层：云朵=多云、水滴=降雨、闪电=风暴。只盖图案，不给格子刷底色；
          单独一层压在所有元素之上，并关掉 pointer-events，点击照常落在下面的格子/兵牌上。 -->
