@@ -103,6 +103,17 @@ function selectAirTaskForAirfield(airfield: AirfieldContact) {
 
 const detailAirfield = ref<AirfieldContact | null>(null)
 const selectedAirTask = computed(() => tasks.value.find((task) => task.id === selectedAirTaskID.value) || groundTasks.value.find((task) => task.id === selectedAirTaskID.value))
+const selectedReconSector = computed(() => selectedAirTask.value?.recon_sectors?.find((sector) => sector.aircraft_id === selectedAirTaskID.value))
+// 距离环：和玩家页同一套口径，原点取侦察扇面 / 空中编队 / 选中舰队。
+// 早期版本（独立的 watch.html）带距离环，并进 SPA 后漏了这个属性，观战页就量不了距离。
+const distanceReference = computed(() => selectedReconSector.value?.distance_reference || selectedAirTask.value?.distance_reference || selectedFleet.value?.distance_reference)
+const distanceOrigin = computed(() => {
+  const sector = selectedReconSector.value
+  if (sector) return sector.current_coord || sector.origin_coord || ''
+  const task = selectedAirTask.value
+  if (task) return task.current_coord || ''
+  return selectedFleet.value?.coord || ''
+})
 
 function selectAirTask(taskID: string) {
   selectedAirTaskID.value = taskID
@@ -186,7 +197,7 @@ onUnmounted(() => {
   <div class="watch-page">
     <header class="watch-head">
       <div class="watch-title">
-        <span class="kicker">SPECTATOR · 只读</span>
+        <span class="kicker">SPECTATOR · 只读 · 点舰队看编成与距离圈</span>
         <h1>{{ state?.scenario?.name || '正在连接…' }}</h1>
       </div>
       <div class="watch-stats">
@@ -212,6 +223,8 @@ onUnmounted(() => {
           :airfields="state.airfields || []"
           :ground-tasks="groundTasks"
           :enemy-air="[]"
+          :distance-reference="distanceReference"
+          :distance-origin="distanceOrigin"
           :selected-air-task-id="selectedAirTaskID"
           locked
           spectate
