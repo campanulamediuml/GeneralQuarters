@@ -61,11 +61,6 @@
    "name": ""
   },
   {
-   "coord": "2001",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "2002",
    "terrain": "island",
    "name": ""
@@ -81,33 +76,8 @@
    "name": ""
   },
   {
-   "coord": "2005",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2006",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2007",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2008",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "2039",
    "terrain": "reef",
-   "name": ""
-  },
-  {
-   "coord": "2101",
-   "terrain": "island",
    "name": ""
   },
   {
@@ -127,26 +97,6 @@
   },
   {
    "coord": "2105",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2106",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2107",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2108",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2201",
    "terrain": "island",
    "name": ""
   },
@@ -181,16 +131,6 @@
    "name": ""
   },
   {
-   "coord": "2208",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2301",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "2302",
    "terrain": "island",
    "name": ""
@@ -221,16 +161,6 @@
    "name": ""
   },
   {
-   "coord": "2308",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2401",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "2402",
    "terrain": "island",
    "name": ""
@@ -243,12 +173,12 @@
   {
    "coord": "2404",
    "terrain": "island",
-   "name": ""
+   "name": "吕宋岛"
   },
   {
    "coord": "2405",
    "terrain": "island",
-   "name": "吕宋岛"
+   "name": ""
   },
   {
    "coord": "2406",
@@ -257,16 +187,6 @@
   },
   {
    "coord": "2407",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2408",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2501",
    "terrain": "island",
    "name": ""
   },
@@ -301,16 +221,6 @@
    "name": ""
   },
   {
-   "coord": "2508",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2601",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "2602",
    "terrain": "island",
    "name": ""
@@ -341,16 +251,6 @@
    "name": ""
   },
   {
-   "coord": "2608",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2609",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "2663",
    "terrain": "shoal",
    "name": ""
@@ -358,11 +258,6 @@
   {
    "coord": "2664",
    "terrain": "shoal",
-   "name": ""
-  },
-  {
-   "coord": "2701",
-   "terrain": "island",
    "name": ""
   },
   {
@@ -388,20 +283,10 @@
   {
    "coord": "2706",
    "terrain": "island",
-   "name": "吕宋岛"
+   "name": ""
   },
   {
    "coord": "2707",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2708",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2709",
    "terrain": "island",
    "name": ""
   },
@@ -423,16 +308,6 @@
   {
    "coord": "2764",
    "terrain": "shoal",
-   "name": ""
-  },
-  {
-   "coord": "2801",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2802",
-   "terrain": "island",
    "name": ""
   },
   {
@@ -461,16 +336,6 @@
    "name": ""
   },
   {
-   "coord": "2808",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2809",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "2862",
    "terrain": "island",
    "name": "塞班岛"
@@ -483,16 +348,6 @@
   {
    "coord": "2864",
    "terrain": "shoal",
-   "name": ""
-  },
-  {
-   "coord": "2901",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2902",
-   "terrain": "island",
    "name": ""
   },
   {
@@ -512,21 +367,6 @@
   },
   {
    "coord": "2906",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2907",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2908",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "2909",
    "terrain": "island",
    "name": ""
   },
@@ -551,24 +391,9 @@
    "name": ""
   },
   {
-   "coord": "3001",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3002",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3003",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "3004",
    "terrain": "island",
-   "name": "吕宋岛"
+   "name": ""
   },
   {
    "coord": "3005",
@@ -577,31 +402,6 @@
   },
   {
    "coord": "3006",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3007",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3008",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3009",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3010",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3011",
    "terrain": "island",
    "name": ""
   },
@@ -626,21 +426,6 @@
    "name": ""
   },
   {
-   "coord": "3101",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3102",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3103",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "3104",
    "terrain": "island",
    "name": ""
@@ -661,26 +446,6 @@
    "name": ""
   },
   {
-   "coord": "3108",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3109",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3110",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3111",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "3159",
    "terrain": "shoal",
    "name": ""
@@ -693,6 +458,36 @@
   {
    "coord": "3161",
    "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "3204",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3205",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3207",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3208",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3209",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3210",
+   "terrain": "island",
    "name": ""
   },
   {
@@ -711,9 +506,29 @@
    "name": ""
   },
   {
+   "coord": "3304",
+   "terrain": "island",
+   "name": "民都洛岛"
+  },
+  {
    "coord": "3305",
-   "terrain": "water",
-   "name": "圣贝纳迪诺海峡"
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3310",
+   "terrain": "island",
+   "name": "吕宋岛"
+  },
+  {
+   "coord": "3311",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3312",
+   "terrain": "island",
+   "name": ""
   },
   {
    "coord": "3359",
@@ -736,6 +551,26 @@
    "name": ""
   },
   {
+   "coord": "3404",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3405",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3411",
+   "terrain": "water",
+   "name": ""
+  },
+  {
+   "coord": "3412",
+   "terrain": "water",
+   "name": "圣贝纳迪诺海峡"
+  },
+  {
    "coord": "3461",
    "terrain": "shoal",
    "name": ""
@@ -746,26 +581,6 @@
    "name": ""
   },
   {
-   "coord": "3501",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3502",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3503",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3504",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "3505",
    "terrain": "island",
    "name": ""
@@ -773,30 +588,10 @@
   {
    "coord": "3506",
    "terrain": "island",
-   "name": ""
+   "name": "班乃岛"
   },
   {
    "coord": "3507",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3508",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3509",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3510",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3511",
    "terrain": "island",
    "name": ""
   },
@@ -816,31 +611,6 @@
    "name": ""
   },
   {
-   "coord": "3515",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3601",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3602",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3603",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3604",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "3605",
    "terrain": "island",
    "name": ""
@@ -856,26 +626,6 @@
    "name": ""
   },
   {
-   "coord": "3608",
-   "terrain": "island",
-   "name": "萨马岛"
-  },
-  {
-   "coord": "3609",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3610",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3611",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "3612",
    "terrain": "island",
    "name": ""
@@ -883,7 +633,7 @@
   {
    "coord": "3613",
    "terrain": "island",
-   "name": ""
+   "name": "萨马岛"
   },
   {
    "coord": "3614",
@@ -892,31 +642,6 @@
   },
   {
    "coord": "3615",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3701",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3702",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3703",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3704",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3705",
    "terrain": "island",
    "name": ""
   },
@@ -936,21 +661,6 @@
    "name": ""
   },
   {
-   "coord": "3709",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3710",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3711",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "3712",
    "terrain": "island",
    "name": ""
@@ -966,52 +676,17 @@
    "name": ""
   },
   {
-   "coord": "3715",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3801",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3802",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3803",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3804",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3805",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "3806",
    "terrain": "island",
-   "name": "莱特岛"
+   "name": ""
   },
   {
    "coord": "3807",
    "terrain": "island",
-   "name": ""
+   "name": "内格罗斯岛"
   },
   {
    "coord": "3808",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3809",
    "terrain": "island",
    "name": ""
   },
@@ -1021,22 +696,12 @@
    "name": ""
   },
   {
-   "coord": "3811",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "3812",
    "terrain": "island",
-   "name": ""
+   "name": "莱特岛"
   },
   {
    "coord": "3813",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "3814",
    "terrain": "island",
    "name": ""
   },
@@ -1046,9 +711,54 @@
    "name": ""
   },
   {
+   "coord": "3907",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3908",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3909",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3910",
+   "terrain": "island",
+   "name": "宿务岛"
+  },
+  {
+   "coord": "3912",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "3913",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4008",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4009",
+   "terrain": "island",
+   "name": ""
+  },
+  {
    "coord": "4010",
-   "terrain": "water",
-   "name": "苏里高海峡"
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4011",
+   "terrain": "island",
+   "name": "薄荷岛"
   },
   {
    "coord": "4046",
@@ -1059,6 +769,11 @@
    "coord": "4047",
    "terrain": "shoal",
    "name": ""
+  },
+  {
+   "coord": "4112",
+   "terrain": "water",
+   "name": "苏里高海峡"
   },
   {
    "coord": "4144",
@@ -1078,41 +793,6 @@
   {
    "coord": "4147",
    "terrain": "shoal",
-   "name": ""
-  },
-  {
-   "coord": "4201",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4202",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4203",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4204",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4205",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4206",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4207",
-   "terrain": "island",
    "name": ""
   },
   {
@@ -1151,21 +831,6 @@
    "name": ""
   },
   {
-   "coord": "4215",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4216",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4217",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "4245",
    "terrain": "island",
    "name": "雅浦岛"
@@ -1178,36 +843,6 @@
   {
    "coord": "4247",
    "terrain": "shoal",
-   "name": ""
-  },
-  {
-   "coord": "4301",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4302",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4303",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4304",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4305",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4306",
-   "terrain": "island",
    "name": ""
   },
   {
@@ -1261,11 +896,6 @@
    "name": ""
   },
   {
-   "coord": "4317",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "4344",
    "terrain": "shoal",
    "name": ""
@@ -1273,36 +903,6 @@
   {
    "coord": "4345",
    "terrain": "shoal",
-   "name": ""
-  },
-  {
-   "coord": "4401",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4402",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4403",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4404",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4405",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4406",
-   "terrain": "island",
    "name": ""
   },
   {
@@ -1328,7 +928,7 @@
   {
    "coord": "4411",
    "terrain": "island",
-   "name": ""
+   "name": "棉兰老岛"
   },
   {
    "coord": "4412",
@@ -1361,36 +961,6 @@
    "name": ""
   },
   {
-   "coord": "4501",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4502",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4503",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4504",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4505",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4506",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "4507",
    "terrain": "island",
    "name": ""
@@ -1398,12 +968,12 @@
   {
    "coord": "4508",
    "terrain": "island",
-   "name": "棉兰老岛"
+   "name": ""
   },
   {
    "coord": "4509",
    "terrain": "island",
-   "name": "棉兰老岛"
+   "name": ""
   },
   {
    "coord": "4510",
@@ -1463,36 +1033,6 @@
   {
    "coord": "4577",
    "terrain": "shoal",
-   "name": ""
-  },
-  {
-   "coord": "4601",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4602",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4603",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4604",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4605",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4606",
-   "terrain": "island",
    "name": ""
   },
   {
@@ -1581,41 +1121,6 @@
    "name": ""
   },
   {
-   "coord": "4701",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4702",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4703",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4704",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4705",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4706",
-   "terrain": "island",
-   "name": ""
-  },
-  {
-   "coord": "4707",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "4708",
    "terrain": "island",
    "name": ""
@@ -1661,11 +1166,6 @@
    "name": ""
   },
   {
-   "coord": "4717",
-   "terrain": "island",
-   "name": ""
-  },
-  {
    "coord": "4736",
    "terrain": "island",
    "name": "帕劳群岛"
@@ -1683,6 +1183,31 @@
   {
    "coord": "4777",
    "terrain": "shoal",
+   "name": ""
+  },
+  {
+   "coord": "4810",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4811",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4812",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4813",
+   "terrain": "island",
+   "name": ""
+  },
+  {
+   "coord": "4814",
+   "terrain": "island",
    "name": ""
   },
   {
