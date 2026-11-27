@@ -2,8 +2,8 @@ package game
 
 import "testing"
 
-// 马里亚纳日军的两个部署区：甲/乙/丙三支航母群在地图西北角（1014 周围 6 hex），
-// 丁部队和栗田的第一游击部队在西南、帕劳以北（4212 周围 6 hex）。
+// 马里亚纳日军的两个部署区：甲/乙/丙三支航母群在地图西北角（1023 周围 6 hex），
+// 丁部队和栗田的第一游击部队在西南、帕劳以北（4221 周围 6 hex）。
 // 出生点必须是舰队能进去的水域：不能是岛屿/暗礁，航母编队也不能落在浅滩。
 func TestMarianasJapaneseSpawnInZones(t *testing.T) {
 	scenario, gameMap, catalog, err := LoadScenario("../../content", "_marianas")
@@ -22,11 +22,11 @@ func checkJapaneseSpawns(t *testing.T, scenario ScenarioDefinition, gameMap MapD
 		t.Fatalf("建局失败：%v", err)
 	}
 	want := map[string]string{
-		"TG1": "1014",
-		"TG2": "1014",
-		"TG3": "1014",
-		"TG4": "4212",
-		"TG5": "4212",
+		"TG1": "1023",
+		"TG2": "1023",
+		"TG3": "1023",
+		"TG4": "4221",
+		"TG5": "4221",
 	}
 	carriers := map[string]bool{"TG1": true, "TG2": true, "TG3": true, "TG4": true}
 	byFleet := map[string][]*Unit{}

@@ -15,14 +15,23 @@ func TestMarianasWithdrawDirections(t *testing.T) {
 	}
 
 	// 挑离边缘还有一段距离的舰队：出生点是部署区内随机的，运气不好会刷在地图边上。
+	// 而且正前方一格必须是开阔水面：菲律宾海岸线画好之后，贴着吕宋/棉兰老出生的舰队
+	// 第一步会被陆地挡住、拐去别的方向，测的就不再是"撤离方向"了。
 	pickMidMap := func(wantFaction string) string {
+		step := -1
+		if wantFaction == "A" {
+			step = 1
+		}
 		for _, id := range sortedUnitIDs(state.Units) {
 			unit := state.Units[id]
 			if unit == nil || unit.Faction != wantFaction || unit.Withdrawing {
 				continue
 			}
-			_, col, err := ParseCoord(unit.Coord)
+			row, col, err := ParseCoord(unit.Coord)
 			if err != nil || col < 5 || col > state.Map.Cols-5 {
+				continue
+			}
+			if terrainAt(state.Map, Coord(row, col+step)) != TerrainWater {
 				continue
 			}
 			return id

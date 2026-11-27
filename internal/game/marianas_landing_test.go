@@ -144,9 +144,9 @@ func TestMarianasLandingGroups(t *testing.T) {
 		}
 	}
 
-	// 80×60 的地图（2026-11 往东加宽到 80 列），加上特鲁克/硫磺岛两座日军基地。
-	if state.Map.Rows != 60 || state.Map.Cols != 80 {
-		t.Fatalf("地图尺寸 %dx%d，期望 60x80", state.Map.Rows, state.Map.Cols)
+	// 89×60 的地图（2026-11 左侧加宽 19 列、右侧砍掉 10 列），加上特鲁克/硫磺岛两座日军基地。
+	if state.Map.Rows != 60 || state.Map.Cols != 89 {
+		t.Fatalf("地图尺寸 %dx%d，期望 60x89", state.Map.Rows, state.Map.Cols)
 	}
 	if state.Airfields["af-b-truk"] == nil || state.Airfields["af-b-iwo"] == nil {
 		t.Fatal("缺少特鲁克/硫磺岛机场")
@@ -158,12 +158,12 @@ func TestMarianasLandingGroups(t *testing.T) {
 		t.Fatal("特鲁克没有驻机")
 	}
 	// 日军两个部署区：甲/乙/丙三支航母群在地图西北角，丁部队和栗田的第一游击部队在西南、帕劳以北。
-	for fleet, anchor := range map[string]string{"TG1": "1014", "TG2": "1014", "TG3": "1014", "TG4": "4212", "TG5": "4212"} {
+	for fleet, anchor := range map[string]string{"TG1": "1023", "TG2": "1023", "TG3": "1023", "TG4": "4221", "TG5": "4221"} {
 		if zone := deployZoneForFleet(state.DeployZones, "B", fleet); zone == nil || zone.Anchor != anchor {
 			t.Fatalf("%s 应该出生在 %s：%+v", fleet, anchor, zone)
 		}
 	}
-	if zone := deployZoneForFleet(state.DeployZones, "A", "TF58.1"); zone == nil || zone.Anchor != "2365" {
+	if zone := deployZoneForFleet(state.DeployZones, "A", "TF58.1"); zone == nil || zone.Anchor != "2384" {
 		t.Fatalf("美军部署区锚点不对：%+v", zone)
 	}
 
@@ -173,7 +173,7 @@ func TestMarianasLandingGroups(t *testing.T) {
 			supplyTargets[objective.Coord] = true
 		}
 	}
-	for _, coord := range []string{"2843", "2943", "3241"} {
+	for _, coord := range []string{"2862", "2962", "3260"} {
 		if !supplyTargets[coord] {
 			t.Fatalf("缺少 %s 的 40 点投送目标", coord)
 		}
@@ -183,7 +183,7 @@ func TestMarianasLandingGroups(t *testing.T) {
 	const fleet = "TRN1"
 	for _, unit := range state.Units {
 		if unit.FleetID == fleet {
-			unit.Coord = "3241"
+			unit.Coord = "3260"
 		}
 	}
 	if state.FleetSessions == nil {
@@ -193,13 +193,13 @@ func TestMarianasLandingGroups(t *testing.T) {
 	for turn := 0; turn < 12; turn++ {
 		resolveUnloading(&state)
 	}
-	if got := state.ShoreSupplies["A|3241"]; got < 40 {
+	if got := state.ShoreSupplies["A|3260"]; got < 40 {
 		t.Fatalf("关岛累计只卸下 %d 点，没到 40", got)
 	}
 	for _, objective := range state.Objectives {
-		if objective.Kind == ObjectiveSupplies && objective.Coord == "3241" {
+		if objective.Kind == ObjectiveSupplies && objective.Coord == "3260" {
 			if !objectiveCompleted(state, "A", objective) {
-				t.Fatalf("关岛卸到 %d 点了，目标仍未完成", state.ShoreSupplies["A|3241"])
+				t.Fatalf("关岛卸到 %d 点了，目标仍未完成", state.ShoreSupplies["A|3260"])
 			}
 		}
 	}
