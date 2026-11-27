@@ -90,6 +90,39 @@ func TestAirfieldBusycycle(t *testing.T) {
 	}
 }
 
+// TestAirStrikeTargetWeightsFollowRemainingPoints 空袭落点按"跑道生命值:岸炮:驻机"加权摇一次。
+func TestAirStrikeTargetWeightsFollowRemainingPoints(t *testing.T) {
+	state := sandboxState(t)
+	airfield := state.Airfields["af-b-sentry"]
+	airfield.Strength = 15
+	parked := len(sortedGroundAirIDs(state, airfield.ID))
+	total := 15 + airfield.Coastal + parked
+	var rng uint64 = 20261127
+	const draws = 30000
+	counts := map[airStrikeTarget]int{}
+	for i := 0; i < draws; i++ {
+		counts[airStrikeTargetRoll(&rng, state, airfield)]++
+	}
+	wantRunway := float64(15) / float64(total)
+	wantCoastal := float64(airfield.Coastal) / float64(total)
+	if share := float64(counts[airStrikeRunway]) / draws; share < wantRunway-0.02 || share > wantRunway+0.02 {
+		t.Fatalf("落跑道比例应约 %.3f，实际 %.3f", wantRunway, share)
+	}
+	if share := float64(counts[airStrikeCoastal]) / draws; share < wantCoastal-0.02 || share > wantCoastal+0.02 {
+		t.Fatalf("落岸炮比例应约 %.3f，实际 %.3f", wantCoastal, share)
+	}
+	// 岸炮清零 → 不再落岸炮；没有驻机 → 不再落驻机。
+	airfield.Coastal = 0
+	if counts = map[airStrikeTarget]int{}; true {
+		for i := 0; i < 2000; i++ {
+			counts[airStrikeTargetRoll(&rng, state, airfield)]++
+		}
+	}
+	if counts[airStrikeCoastal] != 0 {
+		t.Fatalf("岸炮清零后不该再有命中落在岸炮上：%d", counts[airStrikeCoastal])
+	}
+}
+
 // TestGroundStrikeDamageAirfield 对地空袭：命中减少机场生命值、摧毁地面飞机、生成对地报告。
 func TestGroundStrikeDamageAirfield(t *testing.T) {
 	state := sandboxState(t)
@@ -116,8 +149,15 @@ func TestGroundStrikeDamageAirfield(t *testing.T) {
 	if report.BombAttempts == 0 {
 		t.Fatalf("应记录投弹次数：%+v", report)
 	}
-	if report.StrikeHits > 0 && airfield.Strength != before-report.StrikeHits {
-		t.Fatalf("机场生命值应减少命中次数：before=%d after=%d hits=%d", before, airfield.Strength, report.StrikeHits)
+	// 命中只落在摇中的那一项上：扣机场生命值的只有"落跑道"的命中。
+	if airfield.Strength != before-report.AirfieldRunwayHits {
+		t.Fatalf("机场生命值应只被落跑道的命中扣减：before=%d after=%d 落跑道=%d", before, airfield.Strength, report.AirfieldRunwayHits)
+	}
+	if report.AirfieldRunwayHits+report.AirfieldCoastal+report.GroundLoss > report.StrikeHits {
+		t.Fatalf("命中拆分不应超过总命中：落跑道%d 岸炮%d 驻机%d 总命中%d", report.AirfieldRunwayHits, report.AirfieldCoastal, report.GroundLoss, report.StrikeHits)
+	}
+	if report.StrikeHits > 0 && report.AirfieldRunwayHits == 0 && report.AirfieldCoastal == 0 && report.GroundLoss == 0 {
+		t.Fatal("有命中却三项都是 0：落点结算没有生效")
 	}
 	if report.GroundLoss > beforeGround {
 		t.Fatalf("摧毁的地面飞机不能超过原有数量：%d/%d", report.GroundLoss, beforeGround)

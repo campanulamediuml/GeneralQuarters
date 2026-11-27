@@ -246,7 +246,8 @@ function bomberLane(index: number) {
         <div><span>防空命中</span><strong>{{ report.aa_hits }}</strong></div>
         <div><span>投弹命中</span><strong>{{ report.strike_hits }}</strong></div>
         <div v-if="!hasCAP && !isGround"><span>受损舰船</span><strong>{{ report.ships_hit ?? 0 }}</strong></div>
-        <div v-if="isGround"><span>机场损失</span><strong>{{ report.airfield_hits || 0 }}</strong></div>
+        <div v-if="isGround"><span>落跑道</span><strong>{{ report.airfield_runway_hits || 0 }}</strong></div>
+        <div v-if="isGround && report.airfield_coastal"><span>岸炮压制</span><strong>{{ report.airfield_coastal }}</strong></div>
         <div v-if="isGround && (report.airfield_runways_before || 0) > 0" class="runway-loss">
           <span>跑道</span>
           <strong>{{ report.airfield_runways_before ?? '—' }} → {{ report.airfield_runways_after ?? '—' }}</strong>

@@ -366,6 +366,8 @@ export interface AirCombatReport {
   ships?: AirShipCard[]
   target_allocations?: StrikeAllocation[]
   airfield_hits?: number
+  airfield_runway_hits?: number
+  airfield_coastal?: number
   ground_losses?: number
   airfield?: AirShipCard
   airfield_before?: number

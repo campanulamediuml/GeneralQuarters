@@ -947,9 +947,12 @@ type AirCombatReport struct {
 	// 对舰：被攻击舰队的船只清单，以及每个算子的目标分配和命中次数
 	Ships             []AirShipCard      `json:"ships"`
 	TargetAllocations []StrikeAllocation `json:"target_allocations"`
-	// 对地：机场损失与地面飞机损失
-	AirfieldHit int `json:"airfield_hits"`
-	GroundLoss  int `json:"ground_losses"`
+	// 对地：机场损失与地面飞机损失。空袭命中一次只落在跑道/岸炮/驻机其中之一，
+	// 所以 AirfieldHit 是命中总数，真正扣机场生命值的是 AirfieldRunwayHits。
+	AirfieldHit        int `json:"airfield_hits"`
+	AirfieldRunwayHits int `json:"airfield_runway_hits"`
+	AirfieldCoastal    int `json:"airfield_coastal"`
+	GroundLoss         int `json:"ground_losses"`
 	// Detected 表示本次空袭已被目标方雷达提前发现（被截获时空袭命中的 DCT +1，规则书 408 行）
 	Detected              bool           `json:"detected"`
 	Airfield              *AirShipCard   `json:"airfield"`

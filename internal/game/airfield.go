@@ -620,6 +620,42 @@ func airfieldLightAAPool(state *State, attackers []*AirUnit, airfield *Airfield,
 	return events
 }
 
+// airStrikeTarget 是空袭命中机场时的落点：一次命中只结算其中一项。
+type airStrikeTarget int
+
+const (
+	airStrikeRunway airStrikeTarget = iota
+	airStrikeCoastal
+	airStrikeAircraft
+)
+
+// airStrikeTargetRoll 按"跑道生命值 : 岸炮 : 驻机架数"的剩余点数加权摇一次落点。
+// 一架飞机的一次命中不会同时炸跑道、压岸炮、毁驻机（规则书 756 行）。
+func airStrikeTargetRoll(rng *uint64, state State, airfield *Airfield) airStrikeTarget {
+	runway := airfield.Strength
+	if runway < 0 {
+		runway = 0
+	}
+	coastal := airfield.Coastal
+	if coastal < 0 {
+		coastal = 0
+	}
+	parked := len(sortedGroundAirIDs(state, airfield.ID))
+	total := runway + coastal + parked
+	if total <= 0 {
+		return airStrikeRunway
+	}
+	roll := int(nextUint64(rng) % uint64(total))
+	switch {
+	case roll < runway:
+		return airStrikeRunway
+	case roll < runway+coastal:
+		return airStrikeCoastal
+	default:
+		return airStrikeAircraft
+	}
+}
+
 // resolveGroundStrike 按规则书顺序结算对机场的空袭：
 // CAP 拦截 → 重型防空 → 机场轻防空对整队掷一副骰子 → 按对地攻击值逐点判定（基础 20%）→ 撤离。
 func resolveGroundStrike(state *State, taskID, coord string) []EngineEvent {
@@ -704,6 +740,8 @@ func resolveGroundStrike(state *State, taskID, coord string) []EngineEvent {
 	if report.TargetAllocations == nil {
 		report.TargetAllocations = []StrikeAllocation{}
 	}
+	strengthBefore := airfield.Strength
+	coastalLoss, groundKills := 0, 0
 	for _, aircraft := range bombers {
 		if !operationalAircraft(state, aircraft) {
 			continue
@@ -731,12 +769,19 @@ func resolveGroundStrike(state *State, taskID, coord string) []EngineEvent {
 			}
 			hits++
 			report.StrikeHits++
-			airfield.Strength--
-			if airfield.Coastal > 0 {
+			// 一次命中只结算摇中的那一项：岸炮 / 跑道 / 驻机。
+			switch airStrikeTargetRoll(&state.RNGState, *state, airfield) {
+			case airStrikeCoastal:
 				airfield.Coastal--
+				coastalLoss++
+			case airStrikeAircraft:
+				groundKills += destroyGroundAircraft(state, airfield, 1)
+			default:
+				airfield.Strength--
+				report.AirfieldRunwayHits++
+				// 规则书：攻击机场造成伤害会影响正在准备的航空任务——跑道一被打，滑行/待飞的算子当场退回机库
+				events = append(events, interruptAirfieldOperations(state, airfield)...)
 			}
-			// 规则书：攻击机场造成伤害会影响正在准备的航空任务——跑道一被打，滑行/待飞的算子当场退回机库
-			events = append(events, interruptAirfieldOperations(state, airfield)...)
 		}
 		for index := range report.TargetAllocations {
 			if report.TargetAllocations[index].Attacker == aircraft.ID {
@@ -745,13 +790,12 @@ func resolveGroundStrike(state *State, taskID, coord string) []EngineEvent {
 		}
 		events = append(events, EngineEvent{Type: "ground_strike", Audience: "all", Text: fmt.Sprintf("%s攻击%s：命中率%.1f%%，命中%d次", aircraft.Model, airfield.Name, chance, hits)})
 	}
-	// 轰炸命中摧毁机场上的飞机：每次命中至多 1 个随机地面算子
-	report.GroundLoss = destroyGroundAircraft(state, airfield, report.StrikeHits)
+	// 命中只落在被摇中的那一项上：岸炮、跑道、驻机三者分开记账。
+	report.GroundLoss = groundKills
 	report.AirfieldHit = report.StrikeHits
-	report.AirfieldBefore, report.AirfieldAfter = airfield.Strength+report.StrikeHits, airfield.Strength
-	if report.AirfieldBefore > 0 {
-		report.AirfieldRunwaysBefore = RunwaysAvailable(report.AirfieldBefore, airfield.Runways)
-	}
+	report.AirfieldCoastal = coastalLoss
+	report.AirfieldBefore, report.AirfieldAfter = strengthBefore, airfield.Strength
+	report.AirfieldRunwaysBefore = RunwaysAvailable(strengthBefore, airfield.Runways)
 	report.AirfieldRunwaysAfter = RunwaysAvailable(airfield.Strength, airfield.Runways)
 	// 不挂弹的护航战斗机扫射跑道：固定 1 点对地强度，按基础 20% 判定；
 	// 命中只摧毁地面飞机，不减机场生命值和岸防。扫射机也要先吃轻防空。
@@ -788,10 +832,10 @@ func resolveGroundStrike(state *State, taskID, coord string) []EngineEvent {
 	default:
 		report.Winner = "draw"
 	}
-	report.Summary = fmt.Sprintf("%s对机场%s空袭：防空命中%d，投弹%d次命中%d次（扫射命中%d次），机场生命值%s→%s（跑道%d条），摧毁地面飞机%d，攻击方损失%d",
-		coord, airfield.Name, report.AAHits, report.BombAttempts, report.StrikeHits, strafeHits,
+	report.Summary = fmt.Sprintf("%s对机场%s空袭：防空命中%d，投弹%d次命中%d次（落跑道%d、岸炮-%d、驻机%d，扫射命中%d次），机场生命值%s→%s（跑道%d条），攻击方损失%d",
+		coord, airfield.Name, report.AAHits, report.BombAttempts, report.StrikeHits, report.AirfieldRunwayHits, report.AirfieldCoastal, groundKills, strafeHits,
 		formatStrength(report.AirfieldBefore), formatStrength(report.AirfieldAfter),
-		RunwaysAvailable(airfield.Strength, airfield.Runways), report.GroundLoss, report.AttackerLosses)
+		RunwaysAvailable(airfield.Strength, airfield.Runways), report.AttackerLosses)
 	report.Turn = state.Turn
 	state.AirCombats = append(state.AirCombats, report)
 	if len(state.AirCombats) > 20 {
