@@ -2591,8 +2591,6 @@ func VisibleAviation(state State, faction string) AviationView {
 			continue
 		}
 		carrier := CarrierAirStatus{UnitID: unit.ID, Faction: unit.Faction, Name: unit.Name, Type: unit.Type, HangarCapacity: unit.Card.HangarCapacity, DeckLength: unit.Deck.Length, DeckCapacity: unit.Deck.Length, Operation: unit.Deck.Operation, Elevators: []AircraftElevator{}, Aircraft: []AirUnit{}}
-		// 这条船给不出的弹药类别（护航航母没有鱼雷）要下发：面板上要写清楚"本舰无鱼雷"。
-		carrier.SupplyBlocked = unit.Card.Supply.Blocked
 		// 把"为什么不能起降"直接投影给客户端：倾斜/起火/甲板摧毁这类状态以前只能通过
 		// 命令被 400 拒绝才知道，玩家会以为飞机卡死了。
 		carrier.BlockedReason = aviationBlockReason(state, unit)

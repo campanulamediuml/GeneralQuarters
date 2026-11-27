@@ -280,8 +280,6 @@ export interface CarrierAirStatus {
   blocked_reason?: string
   /** 甲板被占满时，指出挡路的具体来源，例如还没设目标的攻击编队 */
   prevented_by?: string
-  /** 这个补给点（母舰/机场）不提供的武器类别，例如护航航母没有 torpedo */
-  supply_blocked?: string[]
   elevators: AircraftElevator[]
   aircraft: AirUnit[]
 }

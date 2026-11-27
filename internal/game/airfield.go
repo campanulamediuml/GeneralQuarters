@@ -2535,8 +2535,6 @@ func GroundAviationView(state State, faction string) AviationView {
 	view := AviationView{Carriers: []CarrierAirStatus{}, Tasks: []AirTask{}}
 	for _, status := range VisibleGroundAir(state, faction) {
 		carrier := CarrierAirStatus{UnitID: status.UnitID, Name: status.Name, Type: string(status.Type), DeckLength: status.Runways}
-		// 机场也能配"不给某种挂载"（例如某个岛屿基地没存鱼雷），同样下发给界面。
-		carrier.SupplyBlocked = SupplyOfAirfield(state, status.UnitID).Blocked
 		carrier.Aircraft = []AirUnit{}
 		for _, aircraft := range status.Aircraft {
 			unit := withLoadoutAttack(groundAirUnit(state, &aircraft))

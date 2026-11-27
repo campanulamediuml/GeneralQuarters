@@ -870,11 +870,9 @@ type CarrierAirStatus struct {
 	// 空串表示正常。之前这些状态只体现在"命令被拒"里，玩家看不到原因。
 	BlockedReason string `json:"blocked_reason"`
 	// PreventedBy 指出挡路的具体来源（例如甲板上占位的无目标攻击编队）。
-	PreventedBy string `json:"prevented_by"`
-	// SupplyBlocked 是这条船/这个机场不能提供的武器类别，航空面板据此提示"没有鱼雷"。
-	SupplyBlocked []Weapon           `json:"supply_blocked,omitempty"`
-	Elevators     []AircraftElevator `json:"elevators"`
-	Aircraft      []AirUnit          `json:"aircraft"`
+	PreventedBy string             `json:"prevented_by"`
+	Elevators   []AircraftElevator `json:"elevators"`
+	Aircraft    []AirUnit          `json:"aircraft"`
 }
 
 type FleetContact struct {
