@@ -59,7 +59,7 @@ const verdictTitle = computed(() => {
           <h2>{{ side.title }}<small v-if="side.own">我方</small><small v-else>敌方</small></h2>
           <div class="results-tally">
             <span>沉没 <b>{{ side.ships.length }}</b> 艘</span>
-            <span>损失 <b>{{ side.aircraftTotal }}</b> 架</span>
+            <span>损失 <b>{{ side.aircraftTotal }}</b> 个算子</span>
           </div>
         </header>
 

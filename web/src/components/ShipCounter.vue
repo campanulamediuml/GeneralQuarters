@@ -30,7 +30,7 @@ const aircraftPayload = computed(() => {
   return {
     value,
     className: isCarrier.value ? 'aircraft' : 'seaplane',
-    title: isCarrier.value ? `机库容量：${value}架` : `水上飞机位：${value}架`,
+    title: isCarrier.value ? `机库容量：${value} 个算子` : `水上飞机位：${value} 个算子`,
   }
 })
 </script>

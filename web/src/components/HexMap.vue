@@ -179,7 +179,7 @@ function capBadgeLabel(badge: CapBadge) {
 }
 function capBadgeTitle(badge: CapBadge) {
   const detail = [badge.forward ? `前出拦截 ${badge.forward}` : '', badge.returning ? `返航 ${badge.returning}` : ''].filter(Boolean).join(' · ')
-  return `${badge.models.join(' / ')} · CAP ${badge.total} 架${detail ? `（${detail}）` : ''} · ${badge.coord}`
+  return `${badge.models.join(' / ')} · CAP ${badge.total} 个算子${detail ? `（${detail}）` : ''} · ${badge.coord}`
 }
 
 function reconCurrentAircraftAt(coord: string) {

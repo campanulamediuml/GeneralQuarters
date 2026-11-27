@@ -410,9 +410,9 @@ func capUnavailableReason(state State, defender, coord string) string {
 	case inAir == 0:
 		return "目标上空没有 CAP：本舰队当前没有升空的战斗机在执勤"
 	case returning == inAir:
-		return fmt.Sprintf("目标上空没有 CAP：%d 架战斗机都在返航途中", inAir)
+		return fmt.Sprintf("目标上空没有 CAP：%d 个战斗机算子都在返航途中", inAir)
 	case far > 0:
-		return fmt.Sprintf("目标上空没有 CAP：%d 架战斗机距目标超过 1 hex", far)
+		return fmt.Sprintf("目标上空没有 CAP：%d 个战斗机算子距目标超过 1 hex", far)
 	}
 	return ""
 }
@@ -470,7 +470,7 @@ func airLossText(report *AirCombatReport, attacker bool) string {
 		losses, disabled = report.AttackerLosses, report.AttackerDisabled
 	}
 	if disabled > 0 {
-		return fmt.Sprintf("损失%d（另%d架退出战斗）", losses, disabled)
+		return fmt.Sprintf("损失%d（另%d个算子退出战斗）", losses, disabled)
 	}
 	return fmt.Sprintf("损失%d", losses)
 }

@@ -178,7 +178,7 @@ func ScoreBreakdown(state State) map[string][]ScoreLine {
 		if aircraft > 0 {
 			lines[enemy] = append(lines[enemy], ScoreLine{
 				Kind: "aircraft", Faction: side, Count: aircraft,
-				Text:   fmt.Sprintf("航空算子损失 %d 架", aircraft),
+				Text:   fmt.Sprintf("航空算子损失 %d 个", aircraft),
 				Points: float64(aircraft) * scorePerAircraft,
 			})
 		}

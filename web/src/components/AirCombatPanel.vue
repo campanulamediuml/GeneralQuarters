@@ -99,7 +99,7 @@ const attackerHitIDs = computed(() => new Set((props.report.attacker_hits || [])
 const showLosses = computed(() => phase.value === 'losses' || phase.value === 'resolved')
 const showResult = computed(() => phase.value === 'resolved')
 const phaseLabelBrief = computed(() => {
-  if (isStrike.value) return ({ closing: '攻击编队俯冲进入', clash: '投弹 — 每架飞机攻击分配到的目标舰', losses: '损失结算' } as const)[phase.value as 'closing' | 'clash' | 'losses']
+  if (isStrike.value) return ({ closing: '攻击编队俯冲进入', clash: '投弹 — 每个算子攻击分配到的目标舰', losses: '损失结算' } as const)[phase.value as 'closing' | 'clash' | 'losses']
   return ({ closing: '攻击编队与 CAP 正在接近', clash: '交火 — 双方算子正在互相咬尾', losses: '损失结算' } as const)[phase.value as 'closing' | 'clash' | 'losses']
 })
 const phaseLabel = computed(() => {

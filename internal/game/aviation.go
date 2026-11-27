@@ -1549,7 +1549,7 @@ func launchReadyTasks(state *State) []EngineEvent {
 						reason = blocked
 					}
 				}
-				events = append(events, EngineEvent{Type: "air_launch_delayed", Audience: group[0].Faction, Text: fmt.Sprintf("%s%s，%d 架在甲板等待", name, reason, len(group))})
+				events = append(events, EngineEvent{Type: "air_launch_delayed", Audience: group[0].Faction, Text: fmt.Sprintf("%s%s，%d 个算子在甲板等待", name, reason, len(group))})
 				continue
 			}
 			deferred := 0
@@ -1562,7 +1562,7 @@ func launchReadyTasks(state *State) []EngineEvent {
 				if carrier := state.Units[carrierID]; carrier != nil {
 					name = carrier.Name
 				}
-				events = append(events, EngineEvent{Type: "air_launch_delayed", Audience: group[0].Faction, Text: fmt.Sprintf("%s甲板本回合只能放飞%d架，其余%d架顺延到后续回合", name, capacity, deferred)})
+				events = append(events, EngineEvent{Type: "air_launch_delayed", Audience: group[0].Faction, Text: fmt.Sprintf("%s甲板本回合只能放飞%d个算子，其余%d个算子顺延到后续回合", name, capacity, deferred)})
 			}
 			events = append(events, launchAirTask(state, group)...)
 		}
@@ -2629,7 +2629,7 @@ func VisibleAviation(state State, faction string) AviationView {
 				}
 			}
 			if waiting > 0 {
-				carrier.PreventedBy = fmt.Sprintf("%d 架攻击编队尚未设置目标、占着甲板，返航的 CAP 可能因此降不下来", waiting)
+				carrier.PreventedBy = fmt.Sprintf("%d 个算子（攻击编队）尚未设置目标、占着甲板，返航的 CAP 可能因此降不下来", waiting)
 			}
 		}
 		view.Carriers = append(view.Carriers, carrier)
