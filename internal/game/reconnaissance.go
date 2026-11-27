@@ -654,7 +654,13 @@ func discoverEnemyAirfieldsAt(state *State, aircraft *AirfieldAirUnit, coords []
 		if airfield == nil || airfield.Faction == aircraft.Faction || !inside[airfield.Coord] {
 			continue
 		}
-		if probabilityRoll(&state.RNGState) >= 30 {
+		// 机场发现率固定 30%；水上飞机基地的水上飞机夜里出动时，这一项也跟着夜间侦察
+		// 的"最终 ×50%"走（规则书"夜间航空行动"一节）。
+		chance := 30.0
+		if state.Night && fromSeaplaneBase(*state, aircraft) {
+			chance *= 0.5
+		}
+		if probabilityRoll(&state.RNGState) >= chance {
 			continue
 		}
 		setAirfieldContact(state, aircraft.Faction, airfield)

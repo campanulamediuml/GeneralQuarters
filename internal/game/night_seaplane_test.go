@@ -160,3 +160,81 @@ func TestShipFloatplaneNightRecoveryStillHard(t *testing.T) {
 		t.Fatal("舰队自带的水侦夜间回收一次都没摔，太便宜了")
 	}
 }
+
+// 夜间水上飞机基地的水上飞机：除了发现率，持续跟踪的成功率也在全部修正之后 ×50%。
+func TestNightSeaplaneTrackingHalved(t *testing.T) {
+	state := loadNightMarianas(t)
+	aircraft := state.GroundAir["af-b-saipan-sea-h8k-1"]
+	if aircraft == nil {
+		t.Fatal("缺少水上飞机基地算子")
+	}
+	var members []Unit
+	for _, unit := range state.Units {
+		if unit.Faction == "A" && unit.Type == "DD" {
+			members = []Unit{*unit}
+			break
+		}
+	}
+	if len(members) == 0 {
+		t.Fatal("剧本里没有美军驱逐舰")
+	}
+	aircraft.TrackingFleetID = FleetKey(&members[0])
+
+	tracked := func(night bool, trials int) int {
+		state.Night = night
+		hits := 0
+		for i := 0; i < trials; i++ {
+			for _, event := range resolveGroundTracking(&state, aircraft, members) {
+				if event.Type == "recon_tracking" && strings.Contains(event.Text, "提升至") {
+					hits++
+				}
+			}
+		}
+		return hits
+	}
+
+	const trials = 6000
+	day := tracked(false, trials)
+	night := tracked(true, trials)
+	if day < trials/4 {
+		t.Fatalf("白天跟踪成功 %d/%d，成功率太低，测试前提不成立", day, trials)
+	}
+	ratio := float64(night) / float64(day)
+	if math.Abs(ratio-0.5) > 0.05 {
+		t.Fatalf("夜间跟踪成功 %d、白天 %d（比例 %.2f），期望正好折半", night, day, ratio)
+	}
+}
+
+// 同样的夜间折半也作用在"扇面扫到敌方机场"的 30% 判定上。
+func TestNightSeaplaneAirfieldDiscoveryHalved(t *testing.T) {
+	state := loadNightMarianas(t)
+	aircraft := state.GroundAir["af-b-saipan-sea-h8k-1"]
+	if aircraft == nil {
+		t.Fatal("缺少水上飞机基地算子")
+	}
+	// 造一座美军机场放在扇面里，别去动剧本自带的日军机场。
+	const coord = "2384"
+	state.Airfields["test-us-airfield"] = &Airfield{ID: "test-us-airfield", Faction: "A", Name: "测试机场", Coord: coord, Type: AirfieldSmall, Runways: 2, Strength: 10}
+
+	discovered := func(night bool, trials int) int {
+		state.Night = night
+		hits := 0
+		for i := 0; i < trials; i++ {
+			if len(discoverEnemyAirfieldsAt(&state, aircraft, []string{coord})) > 0 {
+				hits++
+			}
+		}
+		return hits
+	}
+
+	const trials = 6000
+	day := discovered(false, trials)
+	night := discovered(true, trials)
+	if day < trials/4 {
+		t.Fatalf("白天机场发现 %d/%d，30%% 判定没生效", day, trials)
+	}
+	ratio := float64(night) / float64(day)
+	if math.Abs(ratio-0.5) > 0.06 {
+		t.Fatalf("夜间机场发现 %d、白天 %d（比例 %.2f），期望折半", night, day, ratio)
+	}
+}
