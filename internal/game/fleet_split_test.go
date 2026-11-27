@@ -59,6 +59,33 @@ func TestSplitFleetLeavesTrackingWhenASWStays(t *testing.T) {
 	}
 }
 
+// TestSplitFleetMixedDetachmentKeepsHunting 拆出"重巡 + 驱逐舰"这类混编分队：
+// 只要分队里有反潜舰，被追踪的潜艇就交给分队继续反潜，主队可以放心走。
+func TestSplitFleetMixedDetachmentKeepsHunting(t *testing.T) {
+	state := submarineFixture()
+	state.Units["a-dd2"] = &Unit{ID: "a-dd2", FleetID: "TF-A", FleetName: "TF-A", Faction: "A", Coord: "0505", Name: "奥班农", Type: "DD", Strength: 2, MaxStrength: 2, Card: ShipCard{DepthCharges: 2}}
+	state.Submarines = map[string]*Submarine{
+		"sub-b-1": {ID: "sub-b-1", Faction: "B", Name: "伊号", Coord: "0505", Deployed: true,
+			Discovered: true, DiscoveredBy: "A", TrackedFleetID: "TF-A"},
+	}
+	// 拆出一艘重巡 + 一艘驱逐舰，主队还留着另一艘驱逐舰。
+	order := Order{Type: "SPLIT_FLEET", UnitID: "a-ca", SplitIDs: []string{"a-ca", "a-dd"}}
+	if err := validateSplitFleet(state, "A", order); err != nil {
+		t.Fatalf("混编拆分应被允许：%v", err)
+	}
+	ApplySplitFleet(&state, order)
+	detachment := state.Units["a-dd"].FleetID
+	if detachment == "TF-A" {
+		t.Fatal("拆出的舰船应在新分队里")
+	}
+	if sub := state.Submarines["sub-b-1"]; sub == nil || sub.TrackedFleetID != detachment {
+		t.Fatalf("分队里有反潜舰时应由分队接替反潜：%+v", sub)
+	}
+	if state.Units["a-dd2"].FleetID != "TF-A" {
+		t.Fatal("没被选中的驱逐舰应留在主队")
+	}
+}
+
 // TestSplitFleetWholeFleet 全选等于整体改成新舰队：旧 ID 自然消失，追踪交给新舰队。
 func TestSplitFleetWholeFleet(t *testing.T) {
 	state := submarineFixture()

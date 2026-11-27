@@ -87,14 +87,16 @@ func ApplySplitFleet(state *State, order Order) []EngineEvent {
 	if moved == 0 {
 		return []EngineEvent{{Type: "fleet_split_empty", Audience: leader.Faction, Text: fmt.Sprintf("%s没有可拆分的舰船", oldName)}}
 	}
-	// 正在被这支舰队追踪的潜艇：拆出去的分队里有反潜舰、主队没了，就把追踪交给分队。
+	// 正在被这支舰队追踪的潜艇：只要拆出去的分队里有反潜舰，追踪就交给分队。
+	// 这是"大舰队拆出驱逐舰继续反潜、主队继续走"的关键——不能等主队把反潜舰都拆光才交，
+	// 否则主队留着哪怕一艘驱逐舰，拆出去的支队都接不到反潜任务。
 	trackingMoved := false
-	for _, id := range sortedSubmarineIDs(state.Submarines) {
-		sub := state.Submarines[id]
-		if sub == nil || !sub.Discovered || sub.TrackedFleetID != oldFleetID {
-			continue
-		}
-		if fleetHasASWShips(*state, newFleetID) && !fleetHasASWShips(*state, oldFleetID) {
+	if fleetHasASWShips(*state, newFleetID) {
+		for _, id := range sortedSubmarineIDs(state.Submarines) {
+			sub := state.Submarines[id]
+			if sub == nil || !sub.Discovered || sub.TrackedFleetID != oldFleetID {
+				continue
+			}
 			sub.TrackedFleetID = newFleetID
 			trackingMoved = true
 		}
