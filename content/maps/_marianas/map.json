@@ -271,11 +271,6 @@
    "name": ""
   },
   {
-   "coord": "2762",
-   "terrain": "shoal",
-   "name": ""
-  },
-  {
    "coord": "2763",
    "terrain": "island",
    "name": "塞班岛"
@@ -309,11 +304,6 @@
    "coord": "2807",
    "terrain": "island",
    "name": ""
-  },
-  {
-   "coord": "2862",
-   "terrain": "island",
-   "name": "塞班岛"
   },
   {
    "coord": "2863",
@@ -352,11 +342,6 @@
   },
   {
    "coord": "2962",
-   "terrain": "island",
-   "name": "天宁岛"
-  },
-  {
-   "coord": "2963",
    "terrain": "island",
    "name": "天宁岛"
   },
@@ -466,11 +451,6 @@
    "name": ""
   },
   {
-   "coord": "3260",
-   "terrain": "island",
-   "name": "关岛"
-  },
-  {
    "coord": "3261",
    "terrain": "shoal",
    "name": ""
@@ -507,11 +487,6 @@
   },
   {
    "coord": "3359",
-   "terrain": "shoal",
-   "name": ""
-  },
-  {
-   "coord": "3360",
    "terrain": "shoal",
    "name": ""
   },
