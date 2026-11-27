@@ -511,6 +511,8 @@ export interface DeployZone {
 
 export interface GameView {
   room_id: string
+  /** 展示文案字典：枚举 → 文案，由服务端随视图下发，前端只查表渲染。 */
+  display?: import('./display').DisplayDict
   status: string
   turn: number
   /** 单人房：一名玩家 ready 就结算 */

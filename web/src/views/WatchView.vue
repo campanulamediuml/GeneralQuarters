@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { api } from '../api'
 import { applyViewPatch, type ViewPatch } from '../patch'
 import { contactSizeLabel } from '../fleet'
+import { applyDisplay, label } from '../display'
 import { cycleKnots, speedKnots } from '../format'
 import type { AirTask, AirfieldContact, GameEvent, GameView, Unit } from '../types'
 import HexMap from '../components/HexMap.vue'
@@ -162,9 +163,9 @@ const airfieldAirGroups = computed(() => {
   }
   return [...groups.values()].sort((left, right) => left.model.localeCompare(right.model) || left.status.localeCompare(right.status))
 })
+// 状态文案由服务端字典给；观战页和战斗页共用同一套状态枚举。
 function groundStatusLabel(status: string) {
-  const labels: Record<string, string> = { hangar: "待命", ready: "整备完毕", service: "整备中", launching: "起飞中", attack: "出击中", cap: "CAP", recon: "侦察", cover: "掩护", returning: "返航", recovery: "着陆" }
-  return labels[status] || status || "—"
+  return label('aircraft_status', status) || status || '—'
 }
 const selectedAirTask = computed(() => tasks.value.find((task) => task.id === selectedAirTaskID.value) || groundTasks.value.find((task) => task.id === selectedAirTaskID.value))
 // 舰队详情里补一行“空中掩护”：地图上那面 CAP 牌子在整张马里亚纳缩到 100% 时只有 7px 宽，
@@ -238,6 +239,7 @@ function closeDetail() {
 function applySnapshot(message: { view?: unknown; patch?: unknown }) {
   if (message.view) {
     state.value = message.view as SpectatorView
+    applyDisplay((message.view as SpectatorView).display)
     status.value = 'live'
     return
   }
@@ -288,6 +290,7 @@ onMounted(async () => {
     const resolved = await api.watchRoom(props.token)
     // 先 HTTP 拉一份全量当底座：WS 抖动时也能马上看到战场，之后靠推送补差。
     state.value = (await api.spectate(resolved.room_id, props.token)) as unknown as SpectatorView
+    applyDisplay(state.value.display)
     status.value = 'live'
     connect(resolved.room_id)
   } catch (error) {

@@ -1,3 +1,4 @@
+import { nestedLabel } from './display'
 import { contentImageURL } from './silhouette-masks'
 import type { AirfieldContact, GroundAirStatus } from './types'
 
@@ -7,23 +8,14 @@ import type { AirfieldContact, GroundAirStatus } from './types'
 // 小型一条跑道、中型两条交叉、大型三条；水机基地是一枚圆形徽章。
 // 服务端按机场 type 给出 picture，剧本也能用 airfields[].picture 单点覆盖。
 // 这里的 type 是服务端归一后的枚举；前端不再做"旧字段名 → 新名字"的兼容（那是后端的迁移）。
+// 规模 → 文案/规则提示都由服务端字典给（airfield_type 分组），前端只查表。
 export function airfieldTypeLabel(type?: string): string {
-  switch ((type || '').trim().toLowerCase()) {
-    case 'seaplane': return '水上飞机基地'
-    case 'small': return '小型机场'
-    case 'medium': return '中型机场'
-    default: return '大型机场'
-  }
+  return nestedLabel('airfield_type', (type || '').trim().toLowerCase(), 'label')
 }
 
 // 悬停提示写清楚规模背后的规则含义，免得"小型/中型"变成纯美术标签。
 export function airfieldTypeHint(type?: string): string {
-  switch ((type || '').trim().toLowerCase()) {
-    case 'seaplane': return '水上飞机基地：只能操作水上飞机'
-    case 'small': return '小型机场：只能起降战斗机'
-    case 'medium': return '中型机场：除战略轰炸机外全部可起降'
-    default: return '大型机场：所有机型都能起降'
-  }
+  return nestedLabel('airfield_type', (type || '').trim().toLowerCase(), 'hint')
 }
 
 export function airfieldPictureURL(picture?: string): string | undefined {

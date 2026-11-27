@@ -1,3 +1,4 @@
+import { label } from './display'
 import type { ShipDamage, Unit } from './types'
 
 // 兵牌/卡片上的损伤标记。视觉语言照实体卡牌：
@@ -18,7 +19,6 @@ export interface DamageMarkers {
   sunk: boolean
 }
 
-const speedNames: Record<string, string> = { fast: '快速', normal: '常速', slow: '慢速', very_slow: '极慢', disabled: '失去动力' }
 
 // 实际航速档位由服务端算好下发（进水降档、失去动力都在后端判定）：
 // 前端只做"档位 → 文案"的映射，不按进水层数自己退算。
@@ -32,13 +32,13 @@ export function shipDamageMarkers(unit: Unit): DamageMarkers {
   const disabled = speed === 'disabled'
   return {
     fire: !!damage.fire,
-    fireLabel: damage.fire === 'burning' ? '起火燃烧' : '小型火灾',
+    fireLabel: label('damage', damage.fire === 'burning' ? 'fire_burning' : 'fire_small'),
     deck: !!damage.deck_damaged || !!damage.deck_destroyed,
     deckDestroyed: !!damage.deck_destroyed,
     disabled,
     // 慢速标记：慢速/极慢都算"跑得慢"；失去动力单独用橙条，不重复画白条。
     slow: !disabled && (speed === 'slow' || speed === 'very_slow'),
-    slowLabel: speedNames[speed] || '慢速',
+    slowLabel: label('speed_class', speed),
     tilt: !!damage.tilt,
     oilLeak: !!damage.oil_leak,
     sunk: unit.strength <= 0,

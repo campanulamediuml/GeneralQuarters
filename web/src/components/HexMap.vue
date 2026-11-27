@@ -4,6 +4,7 @@ import type { AirTask, DistanceReference, EnemyAirContact, GameMap, Order, Recon
 import { contactCapitalsLabel, contactSizeLabel, fleetOrder, type FleetGroup } from '../fleet'
 import { aircraftPictureURL, shipMaskURL } from '../silhouette-masks'
 import { airfieldContactStatus } from '../airfields'
+import { label } from '../display'
 import AircraftCounter from './AircraftCounter.vue'
 import AirfieldCounter from './AirfieldCounter.vue'
 
@@ -1037,7 +1038,7 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         <template v-if="unit.contact_level && unit.contact_level < 4">
           <!-- 情报分级：1 级"有敌舰"；2 级只给规模；3 级再加"存在航母/战列舰/重巡"。
                4 级才画真实剪影和舰名（下面的 unit-name 分支）。 -->
-          <text class="contact-size-label" text-anchor="middle" :y="unit.contact_level >= 3 && unit.contact_capitals?.length ? -1 : 5">{{ unit.contact_level <= 1 ? '有敌舰' : contactSizeLabel(unit.contact_size) }}</text>
+          <text class="contact-size-label" text-anchor="middle" :y="unit.contact_level >= 3 && unit.contact_capitals?.length ? -1 : 5">{{ unit.contact_level <= 1 ? label('contact_level', '1') : contactSizeLabel(unit.contact_size) }}</text>
           <text v-if="unit.contact_level >= 3 && unit.contact_capitals?.length" class="contact-size-label contact-capitals" text-anchor="middle" y="10">{{ contactCapitalsLabel(unit.contact_capitals) }}</text>
         </template>
         <template v-else>
@@ -1065,7 +1066,7 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         <path class="unit-heading" :transform="`translate(19 -7) rotate(${headingAngle(unit.heading)})`" d="M0 -9 L3.4 5 L-3.4 5 Z" />
         <!-- 情报 4 级时编成已知，标记上直接写舰队/旗舰名，别再写"情报4"这种没信息量的字。 -->
         <text class="unit-name" :text-anchor="stackedAt(coord) ? (index === 0 ? 'end' : 'start') : 'middle'" :x="stackedAt(coord) ? (index === 0 ? -10 : 10) : 0" y="34">{{ unit.contact_level && unit.contact_level < 4 ? `情报${unit.contact_level}` : unit.name }}</text>
-        <text v-if="unit.contact_level && unit.contact_level < 4" class="unit-order" text-anchor="middle" y="48">最后已知</text>
+        <text v-if="unit.contact_level && unit.contact_level < 4" class="unit-order" text-anchor="middle" y="48">{{ label('contact_level', 'unknown') }}</text>
         <text v-else-if="moveOrder(unit)" class="unit-order" text-anchor="middle" y="48">预定 → {{ moveOrder(unit)?.coord }}</text>
         <!-- 冷却回合数不再画在地图上：舰队面板里已经写了"还需N回合"，地图上挂一行红字太吵。 -->
         <text v-else-if="unit.moved && !stackedAt(coord)" class="unit-order" text-anchor="middle" y="48">已移动</text>
@@ -1167,7 +1168,7 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         <rect x="-10" y="-7" width="20" height="14" rx="2" />
         <image v-if="enemyAirPicture(contact)" class="flight-task-picture enemy-air-picture" :href="enemyAirPicture(contact)" x="-9" y="-6" width="18" height="12" preserveAspectRatio="xMidYMid meet" :data-aircraft-picture="contact.pictures?.[0] || ''" />
         <text x="0" y="13">{{ contact.count }}</text>
-        <title>敌方编队 · {{ contact.models?.join('/') }} · 约 {{ contact.count }} 个算子 · {{ contact.coord }} · 由{{ { radar: '雷达', recon: '侦察机', visual: '目视' }[contact.detected_by] || contact.detected_by }}发现</title>
+        <title>敌方编队 · {{ contact.models?.join('/') }} · 约 {{ contact.count }} 个算子 · {{ contact.coord }} · 由{{ label('detected_by', contact.detected_by) }}发现</title>
       </g>
     </g>
     <g v-if="dragging && draggedUnit" ref="ghostElement" class="map-unit drag-ghost" :class="`faction-${draggedUnit.faction.toLowerCase()}`" transform="translate(-1000, -1000)">

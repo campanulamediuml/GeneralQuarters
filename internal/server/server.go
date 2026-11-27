@@ -32,9 +32,12 @@ import (
 type Server struct {
 	store      *store.Store
 	contentDir string
-	hub        *hub
-	actors     sync.Map
-	secure     bool
+	// display 是展示文案字典（content/misc/display.json）：随每份视图下发给前端查表，
+	// 前端不再自己写一份"舰种/状态/损伤 → 中文"的映射。
+	display game.Display
+	hub     *hub
+	actors  sync.Map
+	secure  bool
 	// 观战页已经是前端 SPA 路由（/watch/{token}），服务端只负责把 token 解析成 room_id。
 }
 
@@ -151,6 +154,19 @@ func roomJSON(status int, value any) roomReply {
 
 func roomError(status int, message string) roomReply {
 	return roomJSON(status, errorResponse{Error: message})
+}
+
+// codedError 把带错误码的引擎错误翻成统一响应：文本按内容表渲染，同时附上 code/params。
+func (s *Server) codedError(status int, err error) roomReply {
+	response := errorResponse{Error: err.Error()}
+	if coded, ok := game.AsCoded(err); ok {
+		response.ErrorCode = coded.Code
+		response.ErrorParams = coded.Params
+		if text, rendered := s.display.RenderError(coded.Code, coded.Params); rendered {
+			response.Error = text
+		}
+	}
+	return roomJSON(status, response)
 }
 
 type roomActor struct {
@@ -401,10 +417,18 @@ type roomResponse struct {
 
 type errorResponse struct {
 	Error string `json:"error"`
+	// ErrorCode / ErrorParams 让客户端按同一份文案表本地化；
+	// Error 仍然按内容表渲染好下发，老客户端不用改。
+	ErrorCode   string            `json:"error_code,omitempty"`
+	ErrorParams map[string]string `json:"error_params,omitempty"`
 }
 
 func New(store *store.Store, contentDir string, secureCookie bool) *Server {
-	s := &Server{store: store, contentDir: contentDir, secure: secureCookie}
+	display, displayErr := game.LoadDisplay(contentDir)
+	if displayErr != nil {
+		log.Printf("读取展示文案失败：%v", displayErr)
+	}
+	s := &Server{store: store, contentDir: contentDir, secure: secureCookie, display: display}
 	s.hub = newHub()
 	// 进程刚起来，谁都不在线：库里留着的 connected=1 全是上一次的残留，先清零。
 	// 不清的话，"没人在线"这个条件永远不成立，闲置房间一个也回收不掉。
@@ -649,7 +673,8 @@ func (s *Server) doCommand(msg roomMsg) roomReply {
 	}
 	order := game.Order{Type: request.Type, UnitID: request.UnitID, TargetUnitID: request.TargetUnitID, AircraftID: request.AircraftID, AircraftIDs: request.AircraftIDs, TaskID: request.TaskID, Coord: game.NormalizeToken(request.Coord), TargetFleetID: request.TargetFleetID, Heading: strings.ToUpper(request.Heading), SectorWidth: request.SectorWidth, Assignments: request.Assignments, TaskKind: strings.ToLower(request.TaskKind), Loadout: strings.ToLower(request.Loadout), Lane: request.Lane, Disperse: request.Disperse, Engagement: strings.ToLower(request.Engagement), Cycle: request.Cycle}
 	if err := game.ValidateOrder(room.State, player.Faction, order); err != nil {
-		return roomError(http.StatusBadRequest, err.Error())
+		// 带码的错误交给统一渲染：文案来自 content 的错误表，前端也能拿 code 自己翻。
+		return s.codedError(http.StatusBadRequest, err)
 	}
 	// 无线电机会在提交时就要扣：同一回合里重复给同一个编队发命令必须立刻被拒绝，
 	if room.State.Outcome != nil {
@@ -1070,6 +1095,8 @@ func (s *Server) privateView(ctx context.Context, room store.Room, players []sto
 		"outcome":         room.State.Outcome,
 		"objectives":      room.State.Objectives,
 		"you":             player, "players": playersSnapshot(players), "orders": ownOrders, "events": events,
+		// display 是枚举 → 文案的字典：由内容目录提供，前端只按状态查表渲染。
+		"display": s.display,
 		// solo 让前端把"完成部署"换成"等待对手进房"，别让玩家点了才发现结算不了。
 		"solo": room.Solo,
 		// 这里不要放 server_time 之类每次都变的字段：推送靠"和上一帧逐字节相同就不发"

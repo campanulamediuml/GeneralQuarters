@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import type { Unit } from '../types'
 import ShipSilhouette from './ShipSilhouette.vue'
+import { label } from '../display'
 import { shipDamageBadges, shipDamageDetailLabels } from '../shipDamage'
 import { cycleKnots, formatNumber, speedKnots } from '../format'
 
@@ -34,14 +35,14 @@ const radarParts = computed(() => {
 })
 const isCarrier = computed(() => ['CV', 'CVL', 'CVE'].includes(props.unit.type))
 const healthPercent = computed(() => Math.max(0, Math.min(100, props.unit.strength / props.unit.max_strength * 100)))
-const speedNames = { normal: '常速', fast: '快速', slow: '慢速', very_slow: '极慢' }
+
 // 角色卡也写清"多少节"：四档（快速/常速/慢速/极慢）看着直观，但换算不出航程和追击差。
 const speedKnotsValue = computed(() => (props.unit.card.move_cycle?.length ? cycleKnots(props.unit.card.move_cycle) : speedKnots(props.unit.card.speed_class)))
 // 配了 move_cycle 的船按周期算出来的节数才是真速度，四档只是档位；
 // 两个都写会变成"慢速 · 约19节"这种自相矛盾的组合，所以有周期时只说节数。
 const speedLabel = computed(() => {
   if (props.unit.card.move_cycle?.length) return '约' + speedKnotsValue.value + '节'
-  const name = (speedNames as Record<string, string>)[props.unit.card.speed_class] || '常速'
+  const name = label('speed_class', props.unit.card.speed_class)
   return name + ' · 约' + speedKnotsValue.value + '节'
 })
 const damageLabels = computed(() => shipDamageDetailLabels(props.unit))

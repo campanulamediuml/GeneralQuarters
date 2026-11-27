@@ -1,5 +1,6 @@
 import type { GameView, Order, RoomResponse } from './types'
 import { applyViewPatch, type ViewPatch } from './patch'
+import { messageFor } from './display'
 
 type PendingRpc = { resolve: (value: unknown) => void; reject: (reason: Error) => void }
 let roomSocket: WebSocket | undefined
@@ -64,9 +65,9 @@ export function handleRoomSocketMessage(raw: string): boolean {
   const pending = pendingRpc.get(message.id)
   if (!pending) return true
   pendingRpc.delete(message.id)
-  const body = message.body as { error?: string } | undefined
+  const body = message.body as { error?: string; error_code?: string; error_params?: Record<string, string> } | undefined
   const status = message.status || 500
-  if (status < 200 || status >= 300) pending.reject(new Error(body?.error || '请求失败（WS ' + status + '）'))
+  if (status < 200 || status >= 300) pending.reject(new Error(messageFor(body?.error_code, body?.error_params, body?.error) || '请求失败（WS ' + status + '）'))
   else pending.resolve(message.body)
   return true
 }
@@ -92,7 +93,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers: { 'Content-Type': 'application/json', ...options.headers },
   })
   const body = await response.json().catch(() => ({ error: '服务器返回了无法解析的响应' }))
-  if (!response.ok) throw new Error(body.error || '请求失败（' + response.status + '）')
+  if (!response.ok) throw new Error(messageFor(body.error_code, body.error_params, body.error) || '请求失败（' + response.status + '）')
   return body as T
 }
 

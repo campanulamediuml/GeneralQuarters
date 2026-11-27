@@ -116,7 +116,12 @@ func supplyRefusal(supply Supply, loadout Loadout, where string) error {
 		where = "这个补给点"
 	}
 	weapon := weaponLabel(loadout.Weapon())
-	return fmt.Errorf("%s不提供%s挂载：只能挂其他弹药，换到能保障%s的母舰或机场再挂", where, weapon, weapon)
+	// 带错误码返回：文案模板在 content 的错误表里，服务端和前端各渲染各的、只用一份配置。
+	return &CodedError{
+		Code:   "loadout_not_supplied",
+		Params: map[string]string{"where": where, "weapon": weapon},
+		Text:   fmt.Sprintf("%s不提供%s挂载：只能挂其他弹药，换到能保障%s的母舰或机场再挂", where, weapon, weapon),
+	}
 }
 
 // weaponLabel 是武器类别的中文名。

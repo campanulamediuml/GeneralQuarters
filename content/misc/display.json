@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "labels": {
+    "aircraft_kind": {
+      "fighter": "舰载战斗机",
+      "dive_bomber": "俯冲轰炸机",
+      "torpedo_bomber": "鱼雷轰炸机",
+      "recon": "舰载侦察机",
+      "seaplane": "水上侦察机",
+      "level_bomber": "水平轰炸机",
+      "medium_bomber": "中型轰炸机",
+      "heavy_bomber": "重型轰炸机",
+      "strategic_bomber": "战略轰炸机"
+    },
+    "aircraft_kind_ground": {
+      "fighter": "陆基战斗机",
+      "dive_bomber": "陆基轰炸机",
+      "torpedo_bomber": "陆基攻击机",
+      "level_bomber": "陆基中型轰炸机",
+      "strategic_bomber": "陆基战略轰炸机",
+      "recon": "陆基侦察机"
+    },
+    "aircraft_status": {
+      "hangar": "机库待命",
+      "service": "整备中",
+      "elevator": "升降机",
+      "deck": "甲板待命",
+      "ready": "整备完毕",
+      "cap": "CAP",
+      "recon": "侦察",
+      "cover": "掩护",
+      "attack": "出击中",
+      "attack_holding": "等待编队",
+      "transfer": "转场中",
+      "returning": "返航",
+      "recovery": "着陆"
+    },
+    "aircraft_status_airfield": {
+      "hangar": "机库待命",
+      "service": "整备中",
+      "deck": "跑道待命",
+      "ready": "整备完毕",
+      "cap": "CAP",
+      "recon": "侦察",
+      "cover": "掩护",
+      "attack": "出击中",
+      "attack_holding": "等待编队",
+      "transfer": "转场中",
+      "returning": "返航",
+      "recovery": "着陆"
+    },
+    "ship_type": {
+      "CV": "航空母舰",
+      "CVL": "轻型航母",
+      "CVE": "护航航母",
+      "BB": "战列舰",
+      "BC": "战列巡洋舰",
+      "CA": "重巡洋舰",
+      "CL": "轻巡洋舰",
+      "DD": "驱逐舰",
+      "TRS": "运输船"
+    },
+    "speed_class": {
+      "fast": "快速",
+      "normal": "常速",
+      "slow": "慢速",
+      "very_slow": "极慢",
+      "disabled": "失去动力"
+    },
+    "skill_badge": {
+      "rookie": "新",
+      "veteran": "老",
+      "ace": "精"
+    },
+    "skill_label": {
+      "rookie": "新手",
+      "regular": "普通",
+      "veteran": "老兵",
+      "ace": "王牌"
+    },
+    "skill_tier": {
+      "rookie": "劣势（2 骰取劣）",
+      "regular": "普通",
+      "veteran": "2 骰优势",
+      "ace": "3 骰优势"
+    },
+    "contact_size": {
+      "small": "小型舰队",
+      "medium": "中型舰队",
+      "large": "大型舰队"
+    },
+    "contact_capital": {
+      "carrier": "航母",
+      "battleship": "战列舰",
+      "heavy_cruiser": "重巡"
+    },
+    "contact_level": {
+      "1": "有敌舰",
+      "unknown": "最后已知"
+    },
+    "airfield_type": {
+      "seaplane": {
+        "label": "水上飞机基地",
+        "hint": "水上飞机基地：只能操作水上飞机"
+      },
+      "small": {
+        "label": "小型机场",
+        "hint": "小型机场：只能起降战斗机"
+      },
+      "medium": {
+        "label": "中型机场",
+        "hint": "中型机场：除战略轰炸机外全部可起降"
+      },
+      "large": {
+        "label": "大型机场",
+        "hint": "大型机场：所有机型都能起降"
+      }
+    },
+    "damage": {
+      "fire_burning": "起火燃烧",
+      "fire_small": "小型火灾",
+      "deck_damaged": "飞行甲板损伤",
+      "deck_destroyed": "飞行甲板摧毁",
+      "tilt": "倾斜",
+      "oil_leak": "漏油",
+      "flooding": "进水",
+      "disabled": "失去动力"
+    },
+    "wind_relation": {
+      "same": "顺风",
+      "para": "逆风",
+      "ortho": "侧逆风",
+      "meta": "侧顺风"
+    },
+    "engagement": {
+      "aggressive": "逢敌必战",
+      "advantage": "优势交战",
+      "avoid": "避免近战"
+    },
+    "detected_by": {
+      "radar": "雷达",
+      "recon": "侦察机",
+      "visual": "目视"
+    }
+  },
+  "errors": {
+    "loadout_not_supplied": "{where}不提供{weapon}挂载：只能挂其他弹药，换到能保障{weapon}的母舰或机场再挂",
+    "request_failed": "请求失败（{status}）"
+  }
+}

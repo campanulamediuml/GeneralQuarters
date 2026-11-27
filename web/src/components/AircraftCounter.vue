@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import type { AirUnit, Player } from '../types'
 import { aircraftPictureURL } from '../silhouette-masks'
+import { label } from '../display'
 
 // cycleClickable 默认 true：布尔型 prop 缺省时 Vue 会补成 false，必须用 withDefaults 显式给默认值，
 // 否则没传这个属性的地方（地图上的兵牌）循环角标会被渲染成拉不动的 static 按钮。
@@ -28,12 +29,8 @@ watch(pictureURL, (url) => {
 const usesPicture = computed(() => Boolean(pictureURL.value) && !pictureBroken.value)
 // 兵牌上的剪影逐机型不同，用 title 标出机型，方便一眼区分俯冲轰炸机、鱼雷机和水上侦察机。
 // 陆基机型（陆攻、P-40、B-25）不能上舰，标题和航程样式都按陆基来。
-const kindLabel = computed(() => {
-  if (props.aircraft.airfield_only) {
-    return ({ fighter: '陆基战斗机', dive_bomber: '陆基轰炸机', torpedo_bomber: '陆基攻击机', level_bomber: '陆基中型轰炸机', strategic_bomber: '陆基战略轰炸机', recon: '陆基侦察机' } as Record<string, string>)[props.aircraft.kind] || props.aircraft.kind
-  }
-  return ({ fighter: '舰载战斗机', dive_bomber: '俯冲轰炸机', torpedo_bomber: '鱼雷轰炸机', recon: '舰载侦察机', seaplane: '水上侦察机' } as Record<string, string>)[props.aircraft.kind] || props.aircraft.kind
-})
+// 机型名是"枚举 → 文案"的映射，文案表由服务端下发（content/misc/display.json）。
+const kindLabel = computed(() => label(props.aircraft.airfield_only ? 'aircraft_kind_ground' : 'aircraft_kind', props.aircraft.kind))
 // 任务循环：CAP、侦察、空中掩护可以自动再来一轮（规则书 188–191 行）。
 // 蓝色 🔁 表示循环已开启；灰的表示这次任务不会自动续，点一下可以打开。
 const cycleKind = computed(() => props.aircraft.cycle_kind || props.aircraft.task_kind)
@@ -42,10 +39,12 @@ const cycleOn = computed(() => Boolean(props.aircraft.on_cycle))
 const cycleLabel = computed(() => (cycleOn.value ? '自动循环已开启，点击取消' : '自动循环已关闭，点击开启'))
 // 飞行员熟练度：普通不画角标，新/老/精三档各占一个字，放在机型名前面。
 // 熟练度不改卡面数值，只决定 DC 临场发挥那一掷的骰子档位，角标负责让人一眼看出这队是谁在飞。
-const skillBadge = computed(() => ({ rookie: '新', veteran: '老', ace: '精' } as Record<string, string>)[props.aircraft.skill || ''] || '')
-const skillLabel = computed(() => ({ rookie: '新手', regular: '普通', veteran: '老兵', ace: '王牌' } as Record<string, string>)[props.aircraft.skill || 'regular'] || '普通')
+// 角标一个字、说明里的档位名，同样查服务端文案表；默认按"普通"。
+const skillKey = computed(() => props.aircraft.skill || 'regular')
+const skillBadge = computed(() => (props.aircraft.skill ? label('skill_badge', props.aircraft.skill) : ''))
+const skillLabel = computed(() => label('skill_label', skillKey.value))
 // 档位名和规则书同一套：劣势 / 普通 / 2 骰优势 / 3 骰优势。
-const skillTier = computed(() => ({ rookie: '劣势（2 骰取劣）', regular: '普通', veteran: '2 骰优势', ace: '3 骰优势' } as Record<string, string>)[props.aircraft.skill || 'regular'] || '普通')
+const skillTier = computed(() => label('skill_tier', skillKey.value))
 const modelTitle = computed(() => skillBadge.value ? `${props.aircraft.model} · 飞行员：${skillLabel.value}（${skillTier.value}）` : props.aircraft.model)
 </script>
 

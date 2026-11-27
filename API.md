@@ -5,7 +5,7 @@
 ## 通用约定
 
 - 除健康检查和文档外，接口使用创建或加入房间时签发的HttpOnly Cookie`gq_session`。
-- 成功响应为JSON，错误为`{"error":"人类可读说明"}`。
+- 成功响应为JSON，错误为`{"error":"人类可读说明"}`；错误如果带错误码，还会附上 `error_code` 和 `error_params`（例如 `{"error_code":"loadout_not_supplied","error_params":{"where":"护航航母「马尼拉湾」","weapon":"鱼雷"}}`）。`error` 已经按内容表（`content/misc/display.json` 的 `errors` 分组）渲染好，老客户端不用改；新客户端可以拿 code + params 用同一张表自己本地化。
 - `room_id`标识房间；`join_token`是邀请凭证；二者都不是玩家会话。
 - `base_turn`可选：提交时看到的回合号。只有回合已结算的过期提交会被拒绝（409）；同回合内重复提交一律接受，后写的覆盖先写的。不比对版本号。
 - `command_id`由客户端生成，在玩家范围内唯一。断线重试必须沿用原ID。

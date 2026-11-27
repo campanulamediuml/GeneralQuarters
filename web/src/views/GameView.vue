@@ -6,6 +6,7 @@ import type { AirCombatReport, AirTask, AirUnit, GameView, Order, ReconHeading, 
 import { contactCapitalsLabel, contactIntelLabel, contactSizeLabel, groupFleets, type FleetGroup } from '../fleet'
 import HexPanel from '../components/HexPanel.vue'
 import { airfieldContactStatus } from '../airfields'
+import { applyDisplay, label } from '../display'
 import { shipDamageBadges, shipDamageDetailLabels } from '../shipDamage'
 import HexMap from '../components/HexMap.vue'
 import AirfieldCounter from '../components/AirfieldCounter.vue'
@@ -286,8 +287,8 @@ function aircraftFlightStatus(aircraft: AirUnit) {
   // 机场算子不走甲板和升降机：落地是在跑道上，待命也是在跑道上，不能跟着航母叫"着舰/甲板"。
   const fromAirfield = airfields.value.some((airfield) => airfield.id === aircraft.carrier_id)
   if (aircraft.status === 'recovery') return fromAirfield ? '着陆中' : '着舰中'
-  const labels: Record<string, string> = { hangar: '机库待命', service: '整备中', elevator: '升降机', deck: fromAirfield ? '跑道待命' : '甲板待命', ready: '整备完毕', cap: 'CAP', recon: '侦察', cover: '掩护', transfer: '转场中' }
-  return labels[aircraft.status] || '空中'
+  // 状态名同样查服务端文案表；机场算子和航母算子的"deck"文案不同，分两组。
+  return label(fromAirfield ? 'aircraft_status_airfield' : 'aircraft_status', aircraft.status) || '空中'
 }
 const mapAirTaskPhase = computed(() => {
   const task = mapAirTask.value
@@ -520,6 +521,8 @@ function applyState(next: GameView, initial = false) {
     mapAirTaskID.value = ''
   }
   state.value = next
+  // 文案表跟着视图走：先装字典再渲染，界面不再自己写死枚举的中文。
+  applyDisplay(next.display)
   // 交给补丁层的是 state.value 拿到的那个响应式代理，不是传进来的原始对象：
   // 补丁就地改属性，改在原始对象上 Vue 收不到通知，界面就不会更新。
   adoptPushedView(state.value)
@@ -868,7 +871,7 @@ const enemyShoreSupplyTotal = computed(() => Object.values(state.value?.enemy_sh
 // 风向：每回合每支舰队可以调整一次朝向，影响航母的甲板容量。
 // 风向按"来向"记：ortho（偏离来风 60°）仍带迎面分量，是侧逆风 +1；
 // meta（偏离 120°）带顺风分量，是侧顺风 −1。以前这两个标签写反了。
-const windRelations: Record<string, string> = { same: '顺风', para: '逆风', ortho: '侧逆风', meta: '侧顺风' }
+// 风向关系是服务端算好的枚举（same/para/ortho/meta），文案查展示字典。
 const headingChoices: ReconHeading[] = ['NE', 'E', 'SE', 'SW', 'W', 'NW']
 const selectedFleetWind = computed(() => {
   const wind = state.value?.wind
@@ -901,7 +904,8 @@ async function setFleetHeading(heading: ReconHeading) {
 // —— 自动航行（规则书 280–283、362–370 行）——
 // 在地图上点一个格子即可设定目的地，舰队会沿最短可通行路线自行推进。
 const navTargeting = ref(false)
-const engagementLabels: Record<string, string> = { aggressive: '逢敌必战', advantage: '优势交战', avoid: '避免近战' }
+// 交战设置的三档也由服务端枚举 + 文案表给出。
+const engagementLabels = computed<Record<string, string>>(() => ({ aggressive: label('engagement', 'aggressive'), advantage: label('engagement', 'advantage'), avoid: label('engagement', 'avoid') }))
 const selectedEngagement = computed(() => selectedFleet.value?.engagement || 'aggressive')
 
 function startNavTargeting() {
@@ -1188,8 +1192,8 @@ onUnmounted(() => {
                 <template v-if="selectedFleetWind">
                   <i>朝向 {{ selectedFleetWind.heading }}</i>
                   <!-- 风力只影响航母甲板：没有航母的舰队（巡洋舰水侦、驱逐舰）只显示风从哪来。 -->
-                  <em v-if="selectedFleetWind.has_carrier" :class="selectedFleetWind.deck_modifier > 0 ? 'gain' : selectedFleetWind.deck_modifier < 0 ? 'loss' : ''">{{ windRelations[selectedFleetWind.relation] || selectedFleetWind.relation }} {{ selectedFleetWind.deck_modifier > 0 ? '+' : '' }}{{ selectedFleetWind.deck_modifier }} 甲板</em>
-                  <em v-else class="wind-neutral">{{ windRelations[selectedFleetWind.relation] || selectedFleetWind.relation }}（无航母，甲板不受风向影响）</em>
+                  <em v-if="selectedFleetWind.has_carrier" :class="selectedFleetWind.deck_modifier > 0 ? 'gain' : selectedFleetWind.deck_modifier < 0 ? 'loss' : ''">{{ label('wind_relation', selectedFleetWind.relation) }} {{ selectedFleetWind.deck_modifier > 0 ? '+' : '' }}{{ selectedFleetWind.deck_modifier }} 甲板</em>
+                  <em v-else class="wind-neutral">{{ label('wind_relation', selectedFleetWind.relation) }}（无航母，甲板不受风向影响）</em>
                   <span class="heading-picker" :class="{ spent: selectedFleetWind.changed || selectedFleetWind.moved }">
                     <button v-for="h in headingChoices" :key="h" :disabled="selectedFleetWind.changed || selectedFleetWind.moved || actionBusy || locked || deploying" :title="headingButtonTitle(h)" @click.stop="setFleetHeading(h)">{{ h }}</button>
                   </span>

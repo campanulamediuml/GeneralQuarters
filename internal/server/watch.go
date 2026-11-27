@@ -36,7 +36,10 @@ func (s *Server) spectateView(ctx context.Context, room store.Room, players []st
 	if err != nil {
 		return nil, err
 	}
-	return buildSpectateView(room, players, events), nil
+	view := buildSpectateView(room, players, events)
+	// 观战视图和玩家视图用同一份展示文案字典：前端靠它把状态枚举翻成中文。
+	view["display"] = s.display
+	return view, nil
 }
 
 // buildSpectateView 把房间状态整理成观战页要的那一份 JSON 视图。
