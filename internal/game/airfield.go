@@ -1195,7 +1195,8 @@ func ValidateGroundAirOrder(state State, order Order) error {
 			} else if err := ValidateStrikeTarget(state, airfield.Faction, order.Coord); err != nil {
 				return err
 			}
-			return validateGroundStrikeLoadoutChange(state, groundTaskAircraft(state, list[0].TaskID), order.TargetFleetID, order.Coord)
+			// 改目标不自动换挂载：岸基算子同理，挂鱼雷就是炸不动跑道。
+		return nil
 		case "cover":
 			// 掩护改目标：舰队所在格或机场格都行，只要求是地图内合法 hex。
 			if order.Coord == "" || !inBounds(state.Map, order.Coord) {
@@ -1390,6 +1391,8 @@ func ApplyGroundAirOrder(state *State, order Order) []EngineEvent {
 		// 栏位跟着编队走：新编队拿当前空着的最小栏位，加入已有编队沿用它的栏位。
 		assignGroundTaskLane(state, list, groundTaskAircraft(*state, taskID), airfield.ID, string(kind), order.Lane)
 		events := []EngineEvent{}
+		mismatch := []string{}
+		seenMismatch := map[string]bool{}
 		for _, aircraft := range list {
 			beginGroundMission(aircraft, taskID, kind, priority)
 			switch kind {
@@ -1447,6 +1450,25 @@ func ApplyGroundAirOrder(state *State, order Order) []EngineEvent {
 				}
 				assignGroundCapMission(aircraft, target)
 			}
+			// 拖进任务栏先校验现有挂载：空载按任务自动配弹走整备；
+			// 已经有挂载但干不了这个任务（鱼雷打岸上、挂炸弹做 CAP/转场）就保留原挂载、只弹提示。
+			if kind == MissionTransfer {
+				if notice := transferLoadoutNotice(aircraft.Loadout); notice != "" {
+					entry := aircraft.Model + "：" + notice
+					if !seenMismatch[entry] {
+						seenMismatch[entry] = true
+						mismatch = append(mismatch, entry)
+					}
+				}
+			}
+			if reason := loadoutTaskMismatch(aircraft.Kind, string(kind), groundTaskTargetKind(*state, aircraft), aircraft.Loadout); reason != "" {
+				entry := aircraft.Model + "：" + reason
+				if !seenMismatch[entry] {
+					seenMismatch[entry] = true
+					mismatch = append(mismatch, entry)
+				}
+				continue
+			}
 			// 按任务换挂载：对舰优先鱼雷、对地挂炸弹（规则书 43–63 行）。
 			applyGroundLoadout(*state, aircraft)
 			if aircraft.Status == "hangar" {
@@ -1467,6 +1489,10 @@ func ApplyGroundAirOrder(state *State, order Order) []EngineEvent {
 				events = append(events, EngineEvent{Type: "air_launched", Audience: airfield.Faction, Text: fmt.Sprintf("%s从%s跑道起飞", aircraft.Model, airfield.Name)})
 			}
 		}
+		if len(mismatch) > 0 {
+			sort.Strings(mismatch)
+			events = append(events, EngineEvent{Type: "air_loadout_mismatch", Audience: airfield.Faction, Text: strikeLoadoutMismatchHint(mismatch)})
+		}
 		return events
 	case "SET_STRIKE_TARGET":
 		taskID := list[0].TaskID
@@ -1483,7 +1509,6 @@ func ApplyGroundAirOrder(state *State, order Order) []EngineEvent {
 						aircraft.TargetCoord = coord
 					}
 				}
-				applyGroundStrikeLoadoutChange(state, aircraft)
 				continue
 			}
 			// 掩护 / 转场改目标。
@@ -1513,7 +1538,14 @@ func ApplyGroundAirOrder(state *State, order Order) []EngineEvent {
 		case "transfer":
 			text = fmt.Sprintf("转场目的地设为%s", order.Coord)
 		}
-		return []EngineEvent{{Type: "strike_target_set", Audience: airfield.Faction, Text: text}}
+		events := []EngineEvent{{Type: "strike_target_set", Audience: airfield.Faction, Text: text}}
+		// 岸基同理：改目标不自动换挂载，挂鱼雷去打机场就是投不出，只提示不动手。
+		if kind == "attack" {
+			if models := groundStrikeLoadoutMismatchModels(*state, groundTaskAircraft(*state, taskID)); len(models) > 0 {
+				events = append(events, EngineEvent{Type: "air_loadout_mismatch", Audience: airfield.Faction, Text: strikeLoadoutMismatchHint(models)})
+			}
+		}
+		return events
 	case "SET_STRIKE_DISPERSION":
 		taskID := list[0].TaskID
 		mode := "集中攻击"

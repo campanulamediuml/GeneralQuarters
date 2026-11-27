@@ -462,7 +462,8 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 			} else if err := ValidateStrikeTarget(state, faction, order.Coord); err != nil {
 				return err
 			}
-			return validateStrikeLoadoutChange(state, taskAircraft(state, aircraftList[0].TaskID), order.TargetFleetID, order.Coord)
+			// 改目标不自动换挂载：挂鱼雷去打机场就是对地值 0，投不出弹。要换弹走 SET_LOADOUT。
+			return nil
 		case "cover", "transfer":
 			// 空中掩护改掩护 hex、转场改降落目标：只要求是地图内合法 hex。
 			// 降不下去时玩家就是靠这条命令把编队改到另一支舰队。
@@ -837,7 +838,7 @@ func assignCarrierTaskLane(state *State, aircraftList []*AirUnit, existingTask [
 	return lane
 }
 
-func configureAirTask(state *State, aircraftList []*AirUnit, order Order) {
+func configureAirTask(state *State, aircraftList []*AirUnit, order Order) []EngineEvent {
 	taskID := order.TaskID
 	priority := 0
 	var existingTask []*AirUnit
@@ -891,11 +892,14 @@ func configureAirTask(state *State, aircraftList []*AirUnit, order Order) {
 		order.Coord = existingTask[0].TargetCoord
 	}
 
+	mismatch := []string{}
+	seenMismatch := map[string]bool{}
 	for _, aircraft := range aircraftList {
 		// 先在接单前记下"这架是不是已经整备好、挂的什么"：beginAirMission 会把整备进度清零，
 		// 但玩家已经在机库里整备好的算子再拖进任务栏，不该又白等一轮。
 		wasReady := serviceComplete(aircraft) && aircraft.Loadout != LoadoutNone
 		prevLoadout := aircraft.Loadout
+		prevServiceTurns, prevArmed := aircraft.ServiceTurns, aircraft.Armed
 		beginAirMission(aircraft, taskID, kind, priority)
 		switch kind {
 		case MissionRecon:
@@ -930,6 +934,29 @@ func configureAirTask(state *State, aircraftList []*AirUnit, order Order) {
 			// CAP：巡逻点留空表示"跟着母舰走"，capCoord 逐回合回落到母舰当前 hex。
 			assignCapMission(aircraft, aircraft.PatrolCoord)
 		}
+		// 拖进任务栏先校验现有挂载：
+		//   - 空载：按任务自动配弹并走整备流程（下面 applyLoadout）；
+		//   - 已经有挂载、但干不了这个任务（鱼雷打岸上、挂炸弹做 CAP/转场）：保留原挂载和
+		//     整备进度，只弹一条提示，命令照收。
+		if kind == MissionTransfer {
+			if notice := transferLoadoutNotice(aircraft.Loadout); notice != "" {
+				entry := aircraft.Model + "：" + notice
+				if !seenMismatch[entry] {
+					seenMismatch[entry] = true
+					mismatch = append(mismatch, entry)
+				}
+			}
+		}
+		if reason := loadoutTaskMismatch(aircraft.Kind, string(kind), taskTargetKind(*state, aircraft), aircraft.Loadout); reason != "" {
+			aircraft.ServiceTurns = prevServiceTurns
+			aircraft.Armed = prevArmed
+			entry := aircraft.Model + "：" + reason
+			if !seenMismatch[entry] {
+				seenMismatch[entry] = true
+				mismatch = append(mismatch, entry)
+			}
+			continue
+		}
 		// 按任务换挂载：转场加航程、鱼雷机挂鱼雷、水平轰炸挂炸弹（规则书 43–63 行）。
 		// 目标 hex 上有敌方机场即视为对地攻击（影响默认挂载选择）。
 		applyLoadout(*state, aircraft)
@@ -942,6 +969,11 @@ func configureAirTask(state *State, aircraftList []*AirUnit, order Order) {
 	// 面板栏位（打击任务 I/II）跟着编队走，不按任务在列表里的位置轮排——
 	// 位置会随"已出发的编队还挂在列表里"和随机 tag 的排序一起漂。
 	assignCarrierTaskLane(state, aircraftList, existingTask, string(kind), order.Lane)
+	if len(mismatch) == 0 {
+		return nil
+	}
+	sort.Strings(mismatch)
+	return []EngineEvent{{Type: "air_loadout_mismatch", Audience: aircraftList[0].Faction, Text: strikeLoadoutMismatchHint(mismatch)}}
 }
 
 // reconGroupActive 判断一个侦察组还在不在"用"：有飞机在天上，或者还在整备/甲板上等起飞。
@@ -1217,7 +1249,7 @@ func ApplyAirOrder(state *State, order Order) []EngineEvent {
 			return []EngineEvent{{Type: "air_task_unchanged", Audience: carrier.Faction, Text: "算子已在当前任务中，无需重复加入"}}
 		}
 		status := aircraftList[0].Status
-		configureAirTask(state, aircraftList, order)
+		taskEvents := configureAirTask(state, aircraftList, order)
 		if status == "deck" || status == "ready" {
 			// 甲板上已经整备好的算子直接拖进任务栏就是"整备完毕、直接出击"。
 			// 空载（没有油弹）或者刚被任务换了挂载的算子还不能飞：在甲板上原地整备一轮。
@@ -1229,13 +1261,13 @@ func ApplyAirOrder(state *State, order Order) []EngineEvent {
 				}
 			}
 			if launchable {
-				return launchAirTask(state, aircraftList)
+				return append(taskEvents, launchAirTask(state, aircraftList)...)
 			}
 			for _, aircraft := range aircraftList {
 				aircraft.Status = "service"
 				aircraft.DeckService = true
 			}
-			return []EngineEvent{{Type: "air_task_assigned", Audience: carrier.Faction, Text: fmt.Sprintf("%d个甲板算子加入%s任务并开始甲板整备", len(aircraftList), aircraftList[0].TaskKind)}}
+			return append(taskEvents, EngineEvent{Type: "air_task_assigned", Audience: carrier.Faction, Text: fmt.Sprintf("%d个甲板算子加入%s任务并开始甲板整备", len(aircraftList), aircraftList[0].TaskKind)})
 		}
 		for _, aircraft := range aircraftList {
 			if aircraft.Status == "service" && aircraft.DeckService {
@@ -1245,7 +1277,7 @@ func ApplyAirOrder(state *State, order Order) []EngineEvent {
 			aircraft.Status = "service"
 			aircraft.DeckService = false
 		}
-		return []EngineEvent{{Type: "air_task_assigned", Audience: carrier.Faction, Text: fmt.Sprintf("%d个算子加入%s任务并开始机库整备，后续提升由母舰升降机执行", len(aircraftList), aircraftList[0].TaskKind)}}
+		return append(taskEvents, EngineEvent{Type: "air_task_assigned", Audience: carrier.Faction, Text: fmt.Sprintf("%d个算子加入%s任务并开始机库整备，后续提升由母舰升降机执行", len(aircraftList), aircraftList[0].TaskKind)})
 	case "SET_STRIKE_TARGET":
 		taskID := aircraftList[0].TaskID
 		kind := aircraftList[0].TaskKind
@@ -1263,7 +1295,6 @@ func ApplyAirOrder(state *State, order Order) []EngineEvent {
 						aircraft.TargetCoord = coord
 					}
 				}
-				applyStrikeLoadoutChange(state, aircraft)
 				continue
 			}
 			// 掩护/转场改目标：清掉"降不下去"标记，重新飞向新 hex。
@@ -1288,6 +1319,10 @@ func ApplyAirOrder(state *State, order Order) []EngineEvent {
 		}
 		events := []EngineEvent{{Type: "strike_target_set", Audience: carrier.Faction, Text: fmt.Sprintf("编队目标设为%s", order.Coord)}}
 		if kind == "attack" {
+			// 改目标不自动换挂载：把"有些挂载不适合这个任务"提示给玩家，别让他们拿着鱼雷去打机场。
+			if models := strikeLoadoutMismatchModels(*state, taskAircraft(*state, taskID)); len(models) > 0 {
+				events = append(events, EngineEvent{Type: "air_loadout_mismatch", Audience: carrier.Faction, Text: strikeLoadoutMismatchHint(models)})
+			}
 			return append(events, updateAttackFormation(state, taskID)...)
 		}
 		return events

@@ -44,6 +44,14 @@ const selectedAirfieldID = ref('')
 const loading = ref(true)
 const actionBusy = ref(false)
 const error = ref('')
+// 挂载错配提示：不拦命令，只在拖进任务栏/改目标后浮一条，玩家不理它也会自己消失。
+const loadoutHint = ref('')
+let loadoutHintTimer: ReturnType<typeof setTimeout> | undefined
+function showLoadoutHint(text: string) {
+  loadoutHint.value = text
+  if (loadoutHintTimer) clearTimeout(loadoutHintTimer)
+  loadoutHintTimer = setTimeout(() => { loadoutHint.value = '' }, 12000)
+}
 const socketStatus = ref<'connecting' | 'online' | 'offline'>('connecting')
 const copied = ref(false)
 const watchCopied = ref(false)
@@ -310,6 +318,10 @@ const fleetChoices = computed(() => ownFleets.value.filter((fleet) => fleet.coor
 const menuFleets = computed(() => groupFleets(ownUnits.value.filter((unit) => unit.coord === menuCoord.value).map((unit) => ({ ...unit, fleet_id: draftAssignments.value[unit.id] || unit.fleet_id })), []))
 const mergeSource = computed(() => menuFleets.value.find((fleet) => fleet.fleet_id === mergeSourceID.value))
 const orderedEvents = computed(() => [...(state.value?.events || [])].reverse())
+// 新事件里出现"挂载不适合这个任务"就弹一条浮动提示：这类命令服务端照收，只是干不了活。
+watch(() => state.value?.events?.at(-1), (event) => {
+  if (event && event.type === 'air_loadout_mismatch') showLoadoutHint(event.text)
+})
 const readyCount = computed(() => state.value?.players.filter((player) => player.ready).length || 0)
 
 // 双人对局里对手还没进房时，ready 按钮应该直接禁用并说清楚原因，
@@ -1240,6 +1252,10 @@ onUnmounted(() => {
     </div>
 
     <!-- 命令被拒/同步失败：居中弹窗，玩家看完自己关。不再占页面布局，也不会挡着海图等下一次成功操作。 -->
+    <div v-if="loadoutHint" class="loadout-hint" role="status" @click="loadoutHint = ''">
+      <span>{{ loadoutHint }}</span>
+      <button aria-label="关闭" @click.stop="loadoutHint = ''">×</button>
+    </div>
     <div v-if="error" class="fleet-dialog error-dialog" @click.self="dismissError">
       <section class="fleet-modal error-modal" role="alertdialog" aria-modal="true" aria-label="操作未生效">
         <header><div><span class="section-kicker">COMMAND REJECTED</span><h2>操作未生效</h2></div><button aria-label="关闭" @click="dismissError">×</button></header>
