@@ -1061,10 +1061,32 @@ func resolveAirStrike(state *State, taskID, coord string) []EngineEvent {
 		return nil
 	}
 	faction := attackers[0].Faction
+	// 空袭打的是"一支舰队"，不是一整格：打击编队认领了哪支舰队就只打哪支。
+	// 同格的其他舰队既不会被挑作目标，也不会把重防空借出来——防空只对自己这支舰队生效。
+	targetFleet := ""
+	for _, aircraft := range attackers {
+		if aircraft.TargetFleetID != "" {
+			targetFleet = aircraft.TargetFleetID
+			break
+		}
+	}
 	ships := []Unit{}
 	for _, unit := range unitsAt(*state, coord) {
-		if unit.Faction != faction {
-			ships = append(ships, unit)
+		if unit.Faction == faction {
+			continue
+		}
+		if targetFleet != "" && FleetKey(&unit) != targetFleet {
+			continue
+		}
+		ships = append(ships, unit)
+	}
+	// 没有认领舰队（旧存档里的编队、或者认领的舰队已经不在这一格）时才退回整格结算，
+	// 免得空袭对着一个已经没有目标的位置空转。
+	if len(ships) == 0 {
+		for _, unit := range unitsAt(*state, coord) {
+			if unit.Faction != faction {
+				ships = append(ships, unit)
+			}
 		}
 	}
 	if len(ships) == 0 {

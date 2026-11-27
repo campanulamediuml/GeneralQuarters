@@ -265,21 +265,12 @@ const mapAirModelRows = computed<AirTaskModelRow[]>(() => {
   })
 })
 // 在空中的算子只写"出击中"不够用：往目标飞和往回飞都是 attack，只有 returning 能回答"在去还是在回"。
-// 舰队防空值 = 全舰队重型防空之和（规则书"重防空 = 同一格所有舰船重防空值之和"）。
-// 空袭结算里重防空是整队掷的，玩家在舰队面板上就该能直接看到这个数。
+// 舰队防空值 = 本舰队重型防空之和（规则书"重防空 = 同一支舰队所有舰船重防空值之和"）。
+// 空袭结算里重防空是整队掷的，但只结算被攻击的那支舰队，所以面板上就是这个数本身。
 const selectedFleetHeavyAA = computed(() => {
   const fleet = selectedFleet.value
   if (!fleet) return 0
   const total = fleet.members.reduce((sum, unit) => sum + (unit.card?.heavy_aa || 0), 0)
-  return Math.round(total * 10) / 10
-})
-// 叠加按 hex 算：同一格里有其他己方舰队时，它们也会一起进这副骰子。
-const selectedHexHeavyAA = computed(() => {
-  const fleet = selectedFleet.value
-  if (!fleet) return 0
-  const total = ownUnits.value
-    .filter((unit) => unit.coord === fleet.coord)
-    .reduce((sum, unit) => sum + (unit.card?.heavy_aa || 0), 0)
   return Math.round(total * 10) / 10
 })
 
@@ -1164,7 +1155,7 @@ onUnmounted(() => {
                 </div>
               </section>
               <section v-if="selectedFleet" class="fleet-workbench map-fleet-workbench" :class="{ 'fleet-panel-bottom': fleetPanelBottom, 'cards-collapsed': fleetCardsCollapsed }" :data-fleet-id="selectedFleet.fleet_id">
-                <header><div><span class="section-kicker">TASK FORCE · {{ selectedFleet.coord }}</span><h2>{{ selectedFleet.name }}</h2><small><span v-if="shoreTargetFor(selectedFleet)" class="fleet-shore" title="本回合可与岸炮互射：每点火炮 25%、每点岸炮 30%，命中扣机场生命值与地面飞机">岸轰可用</span>{{ selectedFleet.count }}艘 · <template v-if="selectedFleetTransports.length">货物 {{ selectedFleetCargo }} · </template>约{{ selectedFleet.move_knots }}节 · 每{{ selectedFleet.move_interval }}回合走一格 · <b :class="selectedFleet.move_cooldown ? 'fleet-cooling' : 'fleet-ready'">{{ selectedFleet.move_cooldown ? `还需${selectedFleet.move_cooldown}回合` : '可移动' }}</b> · <span class="fleet-aa-value" title="重型防空值合计：空袭时整格己方舰船的重防空一起对来袭机队逐点判定">舰队防空值 <b>{{ selectedFleetHeavyAA }}</b><template v-if="selectedHexHeavyAA > selectedFleetHeavyAA">（同格合计 {{ selectedHexHeavyAA }}）</template></span> · 点击舰船算子查看角色卡</small>
+                <header><div><span class="section-kicker">TASK FORCE · {{ selectedFleet.coord }}</span><h2>{{ selectedFleet.name }}</h2><small><span v-if="shoreTargetFor(selectedFleet)" class="fleet-shore" title="本回合可与岸炮互射：每点火炮 25%、每点岸炮 30%，命中扣机场生命值与地面飞机">岸轰可用</span>{{ selectedFleet.count }}艘 · <template v-if="selectedFleetTransports.length">货物 {{ selectedFleetCargo }} · </template>约{{ selectedFleet.move_knots }}节 · 每{{ selectedFleet.move_interval }}回合走一格 · <b :class="selectedFleet.move_cooldown ? 'fleet-cooling' : 'fleet-ready'">{{ selectedFleet.move_cooldown ? `还需${selectedFleet.move_cooldown}回合` : '可移动' }}</b> · <span class="fleet-aa-value" title="本舰队重型防空值合计：空袭时按这个值对来袭机队逐点判定，同格的其他舰队不合并">舰队防空值 <b>{{ selectedFleetHeavyAA }}</b></span> · 点击舰船算子查看角色卡</small>
                   <div class="fleet-nav" :data-destination="selectedFleet.destination || ''">
                     <span class="nav-status">{{ selectedFleet.destination ? `自动航行 → ${selectedFleet.destination}` : '未设置自动航行' }}</span>
                     <!-- 同一个按钮来回切：有目的地时它是"取消航行"，没有时它是"设置目的地"。 -->

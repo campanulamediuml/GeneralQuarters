@@ -2,9 +2,8 @@ package game
 
 import "testing"
 
-// heavyAAProbe 跑一次真实的对舰空袭（三架俯冲轰炸机打同格），返回战报。
-// setup 在开打前摆位：把重防空集中到某艘不会被选作目标的舰上，其余舰清零，
-// 这样只要战报里出现防空命中，就说明重防空不是"各舰只打自己的来敌"。
+// heavyAAProbe 跑一次真实的对舰空袭（三架俯冲轰炸机认领一支舰队），返回战报。
+// setup 在开打前摆位：先把日军重防空全部清零，再把点数集中到指定的舰上。
 func heavyAAProbe(t *testing.T, setup func(state *State, target, sponsor *Unit)) AirCombatReport {
 	t.Helper()
 	state := sandboxState(t)
@@ -13,9 +12,11 @@ func heavyAAProbe(t *testing.T, setup func(state *State, target, sponsor *Unit))
 	if target == nil || sponsor == nil {
 		t.Fatal("夹具里缺少 b2-bb-01 / b2-ca-01")
 	}
+	// 轻防空也清零：战报里的 AAHits 是重防空和轻防空共用计数，留着轻防空就分不清是谁打的。
 	for _, unit := range state.Units {
 		if unit.Faction == "B" {
 			unit.Card.HeavyAA = 0
+			unit.Card.LightAA = 0
 		}
 	}
 	setup(&state, target, sponsor)
@@ -35,6 +36,8 @@ func heavyAAProbe(t *testing.T, setup func(state *State, target, sponsor *Unit))
 		aircraft.TargetCoord = coord
 		aircraft.OriginCoord = coord
 		aircraft.Strength = 2
+		// 空袭认领的是"这支舰队"：同格的其他舰队不参与这次交战。
+		aircraft.TargetFleetID = FleetKey(target)
 		planes[model] = aircraft
 	}
 	state.Aircraft = planes
@@ -44,16 +47,10 @@ func heavyAAProbe(t *testing.T, setup func(state *State, target, sponsor *Unit))
 	if len(state.AirCombats) == 0 {
 		t.Fatal("没有生成空袭报告")
 	}
-	combat := state.AirCombats[len(state.AirCombats)-1]
-	for _, allocation := range combat.TargetAllocations {
-		if allocation.ShipID == sponsor.ID {
-			t.Fatalf("赞助舰不该被选作投弹目标，否则证明不了重防空是整队求和：%+v", allocation)
-		}
-	}
-	return combat
+	return state.AirCombats[len(state.AirCombats)-1]
 }
 
-// 重防空对双方都是"整队求和"：同一格舰队的所有重防空值加在一起，对整支来袭机队结算一次。
+// 重防空对双方都是"整队求和"：同一支舰队的所有重防空值加在一起，对整支来袭机队结算一次。
 // 阵营差别只在命中率——美军后期 +2%（VT 引信与雷达火控），不在"能不能合并"。
 func TestHeavyAAStacksFleetWide(t *testing.T) {
 	combat := heavyAAProbe(t, func(_ *State, target, sponsor *Unit) {
@@ -63,12 +60,13 @@ func TestHeavyAAStacksFleetWide(t *testing.T) {
 		sponsor.Card.HeavyAA = 400
 	})
 	if combat.AAHits == 0 {
-		t.Fatalf("目标舰自身重防空为 0，来袭击仍应吃到同格僚舰的重防空：%+v", combat)
+		t.Fatalf("目标舰自身重防空为 0，来袭击仍应吃到同队僚舰的重防空：%+v", combat)
 	}
 }
 
-// 同一 hex 里挂着不同舰队编号的舰船照样叠：防空按格算，不按编队算。
-func TestHeavyAAStacksAcrossFleetsInSameHex(t *testing.T) {
+// 重防空只对自己这支舰队生效：同一格停着另一支舰队时，它的重防空不会被借过来，
+// 它的舰船也不该出现在这次空袭的目标分配里。
+func TestHeavyAADoesNotCrossFleetsInSameHex(t *testing.T) {
 	combat := heavyAAProbe(t, func(state *State, target, _ *Unit) {
 		// b-ca-01 属于另一支舰队（TG-B），把它挪到目标格并挂上全部重防空。
 		other := state.Units["b-ca-01"]
@@ -81,13 +79,16 @@ func TestHeavyAAStacksAcrossFleetsInSameHex(t *testing.T) {
 		other.Coord = target.Coord
 		other.Card.HeavyAA = 400
 	})
+	if len(combat.TargetAllocations) == 0 {
+		t.Fatal("空袭没有分配目标，用例前提不成立")
+	}
 	for _, allocation := range combat.TargetAllocations {
 		if allocation.ShipID == "b-ca-01" {
 			t.Fatalf("同格另一支舰队的重巡不该被选作投弹目标：%+v", allocation)
 		}
 	}
-	if combat.AAHits == 0 {
-		t.Fatalf("同格不同舰队的重防空应当一起结算，实际一次都没命中：%+v", combat)
+	if combat.AAHits != 0 {
+		t.Fatalf("另一支舰队的 400 点重防空不该替目标舰队开火，实际命中 %d 次：%+v", combat.AAHits, combat)
 	}
 }
 
