@@ -9361,6 +9361,21 @@
    "anti_ship": 2,
    "anti_ground": 1,
    "torpedo_capable": true
+  },
+  {
+   "id": "f1m",
+   "faction": "B",
+   "name": "水上战斗机",
+   "model": "F1M2 二式水战",
+   "picture": "misc/image/aircraft/f1m.png",
+   "picture_mode": "image",
+   "kind": "fighter",
+   "strength": 1,
+   "range": 8,
+   "air_combat": 1,
+   "anti_ship": 0,
+   "anti_ground": 0,
+   "seaplane": true
   }
  ]
 }

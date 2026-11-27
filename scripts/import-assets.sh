@@ -63,6 +63,7 @@ planes=(
   "p1y:P1YTop@2x.png"
   "h8k:H8KTop@2x.png"
   "os2u:OS2UTop@2x.png"
+  "f1m:F1M2Top@2x.png"
 )
 for entry in "${planes[@]}"; do
   out="${entry%%:*}"

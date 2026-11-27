@@ -5870,21 +5870,6 @@
    "carrier": "jp-bb-10"
   },
   {
-   "id": "jp-bb-10-e13a-x4",
-   "unit": "e13a",
-   "carrier": "jp-bb-10"
-  },
-  {
-   "id": "jp-bb-10-e13a-x5",
-   "unit": "e13a",
-   "carrier": "jp-bb-10"
-  },
-  {
-   "id": "jp-bb-10-e13a-x6",
-   "unit": "e13a",
-   "carrier": "jp-bb-10"
-  },
-  {
    "id": "jp-bb-11-e13a-x1",
    "unit": "e13a",
    "carrier": "jp-bb-11"
@@ -5900,18 +5885,33 @@
    "carrier": "jp-bb-11"
   },
   {
-   "id": "jp-bb-11-e13a-x4",
-   "unit": "e13a",
+   "id": "jp-bb-10-f1m-x1",
+   "unit": "f1m",
+   "carrier": "jp-bb-10"
+  },
+  {
+   "id": "jp-bb-10-f1m-x2",
+   "unit": "f1m",
+   "carrier": "jp-bb-10"
+  },
+  {
+   "id": "jp-bb-10-f1m-x3",
+   "unit": "f1m",
+   "carrier": "jp-bb-10"
+  },
+  {
+   "id": "jp-bb-11-f1m-x1",
+   "unit": "f1m",
    "carrier": "jp-bb-11"
   },
   {
-   "id": "jp-bb-11-e13a-x5",
-   "unit": "e13a",
+   "id": "jp-bb-11-f1m-x2",
+   "unit": "f1m",
    "carrier": "jp-bb-11"
   },
   {
-   "id": "jp-bb-11-e13a-x6",
-   "unit": "e13a",
+   "id": "jp-bb-11-f1m-x3",
+   "unit": "f1m",
    "carrier": "jp-bb-11"
   }
  ],

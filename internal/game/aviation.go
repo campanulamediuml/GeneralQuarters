@@ -335,11 +335,20 @@ func ValidateAirOrder(state State, faction string, order Order) error {
 				}
 			}
 		}
-		if order.Type == "LAUNCH_CAP" && !IsCarrier(carrier) {
-			return fmt.Errorf("CAP舰载机只能从航母起飞")
+		// 水上战斗机（F1M 这类）可以从战列舰/巡洋舰弹射起飞做 CAP 和空中掩护：
+		// 它们没有起落架，靠吊车回收，所以只在"整组都是水上战斗机"时放行。
+		waterFighters := len(aircraftList) > 0
+		for _, aircraft := range aircraftList {
+			if !aircraft.Seaplane || aircraft.Kind != "fighter" {
+				waterFighters = false
+				break
+			}
 		}
-		if order.Type == "LAUNCH_COVER" && !IsCarrier(carrier) {
-			return fmt.Errorf("空中掩护只能由航母舰载战斗机执行")
+		if order.Type == "LAUNCH_CAP" && !IsCarrier(carrier) && !waterFighters {
+			return fmt.Errorf("CAP舰载机只能从航母起飞，水上战斗机除外")
+		}
+		if order.Type == "LAUNCH_COVER" && !IsCarrier(carrier) && !waterFighters {
+			return fmt.Errorf("空中掩护只能由航母舰载战斗机或水上战斗机执行")
 		}
 		// 掩护 hex / 转场目标可以先空着：编队先在甲板整备，等玩家在地图上点目标。
 		if order.Coord != "" && !inBounds(state.Map, order.Coord) {

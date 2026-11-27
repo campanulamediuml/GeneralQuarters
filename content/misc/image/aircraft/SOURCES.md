@@ -28,6 +28,7 @@ B5N/TBD/G3M/H6K 是侧视图、D3A/SBD/G4M/B25 是斜视（3/4 视角），只�
 | d3a1.png | D3ATop@2x.png（旋转 180°） | D3A1 九九舰爆 |
 | b5n2.png | B5NTop@2x.png（旋转 180°） | B5N2 九七舰攻 |
 | e13a.png | E13ATop@2x.png（旋转 180°） | E13A 零式水侦 |
+| f1m.png | F1M2Top@2x.png（旋转 180°） | F1M2 二式水战（伊势/日向的水上战斗机） |
 | h6k.png | H6KTop@2x.png（旋转 180°） | H6K 九七式飞行艇 |
 | g4m.png | G4MTop@2x.png（旋转 180°） | G4M 一式陆攻 |
 | b17.png | B17Top@2x.png（旋转 180°） | B-17 空中堡垒（陆基战略轰炸机） |

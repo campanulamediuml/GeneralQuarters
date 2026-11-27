@@ -71,11 +71,19 @@ func TestNightSeaplaneReconHalved(t *testing.T) {
 	}
 	// 拿一艘美军驱逐舰当目标，并把起飞点压到它身上：省掉每格 -1% 的距离修正，
 	// 也避免发现率本来就贴着 100% 被封顶、让"折半"看不出比例。
+	// 跟踪成功率里带天气系数，而天气按被跟踪舰队的坐标查：遍历 map 随手取第一艘驱逐舰，
+	// 会在"恰好取到坏天气那一队"时把成功率压到 18%，用例随机失败。按 id 排序取天气最好的
+	// 那艘，前提就稳定了（这里测的是夜间折半，不是天气）。
 	var members []Unit
-	for _, unit := range state.Units {
-		if unit.Faction == "A" && unit.Type == "DD" {
+	bestWeather := -1.0
+	for _, id := range sortedUnitIDs(state.Units) {
+		unit := state.Units[id]
+		if unit.Faction != "A" || unit.Type != "DD" {
+			continue
+		}
+		if factor := weatherFactor(weatherAt(state.Map, unit.Coord)); factor > bestWeather {
+			bestWeather = factor
 			members = []Unit{*unit}
-			break
 		}
 	}
 	if len(members) == 0 {
@@ -168,11 +176,19 @@ func TestNightSeaplaneTrackingHalved(t *testing.T) {
 	if aircraft == nil {
 		t.Fatal("缺少水上飞机基地算子")
 	}
+	// 跟踪成功率里带天气系数，而天气按被跟踪舰队的坐标查：遍历 map 随手取第一艘驱逐舰，
+	// 会在"恰好取到坏天气那一队"时把成功率压到 18%，用例随机失败。按 id 排序取天气最好的
+	// 那艘，前提就稳定了（这里测的是夜间折半，不是天气）。
 	var members []Unit
-	for _, unit := range state.Units {
-		if unit.Faction == "A" && unit.Type == "DD" {
+	bestWeather := -1.0
+	for _, id := range sortedUnitIDs(state.Units) {
+		unit := state.Units[id]
+		if unit.Faction != "A" || unit.Type != "DD" {
+			continue
+		}
+		if factor := weatherFactor(weatherAt(state.Map, unit.Coord)); factor > bestWeather {
+			bestWeather = factor
 			members = []Unit{*unit}
-			break
 		}
 	}
 	if len(members) == 0 {
