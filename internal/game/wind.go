@@ -61,13 +61,16 @@ func windRelation(wind, heading string) string {
 
 // windDeckModifier 返回某种风向关系对甲板长度的修正值。
 func windDeckModifier(wind, heading string) int {
+	// 甲板是 4（护航航母）/6（轻航母）/8（舰队航母）这种小整数，+2 在 4 上就是 +50%、
+	// 在 8 上只有 +25%，比例完全不一样；调成 +1/0/-1/-2 之后顶风收益收窄，
+	// 顺风仍然是腰斩级别的代价，风更像约束而不是白送。
 	switch windRelation(wind, heading) {
 	case "same":
 		return -2
 	case "para":
-		return 2
-	case "ortho":
 		return 1
+	case "ortho":
+		return 0
 	case "meta":
 		return -1
 	}
