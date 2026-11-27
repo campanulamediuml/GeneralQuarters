@@ -9,6 +9,7 @@ import HexMap from '../components/HexMap.vue'
 import ShipCard from '../components/ShipCard.vue'
 import ShipCounter from '../components/ShipCounter.vue'
 import AircraftCounter from '../components/AircraftCounter.vue'
+import HexPanel from '../components/HexPanel.vue'
 
 // 观战视图和玩家视图同构，只是没有 you/orders：双方内容都完整下发，页面只读。
 type SpectatorView = Omit<GameView, 'you' | 'orders'> & { spectator?: boolean }
@@ -35,6 +36,19 @@ const selectedUnit = computed(() => {
   return selectedFleet.value?.members?.[0]
 })
 const fleetShips = computed(() => selectedFleet.value?.members || [])
+// 点格子弹的"这一格有什么"清单：堆叠在同一格的舰队/机场/编队从这里挑，不再靠牌子错位去点。
+const hexCoord = ref('')
+const hexFleets = computed(() => fleets.value.filter((fleet) => fleet.coord === hexCoord.value))
+const hexAirfields = computed(() => (state.value?.airfields || []).filter((airfield) => airfield.coord === hexCoord.value))
+// 侦察算子有独立的小标记，清单里只列飞行编队（攻击/转场/掩护）。
+const hexAirTasks = computed(() => [...tasks.value, ...groundTasks.value].filter((task) => task.kind !== 'recon' && task.current_coord === hexCoord.value))
+function selectHex(coord: string) {
+  clearDetailSelection()
+  const hasContent = fleets.value.some((fleet) => fleet.coord === coord)
+    || (state.value?.airfields || []).some((airfield) => airfield.coord === coord)
+    || [...tasks.value, ...groundTasks.value].some((task) => task.kind !== 'recon' && task.current_coord === coord)
+  hexCoord.value = hasContent ? coord : ''
+}
 // 航速用服务端算好的编队节奏（已经含"最慢一艘"和编队规模惩罚）；只有老快照缺字段时，
 // 才按成员卡面自己折一个下界，免得面板上写成"约 节"。
 const fleetKnots = computed(() => {
@@ -96,6 +110,7 @@ function clearDetailSelection() {
   selectedUnitID.value = ''
   selectedAirTaskID.value = ''
   detailAirfield.value = null
+  hexCoord.value = ''
 }
 
 function selectFleet(fleetID: string) {
@@ -323,6 +338,20 @@ onUnmounted(() => {
           @select-unit="selectUnit"
           @select-airfield="selectAirfield"
           @inspect-airfield="selectAirfield"
+          @select-air-task="selectAirTask"
+          @select-hex="selectHex"
+        />
+        <HexPanel
+          v-if="hexCoord"
+          :coord="hexCoord"
+          :fleets="hexFleets"
+          :airfields="hexAirfields"
+          :air-tasks="hexAirTasks"
+          player-faction="A"
+          spectate
+          @close="hexCoord = ''"
+          @select-fleet="selectFleet"
+          @select-airfield="selectAirfield"
           @select-air-task="selectAirTask"
         />
 

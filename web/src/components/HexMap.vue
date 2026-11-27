@@ -253,12 +253,13 @@ function flightTasksAt(coord: string) {
 // 一次超远程打击能连着拆出好几张牌。以前按 30px 横向偏移排，
 // 两张 48px 宽的牌几乎完全重叠，点选会串到别的编队上。
 // 现在改成竖排阶梯：牌面高 30，行距 34 正好不重叠，点击各归各的。
-// 编队牌画在 hex 内部的上沿：飞机在舰队上面，牌面也跟着落在格子上部。
-// 以前整张牌挂在 hex 上方 52px 处，牌子跟格子分家，看距离圈时很难判断到底在哪一格。
-function flightPosition(coord: string, index: number) {
+// 编队牌居中画在 hex 里：飞机在舰队上面，牌就压在兵牌上，格子在哪个距离圈一目了然。
+// 同格多支编队（拆组后的攻击/返航）按舰队兵牌的斜叠法错开：左下 → 右上。
+function flightPosition(coord: string, index: number, total: number) {
   const point = center(coord)
-  // 同格多支编队（拆组后的攻击/返航）竖排往下让：牌高 30、说明文字 10，行距 40。
-  return { x: point.x, y: point.y - 26 + index * 40 }
+  if (total <= 1) return { x: point.x, y: point.y }
+  const step = index - (total - 1) / 2
+  return { x: point.x + step * 26, y: point.y - step * 22 }
 }
 
 // 编队牌写任务状态而不是型号：拆组之后同一格会并存"攻击"和"返航"两张牌，
@@ -1133,7 +1134,7 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         :data-task-faction="spectate && task.faction ? task.faction : playerFaction"
         :data-display-coord="task.current_coord"
         :data-target-coord="task.target_coord"
-        :transform="`translate(${flightPosition(coord, index).x}, ${flightPosition(coord, index).y})`"
+        :transform="`translate(${flightPosition(coord, index, flightTasksAt(coord).length).x}, ${flightPosition(coord, index, flightTasksAt(coord).length).y})`"
         @click.stop="markerClick(task.current_coord || coord, () => emit('selectAirTask', task.id))"
       >
         <rect x="-23" y="-15" width="46" height="30" rx="3" />
@@ -1166,7 +1167,7 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         :class="[task.kind, `faction-${(spectate && task.faction ? task.faction : playerFaction).toLowerCase()}`, { selected: selectedAirTaskId === task.id, returning: task.returning }]"
         :data-ground-task-id="task.id"
         :data-task-faction="spectate && task.faction ? task.faction : playerFaction"
-        :transform="`translate(${flightPosition(coord, index).x}, ${flightPosition(coord, index).y})`"
+        :transform="`translate(${flightPosition(coord, index, groundFlightAt(coord).length).x}, ${flightPosition(coord, index, groundFlightAt(coord).length).y})`"
         @click.stop="markerClick(task.current_coord || coord, () => emit('selectAirTask', task.id))"
       >
         <rect x="-22" y="-13" width="44" height="26" rx="3" />

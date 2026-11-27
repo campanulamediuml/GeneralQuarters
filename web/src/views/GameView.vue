@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { adoptPushedView, api, attachRoomSocket, handleRoomSocketMessage, onPushedState } from '../api'
 import type { AirCombatReport, AirTask, AirUnit, GameView, Order, ReconHeading, StrikeTarget, Unit } from '../types'
 import { contactCapitalsLabel, contactIntelLabel, contactSizeLabel, groupFleets, type FleetGroup } from '../fleet'
+import HexPanel from '../components/HexPanel.vue'
 import { airfieldContactStatus } from '../airfields'
 import { shipDamageBadges, shipDamageDetailLabels } from '../shipDamage'
 import HexMap from '../components/HexMap.vue'
@@ -714,25 +715,54 @@ function selectHex(coord: string) {
   mapAirTaskID.value = ''
   inspectedAirfieldID.value = ''
   shipDetailOpen.value = false
-  const airfieldHere = airfields.value.find((item) => item.coord === coord)
-  const found = fleets.value.filter((fleet) => fleet.coord === coord)
-  if (!found.length) {
+  // 点格子先出"这一格有什么"清单：堆在同一格的舰队/编队/机场从这里挑，
+  // 不再靠牌子错位去点，也不会点一支舰队把整格别的都盖住。
+  if (hexContent(coord).length) {
     selectedID.value = ''
     menuCoord.value = ''
-    // 基地格：点整格和点那张小牌子应该是一回事。卡片缩到 55px 之后，
-    // 手指想精准点中它越来越难，而名字/details本来就在展开后的面板里。
-    if (airfieldHere) {
-      if (airfieldHere.faction === state.value?.you.faction) selectAirfield(airfieldHere.id)
-      else inspectAirfield(airfieldHere.id)
-    }
+    hexCoord.value = coord
     return
   }
-  if (found.length === 1) {
-    selectedID.value = found[0].id
-    menuCoord.value = ''
-    return
-  }
-  openFleetChoices(coord)
+  hexCoord.value = ''
+  selectedID.value = ''
+  menuCoord.value = ''
+}
+
+function hexAirTasksFor(coord: string) {
+  return [...(state.value?.aviation.tasks || []), ...groundTasks.value].filter((task) => task.kind !== 'recon' && task.current_coord === coord)
+}
+
+// 这一格里能点开的东西：舰队（含已侦察的敌舰队）、机场、飞行编队。
+function hexContent(coord: string) {
+  return [
+    ...fleets.value.filter((fleet) => fleet.coord === coord),
+    ...airfields.value.filter((airfield) => airfield.coord === coord),
+    ...hexAirTasksFor(coord),
+  ]
+}
+
+const hexCoord = ref('')
+const hexFleets = computed(() => fleets.value.filter((fleet) => fleet.coord === hexCoord.value))
+const hexAirfields = computed(() => airfields.value.filter((airfield) => airfield.coord === hexCoord.value))
+const hexAirTasks = computed(() => hexAirTasksFor(hexCoord.value))
+
+function selectHexFleet(fleetID: string) {
+  hexCoord.value = ''
+  const fleet = fleets.value.find((item) => item.fleet_id === fleetID)
+  if (fleet) selectMapUnit(fleet)
+}
+
+function selectHexAirfield(airfieldID: string) {
+  hexCoord.value = ''
+  const airfield = airfields.value.find((item) => item.id === airfieldID)
+  if (!airfield) return
+  if (airfield.faction === state.value?.you.faction) selectAirfield(airfield.id)
+  else inspectAirfield(airfield.id)
+}
+
+function selectHexAirTask(taskID: string) {
+  hexCoord.value = ''
+  selectMapAirTask(taskID)
 }
 
 function openFleetChoices(coord: string) {
@@ -1117,6 +1147,18 @@ onUnmounted(() => {
               </div><div v-if="strikeTargetTaskID" class="strike-map-target"><span>{{ strikeTargetSelection.verb }}：{{ strikeTargetLabel }} · {{ strikeTargetSelection.hint }}</span><button @click="cancelStrikeTarget">取消</button></div><div class="map-legend"><span><i class="legend-a"></i>A 阵营</span><span><i class="legend-b"></i>B 阵营</span><span><i class="legend-move"></i>可移动</span><span><i class="legend-wind"></i>格底箭头=风吹向</span><span><svg class="legend-wx" viewBox="-10 -10 20 20" aria-hidden="true"><circle cx="-5.4" cy="1.4" r="3.4" /><circle cx="-0.6" cy="-1.2" r="4.8" /><circle cx="3.6" cy="1.2" r="3.2" /><rect x="-8.6" y="1.2" width="12.8" height="3.6" rx="1.8" /></svg>多云</span><span><svg class="legend-wx" viewBox="-10 -10 20 20" aria-hidden="true"><path d="M0 -7.4c0 0 3.2 4.8 3.2 7a3.2 3.2 0 0 1-6.4 0c0-2.2 3.2-7 3.2-7Z" /><path transform="translate(-7.6 4.2) scale(.76)" d="M0 -7.4c0 0 3.2 4.8 3.2 7a3.2 3.2 0 0 1-6.4 0c0-2.2 3.2-7 3.2-7Z" /><path transform="translate(7.6 4.2) scale(.76)" d="M0 -7.4c0 0 3.2 4.8 3.2 7a3.2 3.2 0 0 1-6.4 0c0-2.2 3.2-7 3.2-7Z" /></svg>降雨</span><span><svg class="legend-wx" viewBox="-10 -10 20 20" aria-hidden="true"><path d="M1.6 -9.6 L-5.6 0.9 H-1.4 L-2.4 9.6 L6 -1.2 H1.4 L4.8 -9.6 Z" /></svg>风暴</span></div></div>
             <div class="map-canvas">
               <HexMap :map="state.map" :fleets="fleets" :player-faction="state.you.faction" :selected-unit="selectedUnit" :orders="state.orders" :recon-tasks="[...state.aviation.tasks, ...(state.ground_tasks || [])].filter((task) => task.kind === 'recon')" :air-tasks="state.aviation.tasks" :airfields="airfields" :ground-aircraft="groundAircraft" :ground-tasks="groundTasks" :enemy-air="state.enemy_air || []" :distance-reference="distanceReference" :distance-origin="distanceOrigin" :selected-air-task-id="mapAirTaskID" :locked="locked" :strike-targeting="Boolean(strikeTargetTaskID)" :nav-targeting="navTargeting" :wind-cells="state.wind?.cells || ''" :weather-cells="state.weather_cells || ''" @select-airfield="selectAirfield" @inspect-airfield="inspectAirfield" @select-unit="selectMapUnit" @select-hex="selectHex" @manage-hex="openFleetChoices" @move="move" @notice="mapNotice" @select-air-task="selectMapAirTask" />
+              <HexPanel
+                v-if="hexCoord"
+                :coord="hexCoord"
+                :fleets="hexFleets"
+                :airfields="hexAirfields"
+                :air-tasks="hexAirTasks"
+                :player-faction="state.you.faction"
+                @close="hexCoord = ''"
+                @select-fleet="selectHexFleet"
+                @select-airfield="selectHexAirfield"
+                @select-air-task="selectHexAirTask"
+              />
               <!-- 编队牌：整编栏里出发后就撤走的打击/转场编队，详情与无线电操作在这里 -->
               <section v-if="mapAirTask" class="air-task-workbench map-air-workbench" :data-air-task-id="mapAirTask.id">
                 <header>
