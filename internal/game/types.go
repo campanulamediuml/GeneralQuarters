@@ -1031,6 +1031,9 @@ type State struct {
 	EngageTried map[string]bool `json:"engage_tried"`
 	// FleetSessions 是舰队在同一 hex 的连续停留回合数：岸轰要 1 回合，运输卸载要 3 回合
 	FleetSessions map[string]int `json:"fleet_sessions"`
+	// SurpriseLock 是突袭冷却：舰队 ID → 还要等几回合才能重新取得突袭。
+	// 打完一轮雷击要重新装填、重整队形，否则快船可以"突进去-退出来"一直白拿先手。
+	SurpriseLock map[string]int `json:"surprise_lock"`
 	// ShoreSupplies 是已经卸到岸上的物资，键为 "阵营|坐标"
 	ShoreSupplies map[string]int `json:"shore_supplies"`
 	// 胜利条件（DESIGN.md 49 行）：剧本目标 + 回合上限，结算后统一判定。

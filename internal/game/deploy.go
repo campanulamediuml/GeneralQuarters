@@ -178,6 +178,7 @@ func StartBattle(state *State) []EngineEvent {
 	}
 	state.FleetStays = map[string]string{}
 	state.FleetSessions = map[string]int{}
+	state.SurpriseLock = map[string]int{}
 	state.HeadingChanged = map[string]bool{}
 	RefreshDeckLengths(state)
 	return []EngineEvent{{Type: "battle_start", Audience: "all", Text: "双方部署完毕，第 1 回合开始"}}

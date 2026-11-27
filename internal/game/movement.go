@@ -282,6 +282,7 @@ func LockFleetMovement(state *State, fleetID string, turns int) {
 	}
 }
 
+// AdvanceMovementCooldown 在回合开始时递减各类回合计时：移动冷却、混乱、突袭冷却。
 func AdvanceMovementCooldown(state *State) {
 	for _, unit := range state.Units {
 		unit.Moved = false
@@ -291,5 +292,12 @@ func AdvanceMovementCooldown(state *State) {
 		if unit.Confusion > 0 {
 			unit.Confusion--
 		}
+	}
+	for fleetID, turns := range state.SurpriseLock {
+		if turns <= 1 {
+			delete(state.SurpriseLock, fleetID)
+			continue
+		}
+		state.SurpriseLock[fleetID] = turns - 1
 	}
 }

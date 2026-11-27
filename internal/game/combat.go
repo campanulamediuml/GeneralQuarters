@@ -534,6 +534,31 @@ func battlePositionState(state *State, factions map[string][]Unit) (string, stri
 	return "", "", ""
 }
 
+// surpriseLockTurns 是突袭成功后的冷却回合数：打完一轮雷击要重新装填、重整队形，
+// 一整夜的"突进去—退出来"不该隔两回合就再白拿一次先手。快船仍然能反复机动、多次
+// 接战，只是没法把鱼雷齐射刷成每两回合一次。
+const surpriseLockTurns = 6
+
+// fleetSurpriseLocked 判断参战舰队里有谁还在突袭冷却里：刚打过硬仗的部队拿不到先手。
+func fleetSurpriseLocked(state State, members []Unit) bool {
+	for _, member := range members {
+		if state.SurpriseLock[FleetKey(&member)] > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// lockFleetSurprise 给突袭成功的舰队挂上冷却，撤掉它的"下一次突袭"。
+func lockFleetSurprise(state *State, members []Unit) {
+	if state.SurpriseLock == nil {
+		state.SurpriseLock = map[string]int{}
+	}
+	for _, member := range members {
+		state.SurpriseLock[FleetKey(&member)] = surpriseLockTurns
+	}
+}
+
 func resolveSurfaceBattle(state *State, coord string, factions map[string][]Unit, prior map[string]bool) []EngineEvent {
 	names := make([]string, 0, len(factions))
 	for faction := range factions {
@@ -541,19 +566,34 @@ func resolveSurfaceBattle(state *State, coord string, factions map[string][]Unit
 	}
 	sort.Strings(names)
 	left, right := names[0], names[1]
-	leftScore, leftMods := surpriseScore(state, left, factions[left], factions[right], prior[left])
-	rightScore, rightMods := surpriseScore(state, right, factions[right], factions[left], prior[right])
-	events := []EngineEvent{{Type: "surprise_rolls", Audience: "all", Text: fmt.Sprintf("%s突袭判定：%s=%d（%v），%s=%d（%v）", coord, left, leftScore, leftMods, right, rightScore, rightMods)}}
-	threshold := 4
-	if state.Night {
-		threshold = 2
-	}
+	events := []EngineEvent{}
 	surprised := ""
 	winner := ""
-	if leftScore-rightScore >= threshold {
-		winner, surprised = left, right
-	} else if rightScore-leftScore >= threshold {
-		winner, surprised = right, left
+	// 突袭只在接战的第一轮判一次：这一回合有人开进这个 hex，才有"先敌开火"可言。
+	// 双方已经贴在一起打了几回合还每回合重投的话，夜战雷击队会变成每轮白拿一次
+	// 鱼雷齐射（直接扣血）+ 先手炮，42 年以前尤其恶心。
+	if fleetMovedThisTurn(state, factions[left]) || fleetMovedThisTurn(state, factions[right]) {
+		leftScore, leftMods := surpriseScore(state, left, factions[left], factions[right], prior[left])
+		rightScore, rightMods := surpriseScore(state, right, factions[right], factions[left], prior[right])
+		events = append(events, EngineEvent{Type: "surprise_rolls", Audience: "all", Text: fmt.Sprintf("%s突袭判定：%s=%d（%v），%s=%d（%v）", coord, left, leftScore, leftMods, right, rightScore, rightMods)})
+		threshold := 4
+		if state.Night {
+			threshold = 2
+		}
+		blocked := ""
+		switch {
+		case leftScore-rightScore >= threshold && !fleetSurpriseLocked(*state, factions[left]):
+			winner, surprised = left, right
+		case leftScore-rightScore >= threshold:
+			blocked = left
+		case rightScore-leftScore >= threshold && !fleetSurpriseLocked(*state, factions[right]):
+			winner, surprised = right, left
+		case rightScore-leftScore >= threshold:
+			blocked = right
+		}
+		if blocked != "" {
+			events = append(events, EngineEvent{Type: "surprise_blocked", Audience: "all", Text: fmt.Sprintf("%s 抢到了先手，但刚打完一轮雷击还没重整，本轮不算突袭", blocked)})
+		}
 	}
 	hitTargets := map[string]map[string]bool{left: {}, right: {}}
 	// 接战阵位：机动中抢到对方射界死角的一方，让对方第一轮只开一半火炮。
@@ -572,6 +612,7 @@ func resolveSurfaceBattle(state *State, coord string, factions map[string][]Unit
 	}
 	if winner != "" {
 		events = append(events, EngineEvent{Type: "surprise", Audience: "all", Text: winner + "取得突袭优势"})
+		lockFleetSurprise(state, factions[winner])
 		torpedoHits, torpedoEvents := torpedoVolley(state, factions[winner], factions[surprised])
 		events = append(events, torpedoEvents...)
 		for _, hit := range torpedoHits {
