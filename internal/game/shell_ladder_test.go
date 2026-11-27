@@ -118,3 +118,17 @@ func TestSmallCaliberCannotRollHeavyHullDamage(t *testing.T) {
 		t.Fatal("鱼雷该能打出战列舰的严重进水和船体损伤")
 	}
 }
+// 航母没有装甲防护，不吃小口径豁免：驱逐舰的炮弹照样能打出航母的严重进水和弹药爆炸。
+func TestCarrierTakesFullTableFromSmallCaliber(t *testing.T) {
+	carrier := shellTestShip("cv", "CV", 4, 4)
+	carrier.Card.DamageControl = 4
+	ca := shellTestShip("ca", "CA", 6, 5)
+	dd := shellTestShip("dd", "DD", 2, 5)
+	if table := severeDamageTableFrom(HitShell, carrier, dd); !containsDamage(table, "severe_flooding") ||
+		!containsDamage(table, "ammo_explosion") || !containsDamage(table, "hull_damage") {
+		t.Fatal("驱逐舰的炮弹该能打出航母的严重进水/弹药爆炸/船体损伤")
+	}
+	if table := severeDamageTableFrom(HitShell, carrier, ca); !containsDamage(table, "severe_flooding") {
+		t.Fatal("重巡的炮弹当然也能打出航母的严重进水")
+	}
+}
