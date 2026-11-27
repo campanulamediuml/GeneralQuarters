@@ -5853,6 +5853,66 @@
    "unit": "b5n2",
    "carrier": "jp-cv-14",
    "skill": "ace"
+  },
+  {
+   "id": "jp-bb-10-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-bb-10"
+  },
+  {
+   "id": "jp-bb-10-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-bb-10"
+  },
+  {
+   "id": "jp-bb-10-e13a-x3",
+   "unit": "e13a",
+   "carrier": "jp-bb-10"
+  },
+  {
+   "id": "jp-bb-10-e13a-x4",
+   "unit": "e13a",
+   "carrier": "jp-bb-10"
+  },
+  {
+   "id": "jp-bb-10-e13a-x5",
+   "unit": "e13a",
+   "carrier": "jp-bb-10"
+  },
+  {
+   "id": "jp-bb-10-e13a-x6",
+   "unit": "e13a",
+   "carrier": "jp-bb-10"
+  },
+  {
+   "id": "jp-bb-11-e13a-x1",
+   "unit": "e13a",
+   "carrier": "jp-bb-11"
+  },
+  {
+   "id": "jp-bb-11-e13a-x2",
+   "unit": "e13a",
+   "carrier": "jp-bb-11"
+  },
+  {
+   "id": "jp-bb-11-e13a-x3",
+   "unit": "e13a",
+   "carrier": "jp-bb-11"
+  },
+  {
+   "id": "jp-bb-11-e13a-x4",
+   "unit": "e13a",
+   "carrier": "jp-bb-11"
+  },
+  {
+   "id": "jp-bb-11-e13a-x5",
+   "unit": "e13a",
+   "carrier": "jp-bb-11"
+  },
+  {
+   "id": "jp-bb-11-e13a-x6",
+   "unit": "e13a",
+   "carrier": "jp-bb-11"
   }
  ],
  "airfields": [
