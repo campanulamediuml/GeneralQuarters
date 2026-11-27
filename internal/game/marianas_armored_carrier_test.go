@@ -32,12 +32,13 @@ func TestMarianasArmoredCarriers(t *testing.T) {
 	}
 
 	// 卡面数值和剧本附录那张表对得上：甲板容量、机库容量、损管。
+	// 两艘的损管都是 2——装甲甲板只保护机库，新舰和管损不力的账照算。
 	want := map[string]struct {
 		deck, hangar int
 		dc           int
 	}{
-		"大凤": {8, 20, 4},
-		"信浓": {7, 15, 7},
+		"大凤": {8, 20, 2},
+		"信浓": {7, 15, 2},
 	}
 	for _, unit := range state.Units {
 		expect, ok := want[unit.Name]

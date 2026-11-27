@@ -9,8 +9,8 @@ import (
 //
 //	埃塞克斯：DCT 4 + 3 骰机库优势（三投取小，机库油气更难点着）
 //	翔鹤：    DCT 3、没有机库优势（两投取大）
-//	大凤：    DCT 4，装甲航母：机库要先过一次击穿 DCT，打穿后机库爆炸强制劣势
-//	信浓：    DCT 7，装甲航母（装甲更厚，更难被击穿）
+//	大凤：    DCT 2，装甲航母：机库要先过一次击穿 DCT，打穿后机库爆炸强制劣势
+//	信浓：    DCT 2，装甲航母（新舰，管损不力）
 func factionProbeCard(dc int, hangarAdvantage HangarAdvantageLevel, armored bool, hangar int) ShipCard {
 	return ShipCard{
 		DamageControl:    dc,
@@ -84,8 +84,9 @@ func TestFactionHangarBombDifference(t *testing.T) {
 	}
 	us := factionProbeCard(4, 3, false, 24)
 	jp := factionProbeCard(3, 0, false, 18)
-	armored := factionProbeCard(4, 0, true, 20) // 大凤：装甲航母，DCT 4
-	shinano := factionProbeCard(7, 0, true, 15) // 信浓：装甲航母，DCT 7
+	armored := factionProbeCard(2, 0, true, 20) // 大凤：装甲航母，损管 2
+	shinano := factionProbeCard(2, 0, true, 15) // 信浓：装甲航母，损管 2
+	plain := factionProbeCard(2, 0, false, 20)  // 同样损管 2 的普通航母，用来量装甲的净收益
 
 	usArmed := measure(us, "A", 18, true)
 	usEmpty := measure(us, "A", 18, false)
@@ -93,13 +94,15 @@ func TestFactionHangarBombDifference(t *testing.T) {
 	jpEmpty := measure(jp, "B", 18, false)
 	taihoArmed := measure(armored, "B", 18, true)
 	shinanoArmed := measure(shinano, "B", 15, true)
+	plainArmed := measure(plain, "B", 18, true)
 
 	t.Logf("整装待发：美军 毁机 %.2f 结构 -%.2f 燃烧 %.1f%%；日军 毁机 %.2f 结构 -%.2f 燃烧 %.1f%%",
 		usArmed.aircraft, usArmed.strength, usArmed.burning, jpArmed.aircraft, jpArmed.strength, jpArmed.burning)
 	t.Logf("空载未整备：美军 毁机 %.2f 结构 -%.2f 燃烧 %.1f%%；日军 毁机 %.2f 结构 -%.2f 燃烧 %.1f%%",
 		usEmpty.aircraft, usEmpty.strength, usEmpty.burning, jpEmpty.aircraft, jpEmpty.strength, jpEmpty.burning)
-	t.Logf("装甲航母（大凤 DCT4）整装待发：毁机 %.2f 结构 -%.2f 燃烧 %.1f%%", taihoArmed.aircraft, taihoArmed.strength, taihoArmed.burning)
-	t.Logf("装甲航母（信浓 DCT7）整装待发：毁机 %.2f 结构 -%.2f 燃烧 %.1f%%", shinanoArmed.aircraft, shinanoArmed.strength, shinanoArmed.burning)
+	t.Logf("装甲航母（大凤 DCT2）整装待发：毁机 %.2f 结构 -%.2f 燃烧 %.1f%%", taihoArmed.aircraft, taihoArmed.strength, taihoArmed.burning)
+	t.Logf("装甲航母（信浓 DCT2）整装待发：毁机 %.2f 结构 -%.2f 燃烧 %.1f%%", shinanoArmed.aircraft, shinanoArmed.strength, shinanoArmed.burning)
+	t.Logf("普通航母（DCT2）整装待发：毁机 %.2f 结构 -%.2f 燃烧 %.1f%%", plainArmed.aircraft, plainArmed.strength, plainArmed.burning)
 
 	// 飞机损失只由"整装待发"决定，和阵营无关：两边都是每发 2 架。
 	for _, item := range []struct {
@@ -127,14 +130,17 @@ func TestFactionHangarBombDifference(t *testing.T) {
 		t.Fatalf("日军整装待发的机库应该更容易烧穿：%.1f%% vs %.1f%%", jpArmed.burning, usArmed.burning)
 	}
 	// 装甲航母：机库不是免单，而是要先过一道"击穿装甲甲板"的 DCT。
-	// 损管失败才打穿，所以大凤（DCT4）大约是普通航母的六成，信浓（DCT7）只有三成。
-	if taihoArmed.aircraft < 1.0 || taihoArmed.aircraft > 1.45 {
-		t.Fatalf("大凤（DCT4）每发应毁约 1.2 架（60%% 击穿 × 2 架），实际 %.2f", taihoArmed.aircraft)
-	}
-	if shinanoArmed.aircraft < 0.4 || shinanoArmed.aircraft > 0.85 {
-		t.Fatalf("信浓（DCT7）每发应毁约 0.6 架（30%% 击穿 × 2 架），实际 %.2f", shinanoArmed.aircraft)
-	}
-	if !(taihoArmed.aircraft < jpArmed.aircraft && shinanoArmed.aircraft < taihoArmed.aircraft) {
-		t.Fatalf("装甲越厚越难击穿：翔鹤 %.2f / 大凤 %.2f / 信浓 %.2f", jpArmed.aircraft, taihoArmed.aircraft, shinanoArmed.aircraft)
+	// 损管失败（骰点大于损管值）才打穿，损管 2 意味着 80% 击穿——每发仍要毁 1.6 架，
+	// 装甲的净收益只剩"比同损管值的普通航母少毁 0.4 架"。
+	for _, item := range []struct {
+		name string
+		got  stat
+	}{{"大凤", taihoArmed}, {"信浓", shinanoArmed}} {
+		if item.got.aircraft < 1.4 || item.got.aircraft > 1.8 {
+			t.Fatalf("%s（DCT2）每发应毁约 1.6 架（80%% 击穿 × 2 架），实际 %.2f", item.name, item.got.aircraft)
+		}
+		if item.got.aircraft >= plainArmed.aircraft {
+			t.Fatalf("装甲甲板应当减少机库损失：%s %.2f vs 同损管的普通航母 %.2f", item.name, item.got.aircraft, plainArmed.aircraft)
+		}
 	}
 }
