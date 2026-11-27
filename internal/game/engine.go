@@ -1197,6 +1197,8 @@ func ResolveOrders(state *State, orders []Order) []EngineEvent {
 	// 朝向已定，按风向重算甲板长度；本回合起飞/降落容量以此为基准（规则书 824 行）。
 	RefreshDeckLengths(state)
 	events = append(events, AdvanceShipConditions(state)...)
+	// 上回合可能留下了 0 生命值的幽灵舰（延迟沉没没被 flush），先清干净再结算航空与编队。
+	events = append(events, sweepSunkUnits(state)...)
 	events = append(events, AdvanceAviation(state)...)
 	// 整装待发的判定放在航空推进之后：本回合刚整备完/刚提升上甲板的算子这一回合就该是"待发"。
 	events = syncArmedAircraft(state, events)
@@ -1486,6 +1488,11 @@ func VisibleUnits(state State, faction string) []Unit {
 	units := []Unit{}
 	visibleFleets := map[string]bool{}
 	for _, unit := range state.Units {
+		// 0 生命值的舰船按沉没算：视图层不能再把它投影出来（会显示 0/1 结构值还占着编队人数），
+		// 真正的清理在 sweepSunkUnits，这里只是兜底。
+		if unit.Strength <= 0 && unit.MaxStrength > 0 {
+			continue
+		}
 		visible := unit.Faction == faction
 		visual := false
 		if !visible {

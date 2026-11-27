@@ -132,6 +132,30 @@ func flushDeferredSinks(state *State) []EngineEvent {
 	return events
 }
 
+// sweepSunkUnits 把还留在 state.Units 里的 0 生命值舰船按沉没收尾。
+// 正常路径 sinkUnit 会直接移除，但延迟沉没（PendingSinks）一旦中途没被 flush，
+// 就会留下 Strength=0 的幽灵舰：舰船面板显示 0/1 还挂着"沉没"标记，编队人数、
+// 重防空合计、舰船上限都还会把它算进去。每回合开回合前扫一遍清掉。
+func sweepSunkUnits(state *State) []EngineEvent {
+	if state.DeferredSink {
+		state.DeferredSink = false
+	}
+	events := flushDeferredSinks(state)
+	ids := make([]string, 0)
+	for id, unit := range state.Units {
+		if unit != nil && unit.Strength <= 0 && unit.MaxStrength > 0 {
+			ids = append(ids, id)
+		}
+	}
+	sort.Strings(ids)
+	for _, id := range ids {
+		if unit := state.Units[id]; unit != nil {
+			events = append(events, sinkUnit(state, unit)...)
+		}
+	}
+	return events
+}
+
 func damageStrength(state *State, unit *Unit, amount int) []EngineEvent {
 	unit.Strength -= amount
 	if unit.Strength <= 0 {
