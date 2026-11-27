@@ -292,6 +292,7 @@ onUnmounted(() => {
                 @click="selectedUnitID = ship.id"
               >
                 <ShipCounter :unit="ship" />
+                <small>{{ ship.name }}</small>
               </button>
             </div>
             <ShipCard v-if="selectedUnit" :unit="selectedUnit" />
@@ -403,21 +404,23 @@ onUnmounted(() => {
 .watch-problem.fatal { color: #f08a7c; }
 .watch-body { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 12px; padding: 12px; min-height: 0; }
 .watch-map { position: relative; min-height: 60vh; border: 1px solid rgba(255,255,255,.07); border-radius: 10px; overflow: hidden; background: #0b1c22; }
-.watch-detail { position: absolute; top: 52px; right: 12px; width: min(360px, 44%); max-height: calc(100% - 64px); overflow: auto; background: rgba(9, 22, 27, .97); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 10px 12px; box-shadow: 0 18px 40px rgba(0,0,0,.45); }
+.watch-detail { position: absolute; top: 52px; right: 12px; width: min(300px, 36%); max-height: calc(100% - 64px); overflow: auto; background: rgba(9, 22, 27, .97); border: 1px solid rgba(255,255,255,.12); border-radius: 10px; padding: 8px 10px; box-shadow: 0 18px 40px rgba(0,0,0,.45); }
 .watch-detail > header { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
-.watch-detail h2 { margin: 4px 0 0; font-size: 16px; }
+.watch-detail h2 { margin: 3px 0 0; font-size: 14px; }
 .watch-detail header button { background: none; border: 1px solid rgba(255,255,255,.15); color: inherit; border-radius: 6px; width: 26px; height: 26px; cursor: pointer; }
-.watch-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; margin: 10px 0; }
-.watch-meta div { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; border-bottom: 1px dashed rgba(255,255,255,.08); padding-bottom: 4px; }
+.watch-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 10px; margin: 8px 0; }
+.watch-meta div { display: flex; justify-content: space-between; gap: 6px; font-size: 11px; border-bottom: 1px dashed rgba(255,255,255,.08); padding-bottom: 3px; }
 .watch-meta dt { opacity: .6; }
 .watch-meta dd { margin: 0; font-weight: 600; }
-.watch-fleet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 6px; }
-/* 兵牌原尺寸 126px 宽，观战面板里按 0.72 缩小，一屏能看完整支编队而不是翻好几页。 */
-.watch-ship :deep(.ship-counter) { zoom: .72; }
-.watch-air-strip :deep(.air-counter) { zoom: .82; }
-.watch-ship { display: flex; flex-direction: column; gap: 4px; padding: 4px; background: none; border: 1px solid transparent; border-radius: 8px; cursor: pointer; color: inherit; }
+.watch-fleet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 5px; }
+/* 兵牌原尺寸 126px 宽，观战面板里按 0.58 缩小，一屏能看完整支编队而不是翻好几页。 */
+.watch-ship :deep(.ship-counter) { zoom: .58; }
+/* 兵牌自带的舰名跟着 0.58 缩到 6px，等于没有；观战格子里藏掉它，改用下面那行不缩放的 9px 舰名。 */
+.watch-fleet-grid :deep(.ship-counter figcaption) { display: none; }
+.watch-air-strip :deep(.air-counter) { zoom: .74; }
+.watch-ship { display: flex; flex-direction: column; gap: 3px; padding: 3px; background: none; border: 1px solid transparent; border-radius: 8px; cursor: pointer; color: inherit; }
 .watch-ship.selected { border-color: #58b6c9; background: rgba(88,182,201,.1); }
-.watch-ship small { font-size: 10px; opacity: .7; }
+.watch-ship small { font-size: 9px; line-height: 1.2; opacity: .75; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .watch-air-strip { display: flex; flex-wrap: wrap; gap: 8px; }
 .watch-side { min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 2px; }
 .watch-card { border: 1px solid rgba(255,255,255,.08); border-radius: 10px; padding: 10px 12px; background: rgba(255,255,255,.02); }
