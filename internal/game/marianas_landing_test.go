@@ -93,15 +93,22 @@ func TestMarianasLandingGroups(t *testing.T) {
 			}
 		}
 	}
-	// 陆奥是架空的复活船（史实 1943-06 主炮弹药库自爆），日军战列舰共 12 艘。
-	battleships := 0
+	// 陆奥是架空的复活船（史实 1943-06 主炮弹药库自爆）。金刚级四艘按战列巡洋舰（BC）算，
+	// 所以日军重舰是 8 艘战列舰 + 4 艘战巡 = 12 艘。
+	battleships, battlecruisers := 0, 0
 	for _, unit := range state.Units {
-		if unit.Faction == "B" && unit.Type == "BB" {
+		if unit.Faction != "B" {
+			continue
+		}
+		switch unit.Type {
+		case "BB":
 			battleships++
+		case "BC":
+			battlecruisers++
 		}
 	}
-	if battleships != 12 {
-		t.Fatalf("日军战列舰 %d 艘，期望 12", battleships)
+	if battleships != 8 || battlecruisers != 4 {
+		t.Fatalf("日军重舰 %d 战列舰 + %d 战巡，期望 8 + 4", battleships, battlecruisers)
 	}
 	// 丁部队的轻航母屏护：铃谷/熊野 + 阿贺野 + 4 驱逐。
 	for _, name := range []string{"铃谷", "熊野", "阿贺野"} {

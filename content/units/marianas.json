@@ -1655,7 +1655,7 @@
   {
    "id": "jp-bb-04",
    "faction": "B",
-   "type": "BB",
+   "type": "BC",
    "name": "金刚",
    "strength": 5,
    "picture": "misc/image/ship/library/JAP_BC1_ship.png",
@@ -1688,7 +1688,7 @@
   {
    "id": "jp-bb-05",
    "faction": "B",
-   "type": "BB",
+   "type": "BC",
    "name": "榛名",
    "strength": 5,
    "picture": "misc/image/ship/library/JAP_BC1_ship.png",
@@ -8156,7 +8156,7 @@
   {
    "id": "jp-bb-06",
    "faction": "B",
-   "type": "BB",
+   "type": "BC",
    "name": "比叡",
    "strength": 5,
    "picture": "misc/image/ship/library/JAP_BC1_ship.png",
@@ -8189,7 +8189,7 @@
   {
    "id": "jp-bb-07",
    "faction": "B",
-   "type": "BB",
+   "type": "BC",
    "name": "雾岛",
    "strength": 5,
    "picture": "misc/image/ship/library/JAP_BC1_ship.png",
