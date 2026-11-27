@@ -141,6 +141,32 @@ function enemyAirAt(coord: string) {
 const reconSectors = computed<ReconSector[]>(() => props.reconTasks.flatMap((task) => task.recon_sectors || []))
 const reconCells = computed(() => new Set(reconSectors.value.flatMap((sector) => sector.sector_hexes || [])))
 const reconCurrentCells = computed(() => new Set(reconSectors.value.flatMap((sector) => sector.current_ring_hexes || [])))
+// 观战时双方扇面同时在场：按阵营上色，美军蓝、日军红，两边叠在同一格用紫色。
+// 玩家视图只下发己方侦察，继续走原来的金色蒙版。
+const reconFactionTints = computed(() => {
+  const sector = new Map<string, string>()
+  const current = new Map<string, string>()
+  const mark = (target: Map<string, string>, coord: string, faction: string) => {
+    const existing = target.get(coord)
+    target.set(coord, existing && existing !== faction ? 'both' : faction)
+  }
+  for (const task of props.reconTasks) {
+    const faction = (task.faction || props.playerFaction).toLowerCase()
+    for (const coord of task.sector_hexes || []) mark(sector, coord, faction)
+    for (const coord of task.current_ring_hexes || []) mark(current, coord, faction)
+  }
+  return { sector, current }
+})
+function reconSectorClass(coord: string) {
+  if (!props.spectate) return reconCells.value.has(coord) ? 'recon-sector' : ''
+  const faction = reconFactionTints.value.sector.get(coord)
+  return faction ? 'recon-sector-' + faction : ''
+}
+function reconCurrentClass(coord: string) {
+  if (!props.spectate) return reconCurrentCells.value.has(coord) ? 'recon-current' : ''
+  const faction = reconFactionTints.value.current.get(coord)
+  return faction ? 'recon-current-' + faction : ''
+}
 const flightTasks = computed(() => props.airTasks.filter((task) => (task.kind === 'attack' || task.kind === 'transfer') && task.airborne_count > 0 && task.current_coord))
 
 function reconAircraftAt(coord: string) {
@@ -669,6 +695,7 @@ const hexSigs = computed(() => {
     sigs[index] = [
       hex.terrain, hex.name, windChar,
       Number(isLegal), Number(hovered), Number(inRecon), Number(inCurrent),
+      reconSectorClass(hex.coord), reconCurrentClass(hex.coord),
       distance, reconAir, Number(airfieldHere),
       planned.join(','),
       navDest.map((route) => route.fleet.fleet_id).join(','),
@@ -908,12 +935,12 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
       <path d="M1.6 -9.6 L-5.6 0.9 H-1.4 L-2.4 9.6 L6 -1.2 H1.4 L4.8 -9.6 Z" />
     </symbol>
   </defs>
-    <g v-for="(hex, index) in hexes" :key="hex.coord" v-memo="[hexSigs[index]]" class="hex-cell" :data-coord="hex.coord" :data-distance="distanceAt(hex.coord) >= 0 ? distanceAt(hex.coord) : undefined" :data-recon-current-aircraft="reconCurrentAircraftAt(hex.coord) || undefined" :class="[`terrain-${hex.terrain}`, { legal: selectedMoves.has(hex.coord), 'drop-hover': dropHover === hex.coord, 'recon-sector': reconCells.has(hex.coord), 'recon-current': reconCurrentCells.has(hex.coord) }]" @click="clickHex(hex.coord)">
+    <g v-for="(hex, index) in hexes" :key="hex.coord" v-memo="[hexSigs[index]]" class="hex-cell" :data-coord="hex.coord" :data-distance="distanceAt(hex.coord) >= 0 ? distanceAt(hex.coord) : undefined" :data-recon-current-aircraft="reconCurrentAircraftAt(hex.coord) || undefined" :class="[`terrain-${hex.terrain}`, reconSectorClass(hex.coord), reconCurrentClass(hex.coord), { legal: selectedMoves.has(hex.coord), 'drop-hover': dropHover === hex.coord }]" @click="clickHex(hex.coord)">
       <polygon :points="points(hex.x, hex.y)" />
       <!-- 侦察覆盖必须是叠在地形上的独立一层：直接改地块 polygon 的 fill 会把海水/岛屿
            整个替换掉，扇面就变成一块盖住地形的色块，观感非常刺眼。 -->
-      <polygon v-if="reconCells.has(hex.coord)" class="recon-tint" :points="points(hex.x, hex.y)" />
-      <polygon v-if="reconCurrentCells.has(hex.coord)" class="recon-current-tint" :points="points(hex.x, hex.y)" />
+      <polygon v-if="reconSectorClass(hex.coord)" class="recon-tint" :points="points(hex.x, hex.y)" />
+      <polygon v-if="reconCurrentClass(hex.coord)" class="recon-current-tint" :points="points(hex.x, hex.y)" />
       <text class="coord-label" :x="hex.x" :y="hex.y - 30">{{ hex.coord }}</text>
       <!-- 机场格的地名由机场算子自己写，地形标签再写一遍会变成上下两个"拉包尔"。 -->
       <text v-if="hex.name && !airfieldsAt(hex.coord).length" class="terrain-label" :x="hex.x" :y="hex.y + 18">{{ hex.name }}</text>
