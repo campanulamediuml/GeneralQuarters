@@ -77,7 +77,7 @@ func TestSunkShipLeavesGunneryTargetPool(t *testing.T) {
 		dead := Unit{ID: "dead", FleetID: "b", Type: "DD", Faction: "B", Coord: "0101"}
 		damaged := state.Units["b"]
 		damaged.Strength = 1 // 受损但没沉：必须继续留在目标池
-		hits, _ := gunneryVolley(&state, []Unit{*state.Units["a"]}, []Unit{dead, *damaged})
+		hits, _ := gunneryVolley(&state, []Unit{*state.Units["a"]}, []Unit{dead, *damaged}, false)
 		for _, hit := range hits {
 			if hit.TargetID == "dead" {
 				t.Fatalf("沉没的舰还在吃炮弹")

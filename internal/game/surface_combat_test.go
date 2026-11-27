@@ -21,7 +21,7 @@ func volleyHitRate(t *testing.T, state *State, attacker *Unit, target *Unit, n i
 		if target.Damage != nil {
 			target.Damage.Fire = ""
 		}
-		volley, _ := gunneryVolley(state, []Unit{*attacker}, []Unit{*target})
+		volley, _ := gunneryVolley(state, []Unit{*attacker}, []Unit{*target}, false)
 		hits += len(volley)
 	}
 	return float64(hits) / float64(n) / float64(attacker.Card.Gunnery)

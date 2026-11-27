@@ -349,7 +349,9 @@ func gunneryChance(state State, attacker, target *Unit, enemies []Unit) float64 
 	return math.Max(0, math.Min(100, chance))
 }
 
-func gunneryVolley(state *State, attackers, enemies []Unit) ([]Hit, []EngineEvent) {
+// gunneryVolley 结算一轮齐射。halfGuns 为真时是 T 劣的第一轮炮战：
+// 只有一半火炮能开火，每艘船的炮击值向下取整（炮击值 1 的船这一轮打不出来）。
+func gunneryVolley(state *State, attackers, enemies []Unit, halfGuns bool) ([]Hit, []EngineEvent) {
 	hits := []Hit{}
 	events := []EngineEvent{}
 	enemies = aliveUnits(state, enemies)
@@ -370,15 +372,26 @@ func gunneryVolley(state *State, attackers, enemies []Unit) ([]Hit, []EngineEven
 		if weapon.Card.Gunnery <= 0 {
 			continue
 		}
+		shots := weapon.Card.Gunnery
+		if halfGuns {
+			shots /= 2
+		}
+		if shots <= 0 {
+			continue
+		}
 		chance := gunneryChance(*state, weapon, target, enemies)
 		count := 0
-		for shot := 0; shot < weapon.Card.Gunnery; shot++ {
+		for shot := 0; shot < shots; shot++ {
 			if probabilityRoll(&state.RNGState) < chance {
 				hits = append(hits, Hit{AttackerID: weapon.ID, TargetID: target.ID, Cause: HitShell})
 				count++
 			}
 		}
-		events = append(events, EngineEvent{Type: "gunnery_volley", Audience: "all", Text: fmt.Sprintf("%s炮击%s：%d次判定，命中率%.1f%%，命中%d次", weapon.Name, target.Name, weapon.Card.Gunnery, chance, count)})
+		label := ""
+		if halfGuns {
+			label = "（T 劣，半数火炮）"
+		}
+		events = append(events, EngineEvent{Type: "gunnery_volley", Audience: "all", Text: fmt.Sprintf("%s%s炮击%s：%d次判定，命中率%.1f%%，命中%d次", weapon.Name, label, target.Name, shots, chance, count)})
 	}
 	return hits, events
 }
@@ -435,6 +448,76 @@ func torpedoVolley(state *State, attackers, enemies []Unit) ([]Hit, []EngineEven
 	return hits, events
 }
 
+// tCrossingStayTurns 是"战列线已展开"要求的连续停留回合数。
+// FleetSessions 按到达当回合记 1，所以 3 表示已经原地摆了 3 回合。
+const tCrossingStayTurns = 3
+
+// fleetMovedThisTurn 判断一支舰队本回合有没有移动过（主动抢入 vs 原地待机）。
+func fleetMovedThisTurn(state *State, members []Unit) bool {
+	for _, member := range members {
+		if unit := state.Units[member.ID]; unit != nil && unit.Moved {
+			return true
+		}
+	}
+	return false
+}
+
+// fleetCanFormLine 判断编队能不能摆战列线：有航母或运输船就没法排纵队。
+func fleetCanFormLine(members []Unit) bool {
+	for _, member := range members {
+		switch member.Type {
+		case "CV", "CVL", "CVE", "TRS":
+			return false
+		}
+	}
+	return true
+}
+
+// battleLineTState 判断这次炮战里谁摆好了战列线。
+//
+// 条件（规则书"战列线（T 优 / T 劣）"）：
+//   - 守方本回合没动，且已经在同一 hex 连续停留 ≥3 回合——有时间摆队；
+//   - 守方编队里没有航母和运输船（航母在场就不会按战列线摆队，运输船是护航队形）；
+//   - 守方在交战前就发现了对方（prior[守方]），不是被摸到脸上才反应；
+//   - 对方是本回合主动移动进来的。
+//
+// 返回 (T优阵营, T劣阵营, 判定依据)；不满足时全为空。
+func battleLineTState(state *State, factions map[string][]Unit, prior map[string]bool) (string, string, string) {
+	names := make([]string, 0, len(factions))
+	for faction := range factions {
+		names = append(names, faction)
+	}
+	if len(names) != 2 {
+		return "", "", ""
+	}
+	sort.Strings(names)
+	for _, defender := range names {
+		attacker := names[0]
+		if defender == names[0] {
+			attacker = names[1]
+		}
+		members := factions[defender]
+		if len(members) == 0 || fleetMovedThisTurn(state, members) {
+			continue
+		}
+		if !fleetCanFormLine(members) || !prior[defender] {
+			continue
+		}
+		sessions := 0
+		if state.FleetSessions != nil {
+			sessions = state.FleetSessions[FleetKey(&members[0])]
+		}
+		if sessions < tCrossingStayTurns {
+			continue
+		}
+		if !fleetMovedThisTurn(state, factions[attacker]) {
+			continue
+		}
+		return defender, attacker, fmt.Sprintf("已原地停留 %d 回合、编队无航母/运输船、交战前已发现对方", sessions)
+	}
+	return "", "", ""
+}
+
 func resolveSurfaceBattle(state *State, coord string, factions map[string][]Unit, prior map[string]bool) []EngineEvent {
 	names := make([]string, 0, len(factions))
 	for faction := range factions {
@@ -457,6 +540,20 @@ func resolveSurfaceBattle(state *State, coord string, factions map[string][]Unit
 		winner, surprised = right, left
 	}
 	hitTargets := map[string]map[string]bool{left: {}, right: {}}
+	// 战列线（T 优 / T 劣）：守方原地摆好队形、抢入的那一方只影响自己的第一轮炮战。
+	tAdvantage, tDisadvantaged, tReason := battleLineTState(state, factions, prior)
+	halfGuns := map[string]bool{}
+	if tAdvantage != "" {
+		halfGuns[tDisadvantaged] = true
+		events = append(events, EngineEvent{Type: "t_crossing", Audience: "all", Text: fmt.Sprintf("%s 在 %s 展开战列线（%s），%s 抢入炮战即 T 劣：第一轮只有一半火炮能开火", tAdvantage, coord, tReason, tDisadvantaged)})
+	}
+	takeHalf := func(faction string) bool {
+		if halfGuns[faction] {
+			halfGuns[faction] = false
+			return true
+		}
+		return false
+	}
 	if winner != "" {
 		events = append(events, EngineEvent{Type: "surprise", Audience: "all", Text: winner + "取得突袭优势"})
 		torpedoHits, torpedoEvents := torpedoVolley(state, factions[winner], factions[surprised])
@@ -465,15 +562,15 @@ func resolveSurfaceBattle(state *State, coord string, factions map[string][]Unit
 			hitTargets[surprised][hit.TargetID] = true
 		}
 		events = append(events, applyHits(state, torpedoHits)...)
-		openingHits, openingEvents := gunneryVolley(state, factions[winner], factions[surprised])
+		openingHits, openingEvents := gunneryVolley(state, factions[winner], factions[surprised], takeHalf(winner))
 		events = append(events, openingEvents...)
 		for _, hit := range openingHits {
 			hitTargets[surprised][hit.TargetID] = true
 		}
 		events = append(events, applyHits(state, openingHits)...)
 	}
-	leftHits, leftEvents := gunneryVolley(state, factions[left], factions[right])
-	rightHits, rightEvents := gunneryVolley(state, factions[right], factions[left])
+	leftHits, leftEvents := gunneryVolley(state, factions[left], factions[right], takeHalf(left))
+	rightHits, rightEvents := gunneryVolley(state, factions[right], factions[left], takeHalf(right))
 	events = append(events, leftEvents...)
 	events = append(events, rightEvents...)
 	for _, hit := range leftHits {
