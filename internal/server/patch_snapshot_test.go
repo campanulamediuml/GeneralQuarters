@@ -21,10 +21,7 @@ import (
 func TestPatchMergeMatchesSnapshot(t *testing.T) {
 	host, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_coral_real", "solo": true}, &created); status != http.StatusCreated {
-		t.Fatalf("create room status %d", status)
-	}
+	created := createTestPlayerRoom(t, host, "_coral_real", "A", true)
 	// 新剧本开局在部署阶段：先把第 1 回合开起来，再测"回合结算"的补丁。
 	settleDeployment(t, created.RoomID, host)
 	conn := dialTestWS(t, host, "/ws?room_id="+created.RoomID)
@@ -47,13 +44,10 @@ func TestPatchMergeMatchesSnapshot(t *testing.T) {
 func TestPatchMergeMatchesSnapshotTwoPlayers(t *testing.T) {
 	host, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_coral_real"}, &created); status != http.StatusCreated {
-		t.Fatalf("create room status %d", status)
-	}
+	created := createTestPlayerRoom(t, host, "_coral_real", "A", false)
 	guest := newTestClient(t, host.base)
 	var joined roomResponse
-	if status := guest.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]any{"token": created.JoinToken, "name": "B"}, &joined); status != http.StatusOK {
+	if status := guest.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]any{"token": created.JoinToken, "name": "B", "faction": "B"}, &joined); status != http.StatusOK {
 		t.Fatalf("join status %d", status)
 	}
 	settleDeployment(t, created.RoomID, host, guest)

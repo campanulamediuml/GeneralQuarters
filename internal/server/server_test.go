@@ -153,13 +153,36 @@ func setupTestServer(t *testing.T, options ...func(*Server)) (*testClient, strin
 	return newTestClient(t, httpServer.URL), path, database, cleanup
 }
 
+func createTestRoom(t *testing.T, client *testClient, scenarioID string, solo bool) roomResponse {
+	t.Helper()
+	var created roomResponse
+	if status := client.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"scenario_id": scenarioID, "solo": solo}, &created); status != http.StatusCreated {
+		t.Fatalf("创建房间状态码%d", status)
+	}
+	return created
+}
+
+func joinTestRoom(t *testing.T, client *testClient, created roomResponse, faction string) roomResponse {
+	t.Helper()
+	var joined roomResponse
+	if status := client.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]string{"name": "玩家" + faction, "token": created.JoinToken, "faction": faction}, &joined); status != http.StatusOK {
+		t.Fatalf("加入%s阵营状态码%d", faction, status)
+	}
+	return joined
+}
+
+func createTestPlayerRoom(t *testing.T, client *testClient, scenarioID, faction string, solo bool) roomResponse {
+	t.Helper()
+	created := createTestRoom(t, client, scenarioID, solo)
+	joined := joinTestRoom(t, client, created, faction)
+	created.PlayerID, created.Faction = joined.PlayerID, joined.Faction
+	return created
+}
+
 func TestRoomHTTPInterfacesRemoved(t *testing.T) {
 	client, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := client.httpCall(t, http.MethodPost, "/api/v1/rooms", map[string]any{"scenario_id": "_fixture", "solo": true}, &created); status != http.StatusCreated {
-		t.Fatalf("创建房间状态码%d", status)
-	}
+	created := createTestRoom(t, client, "_fixture", true)
 	tests := []struct {
 		method string
 		path   string
@@ -181,10 +204,7 @@ func TestRoomHTTPInterfacesRemoved(t *testing.T) {
 func TestTwoPlayerCommandAndTurnFlow(t *testing.T) {
 	a, dbPath, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A", "scenario_id": "_fixture"}, &created); status != http.StatusCreated {
-		t.Fatalf("创建房间状态码%d", status)
-	}
+	created := createTestPlayerRoom(t, a, "_fixture", "A", false)
 	if len(created.JoinToken) != 14 {
 		t.Fatalf("邀请token格式错误：%s", created.JoinToken)
 	}
@@ -193,8 +213,8 @@ func TestTwoPlayerCommandAndTurnFlow(t *testing.T) {
 	if status := a.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &initial); status != http.StatusOK {
 		t.Fatal("读取A状态失败")
 	}
-	if initial.You.Faction != "A" || initial.JoinToken == "" {
-		t.Fatal("房主信息不完整")
+	if initial.You.Faction != "A" || initial.You.IsHost || initial.JoinToken == "" {
+		t.Fatal("A席位或房间token不完整")
 	}
 	for _, unit := range initial.Units {
 		if unit.Faction == "B" {
@@ -203,14 +223,11 @@ func TestTwoPlayerCommandAndTurnFlow(t *testing.T) {
 	}
 
 	b := newTestClient(t, a.base)
-	var joined roomResponse
-	if status := b.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]string{"name": "B", "token": created.JoinToken}, &joined); status != http.StatusOK {
-		t.Fatalf("加入房间状态码%d", status)
-	}
+	joinTestRoom(t, b, created, "B")
 	var bState testView
 	_ = b.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &bState)
-	if bState.You.Faction != "B" || bState.JoinToken != "" {
-		t.Fatal("B阵营或token权限错误")
+	if bState.You.Faction != "B" || bState.You.IsHost || bState.JoinToken != initial.JoinToken {
+		t.Fatal("B阵营或对等的token权限错误")
 	}
 	for _, unit := range bState.Units {
 		if unit.Faction == "A" {
@@ -301,22 +318,21 @@ func TestTwoPlayerCommandAndTurnFlow(t *testing.T) {
 	}
 
 	third := newTestClient(t, a.base)
-	if status := third.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]string{"token": created.JoinToken}, nil); status != http.StatusBadRequest {
-		t.Fatal("满员房间允许第三人加入")
+	if status := third.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]string{"token": created.JoinToken, "faction": "B"}, nil); status != http.StatusConflict {
+		t.Fatal("已占用阵营允许重复加入")
 	}
 }
 
 func TestSoloReadyAndInvalidToken(t *testing.T) {
 	a, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	_ = a.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"scenario_id": "_fixture", "solo": true}, &created)
+	created := createTestPlayerRoom(t, a, "_fixture", "A", true)
 	var view testView
 	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, &view); status != http.StatusOK || view.Turn != 2 {
 		t.Fatalf("单人沙盒未结算：%+v", view)
 	}
 	other := newTestClient(t, a.base)
-	if status := other.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]string{"token": "XXXX-XXXX-XXXX"}, nil); status != http.StatusBadRequest {
+	if status := other.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]string{"token": "XXXX-XXXX-XXXX", "faction": "A"}, nil); status != http.StatusBadRequest {
 		t.Fatal("无效token未被拒绝")
 	}
 }
@@ -388,10 +404,7 @@ func TestRoomActorContinuesAfterPanic(t *testing.T) {
 func TestConcurrentCommandsHaveSingleWinner(t *testing.T) {
 	a, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"scenario_id": "_fixture"}, &created); status != http.StatusCreated {
-		t.Fatal("创建房间失败")
-	}
+	created := createTestPlayerRoom(t, a, "_fixture", "A", false)
 	// 同一版本并发命令只能有一个成功：用两条会立即改变权威状态的命令（给同一个机库算子分配任务）来验证。
 	commands := []map[string]any{
 		{"command_id": "concurrent-flag", "type": "LAUNCH_CAP", "aircraft_id": "a2-cv-01-fighter-x1", "aircraft_ids": []string{"a2-cv-01-fighter-x1"}},
@@ -441,14 +454,9 @@ func TestConcurrentCommandsHaveSingleWinner(t *testing.T) {
 func TestSectorReconCommandPersistsAndAdvances(t *testing.T) {
 	a, dbPath, database, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"scenario_id": "_fixture"}, &created); status != http.StatusCreated {
-		t.Fatal("创建房间失败")
-	}
+	created := createTestPlayerRoom(t, a, "_fixture", "A", false)
 	b := newTestClient(t, a.base)
-	if status := b.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]string{"token": created.JoinToken}, nil); status != http.StatusOK {
-		t.Fatal("加入房间失败")
-	}
+	joinTestRoom(t, b, created, "B")
 	command := map[string]any{
 		"command_id": "recon-sector-1", "type": "LAUNCH_RECON", "aircraft_id": "b-cv-04-dive_bomber-x1",
 		"heading": "W", "sector_width": 60,

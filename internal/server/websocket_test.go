@@ -60,10 +60,7 @@ func readWSResponse(t *testing.T, conn *websocket.Conn, id string) wsResponse {
 func TestWebSocketRPCUsesRoomAPIAndEnforcesRoomScope(t *testing.T) {
 	host, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_fixture", "solo": true}, &created); status != http.StatusCreated {
-		t.Fatalf("create room status %d", status)
-	}
+	created := createTestPlayerRoom(t, host, "_fixture", "A", true)
 	conn := dialTestWS(t, host, "/ws?room_id="+created.RoomID)
 	_ = conn.WriteJSON(wsRequest{Type: "rpc_request", ID: "state-1", Method: http.MethodGet, Path: "/api/v1/rooms/" + created.RoomID + "/state"})
 	state := readWSResponse(t, conn, "state-1")
@@ -102,10 +99,7 @@ func TestWebSocketRPCUsesRoomAPIAndEnforcesRoomScope(t *testing.T) {
 func TestWebSocketSpectatorSubscribesByRoomAndToken(t *testing.T) {
 	host, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_fixture", "solo": true}, &created); status != http.StatusCreated {
-		t.Fatalf("create room status %d", status)
-	}
+	created := createTestPlayerRoom(t, host, "_fixture", "A", true)
 	watcher := newTestClient(t, host.base) // no session cookie
 	conn := dialTestWS(t, watcher, "/ws")
 	_ = conn.WriteJSON(map[string]string{"type": "subscribe", "room_id": created.RoomID, "token": created.JoinToken})
@@ -147,12 +141,9 @@ func readWSEvent(t *testing.T, conn *websocket.Conn, eventType string) map[strin
 func TestWebSocketPlayersReceivePushedState(t *testing.T) {
 	host, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A", "scenario_id": "_fixture"}, &created); status != http.StatusCreated {
-		t.Fatalf("create room status %d", status)
-	}
+	created := createTestPlayerRoom(t, host, "_fixture", "A", false)
 	guest := newTestClient(t, host.base)
-	if status := guest.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]string{"token": created.JoinToken, "name": "B"}, nil); status != http.StatusOK {
+	if status := guest.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]string{"token": created.JoinToken, "name": "B", "faction": "B"}, nil); status != http.StatusOK {
 		t.Fatalf("join room status %d", status)
 	}
 	hostConn := dialTestWS(t, host, "/ws?room_id="+created.RoomID)
@@ -186,16 +177,13 @@ func TestWebSocketPlayersReceivePushedState(t *testing.T) {
 func TestWebSocketPresencePushesState(t *testing.T) {
 	host, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A", "scenario_id": "_fixture"}, &created); status != http.StatusCreated {
-		t.Fatalf("create room status %d", status)
-	}
+	created := createTestPlayerRoom(t, host, "_fixture", "A", false)
 	hostConn := dialTestWS(t, host, "/ws?room_id="+created.RoomID)
 	if view := seedPlayerView(t, hostConn, created.RoomID); len(view["players"].([]any)) != 1 {
 		t.Fatalf("初始玩家数=%d", len(view["players"].([]any)))
 	}
 	guest := newTestClient(t, host.base)
-	if status := guest.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]string{"token": created.JoinToken, "name": "B"}, nil); status != http.StatusOK {
+	if status := guest.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]string{"token": created.JoinToken, "name": "B", "faction": "B"}, nil); status != http.StatusOK {
 		t.Fatalf("join room status %d", status)
 	}
 	readStateViewWhere(t, hostConn, func(view map[string]any) bool {
@@ -209,10 +197,7 @@ func TestWebSocketPresencePushesState(t *testing.T) {
 func TestWebSocketCommandPushesState(t *testing.T) {
 	host, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_fixture", "solo": true}, &created); status != http.StatusCreated {
-		t.Fatalf("create room status %d", status)
-	}
+	created := createTestPlayerRoom(t, host, "_fixture", "A", true)
 	conn := dialTestWS(t, host, "/ws?room_id="+created.RoomID)
 	seedPlayerView(t, conn, created.RoomID)
 	_ = conn.WriteJSON(wsRequest{Type: "rpc_request", ID: "move", Method: http.MethodPost, Path: "/api/v1/rooms/" + created.RoomID + "/commands", Body: json.RawMessage(`{"command_id":"ws-move","type":"SET_MOVE","unit_id":"a-bb-01","coord":"0203"}`)})
@@ -237,10 +222,7 @@ func TestWebSocketCommandPushesState(t *testing.T) {
 func TestWebSocketRejectsUnauthenticatedPlayerRPC(t *testing.T) {
 	host, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A", "scenario_id": "_fixture"}, &created); status != http.StatusCreated {
-		t.Fatalf("create room status %d", status)
-	}
+	created := createTestPlayerRoom(t, host, "_fixture", "A", false)
 	anonymous := newTestClient(t, host.base)
 	conn := dialTestWS(t, anonymous, "/ws?room_id="+created.RoomID)
 	_ = conn.WriteJSON(wsRequest{Type: "rpc_request", ID: "no-session", Method: http.MethodGet, Path: "/api/v1/rooms/" + created.RoomID + "/state"})
@@ -264,10 +246,7 @@ func TestWebSocketRejectsUnauthenticatedPlayerRPC(t *testing.T) {
 func TestStateViewIsDeterministic(t *testing.T) {
 	host, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_fixture", "solo": true}, &created); status != http.StatusCreated {
-		t.Fatalf("create room status %d", status)
-	}
+	created := createTestPlayerRoom(t, host, "_fixture", "A", true)
 	first := rawState(t, host, created.RoomID)
 	second := rawState(t, host, created.RoomID)
 	if !bytes.Equal(first, second) {
@@ -290,10 +269,7 @@ func rawState(t *testing.T, client *testClient, roomID string) []byte {
 func TestWebSocketCommandPushIsPatch(t *testing.T) {
 	host, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_fixture", "solo": true}, &created); status != http.StatusCreated {
-		t.Fatalf("create room status %d", status)
-	}
+	created := createTestPlayerRoom(t, host, "_fixture", "A", true)
 	conn := dialTestWS(t, host, "/ws?room_id="+created.RoomID)
 	view := seedPlayerView(t, conn, created.RoomID)
 	full, err := json.Marshal(view)
@@ -322,10 +298,7 @@ func TestWebSocketCommandPushIsPatch(t *testing.T) {
 func TestWebSocketPresencePatchTouchesPlayersList(t *testing.T) {
 	host, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_fixture", "solo": true}, &created); status != http.StatusCreated {
-		t.Fatalf("create room status %d", status)
-	}
+	created := createTestPlayerRoom(t, host, "_fixture", "A", true)
 	first := dialTestWS(t, host, "/ws?room_id="+created.RoomID)
 	seedPlayerView(t, first, created.RoomID)
 

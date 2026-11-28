@@ -20,7 +20,7 @@ const scenarios = [
 ]
 // 阵营名跟着剧本走：以前写死成"珊瑚海剧本＝…"，开马里亚纳也显示珊瑚海的部队名。
 const factions = computed(() => (scenarios.find((item) => item.id === scenarioID.value) ?? scenarios[0]).factions)
-// 阵营：房主坐哪一边。以前只能坐 A，想当日军只能等别人建房，太别扭。
+// 创建和加入都使用这个阵营；创建房间本身不再自动占据席位。
 const faction = ref<'A' | 'B'>('A')
 // 单人房：一名玩家 ready 就结算，只用于自己摆摊测试。
 // 双人对局必须两名玩家都在，否则一个人点一下就自己跟自己跑掉好几个回合。
@@ -34,7 +34,9 @@ async function createGame() {
   error.value = ''
   try {
     localStorage.setItem('gq_name', name.value.trim())
-    const room = await api.createRoom(name.value.trim(), scenarioID.value, solo.value, faction.value)
+    const room = await api.createRoom(scenarioID.value, solo.value)
+    token.value = room.join_token || ''
+    await api.joinRoom(room.join_token || '', name.value.trim(), faction.value)
     await router.push(`/game/${room.room_id}`)
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : '创建失败'
@@ -52,7 +54,7 @@ async function joinGame() {
   error.value = ''
   try {
     localStorage.setItem('gq_name', name.value.trim())
-    const room = await api.joinRoom(token.value.trim(), name.value.trim())
+    const room = await api.joinRoom(token.value.trim(), name.value.trim(), faction.value)
     await router.push(`/game/${room.room_id}`)
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : '加入失败'

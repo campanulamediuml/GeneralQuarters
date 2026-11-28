@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -92,9 +93,10 @@ type roomMsg struct {
 	player store.Player
 	// body 是 POST 的请求体原文；命令和 ready 用。
 	body []byte
-	// token / name / playerID / session 是加入房间用的：加入也必须串行，
-	// 否则两个人能同时挤进一个满员房。
+	// token / faction / name / playerID / session 是加入房间用的：加入也必须串行，
+	// 否则两个请求能同时抢同一个阵营席位。
 	token    string
+	faction  string
 	name     string
 	playerID string
 	session  string
@@ -394,19 +396,16 @@ func (s *Server) applyRoomMsg(msg roomMsg) roomReply {
 }
 
 type createRoomRequest struct {
-	Name       string `json:"name"`
 	ScenarioID string `json:"scenario_id"`
-	// Faction 是房主自选的阵营（A/B），空值默认 A。
-	// 以前房主固定是 A、加入者固定是 B，想坐日军就只能靠剧本对调，太别扭。
-	Faction string `json:"faction,omitempty"`
-	// Solo 是单人房：一名玩家 ready 就结算，用于沙盒自测。
+	// Solo 是单人房：只允许一个玩家席位，一名玩家 ready 就结算。
 	// 双人对局必须两个人都在、都 ready，否则房间会"自己跟自己跑"。
 	Solo bool `json:"solo,omitempty"`
 }
 
 type joinRoomRequest struct {
-	Token string `json:"token"`
-	Name  string `json:"name"`
+	Token   string `json:"token"`
+	Faction string `json:"faction"`
+	Name    string `json:"name"`
 }
 
 type commandRequest struct {
@@ -447,7 +446,8 @@ type readyRequest struct {
 
 type roomResponse struct {
 	RoomID    string `json:"room_id"`
-	PlayerID  string `json:"player_id"`
+	PlayerID  string `json:"player_id,omitempty"`
+	Faction   string `json:"faction,omitempty"`
 	JoinToken string `json:"join_token,omitempty"`
 }
 
@@ -511,25 +511,13 @@ func (s *Server) createRoom(w http.ResponseWriter, r *http.Request) {
 	}
 	roomID, _ := randomHex(8)
 	joinToken, _ := randomToken(12)
-	playerID, _ := randomHex(12)
-	session, _ := randomHex(32)
-	name := strings.TrimSpace(request.Name)
-	if name == "" {
-		name = "玩家A"
-	}
-	// 单人房必须显式声明；正式剧本默认双人对局。
+	// 创建只初始化空房间；A/B 都通过同一个加入接口取得对称的玩家会话。
 	room := store.Room{ID: roomID, JoinToken: joinToken, Status: "running", Turn: 1, Version: 1, State: state, Solo: request.Solo}
-	faction := strings.ToUpper(strings.TrimSpace(request.Faction))
-	if faction != "A" && faction != "B" {
-		faction = "A"
-	}
-	player := store.Player{ID: playerID, RoomID: roomID, Faction: faction, Name: name, IsHost: true, Ready: false, Connected: true}
-	if err := s.store.CreateRoom(r.Context(), room, player, hashToken(session)); err != nil {
+	if err := s.store.CreateRoom(r.Context(), room); err != nil {
 		writeError(w, http.StatusInternalServerError, "创建房间失败")
 		return
 	}
-	s.setSessionCookie(w, session)
-	writeJSON(w, http.StatusCreated, roomResponse{RoomID: roomID, PlayerID: playerID, JoinToken: formatToken(joinToken)})
+	writeJSON(w, http.StatusCreated, roomResponse{RoomID: roomID, JoinToken: formatToken(joinToken)})
 }
 
 func (s *Server) joinRoom(w http.ResponseWriter, r *http.Request) {
@@ -543,6 +531,11 @@ func (s *Server) joinRoom(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "请输入12位房间token")
 		return
 	}
+	faction := strings.ToUpper(strings.TrimSpace(request.Faction))
+	if faction != "A" && faction != "B" {
+		writeError(w, http.StatusBadRequest, "阵营必须是 A 或 B")
+		return
+	}
 	roomID, err := s.store.RoomIDByToken(r.Context(), token)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "房间token无效")
@@ -550,8 +543,8 @@ func (s *Server) joinRoom(w http.ResponseWriter, r *http.Request) {
 	}
 	playerID, _ := randomHex(12)
 	session, _ := randomHex(32)
-	// 加入也走房间队列：满员判断和落库必须原子，否则两个人能同时挤进一个双人房。
-	reply := s.askRoom(roomMsg{kind: msgJoin, roomID: roomID, token: token, name: request.Name, playerID: playerID, session: session})
+	// 加入也走房间队列：席位判断和落库必须原子，否则两个请求能同时抢一个阵营。
+	reply := s.askRoom(roomMsg{kind: msgJoin, roomID: roomID, token: token, faction: faction, name: request.Name, playerID: playerID, session: session})
 	if reply.status != http.StatusOK {
 		writeRoomReply(w, reply)
 		return
@@ -560,20 +553,23 @@ func (s *Server) joinRoom(w http.ResponseWriter, r *http.Request) {
 	writeRoomReply(w, reply)
 }
 
-// doJoin 在房间 worker 里加入：满员判断和落库是同一个串行动作。
+// doJoin 在房间 worker 里加入：阵营席位判断和落库是同一个串行动作。
 func (s *Server) doJoin(msg roomMsg) roomReply {
 	// 先加载再落库：加入之后 players 里会多一条，接进内存比再读一次库省事也省一次查询。
 	actor, err := s.actorRoom(msg.roomID)
 	if err != nil {
 		return roomError(http.StatusNotFound, "房间不存在")
 	}
-	player, err := s.store.JoinRoom(context.Background(), msg.token, strings.TrimSpace(msg.name), msg.playerID, hashToken(msg.session))
+	player, err := s.store.JoinRoom(context.Background(), msg.token, msg.faction, strings.TrimSpace(msg.name), msg.playerID, hashToken(msg.session))
 	if err != nil {
+		if errors.Is(err, store.ErrFactionOccupied) || errors.Is(err, store.ErrRoomFull) {
+			return roomError(http.StatusConflict, err.Error())
+		}
 		return roomError(http.StatusBadRequest, err.Error())
 	}
 	actor.players = append(actor.players, player)
 	s.publishRoom(msg.roomID)
-	body, err := json.Marshal(roomResponse{RoomID: player.RoomID, PlayerID: player.ID})
+	body, err := json.Marshal(roomResponse{RoomID: player.RoomID, PlayerID: player.ID, Faction: player.Faction})
 	if err != nil {
 		return roomError(http.StatusInternalServerError, "响应编码失败")
 	}
@@ -1153,9 +1149,8 @@ func (s *Server) privateView(ctx context.Context, room store.Room, players []sto
 		// 这里不要放 server_time 之类每次都变的字段：推送靠"和上一帧逐字节相同就不发"
 		// 去掉空转，混进一个时间戳，判重就永远命中不了，等于白算一遍。
 	}
-	if player.IsHost {
-		response["join_token"] = formatToken(room.JoinToken)
-	}
+	// 双方玩家都可以邀请另一方或分享观战链接；席位不再附属于特殊房主。
+	response["join_token"] = formatToken(room.JoinToken)
 	return response, nil
 }
 

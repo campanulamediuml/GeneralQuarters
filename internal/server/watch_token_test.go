@@ -10,10 +10,7 @@ import (
 func TestWatchTokenResolvesRoom(t *testing.T) {
 	host, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A", "scenario_id": "_fixture"}, &created); status != http.StatusCreated {
-		t.Fatalf("create room status %d", status)
-	}
+	created := createTestPlayerRoom(t, host, "_fixture", "A", false)
 	var resolved struct {
 		RoomID string `json:"room_id"`
 	}
@@ -29,10 +26,7 @@ func TestWatchTokenResolvesRoom(t *testing.T) {
 func TestWatchTokenIgnoresPlayerCookie(t *testing.T) {
 	host, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A", "scenario_id": "_fixture"}, &created); status != http.StatusCreated {
-		t.Fatalf("create room status %d", status)
-	}
+	created := createTestPlayerRoom(t, host, "_fixture", "A", false)
 	anonymous := newTestClient(t, host.base)
 	var resolved struct {
 		RoomID string `json:"room_id"`

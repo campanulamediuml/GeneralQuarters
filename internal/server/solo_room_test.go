@@ -10,10 +10,7 @@ import (
 func TestTwoPlayerRoomRejectsLoneReady(t *testing.T) {
 	a, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_coral_real"}, &created); status != http.StatusCreated {
-		t.Fatalf("创建房间状态码%d", status)
-	}
+	created := createTestPlayerRoom(t, a, "_coral_real", "A", false)
 	var initial testView
 	_ = a.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &initial)
 	if status := a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, nil); status != http.StatusBadRequest {
@@ -28,7 +25,7 @@ func TestTwoPlayerRoomRejectsLoneReady(t *testing.T) {
 	// 第二名玩家进来之后，双方 ready 就正常结算。
 	b := newTestClient(t, a.base)
 	var joined roomResponse
-	if status := b.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]any{"name": "B", "token": created.JoinToken}, &joined); status != http.StatusOK {
+	if status := b.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]any{"name": "B", "token": created.JoinToken, "faction": "B"}, &joined); status != http.StatusOK {
 		t.Fatalf("加入房间状态码%d", status)
 	}
 	var bState testView
@@ -54,10 +51,7 @@ func TestTwoPlayerRoomRejectsLoneReady(t *testing.T) {
 func TestSoloRoomResolvesAlone(t *testing.T) {
 	a, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_coral_real", "solo": true}, &created); status != http.StatusCreated {
-		t.Fatalf("创建单人房状态码%d", status)
-	}
+	created := createTestPlayerRoom(t, a, "_coral_real", "A", true)
 	var initial testView
 	_ = a.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &initial)
 	if !initial.Solo {

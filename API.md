@@ -10,9 +10,9 @@
 
 ### 1.1 会话与观战凭证
 
-- 创建或加入房间成功后，服务端通过 HttpOnly Cookie `gq_session` 建立玩家会话。Cookie 路径为 `/`，有效期 30 天，SameSite 为 Lax；生产配置可启用 Secure。
+- 创建房间只初始化空房间，不建立玩家会话。以 `join_token` 和指定阵营加入成功后，服务端通过 HttpOnly Cookie `gq_session` 建立玩家会话。Cookie 路径为 `/`，有效期 30 天，SameSite 为 Lax；生产配置可启用 Secure。
 - `room_id` 是房间标识，`player_id` 是玩家标识，`join_token` 是邀请及观战凭证。三者不能互相替代。
-- 玩家接口要求会话属于路径中的房间。观战接口不使用玩家 Cookie，而用 `join_token` 认证。
+- A、B 阵营使用相同的加入接口，各最多一名玩家；创建者不会自动占据席位或成为房主。玩家接口要求会话属于路径中的房间。观战接口不使用玩家 Cookie，而用 `join_token` 认证。
 - 邀请 token 共 12 位，请求和响应中可显示为 `XXXX-XXXX-XXXX`；服务端比较时会忽略连字符并统一大小写。
 
 ### 1.2 请求与响应
@@ -52,8 +52,8 @@ HTTP 只用于大厅创建、加入房间，以及解析观战 token。进入房
 | GET | `/healthz` | 无 | 返回 `{"status":"ok"}` |
 | GET | `/api/docs` | 无 | 在线速查页 |
 | GET | `/api/v1/openapi.yaml` | 无 | OpenAPI 3.0 定义 |
-| POST | `/api/v1/rooms` | 无 | 创建房间并建立房主会话 |
-| POST | `/api/v1/rooms/join` | 无 | 使用邀请 token 加入并建立玩家会话 |
+| POST | `/api/v1/rooms` | 无 | 创建不含玩家的空房间并返回邀请 token |
+| POST | `/api/v1/rooms/join` | 无 | 使用邀请 token 和指定阵营加入并建立玩家会话 |
 | GET | `/api/v1/watch/{token}` | token | 解析为 `{"room_id":"..."}`；无效 token 返回 404 |
 | GET | `/content/{path}` | 无 | 剧本引用的静态图片等资源 |
 
@@ -68,26 +68,21 @@ Content-Type: application/json
 
 ```json
 {
-  "name": "玩家A",
   "scenario_id": "_coral_real",
-  "faction": "A",
   "solo": false
 }
 ```
 
 | 字段 | 必填 | 说明 |
 |---|---|---|
-| `name` | 否 | 玩家名称；空值使用默认名称 |
 | `scenario_id` | 否 | `_coral_real` 或 `_marianas`；默认 `_coral_real` |
-| `faction` | 否 | 房主阵营 `A`/`B`；默认 `A` |
-| `solo` | 否 | `true` 创建单人沙盒；默认双人房 |
+| `solo` | 否 | `true` 创建只允许一个玩家席位的单人沙盒；默认双人房 |
 
-成功返回 201，并设置会话 Cookie：
+成功返回 201，不设置会话 Cookie，也不返回 `player_id`：
 
 ```json
 {
   "room_id": "04ca6f34b85a65d2",
-  "player_id": "...",
   "join_token": "7K4M-9Q2X-6T8P"
 }
 ```
@@ -97,17 +92,18 @@ Content-Type: application/json
 ```json
 {
   "token": "7K4M-9Q2X-6T8P",
+  "faction": "B",
   "name": "玩家B"
 }
 ```
 
-成功返回 200，并设置独立会话 Cookie：
+`token` 和 `faction` 必填，`faction` 只能是 `A` 或 `B`；`name` 可选。A、B 使用同一流程，允许 B 先加入。成功返回 200，并设置独立会话 Cookie：
 
 ```json
-{"room_id":"04ca6f34b85a65d2","player_id":"..."}
+{"room_id":"04ca6f34b85a65d2","player_id":"...","faction":"B"}
 ```
 
-加入响应不返回 `join_token`。token 无效、格式错误或房间已满时返回 400。
+加入响应不返回 `join_token`。token 无效、格式错误或阵营无效时返回 400；阵营已被占用或单人房已有唯一玩家时返回 409。已有玩家断线后使用原会话 Cookie 重连，不要通过重复 join 恢复身份。
 
 ### 2.3 快照与事件结构
 
@@ -288,7 +284,7 @@ WebSocket `GET state` 的 RPC 响应体与玩家补丁的全量底座使用同�
 |---|---|
 | `room_id, status, turn, phase, solo` | 房间标识、状态、当前回合、部署/战斗阶段、是否单人房 |
 | `scenario, map, objectives, outcome` | 剧本摘要、地图、胜利目标；对局未结束时 `outcome` 为 null |
-| `you, players, join_token` | 当前玩家、房间玩家及在线/ready 状态；`join_token` 仅房主出现 |
+| `you, players, join_token` | 当前玩家、房间玩家及在线/ready 状态；双方玩家都获得 `join_token`，可用于邀请和观战 |
 | `orders, events` | 仅本玩家本回合的待结算命令；当前阵营可见事件 |
 | `units, fleets` | 当前阵营可见舰船及舰队投影；己方包含完整卡面和 `legal_moves`，敌方按情报等级裁剪 |
 | `aviation` | 舰载航空：`carriers` 为母舰设施与算子，`tasks` 为任务编队 |
@@ -443,6 +439,6 @@ RPC 限制：
 | 401 | 玩家 Cookie 缺失或会话失效 |
 | 403 | 会话不属于该房间、RPC 路径不允许、观战 token 不正确 |
 | 404 | 房间、玩家、接口或观战 token 不存在 |
-| 409 | `base_turn` 与当前回合不一致、ready 后操作被锁、持久化结算冲突 |
+| 409 | 阵营席位已占用、单人房已满、`base_turn` 与当前回合不一致、ready 后操作被锁、持久化结算冲突 |
 | 500 | 状态读取、编码、结算或数据库内部错误 |
 | 503 | 闲置房间正在重载；通常可直接重试 |

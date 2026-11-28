@@ -24,11 +24,8 @@ func stalledFixture(t *testing.T) (*testClient, *store.Store, *Server, string, f
 	httpServer := httptest.NewServer(mux)
 	a := newTestClient(t, httpServer.URL)
 	b := newTestClient(t, httpServer.URL)
-	var created roomResponse
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A", "scenario_id": "_fixture"}, &created); status != http.StatusCreated {
-		t.Fatalf("创建房间失败：%d", status)
-	}
-	if status := b.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]string{"token": created.JoinToken, "name": "B"}, nil); status != http.StatusOK {
+	created := createTestPlayerRoom(t, a, "_fixture", "A", false)
+	if status := b.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]string{"token": created.JoinToken, "name": "B", "faction": "B"}, nil); status != http.StatusOK {
 		t.Fatalf("加入房间失败：%d", status)
 	}
 	cleanup := func() { httpServer.Close(); database.Close() }

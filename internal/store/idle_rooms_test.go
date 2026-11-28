@@ -16,8 +16,11 @@ func TestIdleRoomsOnlyListsDisconnectedOnes(t *testing.T) {
 	state := game.State{ScenarioID: "_test", ScenarioName: "测试", Turn: 1}
 	makeRoom := func(id string) {
 		room := Room{ID: id, JoinToken: "tok-" + id, Status: "running", Turn: 1, Version: 1, State: state}
-		if err := database.CreateRoom(ctx, room, Player{ID: "p-" + id, Faction: "A", Name: "甲", IsHost: true}, "hash-"+id); err != nil {
+		if err := database.CreateRoom(ctx, room); err != nil {
 			t.Fatalf("建房失败：%v", err)
+		}
+		if _, err := database.JoinRoom(ctx, room.JoinToken, "A", "甲", "p-"+id, "hash-"+id); err != nil {
+			t.Fatalf("加入房间失败：%v", err)
 		}
 	}
 	makeRoom("idle")
@@ -59,8 +62,11 @@ func TestResetConnectionsClearsStaleFlags(t *testing.T) {
 	database := newTestStore(t)
 	state := game.State{ScenarioID: "_test", ScenarioName: "测试", Turn: 1}
 	room := Room{ID: "r1", JoinToken: "tok", Status: "running", Turn: 1, Version: 1, State: state}
-	if err := database.CreateRoom(ctx, room, Player{ID: "p1", Faction: "A", Name: "甲", IsHost: true}, "hash"); err != nil {
+	if err := database.CreateRoom(ctx, room); err != nil {
 		t.Fatalf("建房失败：%v", err)
+	}
+	if _, err := database.JoinRoom(ctx, room.JoinToken, "A", "甲", "p1", "hash"); err != nil {
+		t.Fatalf("加入房间失败：%v", err)
 	}
 	if err := database.SetConnected(ctx, "p1", true); err != nil {
 		t.Fatalf("置在线失败：%v", err)

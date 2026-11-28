@@ -108,11 +108,11 @@ export const api = {
   watchRoom(token: string) {
     return request<{ room_id: string }>('/api/v1/watch/' + encodeURIComponent(token))
   },
-  createRoom(name: string, scenarioID = '_coral_real', solo = false, faction: 'A' | 'B' = 'A') {
-    return request<RoomResponse>('/api/v1/rooms', { method: 'POST', body: JSON.stringify({ name, scenario_id: scenarioID, solo, faction }) })
+  createRoom(scenarioID = '_coral_real', solo = false) {
+    return request<RoomResponse>('/api/v1/rooms', { method: 'POST', body: JSON.stringify({ scenario_id: scenarioID, solo }) })
   },
-  joinRoom(token: string, name: string) {
-    return request<RoomResponse>('/api/v1/rooms/join', { method: 'POST', body: JSON.stringify({ token, name }) })
+  joinRoom(token: string, name: string, faction: 'A' | 'B') {
+    return request<RoomResponse>('/api/v1/rooms/join', { method: 'POST', body: JSON.stringify({ token, name, faction }) })
   },
   state(roomID: string) {
     return request<GameView>('/api/v1/rooms/' + roomID + '/state')

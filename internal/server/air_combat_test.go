@@ -11,10 +11,7 @@ import (
 func TestAviationQueueThroughREST(t *testing.T) {
 	client, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := client.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A", "scenario_id": "_fixture"}, &created); status != http.StatusCreated {
-		t.Fatalf("创建房间状态码%d", status)
-	}
+	created := createTestPlayerRoom(t, client, "_fixture", "A", false)
 	commands := []map[string]any{
 		{"command_id": "cap-1", "type": "LAUNCH_CAP", "aircraft_ids": []string{"a2-cv-01-fighter-x1"}},
 		{"command_id": "recon-1", "type": "LAUNCH_RECON", "aircraft_ids": []string{"a2-cv-04-dive_bomber-x1"}, "heading": "W", "sector_width": 60},
@@ -38,10 +35,7 @@ func TestAviationQueueThroughREST(t *testing.T) {
 func TestAirCombatResolutionThroughREST(t *testing.T) {
 	client, _, database, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := client.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_fixture", "solo": true}, &created); status != http.StatusCreated {
-		t.Fatalf("创建房间状态码%d", status)
-	}
+	created := createTestRoom(t, client, "_fixture", true)
 	room, err := database.Room(context.Background(), created.RoomID)
 	if err != nil {
 		t.Fatal(err)
@@ -57,6 +51,7 @@ func TestAirCombatResolutionThroughREST(t *testing.T) {
 	if err := database.ReplaceState(context.Background(), created.RoomID, room.State); err != nil {
 		t.Fatal(err)
 	}
+	joinTestRoom(t, client, created, "A")
 	// ready 只回一条回执，结算后的状态要另外拉。
 	if status := client.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/ready", map[string]any{"ready": true}, nil); status != http.StatusOK {
 		t.Fatalf("Ready结算状态码%d", status)
@@ -84,10 +79,7 @@ func TestAirCombatResolutionThroughREST(t *testing.T) {
 func TestCrossCarrierStrikeUsesSingleTaskThroughREST(t *testing.T) {
 	client, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := client.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A", "scenario_id": "_fixture"}, &created); status != http.StatusCreated {
-		t.Fatalf("创建房间状态码%d", status)
-	}
+	created := createTestPlayerRoom(t, client, "_fixture", "A", false)
 	// 任务号是服务端发号器给的（task-<序号>-<类型>），客户端不该猜：
 	// 第一次出击后先读一次状态，把 task_id 拿去加入后两架。
 	first := map[string]any{"command_id": "strike-1", "type": "LAUNCH_STRIKE", "aircraft_ids": []string{"a2-cv-01-dive_bomber-x1"}}

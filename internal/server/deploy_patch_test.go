@@ -29,10 +29,7 @@ func TestDeployToBattlePatchMerges(t *testing.T) {
 	defer server.Close()
 	client := newTestClient(t, server.URL)
 
-	var created roomResponse
-	if status := client.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_coral_real", "solo": true}, &created); status != http.StatusCreated {
-		t.Fatalf("创建房间状态码%d", status)
-	}
+	created := createTestPlayerRoom(t, client, "_coral_real", "A", true)
 	var base map[string]any
 	if status := client.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &base); status != http.StatusOK {
 		t.Fatalf("读取状态失败：%d", status)

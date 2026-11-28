@@ -12,10 +12,7 @@ import (
 func TestHangarArmingAndLiftOverHTTP(t *testing.T) {
 	a, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := a.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"scenario_id": "_fixture", "solo": true}, &created); status != http.StatusCreated {
-		t.Fatal("创建房间失败")
-	}
+	created := createTestPlayerRoom(t, a, "_fixture", "A", true)
 	send := func(command map[string]any) int {
 		var reply map[string]any
 		return a.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/commands", command, &reply)

@@ -686,7 +686,8 @@ export interface EnemyAirContact {
 
 export interface RoomResponse {
   room_id: string
-  player_id: string
+  player_id?: string
+  faction?: 'A' | 'B'
   join_token?: string
 }
 

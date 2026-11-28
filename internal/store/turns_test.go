@@ -25,8 +25,7 @@ func TestTurnSnapshotIsGzipBlob(t *testing.T) {
 	store := newTestStore(t)
 	state := game.State{ScenarioID: "_test", ScenarioName: "测试", Turn: 1}
 	room := Room{ID: "room1", JoinToken: "tok", Status: "running", Turn: 1, Version: 1, State: state}
-	player := Player{ID: "p1", Faction: "A", Name: "甲", IsHost: true}
-	if err := store.CreateRoom(ctx, room, player, "hash"); err != nil {
+	if err := store.CreateRoom(ctx, room); err != nil {
 		t.Fatalf("建房失败：%v", err)
 	}
 	var raw []byte

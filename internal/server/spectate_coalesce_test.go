@@ -17,11 +17,8 @@ import (
 func TestSpectatorCoalescesBroadcastBurst(t *testing.T) {
 	host, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_fixture", "solo": true}, &created); status != http.StatusCreated {
-		t.Fatalf("create room status %d", status)
-	}
-	// 先完成房主连接的上线通知，避免把它误算进后面的回合结算广播。
+	created := createTestPlayerRoom(t, host, "_fixture", "A", true)
+	// 先完成玩家连接的上线通知，避免把它误算进后面的回合结算广播。
 	var initial testView
 	if status := host.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &initial); status != http.StatusOK {
 		t.Fatalf("initial state status %d", status)

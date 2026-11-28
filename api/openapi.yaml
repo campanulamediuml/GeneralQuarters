@@ -1,9 +1,10 @@
 openapi: 3.0.3
 info:
   title: General Quarters HTTP API
-  version: 0.2.0
+  version: 0.3.0
   description: |-
     大厅、健康检查和观战 token 解析接口。
+    创建房间只生成空房间；A/B 玩家都凭 token 和指定阵营加入，分别取得独立会话。
     房间内的 state、events、commands、ready 与观战统一使用 WebSocket，不再提供 HTTP 接口。
     WebSocket RPC、快照和增量补丁契约见仓库根目录 API.md；OpenAPI 3.0 不描述这些帧协议。
 servers:
@@ -50,8 +51,8 @@ paths:
   /api/v1/rooms:
     post:
       tags: [Rooms]
-      summary: 创建房间并建立房主会话
-      description: 成功后设置 HttpOnly Cookie gq_session。进入房间后使用该 Cookie 连接 /ws，房间内操作不再使用 HTTP。
+      summary: 创建不含玩家的空房间
+      description: 不选择阵营、不创建房主，也不设置会话 Cookie。调用者使用返回的 token 分别为 A/B 调用加入接口。
       requestBody:
         required: false
         content:
@@ -60,20 +61,16 @@ paths:
       responses:
         '201':
           description: 创建成功
-          headers:
-            Set-Cookie:
-              description: 玩家会话 Cookie
-              schema: {type: string}
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/RoomResponse'}
+              schema: {$ref: '#/components/schemas/CreateRoomResponse'}
         '400': {$ref: '#/components/responses/BadRequest'}
         '500': {$ref: '#/components/responses/InternalServerError'}
   /api/v1/rooms/join:
     post:
       tags: [Rooms]
-      summary: 使用邀请 token 加入房间
-      description: 成功后加入剩余阵营并设置独立的 gq_session Cookie；响应不返回 join_token。进入房间后使用该 Cookie 连接 /ws。
+      summary: 使用邀请 token 和指定阵营加入房间
+      description: A/B 使用同一接口，各最多一名玩家，允许 B 先加入。成功后设置独立的 gq_session Cookie；响应不返回 join_token。进入房间后使用该 Cookie 连接 /ws，断线也用原会话重连。
       requestBody:
         required: true
         content:
@@ -88,9 +85,9 @@ paths:
               schema: {type: string}
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/RoomResponse'}
+              schema: {$ref: '#/components/schemas/JoinRoomResponse'}
         '400': {$ref: '#/components/responses/BadRequest'}
-        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
         '500': {$ref: '#/components/responses/InternalServerError'}
   /api/v1/watch/{token}:
     get:
@@ -117,12 +114,17 @@ paths:
 components:
   responses:
     BadRequest:
-      description: 请求、未知字段或业务条件无效
+      description: 请求、未知字段、token、阵营或业务条件无效
       content:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
     NotFound:
       description: 房间、接口或 token 不存在
+      content:
+        application/json:
+          schema: {$ref: '#/components/schemas/Error'}
+    Conflict:
+      description: 阵营席位已占用或房间席位已满
       content:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
@@ -145,21 +147,26 @@ components:
       type: object
       additionalProperties: false
       properties:
-        name: {type: string, example: 玩家A}
         scenario_id: {type: string, enum: [_coral_real, _marianas], default: _coral_real}
-        faction: {type: string, enum: [A, B], default: A}
-        solo: {type: boolean, default: false, description: true 为单人沙盒，false 为双人房}
+        solo: {type: boolean, default: false, description: true 创建只允许一个玩家席位的单人沙盒，false 创建双人房}
     JoinRoomRequest:
       type: object
       additionalProperties: false
-      required: [token]
+      required: [token, faction]
       properties:
         token: {type: string, example: 7K4M-9Q2X-6T8P}
+        faction: {type: string, enum: [A, B]}
         name: {type: string, example: 玩家B}
-    RoomResponse:
+    CreateRoomResponse:
       type: object
-      required: [room_id, player_id]
+      required: [room_id, join_token]
+      properties:
+        room_id: {type: string}
+        join_token: {type: string}
+    JoinRoomResponse:
+      type: object
+      required: [room_id, player_id, faction]
       properties:
         room_id: {type: string}
         player_id: {type: string}
-        join_token: {type: string, description: 仅创建房间响应返回}
+        faction: {type: string, enum: [A, B]}

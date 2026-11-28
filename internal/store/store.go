@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -25,14 +26,20 @@ type Room struct {
 	Solo bool
 }
 
+var (
+	ErrFactionOccupied = errors.New("该阵营已有玩家")
+	ErrRoomFull        = errors.New("房间已满")
+)
+
 type Player struct {
-	ID        string `json:"id"`
-	RoomID    string `json:"-"`
-	Faction   string `json:"faction"`
-	Name      string `json:"name"`
-	IsHost    bool   `json:"is_host"`
-	Ready     bool   `json:"ready"`
-	Connected bool   `json:"connected"`
+	ID      string `json:"id"`
+	RoomID  string `json:"-"`
+	Faction string `json:"faction"`
+	Name    string `json:"name"`
+	// IsHost 只保留给旧库兼容；新建房间的 A/B 席位不再设置房主。
+	IsHost    bool `json:"is_host"`
+	Ready     bool `json:"ready"`
+	Connected bool `json:"connected"`
 }
 
 type Event struct {
@@ -167,7 +174,7 @@ func boolInt(value bool) int {
 	return 0
 }
 
-func (s *Store) CreateRoom(ctx context.Context, room Room, player Player, sessionHash string) error {
+func (s *Store) CreateRoom(ctx context.Context, room Room) error {
 	stateBlob, err := encodeState(room.State)
 	if err != nil {
 		return err
@@ -182,16 +189,6 @@ func (s *Store) CreateRoom(ctx context.Context, room Room, player Player, sessio
 	if err != nil {
 		return err
 	}
-	// connected 从 0 起步：房子建好时还没有 WebSocket 连上来，连上之后 handleConnect 再置 1。
-	// 写死 1 会让"建了房但没人进"的空房间看起来一直有人，清理器永远回收不掉。
-	_, err = tx.ExecContext(ctx, `INSERT INTO players(id,room_id,faction,name,is_host,ready,connected) VALUES(?,?,?,?,?,0,0)`, player.ID, room.ID, player.Faction, player.Name, boolInt(player.IsHost))
-	if err != nil {
-		return err
-	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO sessions VALUES(?,?,?,?)`, sessionHash, player.ID, room.ID, time.Now().Add(30*24*time.Hour).UTC().Format(time.RFC3339Nano))
-	if err != nil {
-		return err
-	}
 	_, err = tx.ExecContext(ctx, `INSERT INTO turns(room_id,turn,version,state_blob,created_at) VALUES(?,?,?,?,?)`, room.ID, room.Turn, room.Version, stateBlob, now)
 	if err != nil {
 		return err
@@ -200,35 +197,44 @@ func (s *Store) CreateRoom(ctx context.Context, room Room, player Player, sessio
 	return tx.Commit()
 }
 
-func (s *Store) JoinRoom(ctx context.Context, joinToken, name, playerID, sessionHash string) (Player, error) {
+func (s *Store) JoinRoom(ctx context.Context, joinToken, faction, name, playerID, sessionHash string) (Player, error) {
+	var player Player
+	if faction != "A" && faction != "B" {
+		return player, fmt.Errorf("阵营必须是 A 或 B")
+	}
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return Player{}, err
 	}
 	defer tx.Rollback()
 	var roomID string
-	var player Player
-	err = tx.QueryRowContext(ctx, `SELECT id FROM rooms WHERE join_token=?`, joinToken).Scan(&roomID)
+	var solo int
+	err = tx.QueryRowContext(ctx, `SELECT id,solo FROM rooms WHERE join_token=?`, joinToken).Scan(&roomID, &solo)
 	if err == sql.ErrNoRows {
 		return player, fmt.Errorf("房间token无效")
 	}
 	if err != nil {
 		return player, err
 	}
+	var occupied int
+	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM players WHERE room_id=? AND faction=?`, roomID, faction).Scan(&occupied); err != nil {
+		return player, err
+	}
+	if occupied != 0 {
+		return player, ErrFactionOccupied
+	}
 	var count int
 	if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM players WHERE room_id=?`, roomID).Scan(&count); err != nil {
 		return player, err
 	}
-	if count >= 2 {
-		return player, fmt.Errorf("房间已满")
+	limit := 2
+	if solo != 0 {
+		limit = 1
 	}
-	faction := "A"
-	var existing string
-	err = tx.QueryRowContext(ctx, `SELECT faction FROM players WHERE room_id=? ORDER BY is_host DESC LIMIT 1`, roomID).Scan(&existing)
-	if err == nil && existing == "A" {
-		faction = "B"
+	if count >= limit {
+		return player, ErrRoomFull
 	}
-	player = Player{ID: playerID, RoomID: roomID, Faction: faction, Name: name, IsHost: false}
+	player = Player{ID: playerID, RoomID: roomID, Faction: faction, Name: name}
 	if name == "" {
 		player.Name = "玩家" + faction
 	}

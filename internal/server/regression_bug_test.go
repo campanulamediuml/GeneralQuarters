@@ -125,10 +125,7 @@ func TestCommandFingerprintIncludesBusinessPayload(t *testing.T) {
 func TestFailedImmediateCommandDoesNotMutateActorState(t *testing.T) {
 	client, _, database, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := client.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"scenario_id": "_fixture", "solo": true}, &created); status != http.StatusCreated {
-		t.Fatalf("创建房间状态码 %d", status)
-	}
+	created := createTestPlayerRoom(t, client, "_fixture", "A", true)
 	var before testView
 	if status := client.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &before); status != http.StatusOK {
 		t.Fatal("读取初始状态失败")
@@ -170,10 +167,7 @@ func TestPanickedTurnResolutionDoesNotCommitPartialState(t *testing.T) {
 		}
 	})
 	defer cleanup()
-	var created roomResponse
-	if status := client.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"scenario_id": "_fixture", "solo": true}, &created); status != http.StatusCreated {
-		t.Fatalf("创建房间状态码 %d", status)
-	}
+	created := createTestPlayerRoom(t, client, "_fixture", "A", true)
 	settleDeployment(t, created.RoomID, client)
 	before, err := database.Room(t.Context(), created.RoomID)
 	if err != nil {
@@ -194,10 +188,7 @@ func TestPanickedTurnResolutionDoesNotCommitPartialState(t *testing.T) {
 func TestRadioOrderCanBeClearedByTaskID(t *testing.T) {
 	client, _, database, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := client.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"scenario_id": "_fixture", "solo": true}, &created); status != http.StatusCreated {
-		t.Fatalf("创建房间状态码 %d", status)
-	}
+	created := createTestRoom(t, client, "_fixture", true)
 	room, err := database.Room(t.Context(), created.RoomID)
 	if err != nil {
 		t.Fatal(err)
@@ -215,6 +206,8 @@ func TestRadioOrderCanBeClearedByTaskID(t *testing.T) {
 	if err != nil || reloaded.State.Aircraft[aircraft.ID].Status != "attack" || reloaded.State.Aircraft[aircraft.ID].TaskID != taskID {
 		t.Fatalf("测试空中编队未正确写入：%+v, %v", reloaded.State.Aircraft[aircraft.ID], err)
 	}
+	joined := joinTestRoom(t, client, created, "A")
+	created.PlayerID = joined.PlayerID
 	var view testView
 	if status := client.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &view); status != http.StatusOK {
 		t.Fatal("读取航空任务失败")
@@ -242,10 +235,7 @@ func TestRadioOrderCanBeClearedByTaskID(t *testing.T) {
 func TestFailedPlannedOrderCanBeRetried(t *testing.T) {
 	client, _, database, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := client.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"scenario_id": "_fixture", "solo": true}, &created); status != http.StatusCreated {
-		t.Fatalf("创建房间状态码 %d", status)
-	}
+	created := createTestPlayerRoom(t, client, "_fixture", "A", true)
 	var initial testView
 	if status := client.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &initial); status != http.StatusOK {
 		t.Fatal("读取初始状态失败")

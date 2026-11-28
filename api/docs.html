@@ -1,11 +1,11 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>General Quarters API</title><style>body{max-width:1040px;margin:0 auto;padding:40px 24px;background:#0b1519;color:#d9e3df;font:15px/1.75 system-ui}h1,h2{color:#e6c98a}code,pre{background:#13252b;color:#a9d8ce;border-radius:5px}code{padding:2px 5px}pre{padding:16px;overflow:auto}a{color:#8fc8bb}table{width:100%;border-collapse:collapse}td,th{padding:10px;border-bottom:1px solid #294047;text-align:left}.muted{color:#9fb2b3}</style></head><body>
 <h1>General Quarters API</h1>
-<p>版本 0.2.0 · <a href="/api/v1/openapi.yaml">下载 OpenAPI 定义</a> · <a href="/">返回游戏</a></p>
+<p>版本 0.3.0 · <a href="/api/v1/openapi.yaml">下载 OpenAPI 定义</a> · <a href="/">返回游戏</a></p>
 <p class="muted">本页是速查表。完整命令、快照字段和补丁语义见仓库根目录的 <code>API.md</code>。</p>
 
 <h2>约定</h2>
 <ul>
-<li>创建或加入房间后，玩家使用 HttpOnly Cookie <code>gq_session</code>；观战使用房间 <code>join_token</code>。</li>
+<li>创建房间只生成空房间和 <code>join_token</code>，不建立会话。A/B 都凭 token 和指定阵营加入，成功后分别使用 HttpOnly Cookie <code>gq_session</code>；观战使用同一房间 token。</li>
 <li>成功响应为 JSON；错误为 <code>{"error":"说明"}</code>，可另带 <code>error_code</code> 和 <code>error_params</code>。</li>
 <li>请求体会拒绝未知字段。hex 坐标为 <code>ABCD</code>：AB 行、CD 列，例如 <code>0203</code>。</li>
 <li><code>base_turn</code> 大于 0 时必须等于当前回合。<code>command_id</code> 在同一玩家范围内唯一，重试必须沿用原 ID 和请求体。</li>
@@ -16,8 +16,8 @@
 <table>
 <tr><th>方法</th><th>路径</th><th>用途</th></tr>
 <tr><td>GET</td><td>/healthz</td><td>健康检查</td></tr>
-<tr><td>POST</td><td>/api/v1/rooms</td><td>创建房间；body 可含 <code>name</code>、<code>scenario_id</code>、<code>faction</code>、<code>solo</code></td></tr>
-<tr><td>POST</td><td>/api/v1/rooms/join</td><td>凭 <code>token</code> 加入；body 含 <code>token</code>、<code>name</code></td></tr>
+<tr><td>POST</td><td>/api/v1/rooms</td><td>创建空房间；body 可含 <code>scenario_id</code>、<code>solo</code>，不设置 Cookie</td></tr>
+<tr><td>POST</td><td>/api/v1/rooms/join</td><td>凭 <code>token</code>＋<code>faction</code>（A/B）加入；body 另可含 <code>name</code>。重复占阵营返回 409</td></tr>
 <tr><td>GET</td><td>/api/v1/watch/{token}</td><td>解析观战 token，返回 <code>room_id</code></td></tr>
 </table>
 

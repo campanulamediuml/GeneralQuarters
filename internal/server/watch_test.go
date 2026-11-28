@@ -29,12 +29,9 @@ type spectateView struct {
 func TestSpectateMergesBothFactions(t *testing.T) {
 	host, _, _, cleanup := setupTestServer(t)
 	defer cleanup()
-	var created roomResponse
-	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]string{"name": "A", "scenario_id": "_coral_real", "faction": "A"}, &created); status != http.StatusCreated {
-		t.Fatalf("创建房间状态码%d", status)
-	}
+	created := createTestPlayerRoom(t, host, "_coral_real", "A", false)
 	guest := newTestClient(t, host.base)
-	if status := guest.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]string{"token": created.JoinToken, "name": "B"}, nil); status != http.StatusOK {
+	if status := guest.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]string{"token": created.JoinToken, "name": "B", "faction": "B"}, nil); status != http.StatusOK {
 		t.Fatalf("加入房间状态码%d", status)
 	}
 	watcher := newTestClient(t, host.base)

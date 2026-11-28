@@ -27,10 +27,7 @@ func TestSweepIdleRoomsFreesActorButKeepsHistory(t *testing.T) {
 	defer server.Close()
 	client := newTestClient(t, server.URL)
 
-	var created roomResponse
-	if status := client.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_coral_real", "solo": true}, &created); status != http.StatusCreated {
-		t.Fatalf("创建房间状态码%d", status)
-	}
+	created := createTestPlayerRoom(t, client, "_coral_real", "A", true)
 	// 进门读一次状态：这一下才会把房间 worker 和它的 146KB 状态载进内存，
 	// 也就是"占内存"的那一份。
 	var first map[string]any
@@ -100,10 +97,7 @@ func TestSweepIdleRoomsKeepsConnectedRoom(t *testing.T) {
 	defer server.Close()
 	client := newTestClient(t, server.URL)
 
-	var created roomResponse
-	if status := client.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_coral_real", "solo": true}, &created); status != http.StatusCreated {
-		t.Fatalf("创建房间状态码%d", status)
-	}
+	created := createTestPlayerRoom(t, client, "_coral_real", "A", true)
 	var first map[string]any
 	if status := client.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &first); status != http.StatusOK {
 		t.Fatalf("读状态失败：%d", status)
