@@ -13,7 +13,7 @@ func TestGroundCoverReturnMovesWholeFormation(t *testing.T) {
 		t.Fatal("找不到莫尔兹比港机场")
 	}
 	planes := []*AirfieldAirUnit{}
-	for _, id := range []string{"af-a-moresby-p40-1", "af-a-moresby-p40-2", "af-a-moresby-p40-3"} {
+	for _, id := range []string{"af-a-moresby-p39-1", "af-a-moresby-p39-2", "af-a-moresby-p39-3"} {
 		plane := state.GroundAir[id]
 		if plane == nil {
 			t.Fatalf("缺少 %s", id)
@@ -53,7 +53,7 @@ func TestGroundCoverReturnLandsBeforeDark(t *testing.T) {
 		t.Fatal("找不到莫尔兹比港机场")
 	}
 	planes := []*AirfieldAirUnit{}
-	for _, id := range []string{"af-a-moresby-p40-1", "af-a-moresby-p40-2", "af-a-moresby-p40-3"} {
+	for _, id := range []string{"af-a-moresby-p39-1", "af-a-moresby-p39-2", "af-a-moresby-p39-3"} {
 		plane := state.GroundAir[id]
 		if plane == nil {
 			t.Fatalf("缺少 %s", id)

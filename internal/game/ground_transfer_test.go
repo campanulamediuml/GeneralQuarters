@@ -10,7 +10,7 @@ func TestGroundAircraftTransfersToAnotherAirfield(t *testing.T) {
 	state.Turn = 17 // 05:20，起飞窗已开
 	UpdateDayNight(&state)
 
-	ids := []string{"af-a-moresby-p40-1", "af-a-moresby-p40-2"}
+	ids := []string{"af-a-moresby-p39-1", "af-a-moresby-p39-2"}
 	order := Order{Type: "LAUNCH_TRANSFER", AircraftIDs: ids, Coord: "3707"}
 	if err := ValidateGroundAirOrder(state, order); err != nil {
 		t.Fatalf("莫尔兹比 -> 凯恩斯 应该允许转场：%v", err)
@@ -50,7 +50,7 @@ func TestGroundTransferTargetAcceptsTaskTag(t *testing.T) {
 	state := coralCombatState(t)
 	state.Turn = 17
 	UpdateDayNight(&state)
-	ids := []string{"af-a-cairns-p40-1", "af-a-cairns-p40-2"}
+	ids := []string{"af-a-townsville-p40-1", "af-a-townsville-p40-2"}
 	launch := Order{Type: "LAUNCH_TRANSFER", AircraftIDs: ids}
 	if err := ValidateGroundAirOrder(state, launch); err != nil {
 		t.Fatalf("先建转场编队应该成功：%v", err)
@@ -72,24 +72,22 @@ func TestGroundTransferTargetAcceptsTaskTag(t *testing.T) {
 	}
 }
 
-// 航程不够就拒绝：F4F 转场航程 10×2.21≈22 hex，汤斯维尔到莫尔兹比 28 hex；
+// 航程不够就拒绝：P-39 转场航程 11×2.21≈24 hex，汤斯维尔到莫尔兹比 28 hex；
 // P-40 转场航程 17×2.21≈37 hex，同一段能飞。两架都先挪到汤斯维尔再测。
-// （F4F 基础航程从 9 改成 10 之后，凯恩斯→莫尔兹比 21 hex 已经够得着了，得换一段更长的航线。）
 func TestGroundTransferRangeIsEnforced(t *testing.T) {
 	state := coralCombatState(t)
 	state.Turn = 17
 	UpdateDayNight(&state)
-	for _, id := range []string{"af-a-cairns-fighter-1", "af-a-cairns-p40-1"} {
+	for _, id := range []string{"af-a-moresby-p39-1", "af-a-moresby-p40-1"} {
 		state.GroundAir[id].AirfieldID = "af-a-townsville"
 	}
-	order := Order{Type: "LAUNCH_TRANSFER", AircraftIDs: []string{"af-a-cairns-fighter-1"}, Coord: "1611"}
+	order := Order{Type: "LAUNCH_TRANSFER", AircraftIDs: []string{"af-a-moresby-p39-1"}, Coord: "1611"}
 	if err := ValidateGroundAirOrder(state, order); err == nil {
-		t.Fatal("F4F 航程不足以从汤斯维尔飞到莫尔兹比，应该报错")
+		t.Fatal("P-39 航程不足以从汤斯维尔飞到莫尔兹比，应该报错")
 	}
-	// P-40 转场航程 17×2.21≈38 hex，同一段航程应当允许。
-	ok := Order{Type: "LAUNCH_TRANSFER", AircraftIDs: []string{"af-a-cairns-p40-1"}, Coord: "1611"}
+	ok := Order{Type: "LAUNCH_TRANSFER", AircraftIDs: []string{"af-a-moresby-p40-1"}, Coord: "1611"}
 	if err := ValidateGroundAirOrder(state, ok); err != nil {
-		t.Fatalf("P-40 应该能飞凯恩斯 -> 莫尔兹比：%v", err)
+		t.Fatalf("P-40 应该能飞汤斯维尔 -> 莫尔兹比：%v", err)
 	}
 }
 
@@ -103,9 +101,9 @@ func TestGroundTransferDestinationRules(t *testing.T) {
 		order Order
 	}{
 		{"水上机转陆地机场", Order{Type: "LAUNCH_TRANSFER", AircraftIDs: []string{"af-a-vila-pby-1"}, Coord: "3707"}},
-		{"转场到敌方机场", Order{Type: "LAUNCH_TRANSFER", AircraftIDs: []string{"af-a-cairns-p40-1"}, Coord: "0831"}},
-		{"转场到没有机场的hex", Order{Type: "LAUNCH_TRANSFER", AircraftIDs: []string{"af-a-cairns-p40-1"}, Coord: "3100"}},
-		{"转场到同一个机场", Order{Type: "LAUNCH_TRANSFER", AircraftIDs: []string{"af-a-cairns-p40-1"}, Coord: "3707"}},
+		{"转场到敌方机场", Order{Type: "LAUNCH_TRANSFER", AircraftIDs: []string{"af-a-townsville-p40-1"}, Coord: "0831"}},
+		{"转场到没有机场的hex", Order{Type: "LAUNCH_TRANSFER", AircraftIDs: []string{"af-a-townsville-p40-1"}, Coord: "3100"}},
+		{"转场到同一个机场", Order{Type: "LAUNCH_TRANSFER", AircraftIDs: []string{"af-a-townsville-p40-1"}, Coord: "4410"}},
 	}
 	for _, test := range cases {
 		if err := ValidateGroundAirOrder(state, test.order); err == nil {

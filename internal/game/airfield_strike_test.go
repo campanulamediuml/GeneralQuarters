@@ -15,9 +15,9 @@ func TestLandBasedStrikeOnEnemyAirfield(t *testing.T) {
 	before := airfield.Strength
 	beforePlanes := len(sortedGroundAirIDs(state, airfield.ID))
 
-	// 拉包尔的两架 G4M 挂炸弹去打莫尔兹比。
+	// 拉包尔的两架 G3M 挂炸弹去打莫尔兹比。
 	taskID := "af-strike-moresby"
-	for _, id := range []string{"af-b-rabaul-g4m-1", "af-b-rabaul-g4m-2"} {
+	for _, id := range []string{"af-b-rabaul-g3m-1", "af-b-rabaul-g3m-2"} {
 		plane := state.GroundAir[id]
 		if plane == nil {
 			t.Fatalf("找不到 %s", id)
@@ -103,9 +103,9 @@ func TestFighterStrafesAirfieldWithOnePoint(t *testing.T) {
 		if airfield == nil {
 			t.Fatal("找不到莫尔兹比机场")
 		}
-		fighter := state.GroundAir["af-b-lae-a5m-1"]
+		fighter := state.GroundAir["af-b-rabaul-fighter-1"]
 		if fighter == nil {
-			t.Fatal("找不到莱城的 A5M")
+			t.Fatal("找不到拉包尔的 A6M2")
 		}
 		fighter.TaskID = taskID
 		fighter.TaskKind = "attack"

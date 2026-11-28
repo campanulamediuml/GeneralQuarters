@@ -1,6 +1,6 @@
 {
  "id": "_marianas",
- "version": 4,
+ "version": 5,
  "name": "马里亚纳 · 1944年6月（架空：8 艘舰队航母 vs 联合舰队五群）",
  "map": "_marianas",
  "units": "marianas",
@@ -3144,145 +3144,145 @@
    "id": "us-cv-07-f6f-x1",
    "unit": "f6f",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-07-f6f-x2",
    "unit": "f6f",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-07-f6f-x3",
    "unit": "f6f",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-07-f6f-x4",
    "unit": "f6f",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-07-f6f-x5",
    "unit": "f6f",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-07-f6f-x6",
    "unit": "f6f",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-07-f6f-x7",
    "unit": "f6f",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-07-f6f-x8",
    "unit": "f6f",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-07-f6f-x9",
    "unit": "f6f",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-07-f6f-x10",
    "unit": "f6f",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-07-sb2c-x1",
    "unit": "sb2c",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-07-sb2c-x2",
    "unit": "sb2c",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-07-sb2c-x3",
    "unit": "sb2c",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-07-sb2c-x4",
    "unit": "sb2c",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-07-sb2c-x5",
    "unit": "sb2c",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-07-sb2c-x6",
    "unit": "sb2c",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-07-sb2c-x7",
    "unit": "sb2c",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-07-sb2c-x8",
    "unit": "sb2c",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-07-tbf-x1",
    "unit": "tbf",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-07-tbf-x2",
    "unit": "tbf",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-07-tbf-x3",
    "unit": "tbf",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-07-tbf-x4",
    "unit": "tbf",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-07-tbf-x5",
    "unit": "tbf",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-07-tbf-x6",
    "unit": "tbf",
    "carrier": "us-cv-07",
-   "skill": "veteran"
+   "skill": "ace"
   },
   {
    "id": "us-cv-08-f6f-x1",

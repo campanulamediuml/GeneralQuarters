@@ -48,6 +48,7 @@ type Event struct {
 	Sequence  int       `json:"sequence"`
 	Type      string    `json:"type"`
 	Text      string    `json:"text"`
+	Audience  string    `json:"audience"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -612,11 +613,11 @@ func (s *Store) StartBattle(ctx context.Context, room Room, newState game.State,
 
 // AllEvents 是观战视角的战报：不按 audience 过滤，双方阵营的内部事件都能看到。
 func (s *Store) AllEvents(ctx context.Context, roomID string) ([]Event, error) {
-	return s.recentEvents(ctx, `SELECT id,turn,sequence,type,text,created_at FROM events WHERE room_id=? ORDER BY id DESC LIMIT 200`, roomID)
+	return s.recentEvents(ctx, `SELECT id,turn,sequence,type,text,audience,created_at FROM events WHERE room_id=? ORDER BY id DESC LIMIT 200`, roomID)
 }
 
 func (s *Store) Events(ctx context.Context, roomID, faction string) ([]Event, error) {
-	return s.recentEvents(ctx, `SELECT id,turn,sequence,type,text,created_at FROM events WHERE room_id=? AND (audience='all' OR audience=?) ORDER BY id DESC LIMIT 100`, roomID, faction)
+	return s.recentEvents(ctx, `SELECT id,turn,sequence,type,text,audience,created_at FROM events WHERE room_id=? AND (audience='all' OR audience=?) ORDER BY id DESC LIMIT 100`, roomID, faction)
 }
 
 // recentEvents 取最近若干条，但按时间正序（旧 -> 新）返回。
@@ -635,7 +636,7 @@ func (s *Store) recentEvents(ctx context.Context, query string, args ...any) ([]
 	for rows.Next() {
 		var event Event
 		var created string
-		if err := rows.Scan(&event.ID, &event.Turn, &event.Sequence, &event.Type, &event.Text, &created); err != nil {
+		if err := rows.Scan(&event.ID, &event.Turn, &event.Sequence, &event.Type, &event.Text, &event.Audience, &created); err != nil {
 			return nil, err
 		}
 		event.CreatedAt, _ = time.Parse(time.RFC3339Nano, created)

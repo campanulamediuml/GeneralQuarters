@@ -90,18 +90,17 @@ func TestAirfieldBusycycle(t *testing.T) {
 	}
 }
 
-// TestAirStrikeTargetWeightsFollowRemainingPoints 空袭落点按"跑道生命值:岸炮:驻机"加权摇一次。
+// TestAirStrikeTargetWeightsFollowRemainingPoints 空袭落点只按"跑道生命值:岸炮"加权，驻机不进入权重。
 func TestAirStrikeTargetWeightsFollowRemainingPoints(t *testing.T) {
 	state := sandboxState(t)
 	airfield := state.Airfields["af-b-sentry"]
 	airfield.Strength = 15
-	parked := len(sortedGroundAirIDs(state, airfield.ID))
-	total := 15 + airfield.Coastal + parked
+	total := 15 + airfield.Coastal
 	var rng uint64 = 20261127
 	const draws = 30000
 	counts := map[airStrikeTarget]int{}
 	for i := 0; i < draws; i++ {
-		counts[airStrikeTargetRoll(&rng, state, airfield)]++
+		counts[airStrikeTargetRoll(&rng, airfield)]++
 	}
 	wantRunway := float64(15) / float64(total)
 	wantCoastal := float64(airfield.Coastal) / float64(total)
@@ -111,15 +110,17 @@ func TestAirStrikeTargetWeightsFollowRemainingPoints(t *testing.T) {
 	if share := float64(counts[airStrikeCoastal]) / draws; share < wantCoastal-0.02 || share > wantCoastal+0.02 {
 		t.Fatalf("落岸炮比例应约 %.3f，实际 %.3f", wantCoastal, share)
 	}
-	// 岸炮清零 → 不再落岸炮；没有驻机 → 不再落驻机。
 	airfield.Coastal = 0
-	if counts = map[airStrikeTarget]int{}; true {
-		for i := 0; i < 2000; i++ {
-			counts[airStrikeTargetRoll(&rng, state, airfield)]++
-		}
+	counts = map[airStrikeTarget]int{}
+	for i := 0; i < 2000; i++ {
+		counts[airStrikeTargetRoll(&rng, airfield)]++
 	}
-	if counts[airStrikeCoastal] != 0 {
-		t.Fatalf("岸炮清零后不该再有命中落在岸炮上：%d", counts[airStrikeCoastal])
+	if counts[airStrikeCoastal] != 0 || counts[airStrikeRunway] != 2000 {
+		t.Fatalf("岸炮清零后应全部落跑道：%+v", counts)
+	}
+	airfield.Strength = 0
+	if got := airStrikeTargetRoll(&rng, airfield); got != airStrikeRunway {
+		t.Fatalf("跑道和岸炮都归零时仍应能命中严重破坏的机场：%v", got)
 	}
 }
 
@@ -149,21 +150,49 @@ func TestGroundStrikeDamageAirfield(t *testing.T) {
 	if report.BombAttempts == 0 {
 		t.Fatalf("应记录投弹次数：%+v", report)
 	}
-	// 命中只落在摇中的那一项上：扣机场生命值的只有"落跑道"的命中。
 	if airfield.Strength != before-report.AirfieldRunwayHits {
 		t.Fatalf("机场生命值应只被落跑道的命中扣减：before=%d after=%d 落跑道=%d", before, airfield.Strength, report.AirfieldRunwayHits)
 	}
-	if report.AirfieldRunwayHits+report.AirfieldCoastal+report.GroundLoss > report.StrikeHits {
-		t.Fatalf("命中拆分不应超过总命中：落跑道%d 岸炮%d 驻机%d 总命中%d", report.AirfieldRunwayHits, report.AirfieldCoastal, report.GroundLoss, report.StrikeHits)
+	if report.AirfieldRunwayHits+report.AirfieldCoastal != report.StrikeHits {
+		t.Fatalf("每次投弹命中应只落跑道或岸炮：落跑道%d 岸炮%d 总命中%d", report.AirfieldRunwayHits, report.AirfieldCoastal, report.StrikeHits)
 	}
-	if report.StrikeHits > 0 && report.AirfieldRunwayHits == 0 && report.AirfieldCoastal == 0 && report.GroundLoss == 0 {
-		t.Fatal("有命中却三项都是 0：落点结算没有生效")
+	if report.AirfieldRunwayHits > 0 && beforeGround > 0 && report.GroundLoss == 0 {
+		t.Fatal("有跑道命中且有地面飞机时，应附带摧毁至多1个地面算子")
+	}
+	if report.GroundLoss > report.AirfieldRunwayHits+report.StrafeHits {
+		t.Fatalf("地面飞机损失只能来自跑道命中和扫射：驻机%d 跑道%d 扫射%d", report.GroundLoss, report.AirfieldRunwayHits, report.StrafeHits)
 	}
 	if report.GroundLoss > beforeGround {
 		t.Fatalf("摧毁的地面飞机不能超过原有数量：%d/%d", report.GroundLoss, beforeGround)
 	}
 	if len(events) == 0 {
 		t.Fatal("对地空袭应产生战报")
+	}
+}
+
+func TestAirfieldLossesDestroyOnlyGroundedAircraft(t *testing.T) {
+	state := State{GroundAir: map[string]*AirfieldAirUnit{}}
+	airfield := &Airfield{ID: "af"}
+	airborneStatuses := []string{"cap", "asw", "cover", "recon", "attack_holding", "attack", "transfer"}
+	groundStatuses := []string{"hangar", "service", "deck", "ready", "recovery"}
+	for _, status := range airborneStatuses {
+		state.GroundAir["air-"+status] = &AirfieldAirUnit{ID: "air-" + status, AirfieldID: airfield.ID, Status: status}
+	}
+	for _, status := range groundStatuses {
+		state.GroundAir["ground-"+status] = &AirfieldAirUnit{ID: "ground-" + status, AirfieldID: airfield.ID, Status: status}
+	}
+	if destroyed := destroyGroundAircraft(&state, airfield, len(state.GroundAir)); destroyed != len(groundStatuses) {
+		t.Fatalf("应摧毁全部%d个地面算子，实际%d", len(groundStatuses), destroyed)
+	}
+	for _, status := range airborneStatuses {
+		if state.GroundAir["air-"+status] == nil {
+			t.Fatalf("空中%s算子不应被地面损失抽中", status)
+		}
+	}
+	for _, status := range groundStatuses {
+		if state.GroundAir["ground-"+status] != nil {
+			t.Fatalf("地面%s算子应能被摧毁", status)
+		}
 	}
 }
 

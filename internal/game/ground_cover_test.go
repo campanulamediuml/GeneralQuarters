@@ -123,7 +123,7 @@ func TestGroundCoverMission(t *testing.T) {
 		t.Fatal("轰炸机不应该能执行空中掩护")
 	}
 
-	order := Order{Type: "LAUNCH_COVER", AircraftIDs: []string{"af-a-moresby-p40-1", "af-a-moresby-p40-2"}, Coord: "1511"}
+	order := Order{Type: "LAUNCH_COVER", AircraftIDs: []string{"af-a-moresby-p40-1", "af-a-moresby-p39-1"}, Coord: "1511"}
 	if err := ValidateGroundAirOrder(state, order); err != nil {
 		t.Fatalf("战斗机应当能执行空中掩护：%v", err)
 	}

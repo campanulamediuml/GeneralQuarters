@@ -818,17 +818,30 @@ func bombAttackDisadvantage(aircraft *AirUnit) bool {
 	return aircraft.Loadout != LoadoutNone && aircraft.Loadout.Weapon() == WeaponBomb
 }
 
-// strikeRollHits 掷一次对舰命中判定。disadvantage 表示"取劣势"：掷两次，两次都过才算命中
-// （等价于把命中率平方，25% → 6.25%）。用它是为了让"没法俯冲轰炸"体现成判定档位，
-// 而不是又一个百分比修正——和飞行员熟练度、机库爆炸用的是同一套骰子语言。
-func strikeRollHits(state *State, chance float64, disadvantage bool) bool {
-	if probabilityRoll(&state.RNGState) >= chance {
-		return false
+// strikeDisadvantageDice 返回一次对舰投弹的判定骰数：普通 1 骰，鱼雷机挂炸弹 2 骰取劣，
+// 夜间实际发生空袭时统一为 3 骰取劣，不与挂载惩罚叠成 4 骰。
+func strikeDisadvantageDice(state State, attacker *AirUnit) int {
+	if state.Night {
+		return 3
 	}
-	if !disadvantage {
-		return true
+	if bombAttackDisadvantage(attacker) {
+		return 2
 	}
-	return probabilityRoll(&state.RNGState) < chance
+	return 1
+}
+
+// strikeRollHits 掷一次对舰命中判定；多骰取劣时所有判定都通过才算命中。
+// 2 骰把 50% 命中率降为 25%，夜间 3 骰则降为 12.5%。
+func strikeRollHits(state *State, chance float64, dice int) bool {
+	if dice < 1 {
+		dice = 1
+	}
+	for range dice {
+		if probabilityRoll(&state.RNGState) >= chance {
+			return false
+		}
+	}
+	return true
 }
 
 func isHighAltitudeBomber(aircraft *AirUnit) bool {
@@ -1001,8 +1014,8 @@ func resolveBombingOn(state *State, attacker *AirUnit, target *Unit, mixed, capR
 		antiShip++
 	}
 	chance := strikeHitChance(*state, attacker, target, mixed, capRemaining)
-	// 鱼雷机挂炸弹时没法俯冲，只能低空水平投弹，对舰命中判定取劣势。
-	disadvantage := bombAttackDisadvantage(attacker)
+	// 夜间在实际投弹这一回合生效；与鱼雷机挂炸弹的 2 骰取劣不叠加。
+	dice := strikeDisadvantageDice(*state, attacker)
 	hits := 0
 	// 记录尝试次数，即使 0 命中也要让战报/动画知道"确实投弹了"，而不是看起来漏结算。
 	report.BombAttempts += antiShip
@@ -1012,7 +1025,7 @@ func resolveBombingOn(state *State, attacker *AirUnit, target *Unit, mixed, capR
 		}
 	}
 	for ; antiShip > 0; antiShip-- {
-		if !strikeRollHits(state, chance, disadvantage) {
+		if !strikeRollHits(state, chance, dice) {
 			continue
 		}
 		hits++
@@ -1043,7 +1056,11 @@ func resolveBombingOn(state *State, attacker *AirUnit, target *Unit, mixed, capR
 			report.TargetAllocations[index].Hits += hits
 		}
 	}
-	events = append(events, EngineEvent{Type: "strike_bombing", Audience: "all", Text: fmt.Sprintf("%s攻击%s：命中率%.1f%%，命中%d次", attacker.Model, target.Name, chance, hits)})
+	nightNote := ""
+	if state.Night {
+		nightNote = "（夜间 3 骰取劣）"
+	}
+	events = append(events, EngineEvent{Type: "strike_bombing", Audience: "all", Text: fmt.Sprintf("%s攻击%s：命中率%.1f%%，命中%d次%s", attacker.Model, target.Name, chance, hits, nightNote)})
 	// 规则书 83 行：携带炸弹或鱼雷的飞机攻击后变为轻载，剩余航程 +20%。
 	markBombed(attacker)
 	return events
@@ -1348,6 +1365,13 @@ func advanceAircraftReturn(state *State, aircraft *AirUnit) []EngineEvent {
 		}
 		if aircraft.DivertAirfield != "" {
 			return advanceAirfieldDivert(state, aircraft)
+		}
+		if aircraft.Range() > 0 {
+			aircraft.Status = "recovery"
+			aircraft.Returning = true
+			aircraft.TrackingFleetID = ""
+			aircraft.Spend(1)
+			return []EngineEvent{{Type: "air_loiter", Audience: aircraft.Faction, Text: fmt.Sprintf("%s失去母舰且无可用甲板，在空中盘旋（剩余航程%d）", aircraft.Model, aircraft.Range())}}
 		}
 		delete(state.Aircraft, aircraft.ID)
 		return []EngineEvent{{Type: "air_destroyed", Audience: aircraft.Faction, Text: aircraft.Model + "失去母舰且无可用甲板或机场，航空算子被移除"}}

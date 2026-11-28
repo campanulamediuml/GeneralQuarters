@@ -637,34 +637,21 @@ type airStrikeTarget int
 const (
 	airStrikeRunway airStrikeTarget = iota
 	airStrikeCoastal
-	airStrikeAircraft
 )
 
-// airStrikeTargetRoll 按"跑道生命值 : 岸炮 : 驻机架数"的剩余点数加权摇一次落点。
-// 一架飞机的一次命中不会同时炸跑道、压岸炮、毁驻机（规则书 756 行）。
-func airStrikeTargetRoll(rng *uint64, state State, airfield *Airfield) airStrikeTarget {
-	runway := airfield.Strength
-	if runway < 0 {
-		runway = 0
-	}
-	coastal := airfield.Coastal
-	if coastal < 0 {
-		coastal = 0
-	}
-	parked := len(sortedGroundAirIDs(state, airfield.ID))
-	total := runway + coastal + parked
+// airStrikeTargetRoll 只按"跑道生命值 : 岸炮"加权摇落点；驻机不作为独立落点。
+func airStrikeTargetRoll(rng *uint64, airfield *Airfield) airStrikeTarget {
+	runway := max(0, airfield.Strength)
+	coastal := max(0, airfield.Coastal)
+	total := runway + coastal
 	if total <= 0 {
 		return airStrikeRunway
 	}
 	roll := int(nextUint64(rng) % uint64(total))
-	switch {
-	case roll < runway:
+	if roll < runway {
 		return airStrikeRunway
-	case roll < runway+coastal:
-		return airStrikeCoastal
-	default:
-		return airStrikeAircraft
 	}
+	return airStrikeCoastal
 }
 
 // resolveGroundStrike 按规则书顺序结算对机场的空袭：
@@ -780,17 +767,16 @@ func resolveGroundStrike(state *State, taskID, coord string) []EngineEvent {
 			}
 			hits++
 			report.StrikeHits++
-			// 一次命中只结算摇中的那一项：岸炮 / 跑道 / 驻机。
-			switch airStrikeTargetRoll(&state.RNGState, *state, airfield) {
+			// 投弹只在跑道与岸炮之间摇号；命中跑道时附带摧毁至多 1 个地面算子。
+			switch airStrikeTargetRoll(&state.RNGState, airfield) {
 			case airStrikeCoastal:
 				airfield.Coastal--
 				coastalLoss++
-			case airStrikeAircraft:
-				groundKills += destroyGroundAircraft(state, airfield, 1)
 			default:
 				airfield.Strength--
 				report.AirfieldRunwayHits++
-				// 规则书：攻击机场造成伤害会影响正在准备的航空任务——跑道一被打，滑行/待飞的算子当场退回机库
+				groundKills += destroyGroundAircraft(state, airfield, 1)
+				// 跑道一被打，滑行/待飞的算子当场退回机库。
 				events = append(events, interruptAirfieldOperations(state, airfield)...)
 			}
 		}
@@ -801,7 +787,7 @@ func resolveGroundStrike(state *State, taskID, coord string) []EngineEvent {
 		}
 		events = append(events, EngineEvent{Type: "ground_strike", Audience: "all", Text: fmt.Sprintf("%s攻击%s：命中率%.1f%%，命中%d次", aircraft.Model, airfield.Name, chance, hits)})
 	}
-	// 命中只落在被摇中的那一项上：岸炮、跑道、驻机三者分开记账。
+	// 岸炮与跑道是互斥落点；地面飞机损失来自跑道命中和战斗机扫射。
 	report.GroundLoss = groundKills
 	report.AirfieldHit = report.StrikeHits
 	report.AirfieldCoastal = coastalLoss
@@ -885,7 +871,7 @@ func destroyGroundAircraft(state *State, airfield *Airfield, n int) int {
 	ids := []string{}
 	for _, id := range sortedGroundAirIDs(*state, airfield.ID) {
 		aircraft := state.GroundAir[id]
-		if aircraft.Status == "hangar" || aircraft.Status == "service" || aircraft.Status == "deck" || aircraft.Status == "ready" {
+		if aircraft != nil && !airfieldAirborne(aircraft) {
 			ids = append(ids, id)
 		}
 	}

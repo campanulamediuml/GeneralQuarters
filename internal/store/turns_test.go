@@ -19,6 +19,53 @@ func newTestStore(t *testing.T) *Store {
 	return store
 }
 
+func TestEventsRetainAudience(t *testing.T) {
+	ctx := context.Background()
+	store := newTestStore(t)
+	state := game.State{ScenarioID: "_test", ScenarioName: "测试", Turn: 1}
+	room := Room{ID: "room1", JoinToken: "tok", Status: "running", Turn: 1, Version: 1, State: state}
+	if err := store.CreateRoom(ctx, room); err != nil {
+		t.Fatalf("建房失败：%v", err)
+	}
+	_, err := store.Resolve(ctx, room, state, []game.EngineEvent{
+		{Type: "us_event", Text: "美军事件", Audience: "A"},
+		{Type: "jp_event", Text: "日军事件", Audience: "B"},
+		{Type: "public_event", Text: "公共事件", Audience: "all"},
+	})
+	if err != nil {
+		t.Fatalf("写入事件失败：%v", err)
+	}
+
+	events, err := store.AllEvents(ctx, room.ID)
+	if err != nil {
+		t.Fatalf("读取观战事件失败：%v", err)
+	}
+	if len(events) != 4 {
+		t.Fatalf("观战事件数=%d，期望4", len(events))
+	}
+	for index, want := range []string{"all", "A", "B", "all"} {
+		if events[index].Audience != want {
+			t.Fatalf("事件%d阵营=%q，期望%q", index, events[index].Audience, want)
+		}
+	}
+	for _, faction := range []string{"A", "B"} {
+		filtered, err := store.Events(ctx, room.ID, faction)
+		if err != nil {
+			t.Fatalf("读取%s事件失败：%v", faction, err)
+		}
+		own := false
+		for _, event := range filtered {
+			if event.Audience != "all" && event.Audience != faction {
+				t.Fatalf("%s视图泄露了%s事件", faction, event.Audience)
+			}
+			own = own || event.Audience == faction
+		}
+		if !own {
+			t.Fatalf("%s视图缺少己方事件", faction)
+		}
+	}
+}
+
 // 存档写进去就是 gzip blob：不需要后台 worker，也不会留下"标记和内容对不上"的中间行。
 func TestTurnSnapshotIsGzipBlob(t *testing.T) {
 	ctx := context.Background()

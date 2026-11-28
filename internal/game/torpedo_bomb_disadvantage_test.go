@@ -48,10 +48,10 @@ func TestTorpedoBomberBombDisadvantage(t *testing.T) {
 	plain := 0
 	disadvantage := 0
 	for i := 0; i < trials; i++ {
-		if strikeRollHits(&state, 50, false) {
+		if strikeRollHits(&state, 50, 1) {
 			plain++
 		}
-		if strikeRollHits(&state, 50, true) {
+		if strikeRollHits(&state, 50, 2) {
 			disadvantage++
 		}
 	}
@@ -62,5 +62,36 @@ func TestTorpedoBomberBombDisadvantage(t *testing.T) {
 	}
 	if disadvantage < quarter-quarter/3 || disadvantage > quarter+quarter/3 {
 		t.Fatalf("取劣势命中 %d/%d，偏离 25%%（命中率平方）太多", disadvantage, trials)
+	}
+}
+
+func TestNightFleetStrikeUsesThreeDiceDisadvantage(t *testing.T) {
+	state := State{}
+	dive := &AirUnit{Kind: "dive_bomber", Loadout: LoadoutBomb}
+	torpedoBomb := &AirUnit{Kind: "torpedo_bomber", Loadout: LoadoutBomb}
+	if got := strikeDisadvantageDice(state, dive); got != 1 {
+		t.Fatalf("白天普通对舰投弹应为1骰，实际%d", got)
+	}
+	if got := strikeDisadvantageDice(state, torpedoBomb); got != 2 {
+		t.Fatalf("白天鱼雷机挂炸弹应为2骰取劣，实际%d", got)
+	}
+	state.Night = true
+	for _, attacker := range []*AirUnit{dive, torpedoBomb} {
+		if got := strikeDisadvantageDice(state, attacker); got != 3 {
+			t.Fatalf("夜间%s对舰投弹应为3骰取劣，实际%d", attacker.Kind, got)
+		}
+	}
+
+	// 50% 单骰命中经过 3 骰取劣后为 12.5%。
+	const trials = 4000
+	state.RNGState = 42
+	hits := 0
+	for range trials {
+		if strikeRollHits(&state, 50, 3) {
+			hits++
+		}
+	}
+	if hits < 350 || hits > 650 {
+		t.Fatalf("夜间3骰取劣命中%d/%d，偏离12.5%%太多", hits, trials)
 	}
 }

@@ -93,6 +93,7 @@ func sinkUnit(state *State, unit *Unit) []EngineEvent {
 		if aircraft.CarrierID != unit.ID {
 			continue
 		}
+		aircraft.OriginFleetID = FleetKey(unit)
 		if airborne(aircraft) {
 			// 已经在编队里的攻击机不能因为母舰此刻沉没就中止任务：
 			// 同一回合双方的空袭是依次结算的，先结算的一方把对手母舰打沉，

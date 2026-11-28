@@ -2,7 +2,7 @@ package game
 
 import "testing"
 
-// 珊瑚海 · 真实比例：美军在 3250 周围 8 hex、日军在 0831 周围 8 hex 的部署区里随机出生，
+// 珊瑚海 · 真实比例：美军在 3250 周围 8 hex、日军在 0330 周围 8 hex 的部署区里随机出生，
 // 时间线按 20 分钟一回合配置。
 func TestCoralRealSpawnsInDeployZones(t *testing.T) {
 	scenario, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")
@@ -30,7 +30,7 @@ func TestCoralRealSpawnsInDeployZones(t *testing.T) {
 	if zones["A"].Anchor != "3250" || zones["A"].Radius != 8 {
 		t.Fatalf("美军部署区配置错误：%+v", zones["A"])
 	}
-	if zones["B"].Anchor != "0831" || zones["B"].Radius != 8 {
+	if zones["B"].Anchor != "0330" || zones["B"].Radius != 8 {
 		t.Fatalf("日军部署区配置错误：%+v", zones["B"])
 	}
 	state, err := NewState(scenario, gameMap, catalog, 1)
@@ -267,8 +267,23 @@ func TestCoralRealMoresbySupplyObjective(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cargo := factionCargoLeft(state, "B"); cargo < 20 {
-		t.Fatalf("日军运输船总载货不足 20 点：%d", cargo)
+	composition := map[string]int{}
+	for _, unit := range state.Units {
+		if unit.FleetID != "6DS" {
+			continue
+		}
+		composition[unit.Type]++
+		if unit.Type == "TRS" && unit.Card.Cargo != 6 {
+			t.Fatalf("第六水雷战队运输船 %s 应载货 6 点，实际 %d", unit.Name, unit.Card.Cargo)
+		}
+	}
+	for unitType, want := range map[string]int{"CL": 1, "DD": 5, "TRS": 10} {
+		if composition[unitType] != want {
+			t.Fatalf("第六水雷战队应有 %d 艘 %s，实际 %d（编成：%v）", want, unitType, composition[unitType], composition)
+		}
+	}
+	if cargo := factionCargoLeft(state, "B"); cargo != 60 {
+		t.Fatalf("日军运输船总载货应为 60 点，实际 %d", cargo)
 	}
 }
 
@@ -336,6 +351,46 @@ func TestCoralRealUSRadar(t *testing.T) {
 	}
 	if seen == 0 {
 		t.Fatal("没有找到美军舰船")
+	}
+}
+
+// 翔鹤、瑞鹤、列克星敦和约克城使用剧本指定的舰载航空队规模。
+func TestCoralRealFleetCarrierAirGroups(t *testing.T) {
+	scenario, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err := NewState(scenario, gameMap, catalog, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]map[string]int{
+		"b-cv-01": {"fighter": 5, "dive_bomber": 5, "torpedo_bomber": 6},
+		"b-cv-02": {"fighter": 5, "dive_bomber": 5, "torpedo_bomber": 6},
+		"a-cv-01": {"fighter": 5, "dive_bomber": 9, "torpedo_bomber": 3},
+		"a-cv-02": {"fighter": 4, "dive_bomber": 9, "torpedo_bomber": 3},
+	}
+	for carrierID, expected := range want {
+		counts := map[string]int{}
+		for _, aircraft := range state.Aircraft {
+			if aircraft.CarrierID == carrierID {
+				counts[aircraft.DefinitionID]++
+			}
+		}
+		total := 0
+		for definitionID, count := range expected {
+			if counts[definitionID] != count {
+				t.Fatalf("%s 的 %s 应为 %d，实际 %d（全部：%v）", carrierID, definitionID, count, counts[definitionID], counts)
+			}
+			total += count
+		}
+		actualTotal := 0
+		for _, count := range counts {
+			actualTotal += count
+		}
+		if actualTotal != total {
+			t.Fatalf("%s 应载 %d 个航空算子，实际 %d（%v）", carrierID, total, actualTotal, counts)
+		}
 	}
 }
 

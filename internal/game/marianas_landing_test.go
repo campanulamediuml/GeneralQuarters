@@ -55,9 +55,16 @@ func TestMarianasLandingGroups(t *testing.T) {
 	}
 	for _, id := range []string{"us-cv-01", "us-cv-07", "us-cv-08"} {
 		counts := map[string]int{}
+		wantSkill := PilotVeteran
+		if id == "us-cv-07" {
+			wantSkill = PilotAce
+		}
 		for _, aircraft := range state.Aircraft {
 			if aircraft.CarrierID == id {
 				counts[aircraft.DefinitionID]++
+				if aircraft.Skill != wantSkill {
+					t.Fatalf("%s 的 %s 熟练度为 %s，期望 %s", id, aircraft.ID, aircraft.Skill, wantSkill)
+				}
 			}
 		}
 		if counts["f6f"] != 10 || counts["sb2c"] != 8 || counts["tbf"] != 6 {

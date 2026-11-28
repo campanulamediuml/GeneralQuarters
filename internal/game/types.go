@@ -214,6 +214,8 @@ type Submarine struct {
 	Picture string `json:"picture"`
 	// Coord 为空表示部署阶段还没落位（Deployed=false）。
 	Coord string `json:"coord"`
+	// HomeCoord 是初始部署落点，随机巡逻不能离开其周围 2 hex。
+	HomeCoord string `json:"home_coord"`
 	// Reserve 是开局随机撒在地图里的预备潜艇：连本方也看不到、不能摆位。
 	Reserve  bool `json:"reserve"`
 	Deployed bool `json:"deployed"`
@@ -769,8 +771,10 @@ type AirUnit struct {
 	// 下一支新编队重新拿到 I，编号不会随着列表里挂着的已出发编队往后漂。
 	TaskLane    int    `json:"task_lane"`
 	OriginCoord string `json:"origin_coord"`
-	Coord       string `json:"coord"`
-	TargetCoord string `json:"target_coord"`
+	// OriginFleetID 在母舰沉没后保留原舰队身份，备降时优先选择该舰队的其他航母。
+	OriginFleetID string `json:"origin_fleet_id,omitempty"`
+	Coord         string `json:"coord"`
+	TargetCoord   string `json:"target_coord"`
 	// TargetFleetID 是打击编队认领的敌方舰队：目标 hex 打空之后靠它去追最新情报位置。
 	TargetFleetID string `json:"target_fleet_id"`
 	// CoverUnitID 是空中掩护跟随的友军单位：目标 hex 里有己方舰队时自动认领，
@@ -1045,7 +1049,7 @@ type AirCombatReport struct {
 	// 对舰：被攻击舰队的船只清单，以及每个算子的目标分配和命中次数
 	Ships             []AirShipCard      `json:"ships"`
 	TargetAllocations []StrikeAllocation `json:"target_allocations"`
-	// 对地：机场损失与地面飞机损失。空袭命中一次只落在跑道/岸炮/驻机其中之一，
+	// 对地：机场损失与地面飞机损失。投弹落点只有跑道/岸炮，跑道命中附带地面飞机损失，
 	// 所以 AirfieldHit 是命中总数，真正扣机场生命值的是 AirfieldRunwayHits。
 	AirfieldHit        int `json:"airfield_hits"`
 	AirfieldRunwayHits int `json:"airfield_runway_hits"`

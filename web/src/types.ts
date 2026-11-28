@@ -327,6 +327,7 @@ export interface GameEvent {
   sequence: number
   type: string
   text: string
+  audience: 'A' | 'B' | 'all'
   created_at: string
 }
 

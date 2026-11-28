@@ -1,6 +1,9 @@
 package game
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // submarineFixture 造一个最小状态：10x10 海图、双方各一支舰队。
 func submarineFixture() State {
@@ -48,6 +51,9 @@ func TestSubmarineDeployKeepsReservesHidden(t *testing.T) {
 		t.Fatalf("海格部署应通过：%v", err)
 	}
 	ApplySubDeploy(&state, order)
+	if deployed := state.Submarines[sub.ID]; deployed.HomeCoord != "0505" {
+		t.Fatalf("潜艇巡逻中心应是初始部署格 0505，实际 %s", deployed.HomeCoord)
+	}
 	if got := UndeployedSubmarines(state, "A"); got != 1 {
 		t.Fatalf("摆完一艘后应剩 1 艘未部署，实际 %d", got)
 	}
@@ -84,6 +90,9 @@ func TestStartSubmarinesHidesAndRollsPhase(t *testing.T) {
 		if !sub.Deployed || sub.Coord == "" {
 			t.Fatalf("开战后潜艇 %s 应已落位：%+v", id, sub)
 		}
+		if sub.HomeCoord != sub.Coord {
+			t.Fatalf("开战后潜艇 %s 的巡逻中心应是初始落点 %s，实际 %s", id, sub.Coord, sub.HomeCoord)
+		}
 		if sub.FirstMoveTurn < 1 || sub.FirstMoveTurn > 6 {
 			t.Fatalf("第一次巡逻回合应是 1d6，实际 %d", sub.FirstMoveTurn)
 		}
@@ -107,6 +116,9 @@ func TestSubmarinePatrolPhaseAndPinning(t *testing.T) {
 	state.Turn = 3
 	AdvanceSubmarines(&state)
 	sub := state.Submarines["sub-b-1"]
+	if sub.HomeCoord != "0504" {
+		t.Fatalf("旧存档首次巡逻应以当前位置 0504 为中心，实际 %s", sub.HomeCoord)
+	}
 	if Distance(sub.Coord, "0504") > 1 {
 		t.Fatalf("巡逻只走 1 hex，实际到了 %s", sub.Coord)
 	}
@@ -125,6 +137,40 @@ func TestSubmarinePatrolPhaseAndPinning(t *testing.T) {
 	AdvanceSubmarines(&state)
 	if state.Submarines["sub-b-1"].Coord != after {
 		t.Fatalf("被发现的潜艇应被钉在原地")
+	}
+}
+
+// TestSubmarinePatrolStaysWithinInitialDeploymentRadius 巡逻可以换向，但不能逐格漂出初始部署点周围 2 hex。
+func TestSubmarinePatrolStaysWithinInitialDeploymentRadius(t *testing.T) {
+	state := submarineFixture()
+	sub := &Submarine{
+		ID: "sub-b-1", Faction: "B", Name: "伊号", Coord: "0505", HomeCoord: "0505",
+		Deployed: true, FirstMoveTurn: 1, MoveInterval: 6,
+	}
+	state.Submarines = map[string]*Submarine{sub.ID: sub}
+	for turn := 1; turn <= 600; turn++ {
+		state.Turn = turn
+		before := sub.Coord
+		AdvanceSubmarines(&state)
+		if got := Distance(sub.Coord, sub.HomeCoord); got > submarinePatrolRadius {
+			t.Fatalf("第 %d 回合潜艇离开初始部署点周围 2 hex：%s -> %s，距离 %d", turn, before, sub.Coord, got)
+		}
+		if (turn-sub.FirstMoveTurn)%sub.MoveInterval == 0 && Distance(before, sub.Coord) > 1 {
+			t.Fatalf("第 %d 回合单次巡逻不能超过 1 hex：%s -> %s", turn, before, sub.Coord)
+		}
+	}
+	if sub.HomeCoord != "0505" {
+		t.Fatalf("巡逻不能改写初始部署点，实际 %s", sub.HomeCoord)
+	}
+
+	// 已经位于半径边缘时，所有更靠外的相邻格都必须被排除。
+	for seed := uint64(1); seed <= 64; seed++ {
+		state.RNGState = seed
+		sub.Coord = "0507"
+		patrolSubmarine(&state, sub)
+		if got := Distance(sub.Coord, "0505"); got > submarinePatrolRadius {
+			t.Fatalf("种子 %d：范围边缘仍向外移动到了 %s，距离 %d", seed, sub.Coord, got)
+		}
 	}
 }
 
@@ -165,6 +211,14 @@ func TestSubmarineBattleReportsPointsAndEffects(t *testing.T) {
 				t.Fatalf("种子 %d：没有可用点数时不应执行效果：%+v", seed, report)
 			}
 		} else if report.SubPoints > 0 {
+			wantIntel := 3
+			if cost == 4 {
+				wantIntel = 4
+			}
+			contact := state.Contacts["B"]["TF-A"]
+			if contact == nil || contact.Level != wantIntel {
+				t.Fatalf("种子 %d：潜艇%d点效果应使触发舰队以%d级情报暴露，实际 %+v", seed, cost, wantIntel, contact)
+			}
 			if report.TorpedoShots != 0 && cost != 4 && cost != 2 {
 				t.Fatalf("种子 %d：%d 点效果不应发射鱼雷", seed, cost)
 			}
@@ -187,6 +241,16 @@ func TestSubmarineBattleReportsPointsAndEffects(t *testing.T) {
 		}
 		if report.Summary == "" || len(events) == 0 {
 			t.Fatalf("种子 %d：战报和事件都不能为空", seed)
+		}
+		tieText := strings.Contains(report.Summary, "战斗点数相同")
+		if diff == 0 && !tieText {
+			t.Fatalf("种子 %d：真正的平局应写明双方脱离：%s", seed, report.Summary)
+		}
+		if diff > 0 && tieText {
+			t.Fatalf("种子 %d：骰差%d不应写成平局：%s", seed, diff, report.Summary)
+		}
+		if diff >= 4 && report.SubPoints > 0 && !strings.Contains(report.Summary, "偷袭：发射 1 发鱼雷") {
+			t.Fatalf("种子 %d：潜艇4点效果缺少鱼雷偷袭说明：%s", seed, report.Summary)
 		}
 	}
 }

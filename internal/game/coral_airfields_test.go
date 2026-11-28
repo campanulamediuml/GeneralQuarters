@@ -6,9 +6,9 @@ import (
 )
 
 // 回归：珊瑚海真实剧本的陆基航空队（拉包尔 / 莫尔兹比港）。
-// 拉包尔机场：0224（陆地），6 架零战 + 6 架 G4M + 3 架 G3M（陆攻挂鱼雷）；
+// 拉包尔机场：0224（陆地），5 架零战 + 6 架 G3M + 1 架 G4M（陆攻挂鱼雷）；
 // 拉包尔水上飞机基地：0323（浅海），4 架 H6K——水机基地不能建在陆地，机场不能建在水上。
-// 莫尔兹比港：1611，2 架 SBD + 4 架 P-40 + 3 架 B-25，岸炮 6。
+// 莫尔兹比港：1611，2 架 SBD + 6 架 P-39 + 1 架 P-40 + 3 架 B-25 + 1 架 B-17，岸炮 6。
 
 // 规则书只禁止单座战斗机做扇面搜索：B-17/B-25 这类陆基轰炸机同样可以挂侦察任务。
 // 1942 年 5 月第 19 轰炸大队就是用 B-17 从汤斯维尔跑远程搜索，这条规则必须留得住。
@@ -62,9 +62,9 @@ func TestCoralRealLandBasedAirGroups(t *testing.T) {
 		groups[aircraft.AirfieldID][aircraft.DefinitionID]++
 	}
 	want := map[string]map[string]int{
-		"af-b-rabaul":          {"fighter": 6, "g4m": 6, "g3m": 3},
+		"af-b-rabaul":          {"fighter": 5, "g4m": 1, "g3m": 6},
 		"af-b-rabaul-seaplane": {"h6k": 4},
-		"af-a-moresby":         {"dive_bomber": 2, "p40": 4, "b25": 3, "b17": 3},
+		"af-a-moresby":         {"dive_bomber": 2, "p40": 1, "p39": 6, "b25": 3, "b17": 1},
 		"af-a-townsville":      {"b17": 4, "b26": 4, "p40": 4},
 	}
 	for airfieldID, expected := range want {
@@ -96,6 +96,10 @@ func TestCoralRealLandBasedAirGroups(t *testing.T) {
 	p40 := state.GroundAir["af-a-moresby-p40-1"]
 	if p40 == nil || p40.Strength != 2 || p40.BaseRange != 17 || p40.AirCombat != 2 || !p40.AirfieldOnly {
 		t.Fatalf("P-40 数据不对：%+v", p40)
+	}
+	p39 := state.GroundAir["af-a-moresby-p39-1"]
+	if p39 == nil || p39.Strength != 2 || p39.BaseRange != 11 || p39.AirCombat != 1 || p39.AntiShip != 0 || p39.AntiGround != 0 || !p39.AirfieldOnly {
+		t.Fatalf("P-39 数据不对：%+v", p39)
 	}
 	b25 := state.GroundAir["af-a-moresby-b25-1"]
 	if b25 == nil || b25.Strength != 3 || b25.AirCombat != 2 || b25.AntiShip != 1 || b25.AntiGround != 2 || !b25.AirfieldOnly {
@@ -137,7 +141,7 @@ func TestCoralRealSeaplaneBases(t *testing.T) {
 		}
 		counts[aircraft.AirfieldID][aircraft.DefinitionID]++
 	}
-	if counts["af-b-tulagi"]["h6k"] != 4 || counts["af-b-tulagi"]["seaplane"] != 3 {
+	if counts["af-b-tulagi"]["h6k"] != 2 || counts["af-b-tulagi"]["seaplane"] != 3 {
 		t.Fatalf("图拉吉机型数量错误：%v", counts["af-b-tulagi"])
 	}
 	if counts["af-b-deboyne"]["seaplane"] != 2 {
@@ -149,12 +153,12 @@ func TestCoralRealSeaplaneBases(t *testing.T) {
 	if counts["af-b-rekata"]["h6k"] != 3 || counts["af-b-rekata"]["seaplane"] != 2 {
 		t.Fatalf("莱卡塔机型数量错误：%v", counts["af-b-rekata"])
 	}
-	if counts["af-a-bowen"]["pby"] != 2 {
+	if counts["af-a-bowen"]["pby"] != 3 {
 		t.Fatalf("鲍恩 PBY 数量错误：%v", counts["af-a-bowen"])
 	}
 }
 
-// 莱城（0910）：3 架 A5M + 3 架 G4M。A5M 基础对空 1、航程 13、强度 1、无对地对舰。
+// 莱城（0910）：2 架 G3M + 3 架 G4M，不再配置战斗机。
 func TestCoralRealLaeAirGroup(t *testing.T) {
 	scenario, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")
 	if err != nil {
@@ -174,12 +178,7 @@ func TestCoralRealLaeAirGroup(t *testing.T) {
 			counts[aircraft.DefinitionID]++
 		}
 	}
-	if counts["a5m"] != 3 || counts["g4m"] != 3 {
+	if len(counts) != 2 || counts["g3m"] != 2 || counts["g4m"] != 3 {
 		t.Fatalf("莱城机群数量错误：%v", counts)
-	}
-	a5m := state.GroundAir["af-b-lae-a5m-1"]
-	// 1942 年日军精锐机组只把掷骰档位升到老兵，对空值仍是机型基础 1。
-	if a5m == nil || a5m.Model != "A5M 九六舰战" || a5m.BaseRange != 13 || a5m.Strength != 1 || a5m.AirCombat != 1 || a5m.AntiShip != 0 || a5m.AntiGround != 0 {
-		t.Fatalf("A5M 数值错误：%+v", a5m)
 	}
 }

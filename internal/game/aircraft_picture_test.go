@@ -46,6 +46,10 @@ func TestAirfieldAircraftPicturesSurviveProjection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	p39 := state.GroundAir["af-a-moresby-p39-1"]
+	if p39 == nil || p39.Picture != "misc/image/aircraft/p39.png" || p39.PictureMode != "image" {
+		t.Fatalf("P-39 图片配置错误：%+v", p39)
+	}
 	ground := state.GroundAir["af-b-rabaul-fighter-1"]
 	if ground == nil {
 		t.Fatal("缺少机场算子 af-b-rabaul-fighter-1")

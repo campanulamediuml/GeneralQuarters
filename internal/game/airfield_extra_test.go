@@ -75,7 +75,7 @@ func TestAirfieldStrikeInterruptsServicing(t *testing.T) {
 	var events []EngineEvent
 	for seed := uint64(1); seed <= 120; seed++ {
 		candidate, candidateEvents := run(seed)
-		if candidate.StrikeHits > 0 {
+		if candidate.AirfieldRunwayHits > 0 {
 			report, events = candidate, candidateEvents
 			break
 		}
@@ -83,18 +83,13 @@ func TestAirfieldStrikeInterruptsServicing(t *testing.T) {
 	if report == nil {
 		t.Fatal("120 个种子里一次命中都没有，对地攻击概率可能算错了")
 	}
-	interrupted := 0
 	found := false
 	for _, event := range events {
 		if event.Type == "airfield_operations_interrupted" {
 			found = true
 		}
 	}
-	if report.StrikeHits > 0 {
-		// 每个命中都会打断一次整备；这一局至少要能看到打断事件。
-		if !found {
-			t.Fatalf("机场命中后应发出 airfield_operations_interrupted：%+v", events)
-		}
+	if !found {
+		t.Fatalf("跑道命中后应发出 airfield_operations_interrupted：%+v", events)
 	}
-	_ = interrupted
 }

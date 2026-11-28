@@ -13,7 +13,7 @@ import (
 // 开战之后潜艇从双方视图里消失，只有"被发现"时才对舰队方显示（潜艇方看不到自己的潜艇）。
 //
 // 时间线（规则书〈猎杀潜航〉）：
-//  1. 每回合开始时先按 1d6 定的相位每 6 回合随机挪 1 格（当前格和周围 6 格都可能）；
+//  1. 每回合开始时先按 1d6 定的相位每 6 回合随机挪 1 格，且不能离开初始部署点周围 2 hex；
 //  2. 然后结算潜艇战：同格有敌方舰队 → 双方各掷 d10 加修正，差额归点数高的一方；
 //  3. 拿到点数的一方只执行能负担的最高一档效果；
 //  4. 潜艇被发现后，由触发遭遇战的那支舰队每回合投 1 次深水炸弹，潜艇每回合掷一次撤退。
@@ -25,6 +25,8 @@ import (
 const (
 	// DefaultSubmarineMoveInterval 是随机巡逻节奏：每 6 回合挪 1 格。
 	DefaultSubmarineMoveInterval = 6
+	// submarinePatrolRadius 是以初始部署点为中心的最大巡逻距离。
+	submarinePatrolRadius = 2
 	// submarineReserveCount 是每方随机撒在地图里的预备潜艇数（规则书〈猎杀潜航〉）。
 	submarineReserveCount = 3
 
@@ -118,9 +120,10 @@ func deploySubmarines(state *State, scenario ScenarioDefinition) error {
 			if _, exists := state.Submarines[id]; exists {
 				return fmt.Errorf("潜艇ID重复：%s", id)
 			}
+			coord := submarineSpawnCoord(state, faction)
 			state.Submarines[id] = &Submarine{
 				ID: id, Faction: faction, Name: fmt.Sprintf("%s预备艇%d", baseName, index), Picture: template.Picture,
-				Coord: submarineSpawnCoord(state, faction), Deployed: true, Reserve: true, MoveInterval: interval,
+				Coord: coord, HomeCoord: coord, Deployed: true, Reserve: true, MoveInterval: interval,
 			}
 		}
 	}
@@ -228,6 +231,9 @@ func StartSubmarines(state *State) []EngineEvent {
 			sub.Coord = submarineSpawnCoord(state, sub.Faction)
 			sub.Deployed = true
 		}
+		if sub.HomeCoord == "" {
+			sub.HomeCoord = sub.Coord
+		}
 		if sub.MoveInterval <= 0 {
 			sub.MoveInterval = DefaultSubmarineMoveInterval
 		}
@@ -276,6 +282,7 @@ func ApplySubDeploy(state *State, order Order) []EngineEvent {
 		return nil
 	}
 	sub.Coord = order.Coord
+	sub.HomeCoord = order.Coord
 	sub.Deployed = true
 	return []EngineEvent{{Type: "submarine_deployed", Audience: sub.Faction, Text: fmt.Sprintf("%s进入战位", sub.Name)}}
 }
@@ -305,14 +312,18 @@ func AdvanceSubmarines(state *State) {
 	}
 }
 
-// patrolSubmarine 随机挪 1 格：当前格和周围 6 格都可能，能潜就潜，不能潜的格跳过。
+// patrolSubmarine 随机挪 1 格：只从初始部署点周围 2 hex 内的当前格和相邻格选择。
 func patrolSubmarine(state *State, sub *Submarine) {
+	if sub.HomeCoord == "" {
+		// 兼容没有巡逻中心的旧存档，从更新后的首次巡逻起限制活动范围。
+		sub.HomeCoord = sub.Coord
+	}
 	candidates := []string{}
-	if submarineCanEnter(*state, sub.Coord) {
+	if Distance(sub.Coord, sub.HomeCoord) <= submarinePatrolRadius && submarineCanEnter(*state, sub.Coord) {
 		candidates = append(candidates, sub.Coord)
 	}
 	for _, coord := range Neighbors(sub.Coord) {
-		if submarineCanEnter(*state, coord) {
+		if Distance(coord, sub.HomeCoord) <= submarinePatrolRadius && submarineCanEnter(*state, coord) {
 			candidates = append(candidates, coord)
 		}
 	}
@@ -466,14 +477,23 @@ func resolveSubmarineBattle(state *State, sub *Submarine, fleetID string) []Engi
 	return events
 }
 
-// buySubmarineEffect 兑换潜艇方的效果：4 = 鱼雷 + 全身而退，2 = 近距离鱼雷 + 下潜逃避，1 = 发送目标位置。
+// buySubmarineEffect 兑换潜艇方的效果：4 = 鱼雷 + 全身而退 + 4级暴露，2 = 近距离鱼雷 + 下潜逃避 + 3级暴露，1 = 发送目标位置。
 func buySubmarineEffect(state *State, sub *Submarine, fleetID string, cost int, report *SubmarineBattle) []EngineEvent {
 	switch cost {
 	case 4:
+		effect := "白天远距离偷袭：发射 1 发鱼雷，随后全身而退"
+		if state.Night {
+			effect = "夜间近距离偷袭：发射 1 发鱼雷，随后全身而退"
+		}
+		report.Effects = append(report.Effects, effect)
+		setFleetContactLevel(state, sub.Faction, fleetID, 4)
+		report.Effects = append(report.Effects, "触发舰队以 4 级情报暴露给潜艇方")
 		events := submarineTorpedoAttack(state, sub, fleetID, report, !state.Night)
 		report.SubmarineEscaped = true
 		return events
 	case 2:
+		setFleetContactLevel(state, sub.Faction, fleetID, 3)
+		report.Effects = append(report.Effects, "触发舰队以 3 级情报暴露给潜艇方")
 		// 近距离打完鱼雷再"下潜逃避"：这一潜等于自己暴露了——舰队看着它下去，
 		// 从下回合起就进入被发现状态、被钉在原地挨深水炸弹。
 		events := submarineTorpedoAttack(state, sub, fleetID, report, false)
@@ -787,8 +807,12 @@ func submarineBattleSummary(state State, report SubmarineBattle) string {
 		report.Turn, report.Coord, report.SubmarineName, factionLabel(state, report.FleetFaction), report.FleetName, report.SubRoll, report.FleetRoll)
 	if len(report.Effects) > 0 {
 		text += "；" + joinText(report.Effects, "；")
-	} else {
+	} else if report.SubPoints == 0 && report.FleetPoints == 0 {
 		text += "；战斗点数相同，双方脱离"
+	} else if report.SubPoints > 0 {
+		text += fmt.Sprintf("；潜艇方获得%d点战斗点数", report.SubPoints)
+	} else {
+		text += fmt.Sprintf("；舰队方获得%d点战斗点数", report.FleetPoints)
 	}
 	if report.SubmarineSunk {
 		text += "；潜艇被击沉"

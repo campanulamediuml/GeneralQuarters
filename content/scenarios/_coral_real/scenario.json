@@ -1,6 +1,6 @@
 {
  "id": "_coral_real",
- "version": 43,
+ "version": 44,
  "name": "珊瑚海 · 1942年5月（25海里/hex）",
  "map": "_coral_real",
  "units": "sandbox",
@@ -44,7 +44,7 @@
   },
   {
    "faction": "B",
-   "anchor": "0831",
+   "anchor": "0330",
    "radius": 8
   }
  ],
@@ -260,6 +260,38 @@
    "unit": "transport"
   },
   {
+   "id": "b-6ds-trs-07",
+   "faction": "B",
+   "name": "运输船7",
+   "fleet_id": "6DS",
+   "fleet_name": "第六水雷战队",
+   "unit": "transport"
+  },
+  {
+   "id": "b-6ds-trs-08",
+   "faction": "B",
+   "name": "运输船8",
+   "fleet_id": "6DS",
+   "fleet_name": "第六水雷战队",
+   "unit": "transport"
+  },
+  {
+   "id": "b-6ds-trs-09",
+   "faction": "B",
+   "name": "运输船9",
+   "fleet_id": "6DS",
+   "fleet_name": "第六水雷战队",
+   "unit": "transport"
+  },
+  {
+   "id": "b-6ds-trs-10",
+   "faction": "B",
+   "name": "运输船10",
+   "fleet_id": "6DS",
+   "fleet_name": "第六水雷战队",
+   "unit": "transport"
+  },
+  {
    "id": "a-cv-02",
    "faction": "A",
    "name": "约克城",
@@ -470,11 +502,6 @@
    "carrier": "b-cv-01"
   },
   {
-   "id": "b-cv-01-fighter-x6",
-   "unit": "fighter",
-   "carrier": "b-cv-01"
-  },
-  {
    "id": "b-cv-01-dive_bomber-x1",
    "unit": "dive_bomber",
    "carrier": "b-cv-01"
@@ -496,16 +523,6 @@
   },
   {
    "id": "b-cv-01-dive_bomber-x5",
-   "unit": "dive_bomber",
-   "carrier": "b-cv-01"
-  },
-  {
-   "id": "b-cv-01-dive_bomber-x6",
-   "unit": "dive_bomber",
-   "carrier": "b-cv-01"
-  },
-  {
-   "id": "b-cv-01-dive_bomber-x7",
    "unit": "dive_bomber",
    "carrier": "b-cv-01"
   },
@@ -535,6 +552,11 @@
    "carrier": "b-cv-01"
   },
   {
+   "id": "b-cv-01-torpedo_bomber-x6",
+   "unit": "torpedo_bomber",
+   "carrier": "b-cv-01"
+  },
+  {
    "id": "b-cv-02-fighter-x1",
    "unit": "fighter",
    "carrier": "b-cv-02"
@@ -556,11 +578,6 @@
   },
   {
    "id": "b-cv-02-fighter-x5",
-   "unit": "fighter",
-   "carrier": "b-cv-02"
-  },
-  {
-   "id": "b-cv-02-fighter-x6",
    "unit": "fighter",
    "carrier": "b-cv-02"
   },
@@ -590,16 +607,6 @@
    "carrier": "b-cv-02"
   },
   {
-   "id": "b-cv-02-dive_bomber-x6",
-   "unit": "dive_bomber",
-   "carrier": "b-cv-02"
-  },
-  {
-   "id": "b-cv-02-dive_bomber-x7",
-   "unit": "dive_bomber",
-   "carrier": "b-cv-02"
-  },
-  {
    "id": "b-cv-02-torpedo_bomber-x1",
    "unit": "torpedo_bomber",
    "carrier": "b-cv-02"
@@ -621,6 +628,11 @@
   },
   {
    "id": "b-cv-02-torpedo_bomber-x5",
+   "unit": "torpedo_bomber",
+   "carrier": "b-cv-02"
+  },
+  {
+   "id": "b-cv-02-torpedo_bomber-x6",
    "unit": "torpedo_bomber",
    "carrier": "b-cv-02"
   },
@@ -725,21 +737,6 @@
    "carrier": "a-cv-01"
   },
   {
-   "id": "a-cv-01-fighter-x6",
-   "unit": "fighter",
-   "carrier": "a-cv-01"
-  },
-  {
-   "id": "a-cv-01-fighter-x7",
-   "unit": "fighter",
-   "carrier": "a-cv-01"
-  },
-  {
-   "id": "a-cv-01-fighter-x8",
-   "unit": "fighter",
-   "carrier": "a-cv-01"
-  },
-  {
    "id": "a-cv-01-dive_bomber-x1",
    "unit": "dive_bomber",
    "carrier": "a-cv-01"
@@ -800,16 +797,6 @@
    "carrier": "a-cv-01"
   },
   {
-   "id": "a-cv-01-torpedo_bomber-x4",
-   "unit": "torpedo_bomber",
-   "carrier": "a-cv-01"
-  },
-  {
-   "id": "a-cv-01-torpedo_bomber-x5",
-   "unit": "torpedo_bomber",
-   "carrier": "a-cv-01"
-  },
-  {
    "id": "a-cv-02-fighter-x1",
    "unit": "fighter",
    "carrier": "a-cv-02"
@@ -826,26 +813,6 @@
   },
   {
    "id": "a-cv-02-fighter-x4",
-   "unit": "fighter",
-   "carrier": "a-cv-02"
-  },
-  {
-   "id": "a-cv-02-fighter-x5",
-   "unit": "fighter",
-   "carrier": "a-cv-02"
-  },
-  {
-   "id": "a-cv-02-fighter-x6",
-   "unit": "fighter",
-   "carrier": "a-cv-02"
-  },
-  {
-   "id": "a-cv-02-fighter-x7",
-   "unit": "fighter",
-   "carrier": "a-cv-02"
-  },
-  {
-   "id": "a-cv-02-fighter-x8",
    "unit": "fighter",
    "carrier": "a-cv-02"
   },
@@ -895,16 +862,6 @@
    "carrier": "a-cv-02"
   },
   {
-   "id": "a-cv-02-dive_bomber-x10",
-   "unit": "dive_bomber",
-   "carrier": "a-cv-02"
-  },
-  {
-   "id": "a-cv-02-dive_bomber-x11",
-   "unit": "dive_bomber",
-   "carrier": "a-cv-02"
-  },
-  {
    "id": "a-cv-02-torpedo_bomber-x1",
    "unit": "torpedo_bomber",
    "carrier": "a-cv-02"
@@ -916,16 +873,6 @@
   },
   {
    "id": "a-cv-02-torpedo_bomber-x3",
-   "unit": "torpedo_bomber",
-   "carrier": "a-cv-02"
-  },
-  {
-   "id": "a-cv-02-torpedo_bomber-x4",
-   "unit": "torpedo_bomber",
-   "carrier": "a-cv-02"
-  },
-  {
-   "id": "a-cv-02-torpedo_bomber-x5",
    "unit": "torpedo_bomber",
    "carrier": "a-cv-02"
   },
@@ -994,8 +941,6 @@
    "aircraft": [
     "af-b-tulagi-h6k-1",
     "af-b-tulagi-h6k-2",
-    "af-b-tulagi-h6k-3",
-    "af-b-tulagi-h6k-4",
     "af-b-tulagi-seaplane-1",
     "af-b-tulagi-seaplane-2",
     "af-b-tulagi-seaplane-3"
@@ -1034,16 +979,13 @@
     "af-b-rabaul-fighter-3",
     "af-b-rabaul-fighter-4",
     "af-b-rabaul-fighter-5",
-    "af-b-rabaul-fighter-6",
-    "af-b-rabaul-g4m-1",
-    "af-b-rabaul-g4m-2",
-    "af-b-rabaul-g4m-3",
-    "af-b-rabaul-g4m-4",
-    "af-b-rabaul-g4m-5",
-    "af-b-rabaul-g4m-6",
     "af-b-rabaul-g3m-1",
     "af-b-rabaul-g3m-2",
-    "af-b-rabaul-g3m-3"
+    "af-b-rabaul-g3m-3",
+    "af-b-rabaul-g3m-4",
+    "af-b-rabaul-g3m-5",
+    "af-b-rabaul-g3m-6",
+    "af-b-rabaul-g4m-1"
    ]
   },
   {
@@ -1076,18 +1018,19 @@
    "light_aa": 20,
    "coastal": 6,
    "aircraft": [
-    "af-a-moresby-dive_bomber-1",
-    "af-a-moresby-dive_bomber-2",
-    "af-a-moresby-p40-1",
-    "af-a-moresby-p40-2",
-    "af-a-moresby-p40-3",
-    "af-a-moresby-p40-4",
     "af-a-moresby-b25-1",
     "af-a-moresby-b25-2",
     "af-a-moresby-b25-3",
     "af-a-moresby-b17-1",
-    "af-a-moresby-b17-2",
-    "af-a-moresby-b17-3"
+    "af-a-moresby-p40-1",
+    "af-a-moresby-dive_bomber-1",
+    "af-a-moresby-dive_bomber-2",
+    "af-a-moresby-p39-1",
+    "af-a-moresby-p39-2",
+    "af-a-moresby-p39-3",
+    "af-a-moresby-p39-4",
+    "af-a-moresby-p39-5",
+    "af-a-moresby-p39-6"
    ]
   },
   {
@@ -1119,20 +1062,7 @@
    "heavy_aa": 3,
    "light_aa": 20,
    "coastal": 6,
-   "aircraft": [
-    "af-a-cairns-p40-1",
-    "af-a-cairns-p40-2",
-    "af-a-cairns-p40-3",
-    "af-a-cairns-p40-4",
-    "af-a-cairns-fighter-1",
-    "af-a-cairns-fighter-2",
-    "af-a-cairns-fighter-3",
-    "af-a-cairns-fighter-4",
-    "af-a-cairns-b17-1",
-    "af-a-cairns-b17-2",
-    "af-a-cairns-b17-3",
-    "af-a-cairns-b17-4"
-   ]
+   "aircraft": []
   },
   {
    "id": "af-a-townsville",
@@ -1173,7 +1103,8 @@
    "coastal": 0,
    "aircraft": [
     "af-a-bowen-pby-1",
-    "af-a-bowen-pby-2"
+    "af-a-bowen-pby-2",
+    "af-a-bowen-pby-3"
    ]
   },
   {
@@ -1188,9 +1119,8 @@
    "light_aa": 2,
    "coastal": 0,
    "aircraft": [
-    "af-b-lae-a5m-1",
-    "af-b-lae-a5m-2",
-    "af-b-lae-a5m-3",
+    "af-b-lae-g3m-1",
+    "af-b-lae-g3m-2",
     "af-b-lae-g4m-1",
     "af-b-lae-g4m-2",
     "af-b-lae-g4m-3"

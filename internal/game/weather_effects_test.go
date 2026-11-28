@@ -64,6 +64,11 @@ func TestGroundAttackWeatherModifiers(t *testing.T) {
 	if got := groundHitChance(*state, airfield, medium, true); got != 20 {
 		t.Fatalf("晴天对地基础应 20%%，实际 %.1f", got)
 	}
+	state.Night = true
+	if got := groundHitChance(*state, airfield, medium, true); got != 20 {
+		t.Fatalf("夜间对地固定目标不应增加命中惩罚：期望 20，实际 %.1f", got)
+	}
+	state.Night = false
 
 	state.Map.Clouds = cloudField(7, 9, map[string]byte{"0202": 1})
 	if got := groundHitChance(*state, airfield, medium, true); got != 20 {

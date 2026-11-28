@@ -686,6 +686,21 @@
    "airfield_only": true
   },
   {
+   "id": "p39",
+   "faction": "A",
+   "name": "战斗机",
+   "model": "P-39 空中眼镜蛇",
+   "picture": "misc/image/aircraft/p39.png",
+   "picture_mode": "image",
+   "kind": "fighter",
+   "strength": 2,
+   "range": 11,
+   "air_combat": 1,
+   "anti_ship": 0,
+   "anti_ground": 0,
+   "airfield_only": true
+  },
+  {
    "id": "b25",
    "faction": "A",
    "name": "中型轰炸机",

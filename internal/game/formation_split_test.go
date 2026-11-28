@@ -50,7 +50,7 @@ func TestGroundAttackDepartsWithReturningMember(t *testing.T) {
 		t.Fatal("找不到拉包尔机场")
 	}
 	taskID := "af-strike-split"
-	members := []string{"af-b-rabaul-g4m-1", "af-b-rabaul-g4m-2"}
+	members := []string{"af-b-rabaul-g3m-1", "af-b-rabaul-g3m-2"}
 	for _, id := range members {
 		plane := state.GroundAir[id]
 		if plane == nil {
@@ -81,8 +81,8 @@ func TestHoldingMemberIsNotDraggedToTarget(t *testing.T) {
 	state := coralCombatState(t)
 	airfield := state.Airfields["af-b-rabaul"]
 	taskID := "af-strike-drag"
-	lead := state.GroundAir["af-b-rabaul-g4m-1"]
-	hold := state.GroundAir["af-b-rabaul-g4m-2"]
+	lead := state.GroundAir["af-b-rabaul-g3m-1"]
+	hold := state.GroundAir["af-b-rabaul-g3m-2"]
 	for _, plane := range []*AirfieldAirUnit{lead, hold} {
 		plane.TaskID = taskID
 		plane.TaskKind = "attack"
@@ -96,7 +96,7 @@ func TestHoldingMemberIsNotDraggedToTarget(t *testing.T) {
 
 	AdvanceGroundAir(&state)
 
-	if got := state.GroundAir["af-b-rabaul-g4m-2"].Coord; got != before {
+	if got := state.GroundAir["af-b-rabaul-g3m-2"].Coord; got != before {
 		t.Fatalf("等待编队的成员不该被拖走：%s -> %s", before, got)
 	}
 }
@@ -134,7 +134,7 @@ func TestReturningMembersSplitOutOfStrikeTask(t *testing.T) {
 // 机场侧同样：返航的机场算子不再挂在打击编队里。
 func TestGroundReturningMembersSplitOutOfStrikeTask(t *testing.T) {
 	state := coralCombatState(t)
-	members := []string{"af-b-rabaul-g4m-1", "af-b-rabaul-g4m-2"}
+	members := []string{"af-b-rabaul-g3m-1", "af-b-rabaul-g3m-2"}
 	for _, id := range members {
 		plane := state.GroundAir[id]
 		plane.TaskID = "af-strike-split"
@@ -266,7 +266,7 @@ func TestFlightTagsAreRandomAndUnique(t *testing.T) {
 func TestGroundAircraftClearsReturningWhenGrounded(t *testing.T) {
 	state := coralCombatState(t)
 	airfield := state.Airfields["af-b-rabaul"]
-	plane := state.GroundAir["af-b-rabaul-g4m-1"]
+	plane := state.GroundAir["af-b-rabaul-g3m-1"]
 	if plane == nil || airfield == nil {
 		t.Fatal("缺少拉包尔机场或 G4M")
 	}
@@ -292,8 +292,8 @@ func TestGroundAircraftClearsReturningWhenGrounded(t *testing.T) {
 func TestSplitKeepsGroundedMembersInOriginalTask(t *testing.T) {
 	state := coralCombatState(t)
 	taskID := "af-strike-mixed"
-	airborne := state.GroundAir["af-b-rabaul-g4m-1"]
-	grounded := state.GroundAir["af-b-rabaul-g4m-2"]
+	airborne := state.GroundAir["af-b-rabaul-g3m-1"]
+	grounded := state.GroundAir["af-b-rabaul-g3m-2"]
 	for _, plane := range []*AirfieldAirUnit{airborne, grounded} {
 		plane.TaskID = taskID
 		plane.TaskKind = "attack"
@@ -345,7 +345,7 @@ func TestAttackFormationDoesNotDepartPartially(t *testing.T) {
 func TestGroundFormationAssembleRequiresAllHolding(t *testing.T) {
 	state := coralCombatState(t)
 	taskID := "af-assemble"
-	members := []string{"af-b-rabaul-g4m-1", "af-b-rabaul-g4m-2"}
+	members := []string{"af-b-rabaul-g3m-1", "af-b-rabaul-g3m-2"}
 	for _, id := range members {
 		plane := state.GroundAir[id]
 		plane.TaskID = taskID
@@ -372,14 +372,14 @@ func TestGroundStrikeJoinRejectedAfterDeparture(t *testing.T) {
 	state.DayHours = 12
 	state.Night = false
 	taskID := "af-departed"
-	flying := state.GroundAir["af-b-rabaul-g4m-1"]
+	flying := state.GroundAir["af-b-rabaul-g3m-1"]
 	flying.TaskID = taskID
 	flying.TaskKind = "attack"
 	flying.Status = "attack"
 	flying.Coord = "0910"
 	flying.TargetCoord = "1611"
 
-	extra := state.GroundAir["af-b-rabaul-g4m-2"]
+	extra := state.GroundAir["af-b-rabaul-g3m-2"]
 	extra.Status = "ready"
 	extra.TaskID = ""
 	extra.TaskKind = ""
@@ -437,7 +437,7 @@ func TestLongRangeStrikeDetachesNewFormationEachTurn(t *testing.T) {
 // 机场侧同样是每次脱离拆一张新牌。
 func TestGroundLongRangeStrikeDetachesNewFormationEachTurn(t *testing.T) {
 	state := coralCombatState(t)
-	ids := []string{"af-b-rabaul-g4m-1", "af-b-rabaul-g4m-2", "af-b-rabaul-g4m-3"}
+	ids := []string{"af-b-rabaul-g3m-1", "af-b-rabaul-g3m-2", "af-b-rabaul-g3m-3"}
 	const mainTask = "af-long-range"
 	for _, id := range ids {
 		plane := state.GroundAir[id]
@@ -511,8 +511,8 @@ func TestAviationViewShowsExecutingAndReturningFormations(t *testing.T) {
 // 机场侧拆组后同样是两张牌：执行中的留在原任务号、返航的单独一张。
 func TestGroundAviationViewShowsExecutingAndReturningFormations(t *testing.T) {
 	state := coralCombatState(t)
-	executing := state.GroundAir["af-b-rabaul-g4m-1"]
-	returning := state.GroundAir["af-b-rabaul-g4m-2"]
+	executing := state.GroundAir["af-b-rabaul-g3m-1"]
+	returning := state.GroundAir["af-b-rabaul-g3m-2"]
 	for _, plane := range []*AirfieldAirUnit{executing, returning} {
 		plane.TaskID = "af-view"
 		plane.TaskKind = "attack"

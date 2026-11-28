@@ -1220,7 +1220,7 @@ onUnmounted(() => {
         <div v-else-if="activePanel === 'map' || activePanel === 'submarines'" class="game-layout map-command-layout" :class="{ 'submarine-mode': activePanel === 'submarines' }">
           <section v-if="activePanel === 'submarines' && deploying && deployableSubmarines.length" class="side-card submarine-card">
             <div class="side-card-head"><span class="section-kicker">SUBMARINES</span><span>{{ deployableSubmarines.length - undeployedSubmarineCount }} / {{ deployableSubmarines.length }} 已部署</span></div>
-            <p class="submarine-hint">先点潜艇，再点右侧海图上的海面格。开战后潜艇对双方都不可见，每 6 回合随机巡逻 1 格；与敌方舰队同格会爆发潜艇战。</p>
+            <p class="submarine-hint">先点潜艇，再点右侧海图上的海面格。开战后潜艇对双方都不可见，每 6 回合在初始部署点周围 2 格内随机巡逻 1 格；与敌方舰队同格会爆发潜艇战。</p>
             <div class="submarine-list">
               <button v-for="sub in deployableSubmarines" :key="sub.id" class="submarine-row" :class="{ active: subPlacementID === sub.id, placed: sub.deployed }" :data-submarine-id="sub.id" @click="selectSubmarine(sub.id)">
                 <img v-if="sub.picture" class="submarine-thumb" :src="contentImageURL(sub.picture)" alt="" />

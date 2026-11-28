@@ -600,7 +600,7 @@ func deckUsed(state State, carrierID string) int {
 		}
 		// 甲板上换弹/挂弹的算子（status service + DeckService）同样占甲板位：
 		// 它就在甲板上作业，不能一边占位一边不计入容量。
-		if aircraft.Status == "deck" || aircraft.Status == "ready" || aircraft.Status == "recovery" || (aircraft.Status == "service" && aircraft.DeckService) {
+		if aircraft.Status == "deck" || aircraft.Status == "ready" || (aircraft.Status == "recovery" && !airborne(aircraft)) || (aircraft.Status == "service" && aircraft.DeckService) {
 			used++
 		}
 	}
@@ -1024,6 +1024,8 @@ func airborne(aircraft *AirUnit) bool {
 	switch aircraft.Status {
 	case "cap", "asw", "recon", "attack_holding", "attack", "cover", "transfer":
 		return true
+	case "recovery":
+		return aircraft.Returning
 	}
 	return false
 }
@@ -1732,7 +1734,7 @@ func scheduleElevators(state *State) []EngineEvent {
 			}
 			recovery := []*AirUnit{}
 			for _, aircraft := range state.Aircraft {
-				if aircraft.CarrierID == carrierID && aircraft.Status == "recovery" {
+				if aircraft.CarrierID == carrierID && aircraft.Status == "recovery" && !airborne(aircraft) {
 					recovery = append(recovery, aircraft)
 				}
 			}
@@ -1912,7 +1914,8 @@ func AdvanceAviation(state *State) []EngineEvent {
 				}
 			}
 			if aircraft.Status == "recovery" && state.Units[aircraft.CarrierID] == nil {
-				events = append(events, loseCarrierAircraft(state, aircraft)...)
+				aircraft.Returning = true
+				events = append(events, advanceAircraftReturn(state, aircraft)...)
 				continue
 			}
 			if aircraft.Maintenance > 0 {
@@ -1952,6 +1955,8 @@ func AdvanceAviation(state *State) []EngineEvent {
 			continue
 		}
 		switch aircraft.Status {
+		case "recovery":
+			events = append(events, advanceAircraftReturn(state, aircraft)...)
 		case "cap":
 			if aircraft.Returning {
 				events = append(events, advanceAircraftReturn(state, aircraft)...)
@@ -2141,7 +2146,7 @@ func aviationBlockReason(state State, unit *Unit) string {
 func aboardAircraft(state State, carrierID string) int {
 	used := 0
 	for _, aircraft := range state.Aircraft {
-		if aircraft == nil || aircraft.CarrierID != carrierID {
+		if aircraft == nil || aircraft.CarrierID != carrierID || airborne(aircraft) {
 			continue
 		}
 		switch aircraft.Status {
@@ -2184,6 +2189,7 @@ func LandAircraft(state *State, aircraft *AirUnit, carrier *Unit) {
 	if aircraft == nil || carrier == nil || aircraft.Status == "elevator" || aircraft.Status == "hangar" {
 		return
 	}
+	aircraft.OriginFleetID = FleetKey(carrier)
 	aircraft.Status = "recovery"
 	aircraft.Launched = false
 	// 只清空任务参数，保留 TaskID/TaskKind：任务分组依赖它们，清掉会让还在任务栏里的
@@ -2226,68 +2232,46 @@ func ReconcileCarrierAircraftCounts(state *State) {
 	}
 }
 
-// landIfCapacity 统一着舰入口：先确认甲板真的有空间，再落地，避免同一回合多架返航飞机叠加上限。
-// loseCarrierAircraft 处理母舰已沉没的空中/待处置算子：能备降就转移到同阵营可用甲板整备，
-// 否则按燃油耗尽处理移除。避免出现"航母已沉、机库指标还在"的幽灵算子。
-func loseCarrierAircraft(state *State, aircraft *AirUnit) []EngineEvent {
-	if host := altLanding(state, aircraft); host != nil {
-		aircraft.CarrierID = host.ID
-		aircraft.Status = "service"
-		aircraft.Returning = false
-		host.Card.Aircraft++
-		return []EngineEvent{{Type: "air_ditched", Audience: aircraft.Faction, Text: fmt.Sprintf("%s失去母舰，转场至%s甲板重新整备", aircraft.Model, host.Name)}}
-	}
-	if airfield := alternateAirfield(state, aircraft); airfield != nil {
-		model := aircraft.Model
-		if crashed := landAtAirfield(state, aircraft, airfield); crashed != nil {
-			return crashed
-		}
-		return []EngineEvent{{Type: "air_landed_airfield", Audience: aircraft.Faction, Text: fmt.Sprintf("%s失去母舰，转移至%s机库", model, airfield.Name)}}
-	}
-	// 既没有可降落的航母也没有机场：不凭空消失，留在空中盘旋，
-	// 照常消耗燃油，烧光之后才算损失（规则：挂到燃油耗尽）。
-	if aircraft.Range() > 0 {
-		aircraft.Status = "recovery"
-		aircraft.Returning = true
-		aircraft.TrackingFleetID = ""
-		aircraft.Spend(1)
-		return []EngineEvent{{Type: "air_loiter", Audience: aircraft.Faction, Text: fmt.Sprintf("%s失去母舰且无可用甲板，在空中盘旋（剩余航程%d）", aircraft.Model, aircraft.Range())}}
-	}
-	delete(state.Aircraft, aircraft.ID)
-	return []EngineEvent{{Type: "air_destroyed", Audience: aircraft.Faction, Text: aircraft.Model + "燃油耗尽坠毁"}}
-}
-
-// altLanding 为空中的算子挑选备降母舰：同一舰队其他航母优先，其次同阵营其他航母。
-// 母舰被击沉后算子不能凭空消失，规则要求"尽力飞往最近的可以备降的机场或舰队"。
+// altLanding 为空中的算子挑选备降母舰：原舰队其他航母优先，其次其他舰队航母，组内按距离选择。
+// 原母舰已经删除时使用 OriginFleetID 保留这一优先级。
 func altLanding(state *State, aircraft *AirUnit) *Unit {
 	// 水上飞机没有起落架，只能回自己的巡洋舰母舰或水上飞机基地，不能降落在航母甲板上。
-	// 以前这里不分机型地把所有航母都当候选，于是巡洋舰的水侦返航后"落"到了航母上。
 	if aircraft.Seaplane {
 		return nil
 	}
-	origin := state.Units[aircraft.CarrierID]
-	ownFleet := ""
-	if origin != nil {
+	ownFleet := aircraft.OriginFleetID
+	if origin := state.Units[aircraft.CarrierID]; origin != nil {
 		ownFleet = FleetKey(origin)
 	}
-	best := []*Unit{}
-	for _, unit := range state.Units {
+	sameFleet := []*Unit{}
+	otherFleets := []*Unit{}
+	for _, id := range sortedUnitIDs(state.Units) {
+		unit := state.Units[id]
 		if !IsCarrier(unit) || unit.Faction != aircraft.Faction || unit.ID == aircraft.CarrierID || !CanLandAircraft(*state, unit) {
 			continue
 		}
-		if FleetKey(unit) == ownFleet {
-			best = append([]*Unit{unit}, best...)
-			continue
+		if ownFleet != "" && FleetKey(unit) == ownFleet {
+			sameFleet = append(sameFleet, unit)
+		} else {
+			otherFleets = append(otherFleets, unit)
 		}
-		best = append(best, unit)
 	}
-	if len(best) == 0 {
+	byDistance := func(units []*Unit) {
+		sort.SliceStable(units, func(i, j int) bool {
+			left, right := Distance(aircraft.Coord, units[i].Coord), Distance(aircraft.Coord, units[j].Coord)
+			if left != right {
+				return left < right
+			}
+			return units[i].ID < units[j].ID
+		})
+	}
+	byDistance(sameFleet)
+	byDistance(otherFleets)
+	candidates := append(sameFleet, otherFleets...)
+	if len(candidates) == 0 {
 		return nil
 	}
-	sort.SliceStable(best, func(i, j int) bool {
-		return Distance(aircraft.Coord, best[i].Coord) < Distance(aircraft.Coord, best[j].Coord)
-	})
-	return best[0]
+	return candidates[0]
 }
 
 // airfieldCanAccept 判断机场能否接收这架舰载机：有可用跑道（无跑道也能降，但要走迫降判定），
@@ -2492,7 +2476,7 @@ func taskPhase(state State, members []*AirUnit) string {
 	// 也可能是下降中，不能一律当成回收，否则分批提升的任务会被误判。
 	recovering, airborneMembers := 0, 0
 	for _, aircraft := range members {
-		if aircraft.Status == "recovery" {
+		if aircraft.Status == "recovery" && !airborne(aircraft) {
 			recovering++
 		}
 		if airborne(aircraft) {
@@ -2630,7 +2614,9 @@ func VisibleAviation(state State, faction string) AviationView {
 				carrier.DeckUsed++
 			case aircraft.Status == "hangar", aircraft.Status == "service":
 				carrier.HangarUsed++
-			case aircraft.Status == "deck", aircraft.Status == "ready", aircraft.Status == "recovery":
+			case aircraft.Status == "deck", aircraft.Status == "ready":
+				carrier.DeckUsed++
+			case aircraft.Status == "recovery" && !airborne(aircraft):
 				carrier.DeckUsed++
 			}
 			projection := *aircraft

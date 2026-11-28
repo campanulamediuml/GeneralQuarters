@@ -162,7 +162,7 @@ func TestNormalizeLegacyAirfieldTypes(t *testing.T) {
 	}
 }
 
-// 维拉港 4 架卡特里娜、凯恩斯 4 架 P-40 + 4 架 F4F + 4 架 B-17。
+// 维拉港 4 架卡特里娜；凯恩斯保留机场但不部署飞机。
 func TestCoralRealVilaAndCairns(t *testing.T) {
 	scenario, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")
 	if err != nil {
@@ -180,11 +180,13 @@ func TestCoralRealVilaAndCairns(t *testing.T) {
 		groups[aircraft.AirfieldID][aircraft.DefinitionID]++
 	}
 	want := map[string]map[string]int{
-		"af-a-vila": {"pby": 4},
-		// 凯恩斯的 F4F 用的就是美军现成的 fighter 卡（模型 F4F 野猫），不再单开一张。
-		"af-a-cairns": {"p40": 4, "fighter": 4, "b17": 4},
+		"af-a-vila":   {"pby": 4},
+		"af-a-cairns": {},
 	}
 	for airfieldID, expected := range want {
+		if len(groups[airfieldID]) != len(expected) {
+			t.Fatalf("%s 的机型数量错误：%v", airfieldID, groups[airfieldID])
+		}
 		for kind, count := range expected {
 			if got := groups[airfieldID][kind]; got != count {
 				t.Fatalf("%s 的 %s 应有 %d 架，实际 %d", airfieldID, kind, count, got)
@@ -199,7 +201,7 @@ func TestCoralRealVilaAndCairns(t *testing.T) {
 	if cairns == nil || cairns.Coord != "3707" || cairns.Type != AirfieldLarge {
 		t.Fatalf("凯恩斯机场部署错误：%+v", cairns)
 	}
-	b17 := state.GroundAir["af-a-cairns-b17-1"]
+	b17 := state.GroundAir["af-a-townsville-b17-1"]
 	if b17 == nil || b17.Kind != "strategic_bomber" || b17.Strength != 3 || b17.AirCombat != 3 ||
 		b17.AntiShip != 1 || b17.AntiGround != 2 || b17.BaseRange != 37 {
 		t.Fatalf("B-17 数据不对：%+v", b17)

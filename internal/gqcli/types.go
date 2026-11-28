@@ -53,6 +53,7 @@ type Event struct {
 	Sequence  int    `json:"sequence"`
 	Type      string `json:"type"`
 	Text      string `json:"text"`
+	Audience  string `json:"audience"`
 	CreatedAt string `json:"created_at"`
 }
 

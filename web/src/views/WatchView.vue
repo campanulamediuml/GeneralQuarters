@@ -95,6 +95,10 @@ function factionName(faction?: string) {
   return faction === 'B' ? '日军' : '美军'
 }
 
+function eventFactionName(audience: GameEvent['audience']) {
+  return audience === 'A' || audience === 'B' ? factionName(audience) : '双方'
+}
+
 function fleetLabel(fleet: { name?: string; fleet_id?: string; members?: Unit[] }) {
   const leader = fleet.members?.[0]
   return leader?.fleet_name || fleet.name || fleet.fleet_id || '舰队'
@@ -552,7 +556,9 @@ onUnmounted(() => {
           <h2>战报</h2>
           <ol>
             <li v-for="event in events.slice(0, 80)" :key="event.id">
-              <b>T{{ event.turn }}</b>{{ event.text }}
+              <b>T{{ event.turn }}</b>
+              <span class="watch-event-faction" :class="`event-${event.audience.toLowerCase()}`">{{ eventFactionName(event.audience) }}</span>
+              <span class="watch-event-text">{{ event.text }}</span>
             </li>
           </ol>
         </section>
@@ -659,7 +665,13 @@ onUnmounted(() => {
 .watch-empty { font-size: 12px; opacity: .55; }
 .watch-task-list { margin-top: 8px; border-top: 1px dashed rgba(255,255,255,.08); padding-top: 6px; }
 .watch-events ol { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow: auto; display: flex; flex-direction: column; gap: 3px; font-size: 11px; }
-.watch-events li b { color: #7fa39d; margin-right: 6px; font-weight: 600; }
+.watch-events li { display: flex; align-items: baseline; gap: 5px; line-height: 1.45; }
+.watch-events li b { flex: none; color: #7fa39d; font-weight: 600; }
+.watch-event-faction { flex: none; min-width: 26px; padding: 0 4px; border-radius: 3px; text-align: center; font-size: 10px; font-weight: 600; }
+.watch-event-faction.event-a { color: #8fcfff; background: rgba(64,156,220,.16); }
+.watch-event-faction.event-b { color: #ff9b8f; background: rgba(207,77,64,.16); }
+.watch-event-faction.event-all { color: #9fc4be; background: rgba(159,196,190,.1); }
+.watch-event-text { flex: 1; min-width: 0; }
 .watch-loading { flex: 1; display: grid; place-items: center; font-size: 14px; opacity: .7; }
 @media (max-width: 1100px) { .watch-body { grid-template-columns: 1fr; } .watch-side { max-height: none; } .watch-detail { width: calc(100% - 24px); max-width: 420px; } }
 </style>

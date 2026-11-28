@@ -43,9 +43,9 @@ func TestTransferSeaplaneToLandAirfieldRejected(t *testing.T) {
 func TestTransferRespectsAirfieldSize(t *testing.T) {
 	state := coralCombatState(t)
 	state.Timeline = nil
-	bomber := state.GroundAir["af-a-cairns-b17-1"]
+	bomber := state.GroundAir["af-a-townsville-b17-1"]
 	if bomber == nil {
-		t.Fatal("找不到凯恩斯的 B-17")
+		t.Fatal("找不到汤斯维尔的 B-17")
 	}
 	moresby := state.Airfields["af-a-moresby"]
 	moresby.Type = AirfieldMedium
