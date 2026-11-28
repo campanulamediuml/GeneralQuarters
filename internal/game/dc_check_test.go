@@ -11,7 +11,7 @@ func disableDCCheck(t *testing.T) {
 	t.Cleanup(func() { dcCheckRate = previous })
 }
 
-// DC 判定：空战开始/投弹前各掷一次，通过率就是 50%，两边都不应该因为机种不同而偏移。
+// 普通机组的 DC 判定：空战开始/投弹前各掷一次，2 骰取劣后通过率为 25%。
 func TestDCCheckPassRate(t *testing.T) {
 	state := State{RNGState: 20240619}
 	passed := 0
@@ -22,18 +22,18 @@ func TestDCCheckPassRate(t *testing.T) {
 		}
 	}
 	rate := float64(passed) / rolls * 100
-	if rate < 45 || rate > 55 {
-		t.Fatalf("DC 判定通过率应接近 50%%，实际 %.1f%%", rate)
+	if rate < 22 || rate > 28 {
+		t.Fatalf("普通机组 DC 判定通过率应接近 25%%，实际 %.1f%%", rate)
 	}
 }
 
-// 熟练度决定 DC 掷骰的档位：普通 50%、老兵 2 骰取优 75%、王牌 3 骰取优 87.5%、新手 2 骰取劣 25%。
+// 熟练度决定 DC 掷骰的档位：新手无加成、普通 25%、老兵单骰 50%、王牌 2 骰取优 75%。
 func TestDCCheckByPilotSkill(t *testing.T) {
 	cases := map[string]float64{
-		PilotRookie:  25,
-		PilotRegular: 50,
-		PilotVeteran: 75,
-		PilotAce:     87.5,
+		PilotRookie:  0,
+		PilotRegular: 25,
+		PilotVeteran: 50,
+		PilotAce:     75,
 	}
 	for skill, want := range cases {
 		state := State{RNGState: 424242}
@@ -48,6 +48,21 @@ func TestDCCheckByPilotSkill(t *testing.T) {
 		if rate < want-3 || rate > want+3 {
 			t.Fatalf("%s 的 DC 通过率应接近 %.1f%%，实际 %.1f%%", PilotSkillLabel(skill), want, rate)
 		}
+	}
+}
+
+func TestRookieNeverReceivesDCBonus(t *testing.T) {
+	previous := dcCheckRate
+	dcCheckRate = 100
+	t.Cleanup(func() { dcCheckRate = previous })
+
+	state := State{RNGState: 7}
+	before := state.RNGState
+	if dcCheckWithSkill(&state, PilotRookie) {
+		t.Fatal("即使其他 DC 判定必过，新手也不应获得临场加成")
+	}
+	if state.RNGState != before {
+		t.Fatal("新手无加成不应消耗随机数")
 	}
 }
 

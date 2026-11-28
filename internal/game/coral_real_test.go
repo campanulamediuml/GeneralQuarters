@@ -55,6 +55,37 @@ func TestCoralRealSpawnsInDeployZones(t *testing.T) {
 	}
 }
 
+func TestCoralRealProvidesSixDeployableSubmarinesPerSide(t *testing.T) {
+	scenario, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, err := NewState(scenario, gameMap, catalog, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, faction := range []string{"A", "B"} {
+		deployable := 0
+		reserve := 0
+		for _, submarine := range state.Submarines {
+			if submarine.Faction != faction {
+				continue
+			}
+			if submarine.Reserve {
+				reserve++
+			} else {
+				deployable++
+			}
+		}
+		if deployable != 6 {
+			t.Fatalf("%s 应有 6 艘可部署潜艇，实际 %d", faction, deployable)
+		}
+		if reserve != submarineReserveCount {
+			t.Fatalf("%s 应有 %d 艘随机巡逻潜艇，实际 %d", faction, submarineReserveCount, reserve)
+		}
+	}
+}
+
 // 出生点要随机，但同一阵营的两支舰队不能叠在同一格：开局就叠在一起等于逼玩家先拆队。
 func TestCoralRealFleetSpawnsAreRandomAndSeparate(t *testing.T) {
 	scenario, gameMap, catalog, err := LoadScenario("../../content", "_coral_real")

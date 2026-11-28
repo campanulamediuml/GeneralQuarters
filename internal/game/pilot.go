@@ -45,33 +45,33 @@ func PilotSkillLabel(skill string) string {
 }
 
 // PilotDiceAdvantage 返回熟练度在 DC 判定上的骰子档位：
-// 新手 0 = 劣势（2 骰取劣）、普通 1 = 单骰、老兵 2 = 2 骰取优、王牌 3 = 3 骰取优。
+// 新手 -1 = 无加成、普通 0 = 2 骰取劣（25%）、老兵 1 = 单骰（50%）、王牌 2 = 2 骰取优（75%）。
 //
 // 熟练度不再加减卡面数值：机型值定死在卡上，飞行员之间的差别只体现在 DC 这一掷——
 // 通过就给这一次出手 +1，没过就没有。和机库优势用的是同一套"骰子优/劣"语言。
 func PilotDiceAdvantage(skill string) int {
 	switch NormalizePilotSkill(skill) {
 	case PilotRookie:
+		return -1
+	case PilotRegular:
 		return 0
-	case PilotVeteran:
-		return 2
 	case PilotAce:
-		return 3
+		return 2
 	}
 	return 1
 }
 
-// PilotAdvantageLabel 是给界面看的档位名：劣势 / 普通 / 2 骰优势 / 3 骰优势。
+// PilotAdvantageLabel 是给界面看的档位名：无加成 / 2 骰劣势 / 单骰 / 2 骰优势。
 func PilotAdvantageLabel(skill string) string {
 	switch PilotDiceAdvantage(skill) {
+	case -1:
+		return "无加成"
 	case 0:
-		return "劣势"
+		return "2 骰劣势"
 	case 2:
 		return "2 骰优势"
-	case 3:
-		return "3 骰优势"
 	}
-	return "普通"
+	return "单骰"
 }
 
 // elitePilotSkill 把"开战初期精锐机组"折进熟练度档位：1942 年及以前日军机组

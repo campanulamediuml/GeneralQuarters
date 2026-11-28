@@ -120,7 +120,7 @@ export interface AirUnit {
   /** image（默认）原样显示彩图；mask 只取 alpha 当剪影。 */
   picture_mode?: 'image' | 'mask'
   kind: 'fighter' | 'dive_bomber' | 'torpedo_bomber' | 'recon' | 'level_bomber' | 'medium_bomber' | 'heavy_bomber' | 'strategic_bomber'
-  /** 飞行员熟练度：决定 DC 临场发挥判定的骰子档位（劣势/普通/2 骰优势/3 骰优势），不改卡面数值。 */
+  /** 飞行员熟练度：无加成 / 2 骰劣势（25%）/ 单骰（50%）/ 2 骰优势（75%），不改卡面数值。 */
   skill?: 'rookie' | 'regular' | 'veteran' | 'ace'
   status: 'hangar' | 'service' | 'elevator' | 'deck' | 'ready' | 'recovery' | 'cap' | 'asw' | 'recon' | 'attack_holding' | 'attack' | 'cover' | 'transfer'
   strength: number

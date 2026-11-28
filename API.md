@@ -1,6 +1,6 @@
 # General Quarters API
 
-本文描述当前服务端实现的 HTTP、WebSocket、命令和快照契约。游戏规则见 `规则书.md`，剧本配置见 `剧本附录.md`；本文不重复战斗公式。
+本文描述当前服务端实现的 HTTP、WebSocket、命令和快照契约。游戏规则见 `规则书.md`，剧本说明见 `剧本/README.md` 及同目录的独立剧本文档；本文不重复战斗公式。
 
 - 在线速查：`GET /api/docs`
 - 大厅 HTTP 的机器可读定义：`GET /api/v1/openapi.yaml`；WebSocket 契约以本文为准
@@ -199,7 +199,7 @@ Content-Type: application/json
 | `SPLIT_FLEET` | `unit_id, split_ids` | 将指定舰船拆成新舰队；允许混乱舰队拆分，不附加整编移动锁 |
 | `DEPLOY_SUB` | `unit_id, coord` | 部署阶段摆放潜艇；`unit_id` 取 `submarines[].id` |
 
-`MERGE_FLEET` 与 `REORGANIZE_HEX` 在战斗阶段会使相关编队锁定移动 3 回合；混乱舰队不能合并或整编。部署阶段不附加该锁。拆分不重置移动冷却或停留计时。
+`MERGE_FLEET` 与 `REORGANIZE_HEX` 在战斗阶段会使相关编队锁定移动 3 回合；混乱舰队不能合并或整编。部署阶段允许整编、合并和拆分，且不附加该锁。拆分不重置移动冷却或停留计时。
 
 整编与拆分结果仍须满足剧本的舰队规模和护航要求。`REORGANIZE_HEX` 示例：
 

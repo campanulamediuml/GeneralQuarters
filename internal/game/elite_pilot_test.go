@@ -2,7 +2,7 @@ package game
 
 import "testing"
 
-// 开战初期日军精锐机组：卡面数值不动，临场发挥的掷骰档位升一档（普通按老兵，2 骰优势）。
+// 开战初期日军精锐机组：卡面数值不动，临场发挥的掷骰档位升一档（普通按老兵，单骰 50%）。
 func TestElitePilotSkill1942(t *testing.T) {
 	state := sandboxState(t)
 	if state.Year != 1942 {
@@ -22,9 +22,9 @@ func TestElitePilotSkill1942(t *testing.T) {
 	if torpedo.AntiShip != 2 {
 		t.Fatalf("九七舰攻对舰应为机型值 2：%d", torpedo.AntiShip)
 	}
-	// 精锐体现在掷骰档位：普通机组升到 2 骰优势（75%）。
+	// 精锐体现在掷骰档位：普通机组升到单骰（50%）。
 	for _, plane := range []*AirUnit{zero, dive, torpedo} {
-		if plane.Skill != PilotVeteran || PilotDiceAdvantage(plane.Skill) != 2 {
+		if plane.Skill != PilotVeteran || PilotDiceAdvantage(plane.Skill) != 1 {
 			t.Fatalf("%s 的精锐机组应按老兵档掷骰，实际 %s", plane.Model, plane.Skill)
 		}
 	}
@@ -61,7 +61,7 @@ func TestElitePilotReconBonus(t *testing.T) {
 	}
 }
 
-// 1943 年以后精锐机组失效；升档最多停在王牌（3 骰），不会叠出 4 骰。
+// 1943 年以后精锐机组失效；升档最多停在王牌（2 骰优势），不会叠出 3 骰。
 func TestElitePilotSkillExpiresAfter1942(t *testing.T) {
 	japan1944 := State{Year: 1944, Doctrines: map[string]string{"B": "japan"}}
 	if got := elitePilotSkill(japan1944, "B", PilotRegular); got != PilotRegular {

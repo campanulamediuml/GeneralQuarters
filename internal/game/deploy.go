@@ -220,10 +220,10 @@ func DeployZoneView(state State, faction string) map[string]any {
 	return view
 }
 
-// deployOrderAllowed 是部署阶段允许的命令：只摆船，不能开火、侦察、起降。
+// deployOrderAllowed 是部署阶段允许的命令：只调整部署，不能开火、侦察、起降。
 func deployOrderAllowed(orderType string) bool {
 	switch orderType {
-	case "SET_MOVE", "CLEAR_MOVE", "MERGE_FLEET", "REORGANIZE_HEX", "DEPLOY_SUB":
+	case "SET_MOVE", "CLEAR_MOVE", "MERGE_FLEET", "REORGANIZE_HEX", "SPLIT_FLEET", "DEPLOY_SUB":
 		return true
 	}
 	return false

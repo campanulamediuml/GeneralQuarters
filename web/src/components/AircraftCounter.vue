@@ -43,7 +43,7 @@ const cycleLabel = computed(() => (cycleOn.value ? '自动循环已开启，点�
 const skillKey = computed(() => props.aircraft.skill || 'regular')
 const skillBadge = computed(() => (props.aircraft.skill ? label('skill_badge', props.aircraft.skill) : ''))
 const skillLabel = computed(() => label('skill_label', skillKey.value))
-// 档位名和规则书同一套：劣势 / 普通 / 2 骰优势 / 3 骰优势。
+// 档位名和规则书同一套：无加成 / 2 骰劣势 / 单骰 / 2 骰优势。
 const skillTier = computed(() => label('skill_tier', skillKey.value))
 const modelTitle = computed(() => skillBadge.value ? `${props.aircraft.model} · 飞行员：${skillLabel.value}（${skillTier.value}）` : props.aircraft.model)
 </script>

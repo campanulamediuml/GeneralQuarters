@@ -42,17 +42,20 @@ func airCombatChance(attacker, defender int) float64 {
 // 变量而不是常量：少数回归测试要把 DC 固定成必过/必不过，避免随机数序列漂移。
 var dcCheckRate = 50.0
 
-// dcCheck 掷一次 DC 判定：一半概率通过。
+// dcCheck 按普通熟练度掷 DC：2 骰取劣，通过率 25%。
 // 0/100 这两种"必不过/必过"的值不消耗随机数，测试固定结果时不会打乱后续掷骰序列。
 func dcCheck(state *State) bool {
 	return dcCheckWithSkill(state, PilotRegular)
 }
 
-// dcCheckWithSkill 按飞行员熟练度掷 DC：普通单骰（50%），老兵 2 骰取优（75%），
-// 王牌 3 骰取优（87.5%），新手 2 骰取劣（25%）。过了这一次，该次出手的对空/对舰值 +1。
+// dcCheckWithSkill 按飞行员熟练度掷 DC：新手无加成，普通 2 骰取劣（25%），
+// 老兵单骰（50%），王牌 2 骰取优（75%）。过了这一次，该次出手的对空/对舰值 +1。
 //
 // 熟练度不再加减卡面数值：机型值写死在卡上，人的差别全在这一掷里。
 func dcCheckWithSkill(state *State, skill string) bool {
+	if NormalizePilotSkill(skill) == PilotRookie {
+		return false
+	}
 	if dcCheckRate <= 0 {
 		return false
 	}

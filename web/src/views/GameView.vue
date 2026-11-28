@@ -34,7 +34,7 @@ const menuCoord = ref('')
 const fleetChoiceCoord = ref('')
 const inspectedAirfieldID = ref('')
 const mergeSourceID = ref('')
-const movingMemberID = ref('')
+const movingMemberIDs = ref<string[]>([])
 const draftAssignments = ref<Record<string, string>>({})
 const activePanel = ref<'map' | 'rules' | 'settings' | 'aviation' | 'airCombat' | 'log' | 'results' | 'submarines'>('map')
 const activeAirCombat = ref<AirCombatReport | null>(null)
@@ -862,7 +862,7 @@ function openManager(coord: string) {
   shipDetailOpen.value = false
   menuCoord.value = coord
   mergeSourceID.value = ''
-  movingMemberID.value = ''
+  movingMemberIDs.value = []
   draftAssignments.value = {}
   for (const unit of ownUnits.value.filter((unit) => unit.coord === coord)) {
     draftAssignments.value[unit.id] = unit.fleet_id || unit.id
@@ -872,7 +872,7 @@ function openManager(coord: string) {
 function closeManager() {
   menuCoord.value = ''
   mergeSourceID.value = ''
-  movingMemberID.value = ''
+  movingMemberIDs.value = []
   draftAssignments.value = {}
 }
 
@@ -883,7 +883,7 @@ function closeManager() {
 const splitOpen = ref(false)
 const splitSelection = ref<string[]>([])
 function openSplit() {
-  if (!state.value || !selectedFleet.value || actionBusy.value || locked.value || deploying.value) return
+  if (!state.value || !selectedFleet.value || actionBusy.value || locked.value) return
   splitSelection.value = []
   splitOpen.value = true
 }
@@ -1094,10 +1094,18 @@ async function clearOrder(order: Pick<Order, 'unit_id' | 'task_id'>) {
   }
 }
 
-function transferMember(targetFleetID: string) {
-  if (!movingMemberID.value || movingMemberID.value === targetFleetID) return
-  draftAssignments.value[movingMemberID.value] = targetFleetID
-  movingMemberID.value = ''
+function toggleMovingMember(id: string) {
+  const index = movingMemberIDs.value.indexOf(id)
+  if (index >= 0) movingMemberIDs.value.splice(index, 1)
+  else movingMemberIDs.value.push(id)
+}
+
+function transferMembers(targetFleetID: string) {
+  if (!movingMemberIDs.value.length) return
+  const target = menuFleets.value.find((fleet) => fleet.fleet_id === targetFleetID)
+  if (!target || target.members.some((member) => movingMemberIDs.value.includes(member.id))) return
+  for (const id of movingMemberIDs.value) draftAssignments.value[id] = targetFleetID
+  movingMemberIDs.value = []
 }
 
 function mergeDraftInto(targetFleetID: string) {
@@ -1356,7 +1364,7 @@ onUnmounted(() => {
                     <span class="nav-engagement">
                       <button v-for="(label, value) in engagementLabels" :key="value" :class="{ active: selectedEngagement === value }" :disabled="actionBusy || locked || deploying" :title="locked ? '本回合已就绪，操作已锁定' : ''" @click.stop="setEngagement(value as 'aggressive' | 'advantage' | 'avoid')">{{ label }}</button>
                     </span>
-                  </div></div><div class="fleet-workbench-actions"><button @click="counterSide = counterSide === 'front' ? 'back' : 'front'">{{ counterSide === 'front' ? '查看兵牌背面' : '查看兵牌正面' }}</button><button :disabled="locked" :title="locked ? '本回合已就绪，操作已锁定' : ''" @click="openManager(selectedFleet.coord)">舰队整编</button><button :disabled="locked || deploying" :title="deploying ? '部署阶段请用舰队整编调整编成' : '选出要拆出去的舰船组成新舰队（不锁移动、不改冷却）'" @click="openSplit()">舰队拆分</button><button v-if="selectedFleet.members.some((unit) => ['CV', 'CVL', 'CVE'].includes(unit.type))" :disabled="deploying" :title="deploying ? '部署阶段先摆船，开战后再安排航空作业' : ''" @click="openAviation(selectedFleet.fleet_id)">航空作业</button><button class="fleet-toggle-cards" :aria-pressed="fleetCardsCollapsed" @click="fleetCardsCollapsed = !fleetCardsCollapsed">{{ fleetCardsCollapsed ? '展开兵牌' : '收起兵牌' }}</button><button aria-label="关闭舰队详情" @click="selectedID = ''">×</button></div></header>
+                  </div></div><div class="fleet-workbench-actions"><button @click="counterSide = counterSide === 'front' ? 'back' : 'front'">{{ counterSide === 'front' ? '查看兵牌背面' : '查看兵牌正面' }}</button><button :disabled="locked" :title="locked ? '本回合已就绪，操作已锁定' : ''" @click="openManager(selectedFleet.coord)">舰队整编</button><button :disabled="locked" title="选出要拆出去的舰船组成新舰队（不锁移动、不改冷却）" @click="openSplit()">舰队拆分</button><button v-if="selectedFleet.members.some((unit) => ['CV', 'CVL', 'CVE'].includes(unit.type))" :disabled="deploying" :title="deploying ? '部署阶段先摆船，开战后再安排航空作业' : ''" @click="openAviation(selectedFleet.fleet_id)">航空作业</button><button class="fleet-toggle-cards" :aria-pressed="fleetCardsCollapsed" @click="fleetCardsCollapsed = !fleetCardsCollapsed">{{ fleetCardsCollapsed ? '展开兵牌' : '收起兵牌' }}</button><button aria-label="关闭舰队详情" @click="selectedID = ''">×</button></div></header>
                 <div v-show="!fleetCardsCollapsed" class="fleet-counter-grid"><button v-for="member in selectedFleet.members" :key="member.id" class="fleet-counter-button" :class="{ active: selectedUnit?.id === member.id }" :data-ship-id="member.id" @click="selectFleetMember(member)"><ShipCounter :unit="member" :side="counterSide" /></button></div>
               </section>
               <section v-if="inspectedFleet" class="fleet-workbench enemy-fleet-workbench" :data-fleet-id="inspectedFleet.fleet_id">
@@ -1431,7 +1439,7 @@ onUnmounted(() => {
               </div>
             </div>
           </article>
-          <div class="document-grid"><article><h2>当前通信沙盒</h2><p>选择己方舰队，再把舰队拖到相邻绿色hex下达移动命令，点击目标hex不会移动。到达可移动时机后由服务器立即生效，普通/快速舰队移动后等待3回合，纯高速驱逐舰2回合，慢速6回合，极慢9回合；底条黄色表示可移动，蓝色表示已移动或冷却中，右上角箭头表示舰队朝向。</p><p>同一hex存在多个舰队时，点击hex弹出舰队列表。选择舰队可查看成员，选择整编可将任意两个同阵营舰队合并，整编同样由服务器立即生效。</p></article><article><h2>坐标与地形</h2><p>hex使用ABCD坐标，AB为行、CD为列。当前只能拖动至相邻且可通行的hex。暗礁一律不可进入；机场格与浅滩只有含 CV/CVL/CVE 的舰队不能进入，纯水面舰队可以靠岸靠滩并实施岸轰。蓝灰色虚线仅用于距离参考，不代表可移动。</p><p>完整规则见项目《规则书.md》；两个剧本的简报、编成与结算见《剧本附录.md》。</p></article></div></section>
+          <div class="document-grid"><article><h2>当前通信沙盒</h2><p>选择己方舰队，再把舰队拖到相邻绿色hex下达移动命令，点击目标hex不会移动。到达可移动时机后由服务器立即生效，普通/快速舰队移动后等待3回合，纯高速驱逐舰2回合，慢速6回合，极慢9回合；底条黄色表示可移动，蓝色表示已移动或冷却中，右上角箭头表示舰队朝向。</p><p>同一hex存在多个舰队时，点击hex弹出舰队列表。选择舰队可查看成员，选择整编可将任意两个同阵营舰队合并，整编同样由服务器立即生效。</p></article><article><h2>坐标与地形</h2><p>hex使用ABCD坐标，AB为行、CD为列。当前只能拖动至相邻且可通行的hex。暗礁一律不可进入；机场格与浅滩只有含 CV/CVL/CVE 的舰队不能进入，纯水面舰队可以靠岸靠滩并实施岸轰。蓝灰色虚线仅用于距离参考，不代表可移动。</p><p>完整规则见项目《规则书.md》；两个剧本的简报、编成与结算见《剧本/README.md》。</p></article></div></section>
         <section v-else-if="activePanel === 'settings'" class="workspace-page"><span class="section-kicker">SETTINGS</span><h1>作战室设置</h1><div class="settings-grid"><div class="side-card"><h2>当前会话</h2><p>指挥官：{{ state.you.name }}</p><p>阵营：{{ state.you.faction }} · 内部房间 ID：<code>{{ state.room_id }}</code></p><p v-if="state.join_token">房间 token：<code>{{ state.join_token }}</code></p><p v-if="watchPath">观战地址：<a :href="watchPath" target="_blank" rel="noreferrer">{{ watchPath }} ↗</a></p><p>连接方式：{{ socketStatus === 'online' ? 'WebSocket实时同步' : 'WebSocket重连中' }}</p></div><div class="side-card"><h2>地图与资源</h2><p>坐标格式：ABCD（行 + 列）</p><p>地图与剧本从服务器持久化内容目录载入。</p><a class="secondary-link" href="/api/docs" target="_blank">查看API与AI扩展文档 ↗</a></div></div></section>
         <AviationPanel v-else-if="activePanel === 'aviation'" :key="selectedAirfield ? 'airfield-' + selectedAirfield.unit_id : 'fleet'" :aviation="aviationCarriers ?? state.aviation" :units="ownUnits" :fleet-id="aviationFleetId" :targets="strikeTargets" :player-faction="state.you.faction" :focus-unit-id="aviationFocusID" :selected-aircraft-id="selectedAirTaskID" :busy="actionBusy || locked" :locked="locked" :airfield="selectedAirfield" :radio-tasks="state.radio_tasks" :clock="state.clock" @command="airCommand" @select-aircraft="selectAircraft" @select-target="chooseStrikeTarget" @night-eta="openStrikeEta" />
         <ResultsPanel v-else-if="activePanel === 'results'" :state="state" />
@@ -1468,20 +1476,20 @@ onUnmounted(() => {
     <div v-if="menuCoord" class="fleet-dialog" @click.self="closeManager">
       <section class="fleet-modal fleet-manager">
         <header><div><span class="section-kicker">HEX {{ menuCoord }} · FLEET ORGANIZATION</span><h2>舰队整编</h2></div><button aria-label="关闭" @click="closeManager">×</button></header>
-        <p class="manager-hint">选择“默认”将舰队置顶并设为操作对象。成员可以转移到其他舰队，也可以整支合并；要拆出反潜支队请用舰队详情里的【舰队拆分】。</p>
+        <p class="manager-hint">选择“默认”将舰队置顶并设为操作对象。点击舰船可多选（可跨舰队），再点目标舰队的转移按钮一次移动所选舰船；也可以整支合并。要拆出反潜支队请用舰队详情里的【舰队拆分】。</p>
         <div class="fleet-columns">
-          <article v-for="fleet in menuFleets" :key="fleet.fleet_id" class="fleet-column" :class="{ default: selectedFleet?.fleet_id === fleet.fleet_id, 'merge-source': mergeSourceID === fleet.fleet_id, 'transfer-target': movingMemberID && !fleet.members.some((unit) => unit.id === movingMemberID) }">
+          <article v-for="fleet in menuFleets" :key="fleet.fleet_id" class="fleet-column" :class="{ default: selectedFleet?.fleet_id === fleet.fleet_id, 'merge-source': mergeSourceID === fleet.fleet_id, 'transfer-target': movingMemberIDs.length && !fleet.members.some((unit) => movingMemberIDs.includes(unit.id)) }">
             <header><div><span class="unit-type-badge">{{ fleet.type }}</span><h3>{{ fleet.name }}</h3><small>{{ fleet.count }}艘 · 强度{{ fleet.strength }}/{{ fleet.max_strength }}</small><small v-if="draftEscortShortfall[fleet.fleet_id]" class="escort-shortfall">护航不足：{{ draftEscortShortfall[fleet.fleet_id].escorts }}/{{ draftEscortShortfall[fleet.fleet_id].need }}</small></div><button class="default-button" @click="selectedID = fleet.id">{{ selectedFleet?.fleet_id === fleet.fleet_id ? '默认' : '设为默认' }}</button></header>
             <div class="fleet-counter-grid manager-counter-grid">
-              <div v-for="member in fleet.members" :key="member.id" class="manager-counter" :class="{ selected: movingMemberID === member.id }">
-                <button class="fleet-counter-button" :data-ship-id="member.id" @click="movingMemberID = movingMemberID === member.id ? '' : member.id"><ShipCounter :unit="member" /></button>
+              <div v-for="member in fleet.members" :key="member.id" class="manager-counter" :class="{ selected: movingMemberIDs.includes(member.id) }">
+                <button class="fleet-counter-button" :data-ship-id="member.id" :aria-pressed="movingMemberIDs.includes(member.id)" @click="toggleMovingMember(member.id)"><ShipCounter :unit="member" /></button>
               </div>
             </div>
-            <button v-if="movingMemberID && !fleet.members.some((unit) => unit.id === movingMemberID)" class="transfer-button" @click="transferMember(fleet.fleet_id)">转移到此舰队</button>
-            <footer v-if="!movingMemberID"><button v-if="!mergeSourceID" @click="mergeSourceID = fleet.fleet_id">合并舰队</button><button v-else-if="mergeSourceID === fleet.fleet_id" disabled>当前整编源</button><button v-else class="confirm" @click="mergeDraftInto(fleet.fleet_id)">合并到此队</button></footer>
+            <button v-if="movingMemberIDs.length && !fleet.members.some((unit) => movingMemberIDs.includes(unit.id))" class="transfer-button" @click="transferMembers(fleet.fleet_id)">转移 {{ movingMemberIDs.length }} 艘到此舰队</button>
+            <footer v-if="!movingMemberIDs.length"><button v-if="!mergeSourceID" @click="mergeSourceID = fleet.fleet_id">合并舰队</button><button v-else-if="mergeSourceID === fleet.fleet_id" disabled>当前整编源</button><button v-else class="confirm" @click="mergeDraftInto(fleet.fleet_id)">合并到此队</button></footer>
           </article>
         </div>
-        <footer class="manager-actions"><button class="reset-button" @click="openManager(menuCoord)">重置</button><span>{{ draftInvalid ? '有编队护航不足，补齐后才能提交' : '整编由服务器立即生效' }}</span><button class="apply-button" :disabled="actionBusy || draftInvalid" @click="applyReorganization">应用整编</button></footer>
+        <footer class="manager-actions"><button class="reset-button" @click="openManager(menuCoord)">重置</button><button v-if="movingMemberIDs.length" class="reset-button" @click="movingMemberIDs = []">全不选</button><span>{{ movingMemberIDs.length ? `已选 ${movingMemberIDs.length} 艘，请选择目标舰队或全不选` : draftInvalid ? '有编队护航不足，补齐后才能提交' : '整编由服务器立即生效' }}</span><button class="apply-button" :disabled="actionBusy || draftInvalid || movingMemberIDs.length > 0" @click="applyReorganization">应用整编</button></footer>
       </section>
     </div>
 

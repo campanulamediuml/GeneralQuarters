@@ -799,7 +799,7 @@ func groundAirView(aircraft *AirUnit) *AirfieldAirUnit {
 func ValidateOrder(state State, faction string, order Order) error {
 	// 部署阶段只摆船：开火、侦察、起降、设航向这些都要等开战。
 	if InDeployPhase(state) && !deployOrderAllowed(order.Type) {
-		return fmt.Errorf("部署阶段只能移动舰队、整编和摆潜艇")
+		return fmt.Errorf("部署阶段只能移动舰队、整编、拆分和摆潜艇")
 	}
 	// 潜艇不属于 state.Units，必须在舰船分支之前单独校验。
 	if order.Type == "DEPLOY_SUB" {

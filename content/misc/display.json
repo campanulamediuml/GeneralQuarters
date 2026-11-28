@@ -79,10 +79,10 @@
       "ace": "王牌"
     },
     "skill_tier": {
-      "rookie": "劣势（2 骰取劣）",
-      "regular": "普通",
-      "veteran": "2 骰优势",
-      "ace": "3 骰优势"
+      "rookie": "无加成",
+      "regular": "2 骰劣势（25%）",
+      "veteran": "单骰（50%）",
+      "ace": "2 骰优势（75%）"
     },
     "contact_size": {
       "small": "小型舰队",

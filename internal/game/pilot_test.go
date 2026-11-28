@@ -18,16 +18,16 @@ func TestPilotSkillFromID(t *testing.T) {
 }
 
 // 熟练度不再是卡面数值的加减，而是 DC 判定的骰子档位：
-// 劣势（新手）= 2 骰取劣，普通 = 单骰，2 骰优势（老兵），3 骰优势（王牌）。
+// 新手无加成，普通 2 骰取劣，老兵单骰，王牌 2 骰取优。
 func TestPilotDiceAdvantageTiers(t *testing.T) {
 	cases := map[string]struct {
 		level int
 		label string
 	}{
-		PilotRookie:  {0, "劣势"},
-		PilotRegular: {1, "普通"},
-		PilotVeteran: {2, "2 骰优势"},
-		PilotAce:     {3, "3 骰优势"},
+		PilotRookie:  {-1, "无加成"},
+		PilotRegular: {0, "2 骰劣势"},
+		PilotVeteran: {1, "单骰"},
+		PilotAce:     {2, "2 骰优势"},
 	}
 	for skill, want := range cases {
 		if got := PilotDiceAdvantage(skill); got != want.level {
@@ -38,7 +38,7 @@ func TestPilotDiceAdvantageTiers(t *testing.T) {
 		}
 	}
 	// 认不出来的写法按普通。
-	if got := PilotDiceAdvantage("weird"); got != 1 {
+	if got := PilotDiceAdvantage("weird"); got != 0 {
 		t.Fatalf("未知熟练度应按普通，实际 %d", got)
 	}
 }
@@ -79,7 +79,7 @@ func TestDeploymentAppliesPilotSkill(t *testing.T) {
 	if plain.Skill != PilotRegular || plain.AirCombat != 4 {
 		t.Fatalf("缺省应是普通 4 空战，实际 %s/%d", plain.Skill, plain.AirCombat)
 	}
-	if PilotDiceAdvantage(vet.Skill) != 2 || PilotDiceAdvantage(rook.Skill) != 0 {
+	if PilotDiceAdvantage(vet.Skill) != 1 || PilotDiceAdvantage(rook.Skill) != -1 {
 		t.Fatal("老兵/新手的骰子档位没有拉开")
 	}
 }

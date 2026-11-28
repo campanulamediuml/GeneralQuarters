@@ -20,9 +20,6 @@ import (
 // validateSplitFleet 校验拆分：选中的船必须属于这支舰队，且至少选一艘。
 // 不限制"必须留下船"：全选等于把这支舰队整体改成新舰队，玩家想这么干也可以。
 func validateSplitFleet(state State, faction string, order Order) error {
-	if InDeployPhase(state) {
-		return fmt.Errorf("部署阶段请用舰队整编调整编成")
-	}
 	unit := state.Units[order.UnitID]
 	if unit == nil || unit.Faction != faction {
 		return fmt.Errorf("舰队不存在或不属于当前玩家")

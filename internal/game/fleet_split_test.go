@@ -114,6 +114,22 @@ func TestSplitFleetWholeFleet(t *testing.T) {
 	}
 }
 
+func TestSplitFleetDuringDeploy(t *testing.T) {
+	state := submarineFixture()
+	state.Phase = PhaseDeploy
+	order := Order{Type: "SPLIT_FLEET", UnitID: "a-ca", SplitIDs: []string{"a-dd"}}
+	if err := ValidateOrder(state, "A", order); err != nil {
+		t.Fatalf("部署阶段应允许拆分舰队：%v", err)
+	}
+	ApplySplitFleet(&state, order)
+	if state.Units["a-dd"].FleetID == state.Units["a-ca"].FleetID {
+		t.Fatal("部署阶段拆分后，所选舰船应进入新舰队")
+	}
+	if state.Units["a-dd"].MoveCooldown != 0 || state.Units["a-ca"].MoveCooldown != 0 {
+		t.Fatal("部署阶段拆分不应附加移动冷却")
+	}
+}
+
 // TestSplitFleetValidation 只拦"没选船"和"选了别家的船"。
 func TestSplitFleetValidation(t *testing.T) {
 	state := submarineFixture()
