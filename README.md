@@ -70,6 +70,38 @@ JSON 在每次建局/读取时从磁盘加载（新开房间就生效）。
 - [实现注记.md](实现注记.md)：调档记录、规则到代码的对应、剧本字段写法、内容管线。
 - [DESIGN.md](DESIGN.md)：联机底座与前端结构；[API.md](API.md)：命令与快照字段；[TESTING.md](TESTING.md)：测试约定。
 
+## DSH 双模型对战
+
+DSH 插件位于 `tools/dsh-generalquarters`，CLI 入口为 `cmd/gqcli`。每个 DSH session 按 `exec.agent.session.id` 启动独立 CLI，分别保存 Cookie、WebSocket、全量私有快照、事件和命令日志；模型只能使用 `gq_create/join/state/command/ready/wait`，不能访问观战接口或任意 RPC。
+
+构建并安装到 DSH Web profile：
+
+```bash
+mkdir -p .gq/bin
+go build -o .gq/bin/gqcli ./cmd/gqcli
+export GQ_CLI_PATH="$PWD/.gq/bin/gqcli"
+export GQ_SERVER="http://127.0.0.1:8100"   # 按实际服务端地址调整
+dsh plugin --profile web add "$PWD/tools/dsh-generalquarters"
+```
+
+重启 DSH 后，A session 调用 `gq_create` 并以阵营 A 执行 `gq_join`，把建房返回的同一个 token 交给 B session，由 B 以阵营 B 加入。不要在两个 session 之间转发 `gq_state` 或 `gq_wait` 的内容。
+
+CLI 收到 `state.patch` 后只把它当作变更通知，再拉取完整 `state` 替换本地快照，不实现补丁合并。`gq_wait` 返回变化 section 和新增战报；`gq_state` 默认返回摘要，可按 section 和实体 ID 查询，避免把完整地图和航空状态反复放进模型上下文。所有模型输出都会移除 `join_token`。
+
+插件在 DSH 工作目录的 `.gq/dsh/<session-id>/` 下保存数据；CLI 独立运行时通过 `-state-dir` 指定目录，恢复身份时必须复用原目录，不能重新 join。`session.json` 含玩家 Cookie，`snapshot.json` 含原始私有视图，均按仅当前用户可读写保存，不应提供给模型或其他 session。
+
+```bash
+# CLI 的 stdio 请求/响应均为一行 JSON；stdout 不写日志
+printf '%s\n' '{"id":"1","method":"gq_state","params":{}}' | \
+  .gq/bin/gqcli -server http://127.0.0.1:8100 -state-dir .gq/dsh/player-a
+```
+
+插件桥测试：
+
+```bash
+cd tools/dsh-generalquarters && npm test
+```
+
 ## Docker
 
 ```bash
