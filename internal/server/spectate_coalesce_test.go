@@ -21,6 +21,11 @@ func TestSpectatorCoalescesBroadcastBurst(t *testing.T) {
 	if status := host.call(t, http.MethodPost, "/api/v1/rooms", map[string]any{"name": "A", "scenario_id": "_fixture", "solo": true}, &created); status != http.StatusCreated {
 		t.Fatalf("create room status %d", status)
 	}
+	// 先完成房主连接的上线通知，避免把它误算进后面的回合结算广播。
+	var initial testView
+	if status := host.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &initial); status != http.StatusOK {
+		t.Fatalf("initial state status %d", status)
+	}
 	watcher := newTestClient(t, host.base)
 	conn := dialTestWS(t, watcher, "/ws")
 	defer conn.Close()

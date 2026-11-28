@@ -243,12 +243,14 @@ function applySnapshot(message: { view?: unknown; patch?: unknown }) {
     state.value = message.view as SpectatorView
     applyDisplay((message.view as SpectatorView).display)
     status.value = 'live'
+    problem.value = ''
     return
   }
   if (!message.patch) return
   if (!state.value) return
   applyViewPatch(state.value, message.patch as ViewPatch)
   status.value = 'live'
+  problem.value = ''
 }
 
 function connect(roomID: string) {
@@ -280,7 +282,7 @@ function connect(roomID: string) {
   }
   socket.onclose = () => {
     if (closed) return
-    status.value = state.value ? 'live' : 'connecting'
+    status.value = 'connecting'
     problem.value = '连接中断，正在重连…'
     retryTimer = window.setTimeout(() => connect(roomID), retryDelay)
     retryDelay = Math.min(retryDelay * 2, 10000)
@@ -290,10 +292,6 @@ function connect(roomID: string) {
 onMounted(async () => {
   try {
     const resolved = await api.watchRoom(props.token)
-    // 先 HTTP 拉一份全量当底座：WS 抖动时也能马上看到战场，之后靠推送补差。
-    state.value = (await api.spectate(resolved.room_id, props.token)) as unknown as SpectatorView
-    applyDisplay(state.value.display)
-    status.value = 'live'
     connect(resolved.room_id)
   } catch (error) {
     status.value = 'error'

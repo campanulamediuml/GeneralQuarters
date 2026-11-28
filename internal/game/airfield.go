@@ -2756,7 +2756,7 @@ func groundAirUnit(state State, aircraft *AirfieldAirUnit) AirUnit {
 		// 水机标记也要投影：挂载表按它给"侦察/转场"两项，丢了这一位水机会拿到轰炸机的选项。
 		Seaplane: aircraft.Seaplane,
 		TaskID:   aircraft.TaskID, TaskKind: aircraft.TaskKind, Priority: aircraft.Priority,
-		Coord: aircraft.Coord, OriginCoord: aircraft.OriginCoord, TargetCoord: aircraft.TargetCoord, Heading: aircraft.Heading,
+		Coord: aircraft.Coord, OriginCoord: aircraft.OriginCoord, TargetCoord: aircraft.TargetCoord, TargetFleetID: aircraft.TargetFleetID, Heading: aircraft.Heading,
 		SectorWidth: aircraft.SectorWidth, ReconRadius: aircraft.ReconRadius, ReconDistance: aircraft.ReconDistance,
 		ReconRadiusLimit: aircraft.ReconRadiusLimit, Returning: aircraft.Returning, TrackingFleetID: aircraft.TrackingFleetID,
 		Confusion: aircraft.Damaged, Damaged: aircraft.Damaged, Maintenance: aircraft.Maintenance,

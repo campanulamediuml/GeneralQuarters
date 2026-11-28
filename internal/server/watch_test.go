@@ -38,10 +38,18 @@ func TestSpectateMergesBothFactions(t *testing.T) {
 		t.Fatalf("加入房间状态码%d", status)
 	}
 	watcher := newTestClient(t, host.base)
+	conn := dialTestWS(t, watcher, "/ws?mode=spectator")
+	if err := conn.WriteJSON(map[string]string{"type": "subscribe", "room_id": created.RoomID, "token": created.JoinToken}); err != nil {
+		t.Fatal(err)
+	}
+	snapshot := readStateView(t, conn, 1)
+	encoded, err := json.Marshal(snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
 	var view spectateView
-	path := "/api/v1/rooms/" + created.RoomID + "/spectate?token=" + created.JoinToken
-	if status := watcher.call(t, http.MethodGet, path, nil, &view); status != http.StatusOK {
-		t.Fatalf("观战状态码%d", status)
+	if err := json.Unmarshal(encoded, &view); err != nil {
+		t.Fatal(err)
 	}
 	if !view.Spectator {
 		t.Fatal("观战快照没有标记 spectator")
@@ -97,12 +105,12 @@ func TestSpectateMergesBothFactions(t *testing.T) {
 	if listed == 0 {
 		t.Fatal("观战快照里没有任何驻机数据，基地详情面板会是空的")
 	}
-	if bad := watcher.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/spectate?token=XXXX-XXXX-XXXX", nil, nil); bad != http.StatusForbidden {
-		t.Fatalf("错误 token 应该 403，实际 %d", bad)
+	badConn := dialTestWS(t, watcher, "/ws?mode=spectator")
+	if err := badConn.WriteJSON(map[string]string{"type": "subscribe", "room_id": created.RoomID, "token": "XXXX-XXXX-XXXX"}); err != nil {
+		t.Fatal(err)
 	}
-	// 没有 Cookie 的玩家接口仍然要求会话。
-	if status := watcher.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, nil); status != http.StatusUnauthorized {
-		t.Fatalf("未认证的 state 应该 401，实际 %d", status)
+	if frame := readWSEvent(t, badConn, "error"); len(frame["error"]) == 0 {
+		t.Fatal("错误 token 应返回观战错误帧")
 	}
 }
 

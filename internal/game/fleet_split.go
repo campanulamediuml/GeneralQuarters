@@ -87,6 +87,8 @@ func ApplySplitFleet(state *State, order Order) []EngineEvent {
 	if moved == 0 {
 		return []EngineEvent{{Type: "fleet_split_empty", Audience: leader.Faction, Text: fmt.Sprintf("%s没有可拆分的舰船", oldName)}}
 	}
+	inheritSplitFleetState(state, oldFleetID, newFleetID)
+	splitFleetContacts(state, oldFleetID, newFleetID, newName, splitIDs, moved)
 	// 正在被这支舰队追踪的潜艇：只要拆出去的分队里有反潜舰，追踪就交给分队。
 	// 这是"大舰队拆出驱逐舰继续反潜、主队继续走"的关键——不能等主队把反潜舰都拆光才交，
 	// 否则主队留着哪怕一艘驱逐舰，拆出去的支队都接不到反潜任务。
@@ -106,6 +108,77 @@ func ApplySplitFleet(state *State, order Order) []EngineEvent {
 		text += "；被追踪的潜艇改由分队继续反潜"
 	}
 	return []EngineEvent{{Type: "fleet_split", Audience: leader.Faction, Text: text}}
+}
+
+func inheritSplitFleetState(state *State, oldFleetID, newFleetID string) {
+	if value, ok := state.FleetSessions[oldFleetID]; ok {
+		if state.FleetSessions == nil {
+			state.FleetSessions = map[string]int{}
+		}
+		state.FleetSessions[newFleetID] = value
+	}
+	if value, ok := state.FleetStays[oldFleetID]; ok {
+		if state.FleetStays == nil {
+			state.FleetStays = map[string]string{}
+		}
+		state.FleetStays[newFleetID] = value
+	}
+	if value, ok := state.SurpriseLock[oldFleetID]; ok {
+		if state.SurpriseLock == nil {
+			state.SurpriseLock = map[string]int{}
+		}
+		state.SurpriseLock[newFleetID] = value
+	}
+	if value, ok := state.HeadingChanged[oldFleetID]; ok {
+		if state.HeadingChanged == nil {
+			state.HeadingChanged = map[string]bool{}
+		}
+		state.HeadingChanged[newFleetID] = value
+	}
+}
+
+func splitFleetContacts(state *State, oldFleetID, newFleetID, newName string, splitIDs []string, moved int) {
+	split := make(map[string]bool, len(splitIDs))
+	for _, id := range splitIDs {
+		split[id] = true
+	}
+	remaining := len(fleetMembers(state, oldFleetID))
+	for observer, contacts := range state.Contacts {
+		oldContact := contacts[oldFleetID]
+		if oldContact == nil {
+			continue
+		}
+		newContact := *oldContact
+		newContact.FleetID = newFleetID
+		newContact.Count = moved
+		newContact.Members = nil
+		oldMembers := make([]Unit, 0, len(oldContact.Members))
+		for _, member := range oldContact.Members {
+			if split[member.ID] {
+				member.FleetID = newFleetID
+				member.FleetName = newName
+				newContact.Members = append(newContact.Members, member)
+			} else {
+				oldMembers = append(oldMembers, member)
+			}
+		}
+		contacts[newFleetID] = &newContact
+		oldContact.Count = remaining
+		oldContact.Members = oldMembers
+		if remaining == 0 {
+			delete(contacts, oldFleetID)
+		}
+		oldKey, newKey := observer+"|"+oldFleetID, observer+"|"+newFleetID
+		if value, ok := state.IntelFresh[oldKey]; ok {
+			state.IntelFresh[newKey] = value
+		}
+		if value, ok := state.IntelRaised[oldKey]; ok {
+			state.IntelRaised[newKey] = value
+		}
+		if value, ok := state.IntelStaleTurns[oldKey]; ok {
+			state.IntelStaleTurns[newKey] = value
+		}
+	}
 }
 
 // fleetExists 判断某个 fleet_id 下还有没有船。

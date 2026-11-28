@@ -484,6 +484,9 @@ func AirborneRadioTasks(state State, faction string) []RadioTaskStatus {
 			}
 			kind = ground[0].TaskKind
 			coord = ground[0].Coord
+			for _, aircraft := range ground {
+				members = append(members, airUnitFromGround(aircraft))
+			}
 		}
 		chance, distance := radioSuccessChance(state, faction, coord, members)
 		_, used := state.RadioUsed[taskID]

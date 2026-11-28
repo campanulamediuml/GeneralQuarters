@@ -8,7 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -34,10 +33,11 @@ type Server struct {
 	contentDir string
 	// display 是展示文案字典（content/misc/display.json）：随每份视图下发给前端查表，
 	// 前端不再自己写一份"舰种/状态/损伤 → 中文"的映射。
-	display game.Display
-	hub     *hub
-	actors  sync.Map
-	secure  bool
+	display       game.Display
+	hub           *hub
+	actors        sync.Map
+	secure        bool
+	resolveOrders func(*game.State, []game.Order) []game.EngineEvent
 	// 观战页已经是前端 SPA 路由（/watch/{token}），服务端只负责把 token 解析成 room_id。
 }
 
@@ -54,7 +54,6 @@ const (
 	msgEvents                        // 拉战报
 	msgCommand                       // 提交命令
 	msgReady                         // 完成部署
-	msgSpectate                      // 观战视图（join_token 认证）
 	msgJoin                          // 加入房间
 	msgConnect                       // 连接上线 / 离线
 	msgSpectatorJoin                 // 观战连接接入：推首帧全量
@@ -71,8 +70,6 @@ func (kind roomKind) String() string {
 		return "command"
 	case msgReady:
 		return "ready"
-	case msgSpectate:
-		return "spectate"
 	case msgJoin:
 		return "join"
 	case msgConnect:
@@ -174,9 +171,11 @@ type roomActor struct {
 	// done 关掉之后 worker 退出，投递给它的消息一律被拒。
 	// 房间被清理器回收时要靠它把这条 goroutine 和它手里那份 146KB 状态一起放掉：
 	// 只从 actors 里删掉引用是不够的，阻塞在 msgs 上的 goroutine 仍然攥着整个房间。
-	done     chan struct{}
-	stopOnce sync.Once
-	start    sync.Once
+	done      chan struct{}
+	stopping  chan struct{}
+	lifecycle sync.RWMutex
+	stopOnce  sync.Once
+	start     sync.Once
 	// apply 处理一条消息。生产里它就是 Server.applyRoomMsg；
 	// 单元测试会换成自己的实现，用来验证"串行"和"panic 之后还能继续"。
 	apply func(roomMsg) roomReply
@@ -202,10 +201,11 @@ type roomViews struct {
 
 func newRoomActor(server *Server) *roomActor {
 	actor := &roomActor{
-		msgs:  make(chan roomMsg, 128),
-		done:  make(chan struct{}),
-		views: roomViews{players: map[string]map[string]any{}},
-		meta:  newDiffCache(),
+		msgs:     make(chan roomMsg, 128),
+		done:     make(chan struct{}),
+		stopping: make(chan struct{}),
+		views:    roomViews{players: map[string]map[string]any{}},
+		meta:     newDiffCache(),
 	}
 	if server != nil {
 		actor.apply = server.applyRoomMsg
@@ -218,35 +218,72 @@ func newRoomActor(server *Server) *roomActor {
 func (a *roomActor) run() {
 	for {
 		select {
-		case <-a.done:
-			return
 		case msg := <-a.msgs:
-			reply := a.applySafely(msg)
-			if msg.wantsReply() {
-				msg.answer(reply)
+			a.handle(msg)
+		case <-a.done:
+			for {
+				select {
+				case msg := <-a.msgs:
+					a.handle(msg)
+				default:
+					return
+				}
 			}
 		}
 	}
 }
 
-// shutdown 停掉这条 worker。重复调用安全；已经进来的消息会先处理完再退出。
-func (a *roomActor) shutdown() {
-	a.stopOnce.Do(func() { close(a.done) })
+func (a *roomActor) handle(msg roomMsg) {
+	reply := a.applySafely(msg)
+	if msg.wantsReply() {
+		msg.answer(reply)
+	}
 }
 
-// send 投递一条消息。房间已经被回收（done 已关）时返回 false，
-// 调用方按"房间不存在"处理，而不是往一个关掉的通道里写、把整个进程打崩。
+// shutdown 停掉这条 worker。重复调用安全；已经进来的消息会先处理完再退出。
+func (a *roomActor) shutdown() {
+	a.stopOnce.Do(func() {
+		close(a.stopping)
+		a.lifecycle.Lock()
+		close(a.done)
+		a.lifecycle.Unlock()
+	})
+}
+
+// send 投递一条消息。关闭与投递使用同一把生命周期锁，已接受的消息一定会被 worker 排空。
 func (a *roomActor) send(msg roomMsg) bool {
+	a.lifecycle.RLock()
+	defer a.lifecycle.RUnlock()
+	return a.sendLocked(msg)
+}
+
+func (a *roomActor) sendLocked(msg roomMsg) bool {
 	select {
-	case <-a.done:
+	case <-a.stopping:
 		return false
 	default:
 	}
 	select {
 	case a.msgs <- msg:
 		return true
-	case <-a.done:
+	case <-a.stopping:
 		return false
+	}
+}
+
+func (a *roomActor) post(msg roomMsg) (full bool) {
+	a.lifecycle.RLock()
+	defer a.lifecycle.RUnlock()
+	select {
+	case <-a.stopping:
+		return false
+	default:
+	}
+	select {
+	case a.msgs <- msg:
+		return false
+	default:
+		return true
 	}
 }
 
@@ -344,8 +381,6 @@ func (s *Server) applyRoomMsg(msg roomMsg) roomReply {
 		return s.doCommand(msg)
 	case msgReady:
 		return s.doReady(msg)
-	case msgSpectate:
-		return s.doSpectate(msg)
 	case msgJoin:
 		return s.doJoin(msg)
 	case msgConnect:
@@ -429,7 +464,7 @@ func New(store *store.Store, contentDir string, secureCookie bool) *Server {
 	if displayErr != nil {
 		log.Printf("读取展示文案失败：%v", displayErr)
 	}
-	s := &Server{store: store, contentDir: contentDir, secure: secureCookie, display: display}
+	s := &Server{store: store, contentDir: contentDir, secure: secureCookie, display: display, resolveOrders: game.ResolveOrders}
 	s.hub = newHub()
 	// 进程刚起来，谁都不在线：库里留着的 connected=1 全是上一次的残留，先清零。
 	// 不清的话，"没人在线"这个条件永远不成立，闲置房间一个也回收不掉。
@@ -442,63 +477,12 @@ func New(store *store.Store, contentDir string, secureCookie bool) *Server {
 func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/rooms", s.createRoom)
 	mux.HandleFunc("POST /api/v1/rooms/join", s.joinRoom)
-	mux.HandleFunc("GET /api/v1/rooms/", s.roomRoutes)
-	mux.HandleFunc("POST /api/v1/rooms/", s.roomRoutes)
 	mux.HandleFunc("GET /api/v1/watch/", s.resolveWatchRoom)
 	mux.HandleFunc("GET /ws", s.webSocket)
 	// content/ 下的静态素材（兵牌剪影等）：路径由舰船卡的 picture 字段给出，
 	// 例如 /content/misc/image/ship/new_orleans.png。换图只要替换数据目录里的文件，
 	// 既不用重新构建前端，也不用重启（FileServer 每次读盘）。
 	mux.Handle("GET /content/", http.StripPrefix("/content/", http.FileServer(http.Dir(s.contentDir))))
-}
-
-// roomRoutes 是房间的 HTTP 入口：只做鉴权和参数粗筛，真正的事交给房间 worker。
-// 每个分支都变成一条消息丢进同一个 worker，所以 HTTP 和 WebSocket 打进来的命令
-// 在房间里是同一条串行队列。
-func (s *Server) roomRoutes(w http.ResponseWriter, r *http.Request) {
-	parts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
-	if len(parts) != 5 || parts[0] != "api" || parts[1] != "v1" || parts[2] != "rooms" {
-		writeError(w, http.StatusNotFound, "接口不存在")
-		return
-	}
-	defer r.Body.Close()
-	roomID, action := parts[3], parts[4]
-	// 观战接口不走玩家 Cookie：它用房间 join_token 认证，返回合并后的双方视图。
-	if r.Method == http.MethodGet && action == "spectate" {
-		writeRoomReply(w, s.askRoom(roomMsg{kind: msgSpectate, roomID: roomID, token: r.URL.Query().Get("token")}))
-		return
-	}
-	player, ok := s.authenticate(w, r)
-	if !ok {
-		return
-	}
-	if player.RoomID != roomID {
-		writeError(w, http.StatusForbidden, "当前会话不属于此房间")
-		return
-	}
-	msg := roomMsg{roomID: roomID, player: player}
-	switch {
-	case r.Method == http.MethodGet && action == "state":
-		msg.kind = msgState
-	case r.Method == http.MethodGet && action == "events":
-		msg.kind = msgEvents
-	case r.Method == http.MethodPost && action == "commands":
-		msg.kind = msgCommand
-	case r.Method == http.MethodPost && action == "ready":
-		msg.kind = msgReady
-	default:
-		writeError(w, http.StatusNotFound, "接口不存在")
-		return
-	}
-	if msg.kind == msgCommand || msg.kind == msgReady {
-		body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<20))
-		if err != nil {
-			writeError(w, http.StatusBadRequest, "请求JSON无效")
-			return
-		}
-		msg.body = body
-	}
-	writeRoomReply(w, s.askRoom(msg))
 }
 
 func (s *Server) createRoom(w http.ResponseWriter, r *http.Request) {
@@ -609,12 +593,17 @@ func (s *Server) doConnect(msg roomMsg) {
 // commandFingerprint 把一条命令的可识别字段拼成指纹：用来区分"同一命令重试"和
 // "复用 command_id 的另一条命令"。只取业务字段，不含 command_id / base_turn。
 func commandFingerprint(request commandRequest) string {
+	assignments := ""
+	if len(request.Assignments) > 0 {
+		encoded, _ := json.Marshal(request.Assignments)
+		assignments = string(encoded)
+	}
 	parts := []string{
 		request.Type, request.UnitID, request.TargetUnitID, request.AircraftID,
 		strings.Join(request.AircraftIDs, ","), request.TaskID, request.Coord, request.TargetFleetID, request.Heading,
 		strconv.Itoa(request.SectorWidth),
-		strings.Join(request.SplitIDs, ","),
-		request.TaskKind, request.Loadout, fmt.Sprintf("%t", request.Disperse), request.Engagement,
+		strings.Join(request.SplitIDs, ","), assignments,
+		request.TaskKind, request.Loadout, strconv.Itoa(request.Lane), strconv.FormatBool(request.Disperse), request.Engagement, strconv.FormatBool(request.Cycle),
 	}
 	sum := sha256.Sum256([]byte(strings.Join(parts, "|")))
 	return hex.EncodeToString(sum[:8])
@@ -689,6 +678,10 @@ func (s *Server) doCommand(msg roomMsg) roomReply {
 		}
 	}
 	if game.IsImmediateOrder(order.Type) || order.Type == "MERGE_FLEET" || order.Type == "REORGANIZE_HEX" || game.IsAirOrder(order.Type) || order.Type == "SET_HEADING" || order.Type == "SET_LOADOUT" || order.Type == "SET_AUTO_NAV" || order.Type == "SET_ENGAGEMENT" {
+		room, err = cloneRoom(room)
+		if err != nil {
+			return roomError(http.StatusInternalServerError, "复制房间状态失败")
+		}
 		var events []game.EngineEvent
 		switch order.Type {
 		case "SET_HEADING":
@@ -755,33 +748,54 @@ func pendingRadioTask(ctx context.Context, s *store.Store, roomID string, turn i
 	return false
 }
 
-// savePlannedOrder 把一条待结算命令存进 orders 表（重复提交同一条移动不会重复记账）。
+// savePlannedOrder 把版本、幂等回执和待结算命令作为一个事务保存。
 func (s *Server) savePlannedOrder(ctx context.Context, actor *roomActor, msg roomMsg, request commandRequest, order game.Order) roomReply {
 	response, _ := json.Marshal(map[string]any{"accepted": true, "command_id": request.CommandID, "turn": actor.room.Turn})
-	// 先推进版本（commands 表在这里写幂等响应），再落待结算命令；顺序反了会让幂等重试撞上主键冲突。
-	room, err := s.store.BumpVersion(ctx, actor.room, msg.player.ID, request.CommandID, commandFingerprint(request), string(response))
+	room, err := s.store.SavePlannedOrder(ctx, actor.room, msg.player.ID, request.CommandID, order, string(response), commandFingerprint(request))
 	if err != nil {
-		return roomError(http.StatusConflict, "命令结算失败："+err.Error())
+		return roomError(http.StatusInternalServerError, "保存命令失败："+err.Error())
 	}
 	actor.room = room
-	if err := s.store.SaveOrder(ctx, msg.roomID, room.Turn, msg.player.ID, request.CommandID, order, string(response), commandFingerprint(request)); err != nil {
-		return roomError(http.StatusInternalServerError, "保存命令失败")
-	}
 	s.publishRoom(msg.roomID)
 	return roomReply{status: http.StatusOK, body: response}
 }
 
-// resolveRoomTurn 包一层 panic 兜底：回合结算里任何一处越界都不应该让整个房间卡死，
-// 出错时记录日志并返回 nil（回合作废但不崩溃），便于快速定位。
-func resolveRoomTurn(state *game.State, orders []game.Order) (events []game.EngineEvent) {
+func cloneRoom(room store.Room) (store.Room, error) {
+	type roomStateSnapshot struct {
+		State          game.State              `json:"state"`
+		AircraftRoster map[string]game.AirUnit `json:"aircraft_roster"`
+		DeferredSink   bool                    `json:"deferred_sink"`
+		PendingSinks   []*game.Unit            `json:"pending_sinks"`
+	}
+	snapshot := roomStateSnapshot{
+		State: room.State, AircraftRoster: room.State.AircraftRoster,
+		DeferredSink: room.State.DeferredSink, PendingSinks: room.State.PendingSinks,
+	}
+	data, err := json.Marshal(snapshot)
+	if err != nil {
+		return room, err
+	}
+	var cloned roomStateSnapshot
+	if err := json.Unmarshal(data, &cloned); err != nil {
+		return room, err
+	}
+	cloned.State.AircraftRoster = cloned.AircraftRoster
+	cloned.State.DeferredSink = cloned.DeferredSink
+	cloned.State.PendingSinks = cloned.PendingSinks
+	room.State = cloned.State
+	return room, nil
+}
+
+// resolveRoomTurn 包一层 panic 兜底：出错时不得提交部分结算后的状态。
+func (s *Server) resolveRoomTurn(state *game.State, orders []game.Order) (events []game.EngineEvent, err error) {
 	defer func() {
 		if recovered := recover(); recovered != nil {
-			// 带上调用栈，否则"nil pointer dereference"这种错误完全无法定位。
 			log.Printf("回合结算异常：%v\n%s", recovered, debug.Stack())
 			events = nil
+			err = fmt.Errorf("回合结算异常：%v", recovered)
 		}
 	}()
-	return game.ResolveOrders(state, orders)
+	return s.resolveOrders(state, orders), nil
 }
 
 // StartTurnReconciler 周期巡检"所有玩家都已 ready、房间却没动"的对局。
@@ -884,6 +898,10 @@ func (s *Server) doSettle(msg roomMsg) {
 	}
 	if game.InDeployPhase(room.State) {
 		// 部署阶段就卡在这里：双方都点了部署完毕、但触发的那条请求丢了（比如重启）。
+		room, err = cloneRoom(room)
+		if err != nil {
+			return
+		}
 		events := game.StartBattle(&room.State)
 		started, err := s.store.StartBattle(ctx, room, room.State, events)
 		if err != nil {
@@ -903,8 +921,15 @@ func (s *Server) doSettle(msg roomMsg) {
 	for _, record := range records {
 		orders = append(orders, record.Order)
 	}
+	room, err = cloneRoom(room)
+	if err != nil {
+		return
+	}
 	room.State.Turn = room.Turn
-	events := resolveRoomTurn(&room.State, orders)
+	events, err := s.resolveRoomTurn(&room.State, orders)
+	if err != nil {
+		return
+	}
 	room.State.Turn = room.Turn + 1
 	resolved, err := s.store.Resolve(ctx, room, room.State, events)
 	if err != nil {
@@ -966,6 +991,10 @@ func (s *Server) doReady(msg roomMsg) roomReply {
 	}
 	if allReady && deployPhase {
 		// 双方都点过"部署完毕"：结束部署，进入第 1 回合。部署不算回合，回合号保持 1。
+		room, err = cloneRoom(room)
+		if err != nil {
+			return roomError(http.StatusInternalServerError, "复制房间状态失败")
+		}
 		events := game.StartBattle(&room.State)
 		started, err := s.store.StartBattle(ctx, room, room.State, events)
 		if err != nil {
@@ -986,8 +1015,15 @@ func (s *Server) doReady(msg roomMsg) roomReply {
 			orders = append(orders, record.Order)
 		}
 		// 引擎内部的回合号与服务端的房间回合保持一致，胜利条件的回合上限要用它。
+		room, err = cloneRoom(room)
+		if err != nil {
+			return roomError(http.StatusInternalServerError, "复制房间状态失败")
+		}
 		room.State.Turn = room.Turn
-		events := resolveRoomTurn(&room.State, orders)
+		events, err := s.resolveRoomTurn(&room.State, orders)
+		if err != nil {
+			return roomError(http.StatusInternalServerError, "回合结算失败，请重试")
+		}
 		room.State.Turn = room.Turn + 1
 		resolved, err := s.store.Resolve(ctx, room, room.State, events)
 		if err != nil {
@@ -1096,8 +1132,8 @@ func (s *Server) privateView(ctx context.Context, room store.Room, players []sto
 		"phase":       room.State.Phase,
 		"deploy_zone": game.DeployZoneView(room.State, player.Faction),
 		// submarines：部署阶段是本方还没摆完的可部署潜艇；开战后只剩被本方发现的敌方潜艇。
-		"submarines":   game.VisibleSubmarines(room.State, player.Faction),
-		"sub_battles":  game.VisibleSubBattles(room.State),
+		"submarines":  game.VisibleSubmarines(room.State, player.Faction),
+		"sub_battles": game.VisibleSubBattles(room.State),
 		"night":       room.State.Night,
 		"clock":       game.Clock(room.State),
 		"enemy_air":   game.VisibleEnemyAir(room.State, player.Faction),
@@ -1129,20 +1165,6 @@ func (s *Server) doEvents(msg roomMsg) roomReply {
 		return roomError(http.StatusInternalServerError, "读取战报失败")
 	}
 	return roomJSON(http.StatusOK, map[string]any{"events": events})
-}
-
-func (s *Server) authenticate(w http.ResponseWriter, r *http.Request) (store.Player, bool) {
-	cookie, err := r.Cookie("gq_session")
-	if err != nil {
-		writeError(w, http.StatusUnauthorized, "请先创建或加入房间")
-		return store.Player{}, false
-	}
-	player, err := s.store.PlayerBySession(r.Context(), hashToken(cookie.Value))
-	if err != nil {
-		writeError(w, http.StatusUnauthorized, "会话已失效，请重新加入")
-		return store.Player{}, false
-	}
-	return player, true
 }
 
 func (s *Server) setSessionCookie(w http.ResponseWriter, session string) {
@@ -1233,12 +1255,7 @@ func (s *Server) askRoom(msg roomMsg) roomReply {
 // postRoom 把一条不需要应答的消息交给房间 worker。队列满了就丢掉这条：
 // 在线状态这类消息会被下一次连接或推送纠正，不值得为它阻塞一个 socket goroutine。
 func (s *Server) postRoom(msg roomMsg) {
-	actor := s.roomActor(msg.roomID)
-	select {
-	case actor.msgs <- msg:
-	case <-actor.done:
-		// 房间刚被清理：这条状态消息没有意义，安静丢掉。
-	default:
+	if s.roomActor(msg.roomID).post(msg) {
 		log.Printf("房间 %s 的消息队列已满，丢弃 %s", msg.roomID, msg.kind)
 	}
 }

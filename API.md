@@ -1,282 +1,448 @@
-# General Quarters 接口与扩展协议
+# General Quarters API
 
-运行时OpenAPI文档：`GET /api/v1/openapi.yaml`。在线简版文档：`/api/docs`。架构与数据设计见`DESIGN.md`。
+本文描述当前服务端实现的 HTTP、WebSocket、命令和快照契约。游戏规则见 `规则书.md`，剧本配置见 `剧本附录.md`；本文不重复战斗公式。
 
-## 通用约定
+- 在线速查：`GET /api/docs`
+- 大厅 HTTP 的机器可读定义：`GET /api/v1/openapi.yaml`；WebSocket 契约以本文为准
+- 架构与存储设计：`DESIGN.md`
 
-- 除健康检查和文档外，接口使用创建或加入房间时签发的HttpOnly Cookie`gq_session`。
-- 成功响应为JSON，错误为`{"error":"人类可读说明"}`；错误如果带错误码，还会附上 `error_code` 和 `error_params`（例如 `{"error_code":"loadout_not_supplied","error_params":{"where":"护航航母「马尼拉湾」","weapon":"鱼雷"}}`）。`error` 已经按内容表（`content/misc/display.json` 的 `errors` 分组）渲染好，老客户端不用改；新客户端可以拿 code + params 用同一张表自己本地化。
-- `room_id`标识房间；`join_token`是邀请凭证；二者都不是玩家会话。
-- `base_turn`可选：提交时看到的回合号。只有回合已结算的过期提交会被拒绝（409）；同回合内重复提交一律接受，后写的覆盖先写的。不比对版本号。
-- `command_id`由客户端生成，在玩家范围内唯一。断线重试必须沿用原ID。
-- hex坐标为`ABCD`，AB为行、CD为列，例如`0203`。
-- 闲置房间只释放内存、不删库：房间连续 12 小时没有活动（没有命令/结算，也没有玩家上下线或观战连入），且当前没有玩家在线时，服务端会停掉该房间在内存里的 worker。房间、事件、回合快照和指令回执全部保留，下一次请求按需从库里重新载入，响应跟一直挂着没有区别；只有极小概率撞上释放动作并发时会返回 503 `房间已释放内存，正在重新载入，请重试`，直接重试即可。
+## 1. 通用约定
 
-## HTTP接口（大厅与脚本兼容）
+### 1.1 会话与观战凭证
 
-网页只在**大厅**使用 HTTP：建房、凭邀请 token 加入。进入房间后，状态读取、命令和 ready 全部走 WebSocket RPC，不再轮询。
+- 创建或加入房间成功后，服务端通过 HttpOnly Cookie `gq_session` 建立玩家会话。Cookie 路径为 `/`，有效期 30 天，SameSite 为 Lax；生产配置可启用 Secure。
+- `room_id` 是房间标识，`player_id` 是玩家标识，`join_token` 是邀请及观战凭证。三者不能互相替代。
+- 玩家接口要求会话属于路径中的房间。观战接口不使用玩家 Cookie，而用 `join_token` 认证。
+- 邀请 token 共 12 位，请求和响应中可显示为 `XXXX-XXXX-XXXX`；服务端比较时会忽略连字符并统一大小写。
 
-| 方法 | 路径 | 说明 |
+### 1.2 请求与响应
+
+- 请求和成功响应使用 JSON。请求体及 WebSocket 单帧上限均为 1 MiB。
+- JSON 解码会拒绝未知字段。不要提交 `recon_radius` 等未在命令结构中定义的字段。
+- 错误响应为：
+
+```json
+{
+  "error": "人类可读说明",
+  "error_code": "loadout_not_supplied",
+  "error_params": {"where": "护航航母「马尼拉湾」", "weapon": "鱼雷"}
+}
+```
+
+`error` 始终存在；`error_code` 和 `error_params` 仅在带码错误中出现。文案表位于 `content/misc/display.json` 的 `errors` 分组。
+
+### 1.3 坐标、回合与命令 ID
+
+- hex 坐标为 `ABCD`：前两位是行，后两位是列，例如 `0203`。地图行、列从 1 开始。
+- `base_turn` 可选；大于 0 时必须等于当前回合，否则返回 409。它不是状态版本号。
+- `command_id` 必填，最长 128 字节，在同一玩家的历史命令范围内唯一。
+- 网络重试必须复用原来的 `command_id` 和完整请求体。相同 ID、相同命令返回首次回执；相同 ID、不同命令返回 400。
+- 战斗阶段的规划命令按“房间、回合、玩家、单位或任务”保存，后写覆盖先写。立即生效命令不属于这套覆盖机制。
+
+### 1.4 房间生命周期
+
+双人房必须有两名玩家才能 ready 和推进回合；单人沙盒由唯一玩家推进。闲置房间连续 12 小时无活动且没有玩家在线时，服务端只释放内存 worker，不删除数据库中的房间、事件、快照或命令回执；后续请求会自动重载。重载竞争期间可能返回 503，重试即可。
+
+## 2. HTTP 接口
+
+HTTP 只用于大厅创建、加入房间，以及解析观战 token。进入房间后，玩家状态、事件、命令、ready 和观战全部使用 WebSocket；服务端不提供房间对局的 HTTP 兼容接口。
+
+| 方法 | 路径 | 认证 | 说明 |
+|---|---|---|---|
+| GET | `/healthz` | 无 | 返回 `{"status":"ok"}` |
+| GET | `/api/docs` | 无 | 在线速查页 |
+| GET | `/api/v1/openapi.yaml` | 无 | OpenAPI 3.0 定义 |
+| POST | `/api/v1/rooms` | 无 | 创建房间并建立房主会话 |
+| POST | `/api/v1/rooms/join` | 无 | 使用邀请 token 加入并建立玩家会话 |
+| GET | `/api/v1/watch/{token}` | token | 解析为 `{"room_id":"..."}`；无效 token 返回 404 |
+| GET | `/content/{path}` | 无 | 剧本引用的静态图片等资源 |
+
+`/watch/{token}` 与 `/watch/{roomID}/{token}` 是前端 SPA 路由，不是 JSON API。
+
+### 2.1 创建房间
+
+```http
+POST /api/v1/rooms
+Content-Type: application/json
+```
+
+```json
+{
+  "name": "玩家A",
+  "scenario_id": "_coral_real",
+  "faction": "A",
+  "solo": false
+}
+```
+
+| 字段 | 必填 | 说明 |
 |---|---|---|
-| GET | `/healthz` | 健康检查 |
-| POST | `/api/v1/rooms` | 创建房间并自动载入剧本，默认`_coral_real`，可传`scenario_id`选`_marianas` |
-| POST | `/api/v1/rooms/join` | 使用12位token加入 |
-| GET | `/api/v1/rooms/{roomID}/state` | 房间私有快照；网页不再调用，保留给脚本/旧客户端 |
-| GET | `/api/v1/rooms/{roomID}/events` | 最近100条当前阵营可见事件，按时间正序（旧→新）；同上 |
-| POST | `/api/v1/rooms/{roomID}/commands` | 设置或取消单位命令；同上，语义与 WS RPC 一致 |
-| POST | `/api/v1/rooms/{roomID}/ready` | 设置或取消ready；同上 |
-| GET | `/watch/{token}` | 只读观战页面（前端 SPA 路由）：页面自己调 `/api/v1/watch/{token}` 换 room_id，再接 `/ws?mode=spectator` 订阅 |
-| GET | `/api/v1/watch/{token}` | 观战链接解析：把 join_token 换成 `{room_id}`；token 无效回 404 |
-| GET | `/watch/{roomID}/{token}` | 观战页兼容形式：前端路由同样接受，房间 ID 由 token 解析得出 |
-| GET | `/api/v1/rooms/{roomID}/spectate?token=...` | 兼容旧客户端的观战 HTTP 快照：用房间join_token认证 |
-| GET | `/api/v1/openapi.yaml` | 机器可读OpenAPI定义 |
+| `name` | 否 | 玩家名称；空值使用默认名称 |
+| `scenario_id` | 否 | `_coral_real` 或 `_marianas`；默认 `_coral_real` |
+| `faction` | 否 | 房主阵营 `A`/`B`；默认 `A` |
+| `solo` | 否 | `true` 创建单人沙盒；默认双人房 |
 
-### 创建房间
+成功返回 201，并设置会话 Cookie：
 
 ```json
-{"name":"玩家A","scenario_id":"_coral_real"}
+{
+  "room_id": "04ca6f34b85a65d2",
+  "player_id": "...",
+  "join_token": "7K4M-9Q2X-6T8P"
+}
 ```
 
-响应201：
+### 2.2 加入房间
 
 ```json
-{"room_id":"...","player_id":"...","join_token":"7K4M-9Q2X-6T8P"}
+{
+  "token": "7K4M-9Q2X-6T8P",
+  "name": "玩家B"
+}
 ```
 
-### 可选剧本
+成功返回 200，并设置独立会话 Cookie：
 
-创建房间时用`scenario_id`选剧本，不传就是默认的`_coral_real`：
+```json
+{"room_id":"04ca6f34b85a65d2","player_id":"..."}
+```
 
-| scenario_id | 剧本 | 特点 |
+加入响应不返回 `join_token`。token 无效、格式错误或房间已满时返回 400。
+
+### 2.3 快照与事件结构
+
+以下结构通过 WebSocket RPC 获取，不是 HTTP 接口。`GET state` 返回第 5 节所述私有快照，`GET events` 返回：
+
+```json
+{
+  "events": [
+    {
+      "id": 41,
+      "turn": 3,
+      "sequence": 2,
+      "type": "unit_moved",
+      "text": "...",
+      "created_at": "2026-01-01T04:00:00Z"
+    }
+  ]
+}
+```
+
+数组只包含当前阵营可见的最近 100 条事件，并按事件 ID 升序返回。
+
+## 3. 命令 RPC
+
+命令只能通过 WebSocket RPC 提交，请求体结构为：
+
+```json
+{
+  "command_id": "01J...",
+  "base_turn": 1,
+  "type": "SET_MOVE",
+  "unit_id": "a-flag",
+  "coord": "0203"
+}
+```
+
+成功只表示命令通过校验并被接受，响应不携带完整状态：
+
+```json
+{"accepted":true,"command_id":"01J...","turn":1}
+```
+
+`turn` 并非所有命令回执都包含。最新状态通过快照或补丁获取。无线电命令的“已接受”也不等于通信判定成功；结果在回合结算后通过事件和快照体现。
+
+### 3.1 通用字段
+
+按需提交字段，不要给无关命令补空字段以外的自定义参数。
+
+| 字段 | 类型 | 用途 |
 |---|---|---|
-| `_coral_real` | 珊瑚海 1942年5月 | 25 海里/hex，单部署区，航母对航母的小编队局 |
-| `_marianas` | 马里亚纳 1944年6月（架空） | 89×60 图、360 回合上限、`fleet_max_ships` 45、日军四支航母群 + 栗田水面部队、双部署区、三个登陆投送目标 |
+| `unit_id` | string | 舰船 ID；不是 `fleet_id` |
+| `target_unit_id` | string | 目标舰队中的舰船 ID |
+| `coord` | string | 移动、部署、目标或目的地 hex |
+| `heading` | string | `E/SE/SW/W/NW/NE` |
+| `engagement` | string | `aggressive/advantage/avoid` |
+| `assignments` | object | `舰船ID -> fleet_id` 的整编映射 |
+| `split_ids` | string[] | 要拆出的舰船 ID |
+| `aircraft_id` | string | 单个航空算子 ID；编队级命令中也可传任务 ID |
+| `aircraft_ids` | string[] | 一批航空算子 ID，1–20 个 |
+| `task_id` | string | 要加入的航空任务，或无线电命令的任务 ID |
+| `task_kind` | string | 无线电改令目标：`attack` 或 `transfer` |
+| `target_fleet_id` | string | 明确指定要攻击的敌方舰队 |
+| `sector_width` | integer | 侦察扇面：60 或 120 |
+| `lane` | integer | 新建打击/侦察编队的面板栏位偏好，从 1 开始 |
+| `loadout` | string | 挂载 ID；空字符串表示卸弹 |
+| `disperse` | boolean | `true` 分散攻击，`false` 集中攻击 |
+| `cycle` | boolean | 设置自动任务循环开关 |
 
-`_marianas` 的开局是`phase:"deploy"`：美军全部舰队在`2384`周围 8 hex 内展开（贴着地图右边缘，正在塞班以东准备登陆），日军甲/乙/丙三支航母群（TG1、TG2、TG3）在`1023`周围 6 hex、丁部队（TG4）和栗田的第一游击部队（TG5）在`4221`周围 6 hex，从远处赶来支援。双方各自`ready`后进入第 1 回合，04:00 开局，05:30 才开放起飞。
+### 3.2 生效时机
 
-### 加入房间
+| 命令 | 提交时 | 回合结算时 |
+|---|---|---|
+| 战斗阶段 `SET_MOVE` | 保存规划，不移动舰队 | 执行位移 |
+| 部署阶段 `SET_MOVE` | 立即调整部署位置 | 不适用 |
+| `CLEAR_MOVE` | 删除对应规划 | 不再执行被删除的规划 |
+| 整编、拆分、航向、自动航行、交战设置、潜艇部署 | 立即修改状态 | 不重复执行 |
+| 非无线电航空命令 | 立即修改任务或算子状态 | 推进整备、起降、飞行和战斗 |
+| 无线电命令 | 保存规划并占用本回合通信机会 | 判定通信并成功时执行 |
 
-```json
-{"token":"7K4M-9Q2X-6T8P","name":"玩家B"}
-```
+玩家 ready 后，本侧所有命令均被拒绝，不能用新命令自动取消 ready。
 
-成功响应200。满员、token无效或格式错误返回400。
+### 3.3 舰队、部署与潜艇命令
 
-### 设置移动
+| `type` | 主要字段 | 契约 |
+|---|---|---|
+| `SET_MOVE` | `unit_id, coord` | 部署阶段放入合法部署格；战斗阶段规划移动到 `legal_moves` 中的相邻格 |
+| `CLEAR_MOVE` | `unit_id` | 撤销该舰船所在舰队本回合的移动规划；无需 `coord` |
+| `SET_HEADING` | `unit_id, heading` | 设置舰队朝向；是否可改由服务端按移动和每回合限制校验 |
+| `SET_AUTO_NAV` | `unit_id, coord, engagement?` | 设置自动航行目的地及交战策略；空 `coord` 取消自动航行 |
+| `SET_ENGAGEMENT` | `unit_id, engagement` | 设置交战策略；含航母舰队的限制由服务端校验 |
+| `MERGE_FLEET` | `unit_id, target_unit_id` | 将源舰队并入目标舰船所在舰队；两队须同格且分属不同舰队 |
+| `REORGANIZE_HEX` | `coord, assignments` | 重编该 hex 的全部己方舰船；映射不得遗漏或包含其他单位 |
+| `SPLIT_FLEET` | `unit_id, split_ids` | 将指定舰船拆成新舰队；允许混乱舰队拆分，不附加整编移动锁 |
+| `DEPLOY_SUB` | `unit_id, coord` | 部署阶段摆放潜艇；`unit_id` 取 `submarines[].id` |
+
+`MERGE_FLEET` 与 `REORGANIZE_HEX` 在战斗阶段会使相关编队锁定移动 3 回合；混乱舰队不能合并或整编。部署阶段不附加该锁。拆分不重置移动冷却或停留计时。
+
+整编与拆分结果仍须满足剧本的舰队规模和护航要求。`REORGANIZE_HEX` 示例：
 
 ```json
 {
-  "command_id":"01J...",
-  "base_turn":1,
-  "type":"SET_MOVE",
-  "unit_id":"a-flag",
-  "coord":"0203"
+  "command_id": "01J...",
+  "base_turn": 1,
+  "type": "REORGANIZE_HEX",
+  "coord": "0302",
+  "assignments": {
+    "a-flag": "a-flag",
+    "a-screen": "a-flag"
+  }
 }
 ```
 
-`unit_id`必须是**舰船 id**（`fleets[].members[].id` 或 `units[].id`），不能填 `fleets[].fleet_id`——填舰队号会返回 400"单位不存在或不属于当前玩家"。`legal_moves` 挂在舰队上，但命令收的是旗舰/成员舰的 id。`SET_HEADING` 同理，航向只有 `E/SE/SW/W/NW/NE` 六个方向。
+### 3.4 航空命令
 
-`coord`必须位于该单位服务器返回的`legal_moves`中。`SET_MOVE`提交后**只登记本回合的移动规划**（写入房间的待结算`orders`，舰队原地不动），双方就绪、回合结算时统一执行位移；即时生效的只有`SET_HEADING`/`SET_LOADOUT`/`SET_AUTO_NAV`/`SET_ENGAGEMENT`这类命令。到达可移动时机后，常速/快速舰队每3回合移动一次（移动后冷却2回合），纯高速驱逐舰每2回合（冷却1回合），慢速每6回合（冷却5回合），极慢每9回合（冷却8回合），失去动力每24回合（冷却23回合）。全队按最慢航速计算，进水降低航速档位；冷却在回合结算开始递减，未归零时返回空的`legal_moves`并拒绝移动。`CLEAR_MOVE`用于撤销本回合登记过的移动规划，包含`command_id`、`type`和`unit_id`；撤销后舰队本回合留在原地，也不会因此进入移动冷却。整编后同样锁定3回合，交战后混乱的舰队不能整编。
+航空命令中的任务 ID 取自 `aviation.tasks[].id` 或 `ground_tasks[].id`，由服务端生成。向已有侦察或打击编队加入飞机时使用 `task_id`。修改整个编队时，将任务 ID 放在 `aircraft_id` 中；机场编队级命令还应把同一个任务 ID 填入 `task_id`，确保服务端按岸基任务分流。客户端不应把任一成员飞机 ID 当作全组 ID 使用。
 
-### 整编舰队
+| `type` | 主要字段 | 契约 |
+|---|---|---|
+| `SET_LOADOUT` | `aircraft_ids, loadout` | 设置挂载；可用 ID 读取算子的 `loadout_options`，空串卸弹 |
+| `LIFT_TO_DECK` | `aircraft_ids` | 舰载算子排队上甲板；机场算子表示滑行到跑道 |
+| `RETURN_TO_HANGAR` | `aircraft_ids` | 取消未升空算子的任务或上甲板请求，并安排返回机库 |
+| `RECOVER_AIR` | `aircraft_ids` | 直接回收空中 CAP；其他任务按自动返航或无线电召回处理 |
+| `LAUNCH_CAP` | `aircraft_ids` | 战斗机执行 CAP；机场 CAP 只守本机场，远程掩护使用 `LAUNCH_COVER` |
+| `LAUNCH_COVER` | `aircraft_ids, coord?` | 战斗机掩护指定 hex；留空时为本机场上空 |
+| `LAUNCH_RECON` | `aircraft_ids, heading, sector_width, task_id?, lane?` | 新建扇面侦察；加入已有组时继承其参数 |
+| `LAUNCH_STRIKE` | `aircraft_ids, coord?, target_fleet_id?, task_id?, lane?` | 新建或加入打击编队；允许先建组再设目标 |
+| `LAUNCH_ASW` | `aircraft_ids` | 非战斗机执行反潜巡逻 |
+| `LAUNCH_TRANSFER` | `aircraft_ids, coord?` | 转场到合法己方机场或具备接收条件的航母；可先建组再设目的地 |
+| `SET_STRIKE_TARGET` | `aircraft_id=任务ID, task_id, coord, target_fleet_id?` | 设置未离场打击、掩护或转场编队的目标；`task_id` 填同一任务 ID |
+| `SET_STRIKE_DISPERSION` | `aircraft_id=任务ID, task_id, disperse` | 设置整个打击编队集中或分散攻击；`task_id` 填同一任务 ID |
+| `PRIORITIZE_AIR_TASK` | `aircraft_id=任务ID, task_id` | 将任务调整为最高优先级；`task_id` 填同一任务 ID |
+| `SET_AIR_CYCLE` | `aircraft_ids, cycle` | 设置 CAP、侦察、空中掩护或反潜巡逻的自动循环 |
 
-```json
-{
-  "command_id":"01J...",
-  "base_turn":1,
-  "type":"MERGE_FLEET",
-  "unit_id":"a-screen",
-  "target_unit_id":"a-flag"
-}
-```
+批量任务的主体、机型、作业阶段、母舰或机场限制不完全相同，均由服务端校验。攻击编队可以跨同一舰队的母舰并混合攻击机与护航战斗机；已离场编队不能再加入飞机。侦察半径由服务端按机型和燃料计算，命令不接受 `recon_radius`。
 
-`unit_id`为整编源，`target_unit_id`为目标舰队中的单位。双方必须属于当前玩家、位于同一hex且`fleet_id`不同。合并后的编队要满足舰船上限和护航要求（每艘航母 1 艘护航舰、每 2 艘运输船 1 艘），不满足返回 400。整编由服务器立即生效。
+`SET_STRIKE_TARGET` 不会自动更换已有挂载。目标 hex 同时存在机场和舰队时，`target_fleet_id` 用来明确选择舰队；省略时按服务端的目标优先级处理。已经升空的编队改目标应使用 `RETARGET_AIR`，不要用它绕过无线电判定。
 
-### 整个hex整编
+`PREPARE_AIR` 已废弃，固定返回 400；使用 `LIFT_TO_DECK` 或任务命令。前端不得自行推算整备、升降机、跑道、扇面、发现、命中或夜间着舰结果。
 
-```json
-{
-  "command_id":"01J...",
-  "base_turn":1,
-  "type":"REORGANIZE_HEX",
-  "unit_id":"hex-0302",
-  "coord":"0302",
-  "assignments":{"a-flag":"a-flag","a-screen":"a-flag"}
-}
-```
+### 3.5 无线电命令
 
-`assignments`必须包含该hex全部己方单位，值为目标`fleet_id`。同一操作可以合并、拆分或转移成员；不允许遗漏单位、包含其他阵营单位或跨hex整编。每个新编队都要满足舰船上限和护航要求（每艘航母 1 艘护航舰、每 2 艘运输船 1 艘），不满足返回 400。整编由服务器立即生效。快照中每个单位还包含`heading`和`moved`。
+无线电命令只提交任务 ID，不提交 `aircraft_ids`。每个空中编队每回合最多登记一次通信，无论最终成功或失败都消耗机会。
 
-### 潜艇部署（【猎杀潜航】）
+| `type` | 主要字段 | 成功后的效果 |
+|---|---|---|
+| `RECALL_AIR` | `task_id` | CAP、侦察、打击或转场编队返航，并取消自动循环 |
+| `RETASK_AIR` | `task_id, task_kind` | 打击与转场之间改令；`task_kind` 只能是 `attack` 或 `transfer` |
+| `RETARGET_AIR` | `task_id, coord, target_fleet_id?` | 打击或转场编队改目标，保留任务类型 |
+| `CLEAR_MOVE` | `task_id` | 在结算前撤销该任务已登记的无线电规划 |
 
-```json
-{"command_id":"01J...","base_turn":1,"type":"DEPLOY_SUB","unit_id":"sub-A-1","coord":"2446"}
-```
+CAP 和侦察只能召回，不能在空中改任务或改目标。通信成功率和实际结果由服务端在回合结算时计算。
 
-只在 `phase == "deploy"` 时可用，立即生效。`unit_id` 取快照 `submarines[].id`；只能摆在海面、浅滩，或周围 1 hex 有水的机场格。潜艇没摆完时 `/ready` 返回 400（"还有 N 艘潜艇没有部署"）。剧本给的预备潜艇（`reserve:true`）不接受摆位，也不出现在本方快照里。
-
-### 舰队拆分（反潜支队）
-
-```json
-{"command_id":"01J...","base_turn":1,"type":"SPLIT_FLEET","unit_id":"a-cv-01","split_ids":["a-dd-01","a-dd-02"]}
-```
-
-通用的舰队拆分：把 `split_ids` 里的舰船（必须都属于 `unit_id` 所在舰队）拆成一支新舰队（`fleet_id` 形如 `TF17-s1`，名称加"分队"），留在原 hex；主队保留其余舰船。和整编刻意分开：**不挂 3 回合移动锁、不改移动冷却和停留计时**，两队照常执行本回合的移动命令。至少选一艘；全选等于把整支舰队改成新舰队，也接受。
-
-反潜战里的用法：把带深弹的反潜舰拆出去继续反潜。只要 `split_ids` 里有反潜舰，正在被追踪的潜艇就自动改挂到新分队（即使主队还留着别的反潜舰），追踪不会因为换 fleet_id 中断；分队自己就是正常舰队，同格潜艇会照常触发潜艇战。分队里没有反潜舰时追踪留在主队。部署阶段请用 `REORGANIZE_HEX`；整编界面里不再提供"拆出新舰队"，拆分统一走这条命令。
-
-### 航空命令
-
-```json
-{"command_id":"01J...","base_turn":1,"type":"LAUNCH_CAP","aircraft_ids":["air-b-01","air-b-02"]}
-```
-
-- 航空算子的飞行员熟练度`skill`（`rookie`/`regular`/`veteran`/`ace`，缺省普通）在开局写死：舰载机写在`air_deployments[].skill`，陆基写在机场`aircraft`列表的 ID 段里（如`af-b-yap-a6m5-rookie-1`）。熟练度在建局时已经折进`air_combat`/`anti_ship`，快照里只作展示，不会随任务变化。
-- 航空命令可使用`aircraft_ids`提交1至20个算子，旧`aircraft_id`单算子格式继续兼容。CAP和侦察必须同母舰、同机型、同阶段；攻击编队可混合攻击机型并跨同一舰队的多艘母舰。所有设施、容量与任务状态均由服务端一次校验和结算。
-- `SET_LOADOUT`：给机库/甲板/跑道上的算子指定挂载，`loadout`为空串表示"无挂载"（卸弹）。挂载值新增 `depth_charge`/`depth_charge+tank`（反潜深弹），航母与护航航母都提供；反潜巡逻默认选带副油箱那一档。岸基算子在机库里提前选好挂载（`loadout_manual`为真）时，分配任务会跳过机库整备那一回合、直接滑行到跑道；没提前挂载的仍从`service`（机库整备）开始。局内默认空载：在机库里选一套挂载**立刻开始整备**（不需要先建任务），算子转入`service`；甲板/跑道上的算子换挂载则原地整备（`service`+`deck_service`，占甲板位），整备完直接变回`deck/ready`待发。同一套挂载重复提交不会重置整备进度，换另一套会重新整备1回合；已升空、升降机上或排队下降的算子拒绝换挂载。
-- `LIFT_TO_DECK`：把机库里的算子排进甲板栏（不派任务），提交`aircraft_ids`。服务端记下`lift_requested`，回合结束时由升降机提升（每部升降机每回合4个算子）：整备还没走完的算子等整备完成后自动提升，空载算子可以立刻提升。已在甲板上、升降机上或甲板整备中的算子返回400；甲板长度不够时请求保留，下一次调度再提。拖进任务栏仍然是"自动走完整流程"，本命令只是手动送机，不改变任务栏语义。机场算子同样支持：岸基没有升降机，这一栏表示**滑行到跑道**（下一步`ready`在跑道上待命），不占跑道起降名额；滑行中的算子再提交返回400。
-- `PREPARE_AIR`：已废弃并返回400，请改用`LIFT_TO_DECK`。
-- `RETURN_TO_HANGAR`：取消任务、优先级和任务参数，同时清掉`lift_requested`。机库里整备中的`service`立即重置为`hangar`；甲板上整备中的`service`（`deck_service`）和`deck/ready`一样转为`recovery`，等待本舰升降机下降后才进入`hangar`。`elevator`中的算子不能中途撤回。
-- `LAUNCH_CAP`：将战斗机分配至CAP任务。机库算子立即形成预备任务并进入`service`；已经在甲板的算子立即独立升空。每支舰队共享`cap-<fleet_id>`任务组和一面优先级旗，同一舰队的多艘航母可以同批发CAP，CAP算子仍独立起飞，不等待攻击编队。
-- `LAUNCH_RECON`：将侦察机或攻击机分配至扇面搜索任务，额外提交`heading`和`sector_width`。舰载机只允许`recon`、`torpedo_bomber`（TBF）和`dive_bomber`（SB2C）；**陆基机场除战斗机外都允许**，B-17/B-25/B-26 这类轰炸机同样可以挂扇面搜索（1942 年 5 月第 19 轰炸大队就是这么干的）。两种情况都拒绝战斗机。例如`{"command_id":"01J...","base_turn":1,"type":"LAUNCH_RECON","aircraft_id":"air-b-10","heading":"W","sector_width":60}`。航向为`E/SE/SW/W/NW/NE`，角度只能为60或120。**侦察半径不可提交**（命令里没有这个字段）：服务端一律按机型算`recon_radius_limit`，客户端多传会被忽略；侦察算子独立起飞，不等待其他任务。每支舰队最多同时创建两个侦察组；向已有组加入飞机时提交`task_id`，同一舰队不同母舰的不同可搜索机型可以分批加入，并继承原组的航向和扇面，而不是自动创建或轮流进入另一组。对已经属于该`task_id`的算子重复提交同类型加入命令是幂等操作，不改变任务参数或算子状态；机库整备中的算子不能再作为待分配飞机拖入任务，必须从任务卡拖回机库取消后再分配。跨舰队加入会被拒绝，航空界面也只投影当前选中舰队的舰船和任务。每个侦察任务额外返回`recon_sectors`数组，逐机包含`aircraft_id/status/origin_coord/current_coord/sector_hexes/current_ring_hexes/distance_reference`；同组飞机不再共用唯一扇面条带。未升空的舰上飞机使用母舰当前hex且不生成实际搜索扇面，母舰移动后立即同步坐标；已升空飞机保留自己的起飞顶点和航线位置。
-- `LAUNCH_STRIKE`：由舰载俯冲轰炸机和鱼雷机和护航战斗机建立攻击编队，可以先创建编队再设置目标；`target_fleet_id`可在同一hex有机场和舰队时指定打舰队。把另一艘同舰队母舰的算子加入已有编队时提交上一次返回的`task_id`（形如`"air-9f3c1a7b2d4e"`，是编队牌的随机 tag，服务端生成、持久化在存档里，客户端不要自己拼）并继承目标，已离场编队拒绝加入。部分算子先起飞时为`attack_holding`，任务为`assembling`，每等待一回合`remaining_range`减1；全部成员升空后若未设目标继续等待，不会离场。集结是「全员升空后在母舰/机场上空等齐再一起出发」，不是谁升空谁先走；编队一旦离场（成员进入`attack`）就拒绝再加入新算子（400：攻击编队已经离场），要加飞机只能等这一波回来重新编队。
-- `SET_STRIKE_TARGET`：通过`aircraft_id`提交攻击`task_id`，通过`coord`提交目标hex，也可以用`target_fleet_id`显式指定敌方舰队；目标hex同时有敌方机场和舰队时，带`target_fleet_id`就打舰队，不带则维持机场优先。服务端仅接受当前视野或情报中已知的敌方目标。改目标不会自动换挂载：已有挂载干不了新目标（挂鱼雷打机场、挂炸弹去做 CAP/转场）时命令照收，只回一条 `air_loadout_mismatch` 提示（挂载和整备进度都不动），空载算子才按任务自动配弹并重新整备；转场会自动卸弹换副油箱，同样只回一条提示。攻击编队每回合推进 2 hex（水上飞机/双翼机 1 hex，规则书〈航空任务概述〉），抵达后才结算；出航途中**每回合**按最新情报校正一次目标——打击编队认的是那支舰队（target_fleet_id），不是起飞时那一格 hex，舰载编队与机场编队一致；入夜前服务器**不再**把打击编队强制掉头，只发一次`night_warning`；入夜后也不凭天色统一召回——还在空中的算子按各自的油量判定决定何时撤，落地那一刻才按夜间规则判摔毁（航母 70%、机场 20%，侦察/掩护/CAP 同样适用），长航程机型熬到天亮落地就不会吃到这个判定。任务快照的`return_turns`、`turns_to_dark`、`night_margin`、`night_safe`给出"这波回不回得来"：`turns_to_dark`是距天黑还剩几回合（没有昼夜循环的剧本为 -1），`night_margin = turns_to_dark - return_turns`，小于等于 0 就是走完任务再返航会摸黑着舰。`night_safe`始终显式输出（false 不会被省略），AI 可以直接据此在出击前放弃一波。攻击编队另外带一份时间表：`turns_to_target`/`turns_to_landed`是从现在到"空袭打在目标上"和"最后一架落回来"的回合数（含整备提升、着舰排队），`eta_target`/`eta_landed`是同一笔账换算成的`HH:MM`时刻，`lands_at_night`表示按预估落舰时已在夜间；前端在点完打击目标后直接弹窗显示，`lands_at_night`为真时加一行夜间返航警告。同样的道理，敌方编队/算子的情报里带`contact_stale_turns`：这条情报已经连续几回合没更新（0 = 本回合刚刷新），配合`contact_level`判断坐标还能不能信。全部成员设置`target_coord`并立即重新判定离场。离场后每回合最多向目标飞行2 hex并逐格耗油，抵达后记录`attack_arrived`战报。任务和算子包含`target_coord`，抵达后由Go完成CAP空战、防空、投弹、撤离空战和返航结算。返航成员是持续拆组的：每回合新到返航下限的算子各自拆成一支新的返航编队（每次拆组都会分配新的随机 tag），一次超远程打击沿途可能出现多支返航编队，同一 hex 上并存"执行中"和"返航中"两张牌时`current_coord`和`returning`都以还在空中的成员为准（ID 最小的成员可能已经落地）；最后剩下的那支保留原 tag。任务快照的`origin_coord`一律是这一次出海的起飞顶点（航母或机场坐标，转场/循环后重算），`current_coord`是当前位置；`target_coord`对打击是目标hex，对掩护/转场是目的地，对CAP是值班空域（随母舰移动或前出点），侦察任务的目标为空、几何看`recon_sectors`。三项都显式输出（空串表示没有）。
-- `LAUNCH_COVER`：空中掩护，机场算子也可以下（只有战斗机，其他机型返回400）。语义和 CAP 一致：`coord` 填要掩护的 hex——舰队所在格或机场格都行，留空表示掩护本机场上空；飞机飞过去后覆盖目标周围1 hex；如果掩护目标hex里有己方舰队，编队会自动跟随该舰队移动，而不是钉在起飞时的hex。敌机进入这个范围按 CAP 参战。目的地可以先用 `SET_STRIKE_TARGET` 改，不必重新分配任务。
-- `LAUNCH_CAP`（机场算子）：只掩护本机场上空，`coord` 只能留空或等于本机场坐标；远程给其他友军（舰队所在格或其他机场）提供掩护请用 `LAUNCH_COVER`，掩护编队会跟着被掩护的舰队移动。
-- `LAUNCH_ASW`：反潜巡逻（规则书〈反潜巡逻〉）。把轰炸机/侦察机编成反潜巡逻，巡逻空域固定为母舰（机场为本机场）所在格并逐回合跟随；**战斗机返回400**。接单自动挂【反潜深弹 + 副油箱】（`loadout: "depth_charge+tank"`，第一回合即换弹整备），挂其他弹药时只回一条 `air_loadout_mismatch` 提示，飞机照样出任务但不提供反潜航空支援。反潜巡逻是循环任务（`on_cycle` 为真），夜间窗口关闭时不能再编新任务，已在空中的按入夜返航规则收回，天亮后重新安排。
-- `LAUNCH_TRANSFER`：转场。舰载机是换母舰或上岸；机场算子在己方机场之间转移，其中**舰载型飞机（非 `airfield_only`、非水机）也可以转场到己方航母**——`coord` 填舰队所在 hex，要求该 hex 上有还有机库空位的航母，抵达后转为舰载机算子进入 `recovery`。`coord`填目的地机场hex，留空时先建任务、再按打击任务的同样方式用`SET_STRIKE_TARGET`在地图上点选目的地（没有目的地的转场任务停在跑道上不起飞）。服务端校验目的地是己方机场、有可用跑道、能起降该机型（小型机场只收战斗机、中型机场不收战略轰炸机，水上飞机基地只收水上飞机，反过来轮式飞机也进不了水机基地），且距离不超过转场航程（机种基础航程×1.3×1.7=×2.21，副油箱与转场加成乘算）。起飞后每回合飞1 hex，全部抵达后落到新机场并进入`recovery`；目的地是舰队时任务会记住舰队 ID，每回合把目标更新到舰队当前位置（日志记 `transfer_tracking`），舰队沉光或没有能接收的航母才中止返航；飞到半路剩油够不到目标格也会放弃转场返航。机场没有机库、默认无停放上限（99999，逻辑上和航母机库共用一套检查但不触发），转场照收；只有剧本在`airfields[].hangar_capacity`写了小值时才可能返回`停放机位已满（N/M）`，此时舰载机备降会跳过该机场。上限只统计停在机场上的算子，升空执行任务的不占名额。
-- 任务创建后立即出现在`aviation.tasks`。舰载机第1回合为`servicing`（机库加油整备 1 回合），第2回合占用具体升降机并显示`lifting`，第3回合提升完成当回合由任务放飞并显示`launching`，随后为`active`——整备、提升、起飞各 1 回合。**机场编队没有`lifting`**：机库整备完成后直接`taxiing`滑行到跑道，下一步就升空（整备→滑行→起飞，同样是 3 回合，但少一道升降机容量闸门）；机场的整备和滑行不占跑道作业次数，只有起飞/降落占（每条可用跑道每回合 12 次，用完的编队留在跑道待命，下回合再走）。算子同时记录`elevator_id`；`preparing`表示已经在甲板但因容量或甲板作业而等待，`assembling`仅用于攻击编队。侦察参数在分配时持久化，扇面顶点使用实际起飞时的母舰位置。机库/甲板算子还带`service_turns`（整备进度，0=整备中、1=整备完成）、`deck_service`（在甲板上整备而不是机库）、`lift_requested`（已排进甲板栏等升降机）、`armed`（整装待发：有挂载＋整备完成＋无损伤）和`loadout_manual`（玩家手动选的挂载，分配任务时不会被任务默认值覆盖）。已经整备好、挂载没被任务改掉的算子拖进任务栏时直接从提升开始：比自动流程少一轮整备。
-- `RECOVER_AIR`：将CAP算子回收到各自母舰甲板，状态改为`recovery`；后续回合一一占用升降机执行`lowering`，完成后才回到机库。允许一次回收同舰队多艘母舰的CAP，服务端逐舰检查甲板容量、损伤和不相容作业。侦察机沿航线自动返航，使用同样的甲板与下降流程。
-- `PRIORITIZE_AIR_TASK`：将指定预备、等待或空中任务置为最高优先级，其他任务顺序由服务端调整；优先级参与各舰升降机调度，`queue_position`返回连续队列位置。
-- `SET_AIR_CYCLE`：开启或取消自动任务循环（规则书〈航空任务概述〉），提交`aircraft_ids`和`cycle`（true=开启，false=取消）。语义是"设为"而不是"取反"，重复提交同一条命令不会来回翻转。CAP、侦察、空中掩护和反潜巡逻支持循环：降舰后自动重新整备并按原参数（巡逻空域／航向+扇面+半径／掩护hex／母舰上空）再次升空，侦察循环的掩护hex会跟随被掩护舰队的当前位置。航程不足、母舰失效或玩家取消即结束循环，并产生`air_cycle_end`战报。算子快照返回`on_cycle/cycle_kind/cycle_opt_out`；循环中的算子在前端显示蓝色🔁角标，点击即提交本命令。主动`RECOVER_AIR`或无线电`RECALL_AIR`同样会取消循环。机场算子（`GroundAir`）从同一版本起也支持循环：发起时仍是`aircraft_ids`+`cycle`，服务端按算子 ID 自动分流到机场那套校验，落地后按原巡逻点／航向+扇面重新滑行、整备、起飞；机场失守、跑道被打光或玩家取消即结束循环。
-- 这些命令都立即生效。每艘航空舰在`Unit.deck`中持有独立`length/operation/elevators`，每部升降机持有`id/kind/capacity/status/task_id/aircraft_ids`。所有整备、设施调度、编队集合、机库与甲板数量、扇面hex、发现判定、情报、燃油与任务排序仅由Go服务端计算。新自动起飞的算子从下一回合开始耗油和移动，空中CAP、等待及离场攻击算子每回合剩余航程-1，非空中算子补满航程。
-
-### Ready
+## 4. Ready 与部署
 
 ```json
 {"base_turn":1,"ready":true}
 ```
 
-响应只是一条回执`{"accepted":true,"turn":N}`，最新状态走WebSocket推送。所有当前玩家ready后，服务器同步完成结算并提升`turn`。单人沙盒中唯一玩家ready即可结算。
+- 所有当前玩家 ready 后同步结算。结算成功时令回执中的 `turn` 为最新回合，双方 ready 自动清零。
+- 战斗阶段只接受 `ready:true`；`ready:false` 返回 400。
+- `phase == "deploy"` 时允许用 `ready:false` 撤销部署完成状态。除此之外，部署命令和战斗命令一样，在 ready 后会被锁定，不会自动撤销 ready。
+- 双方完成部署后，`phase` 从 `deploy` 变为 `battle`，回合仍为 1。该次回执包含 `phase:"battle"`。
+- 部署阶段只允许 `SET_MOVE`、`CLEAR_MOVE`、`MERGE_FLEET`、`REORGANIZE_HEX` 和 `DEPLOY_SUB`。未部署完本方潜艇时不能完成部署。
 
-**部署阶段**（`state.phase == "deploy"`）：双方都ready才算"部署完毕"，服务器把`phase`切到`battle`开战，**回合号不增加**（部署不算回合，仍停在第 1 回合），这一帧的回执是`{"accepted":true,"phase":"battle","turn":1}`。部署阶段是唯一允许`{"ready":false}`的场景，作为脚本兜底；点过部署完毕后本侧的任何部署动作（`SET_MOVE`/`CLEAR_MOVE`/`MERGE_FLEET`/`REORGANIZE_HEX`）都会被拒绝（409），不再自动撤回ready。开战之后ready重新变成不可撤销。
-
-**ready 即冻结**：一名玩家ready之后，本回合该玩家提交的任何 `/commands` 都会被拒绝（409，错误信息说明"本回合已就绪，操作已锁定"），不会再像以前那样自动撤回ready再接受命令。要改就得等下一回合。前端同时把这块棋盘锁成只读：不能拖舰队、不能改航行/交战/整编、不能放飞或改目标，只能查看。`{"ready":false}` 也已禁止：ready 一旦提交就不可撤销，脚本必须等本回合结算。
-
-同hex水面舰队在结算时交战：按权重选目标，每点火炮独立判定，并处理突袭、鱼雷、DCT损伤和混乱。突袭只在接战首轮判定（这一回合有舰队开进该 hex）；之后每回合只打炮战，突袭方进入 6 回合 `surprise_lock` 冷却，冷却中不再取得突袭。接战阵位取代了旧的 T 优/T 劣：至少一方本回合移动、抢占方编队没有航母/运输船（它们抢不到位，但会被抢），然后比编队航速（最慢的一支说了算，含编队规模惩罚）——差 ≥3 节时快的一方抢到阵位，慢的一方第一轮炮战的炮击值减半（`gunnery_volley` 事件文本带「阵位被压住，半数火炮」，同时发一条 `position_seized` 事件）。停船不再累积阵地。炮弹命中除了 DCT，还会按双方装甲档次差（同级 1% / 低 1 档 2% / 2 档 4% / 3 档 8% / 4 档 10% / 5 档 12%，打更大的目标 0%）判一次直接扣 1 血；沉没舰船及其航空算子移除。回合开始递减移动冷却、突袭冷却和旧混乱，处理到期的火灾、进水与甲板修复，新损伤不在同回合提前修复。
-
-## 私有快照
-
-`state`响应包含：
-
-- `scenario`、`map`、`turn`、`status`；`map.clouds` 一律为空字符串——逐格天气只在`weather_cells`里给；
-- `phase`：`deploy`（开局部署）或 `battle`（正常对局）。剧本没写`deploy_zones`时直接是`battle`；
-- `fleet_max_ships`：本局一支舰队的舰船上限（整编与合并都按它校验）。剧本没写时默认 20；马里亚纳是 45；
-- `withdraw_directions`：各阵营的撤离方向（`E/W/NE/…`），重创脱离和运输队卸空后的退避队朝它走，速度仍按舰队自身航速（每 N 回合 1 hex，和正常移动同一套冷却）。马里亚纳是 `{"A":"E","B":"W"}`；没配时退回"离开地图中心"的通用方向；
-- `deploy_zone`：己方部署区，`{anchor,radius,cells}`。`cells` 是行优先的 `'0'/'1'` 串，标出可以摆船的格位；前端已经改用`legal_moves`的绿色高亮来画可放区域，这个字段留给脚本/第三方客户端。剧本可以给同一阵营划多个部署区（剧本里 `deploy_zones[].fleets` 指定哪几支舰队用哪个区）：此时 `anchor/radius` 是第一个区，`cells` 是所有区的并集，每支舰队的实际可落点看它自己的 `legal_moves`；
-- `airfields`：当前可见的机场，包含 `coord`、`type`（small/medium/large/seaplane）、`runways`、`strength`、`heavy_aa/light_aa/coastal`（`coastal` 是岸炮点数，舰队岸轰时先开火，每点 30% 命中随机舰船；舰炮每次命中按「岸炮:机场生命值」的剩余点数加权摇落点，落在岸炮才 -1，落在跑道就只扣生命值和驻机）、`enemy_supplies`（敌方卸在这里的滩头物资点数；只要有货，该机场维修停摆，炮击清空后恢复维修）等；
-- `weather_cells`：行优先、每格一个字符 `'0'..'3'`（晴/多云/降雨/风暴）。服务端内部是按"压了几层云"记账的（3 层以上就是风暴），**4 层以上到前端同样显示 3**；
-- `wind`：对象，`wind.wind` 是盛行风名，`wind.cells` 是行优先、每格一个数字 `0`–`5`，依次对应 NE/E/SE/SW/W/NW（气象惯例记来向：SE = 风从东南吹来），`wind.fleets` 是本回合各己方舰队所在格与风向的朝向关系（观战视图不下发舰队朝向，这里为空）。
-- `night`：剧本有没有昼夜循环时的夜间标记；`clock` 见下条；
-- `you`和`players`；
-- 当前阵营可见的`units`；己方单位额外包含`legal_moves`。每艘舰船包含`definition_id`、当前/初始生命值、服务端生成的`card`角色卡、`move_cooldown`、`confusion`和当前`damage`，字段涵盖火炮、防空、损管、雷达、航速、鱼雷、航空设施、货物、火灾、进水及设备损伤等。`card.surface_radar` 是对海搜索雷达，`card.fire_control_radar` 才是火控雷达（只有它给炮击 +10%；老存档没有这个字段时按 `surface_radar` 回落），兵牌右下角交战值白字/黑字就按它区分；`card.supply` 是这条船的弹药供给（`{"blocked":["torpedo"]}` = 不提供鱼雷挂载，缺省 = 弹药不限），停在它上面的飞机按这个表挂弹；
-- `scores`：战果分，浮点数（航母/轻母/护航航母按机库容量，瘫痪未沉的航母按机库容量一半（`losses[阵营].crippled`，条件为飞行甲板摧毁 / 结构损失超过 80% / 失去动力，每艘只记一次，沉没后按整艘计）；战列舰与战列巡洋舰 6、重巡 3、轻巡 2、驱逐 1、运输船 1，每摧毁一个航空算子 0.25；完成的投送目标按 `value` 计分）。剧本声明`kind:"score"`目标时，在回合上限（珊瑚海 360 回合）按双方 VP 比值判胜负：小于 1.25 平分秋色，1.25 到 2 战术胜利，大于 2 战略胜利；投送完成/失败不提前结算；`outcome.level`返回`draw/tactical/strategic`，日军未完成 20 单位投送前不能战略胜利；
-- `score_breakdown`：战果分的逐条来源，按得分阵营分组为 `{A:[…],B:[…]}`，每条`{kind,faction,text,ship_id?,type?,turn?,count?,points}`。`kind`取`ship`（击沉）、`crippled`（航母瘫痪）、`aircraft`（航空算子损失，按架聚合）、`supply`（完成的投送目标）；`faction`是**这笔损失的归属方**——己方的损失算在对方账上，所以 `score_breakdown.A` 里的条目大多 `faction:"B"`；各条 `points` 之和恒等于 `scores`。前端侧栏 VP 旁的"得分明细"弹窗直接渲染它；
-- `outcome`：仅对局结束后出现，包含`winner`（平局为空）、`level`（`draw/tactical/strategic`）、`reason`、双方`scores`、`turn`和`turn_cap`；
-- 服务端生成的`fleets`舰队投影，包含`fleet_id`、成员列表、数量、总强度、朝向、`move_interval/move_cooldown`、混乱、合法移动和`distance_reference`；距离参考由`origin/max_distance/cells`组成，每个cell包含服务端计算的`coord/distance`。情报目标额外包含`contact_level/contact_size`，低等级不返回具体舰船属性：1级只返回一个占位算子（无规模、无舰种），2级只给编队大小（`small/medium/large`），3级返回逐舰的舰种但身份和属性仍未知，4级才返回完整舰船卡；`coord`是服务端固化的"最后已知位置"，情报过时只降等级不改坐标——白天脱离接触 4 级满 6 回合降到 3 级、之后每 3 回合降一级，夜间满 4 回合直接归零；
-- `aviation.carriers`：全部航空作业舰，包含机库占用/容量、`deck_length/deck_used`、甲板作业类型、独立的`elevators`对象数组和航空算子；算子上的 `loadout_options` 是服务端按“机型能力 ∩ 当前补给点”算好的挂载选项（`[{id,label}]`），`loadout_label` 是当前挂载的中文名——挂载表、下拉内容、显示名都由服务端给，客户端只渲染，不再自己判机种或补给；`aviation.tasks`：按服务端优先级排序的任务，包含`phase`、`carrier_ids`、`fleet_id`、`airborne_count`、`lane`（编队在面板里占的栏位，1 起；0 = 该编队没记过栏位，按位置兜底）及完整算子列表。任务只代表"还在整备、准备出击"的编队：全员升空后它从任务栏消失（属于海图的编队牌），着舰落地时打击编队直接解散，算子回到甲板/机库投影。`phase`取值 `servicing`（机库整备）、`taxiing`（机场滑行至跑道）、`lifting`（升降机提升）、`preparing`（甲板/跑道待飞）、`launching`、`assembling`、`active`、`recovering`（回收中，含下降回机库）；`lane`跟着编队走而不是按列表位置排：编队全部升空之后栏位交还，下一支新编队重新拿到 I。`LAUNCH_STRIKE`/`LAUNCH_RECON`可以带可选的`lane`（1 或 2）表示玩家把它拖进了哪一栏；那一栏已被占或没带时服务端取最小空栏。空中任务包含以当前位置为中心的`distance_reference`，侦察任务额外包含扇面与航线字段，客户端只渲染这些服务器结果；任务另含`queue_position`；
-- `enemy_air`：已发现的敌方飞行编队接触，含机型列表 `models` 与素材路径 `pictures`，地图上的敌机图标直接按它渲染；
-- `clock`：剧本时间线快照，包含`day/time/night/service_open/launch_open/service_start/launch_start/recover_by/turn_minutes`。`service_open`为false表示还没到整备开工时间，`launch_open`为false表示甲板上的算子还不能起飞，`night`为true且剧本`night_loss`为真时，{`recover_by`}之后仍在空中的算子会被强制摸黑返航，随后按燃油与夜间着舰风险（航母70%、机场20%）逐架判定。剧本没有`day_hours/turns_per_day`时该字段为null；
-- `air_combats`：当前阵营可见的空战报告，包含双方机型、数量、损失、防空与投弹命中、胜负和摘要；前端动画只消费这些权威结果；
-- `submarines`：【猎杀潜航】模块。部署阶段是本方还没开战的可部署潜艇（`id/faction/name/coord/picture/deployed/reserve/first_move_turn/move_interval`）；开战后只剩**被本方发现并正在追踪的敌方潜艇**（`discovered:true`），潜艇方看不到自己的潜艇。剧本没配潜艇时为空数组；
-- `sub_battles`：潜艇战战报，双方都可见：`turn/coord/submarine_name/fleet_name/sub_roll/fleet_roll/sub_points/fleet_points/points_left/effects[]/torpedo_shots/torpedo_hits/submarine_sunk/discovered/summary`。潜艇的实时位置仍然只在被发现后对舰队方显示；
-- 仅自己的`orders`；
-- 按受众过滤的`events`；
-- 仅房主可见的`join_token`。
-
-客户端不得假设未返回的敌舰不存在，也不得从WebSocket或其他接口推导其真实位置。
-## WebSocket
-
-路径：`GET /ws`。创建房间、输入邀请 token 加入房间仍用 HTTP；进房之后状态读取、命令、ready 和房间变更推送全走这一条连接。升级后会做同源检查（没有 `Origin` 的非浏览器客户端直接放行）。
-
-两条身份路径：
-
-- **玩家**：握手带 `gq_session` Cookie（HTTP 建房/加入时下发），连接自动绑定会话所在房间。可选的 `?room_id=` 只用来校验"这条会话是不是这个房间的"，填错直接 403。
-- **观战**：`?mode=spectator` 或不带 Cookie。连接后 **10 秒内**第一条消息必须是订阅帧，否则断开：
-
-  `{"type":"subscribe","room_id":"ROOM","token":"XXXX-XXXX-XXXX"}`
-
-  `token` 是房间的 join_token（观战页 `/watch/{token}` 从 `/api/v1/watch/{token}` 拿到 room_id，再带同一 token 订阅）。订阅失败回 `{"type":"error","error":"..."}` 并关闭连接。观战不占玩家席位、不改在线状态，快照里 `spectator:true`、双方内容都完整下发。
-
-所有帧都是**文本帧**，单帧上限 1 MB。服务端每 30 秒发一次 ping，90 秒收不到 pong 即断开（客户端只需按标准 WebSocket 回 pong）。
-
-### RPC
-
-玩家侧统一 envelope：
+回执示例：
 
 ```json
-{"type":"rpc_request","id":"req-17","method":"GET","path":"/api/v1/rooms/ROOM/state"}
-{"type":"rpc_request","id":"req-18","method":"POST","path":"/api/v1/rooms/ROOM/commands","body":{"command_id":"...","type":"SET_MOVE","unit_id":"...","coord":"0203"}}
+{"accepted":true,"phase":"battle","turn":1}
 ```
 
-应答沿用同一个 `id`：
+## 5. 私有快照
+
+WebSocket `GET state` 的 RPC 响应体与玩家补丁的全量底座使用同一结构。
+
+### 5.1 顶层字段
+
+| 字段 | 内容 |
+|---|---|
+| `room_id, status, turn, phase, solo` | 房间标识、状态、当前回合、部署/战斗阶段、是否单人房 |
+| `scenario, map, objectives, outcome` | 剧本摘要、地图、胜利目标；对局未结束时 `outcome` 为 null |
+| `you, players, join_token` | 当前玩家、房间玩家及在线/ready 状态；`join_token` 仅房主出现 |
+| `orders, events` | 仅本玩家本回合的待结算命令；当前阵营可见事件 |
+| `units, fleets` | 当前阵营可见舰船及舰队投影；己方包含完整卡面和 `legal_moves`，敌方按情报等级裁剪 |
+| `aviation` | 舰载航空：`carriers` 为母舰设施与算子，`tasks` 为任务编队 |
+| `airfields, ground_air` | 可见机场，以及机场设施、容量和机场算子 |
+| `ground_aircraft, ground_tasks` | 机场算子的通用航空投影、机场任务编队 |
+| `enemy_air` | 已发现的敌方空中编队接触，不包含其内部调度数据 |
+| `air_combats, sub_battles` | 当前阵营可见的空战报告、双方可见的潜艇战报 |
+| `submarines` | 部署阶段的本方可部署潜艇；开战后仅为本方正在追踪的敌方潜艇 |
+| `fleet_stays, fleet_sessions` | 己方舰队上一回合位置、连续停留计时 |
+| `shore_supplies, enemy_shore_supplies` | 可见滩头物资及机场对应的敌方物资投影 |
+| `radio_used, radio_tasks` | 本方已通信任务 ID、当前可通信空中编队及状态 |
+| `weather_cells, wind, night, clock` | 天气格、风场与舰队迎风关系、夜间标记、剧本时间线 |
+| `losses, scores, score_breakdown` | 按可见性裁剪的损失台账、双方 VP、VP 逐条来源 |
+| `display` | 状态枚举和错误的展示文案字典 |
+
+客户端不得假设未返回的敌舰、敌机或潜艇不存在，也不得用其他接口绕过战争迷雾。
+
+### 5.2 常用结构
+
+- `fleets[]` 以 `fleet_id` 为稳定编队标识，`id` 是当前代表舰 ID。成员位于 `members[]`；`count/strength/max_strength` 是服务端汇总值。
+- `units[]` 与舰队成员使用舰船 ID。`card.speed_class` 是基础速度档，`effective_speed` 是计入损伤后的当前速度档；`card.move_cycle`、`move_cooldown` 和 `legal_moves` 用于移动展示。
+- 敌方 `fleets[]` 的 `contact_level/contact_size/contact_stale_turns` 描述情报等级、规模和未刷新回合数。低等级不会返回完整舰船卡。
+- `aviation.carriers[]` 包含机库/甲板占用、作业状态、阻塞原因、升降机和算子。`aviation.tasks[]` 与 `ground_tasks[]` 包含任务阶段、完整算子、坐标、目标、优先级和返航预估。
+- 算子的 `loadout_options/loadout_label` 由服务端生成。`aircraft[].status` 是单个算子的作业状态，`tasks[].phase` 是编队阶段，两者不能混用。
+- 侦察任务的逐机几何位于 `recon_sectors[]`；距离参考为 `distance_reference:{origin,max_distance,cells[]}`。
+- `clock` 包含 `day/time/night/service_open/launch_open/service_start/launch_start/recover_by/turn_minutes/night_in_turns`；剧本没有时间线时为 null。
+- `wind` 包含盛行风 `wind`、逐格方向 `cells` 和己方舰队关系 `fleets`。方向数字 0–5 依次为 NE/E/SE/SW/W/NW，记录风的来向。
+- `score_breakdown` 以得分阵营分组。损失条目的 `faction` 是损失所属方，因此会出现在对方的得分组中。
+- `outcome` 包含 `winner/level/reason/scores/turn/turn_cap`；`turn_cap` 是布尔值，不是回合上限数字。
+
+具体战斗数值和胜负公式以规则书及服务端结果为准，客户端不应另写一套。
+
+## 6. WebSocket RPC
+
+路径：`GET /ws`。升级时校验同源；没有 `Origin` 的非浏览器客户端可直接连接。所有 RPC 和推送均为文本帧。
+
+### 6.1 玩家连接
+
+玩家使用 `gq_session` Cookie 连接。可选查询参数 `room_id` 仅用于校验会话与房间是否一致，不匹配返回 403。
+
+连接后先请求全量快照；服务端不会替玩家连接自动建立补丁底座：
 
 ```json
-{"type":"rpc_response","id":"req-17","status":200,"body":{...}}
+{
+  "type": "rpc_request",
+  "id": "req-17",
+  "method": "GET",
+  "path": "/api/v1/rooms/ROOM/state"
+}
 ```
 
-规则：
-
-- `id` 非空且不超过 128 字节；`method` 必须是 GET/POST；`path` 不超过 512 字节、不能带 query 或 fragment。
-- `path` 只允许 `/api/v1/rooms/{当前房间}/state`（GET）、`/events`（GET）、`/commands`（POST）、`/ready`（POST），且必须属于当前会话的房间，否则 403（"WebSocket 请求必须属于当前房间" / "不允许通过 WebSocket 调用此接口"）。
-- `body` 就是原 HTTP 接口的请求体（≤1 MB）。服务端复用同一套校验、幂等 `command_id`、`base_turn` 和错误语义，所以错误码和 HTTP 完全一致（400/403/404/409/500）。
-- 校验失败（路径、房间、格式）在读取侧就直接回 `rpc_response`，不进房间队列；业务失败（未就绪就提命令、回合已结算等）在 worker 里处理，同样以 `rpc_response` 返回。
-- 会话已失效的连接如果先发 `rpc_request`，会收到 `status:401` 的应答后被关闭——前端据此回大厅重新加入，而不是无限重连。
-
-### 推送
-
-玩家连接**不会**主动收全量：首帧和重连都必须自己发一条 `GET state`，那条 `rpc_response` 的 `body` 既是数据，也是这条连接的补丁底座。之后房间状态变化时服务端只推补丁：
+命令请求示例：
 
 ```json
-{"type":"state","patch":{...}}
+{
+  "type": "rpc_request",
+  "id": "req-18",
+  "method": "POST",
+  "path": "/api/v1/rooms/ROOM/commands",
+  "body": {
+    "command_id": "01J...",
+    "base_turn": 1,
+    "type": "SET_MOVE",
+    "unit_id": "a-flag",
+    "coord": "0203"
+  }
+}
 ```
 
-观战连接反过来：订阅成功后服务端立刻推 `{"type":"snapshot","view":{...}}`，之后是 `{"type":"snapshot","patch":{...}}`。
+应答复用请求 `id`，`status` 使用对应 HTTP 状态码：
 
-补丁形态：对象逐键收敛；实体数组（元素带 `id`/`unit_id`/`task_id`/`carrier_id`/`fleet_id`/`coord` 之一）给 `{"upsert":[只含变化属性的记录],"remove":[主键]}`，主键按上面那个顺序认第一个非空的值；其余值整块替换。客户端按主键找到节点、把 upsert 的属性**就地合并**进去（不重建对象，Vue 的响应式才能只重算用到那几个字段的地方），不需要理解业务语义。实测：一条移动命令约 100 B、点 ready 约 70 B、一次夜间结算约 300 B，而全量（严格状态同步、不省零值）约 290 KB，观战合并视图约 690 KB。
-
-三条必须知道的细节：
-
-- **视图是严格状态同步，零值不省略**。`0`、`false`、`""`、`[]`、`null` 都是真实值，会原样出现在快照和补丁里（Go 侧视图类型上不带 `omitempty`）。所以补丁里 `null` 就是 nil，客户端直接覆盖，不要理解成"删掉这个字段"。
-- **键消失要显式表达**。字符串键 map 里少了键，JSON 对象本身说不出来，这种补丁给 `{"set":{变化的键},"remove":[消失的键]}`；实体数组本来就有 `{"upsert":[...],"remove":[...]}`。不是删键的时候，map 补丁还是普通对象。
-- **顺序也要一致**。实体数组只有在"老元素保持原相对顺序（允许删除）+ 新元素追加在尾部"时才走增量补丁；新元素插在中间或前面（例如舰队一动、距离参考圈整圈重排）会整块重发这个数组。所以事件列表按时间正序返回：补丁只能往尾部追加。
-
-`internal/server/patch_snapshot_test.go` 守着这条不变式：单人房和双人房各打六个回合，每次结算后断言"客户端合并出来的视图 == 重新拉一份全量快照"。
-
-补丁是"上次推给你的投影"和"新投影"之间 diff 出来的，不是按命令手写的，所以不需要维护"这条命令改了哪些字段"。没有变化就一帧都不发——对手的不可见动作、被拒绝的命令都属于这种情况。合并发生在房间 worker 内部：一次结算里连着的几条变更只投影一次、只下发一帧，不存在时间窗，也没有版本号，补丁本身即"变了"的信号。
-
-客户端必须守的几条：
-
-- 收到补丁却还没有底座（例如从 HTTP 快照切过来、或本地那份已经不对了），要主动断线重连并重新 `GET state`；拿着错的底座继续合并会一直歪下去。
-- 补丁按入队顺序到达（worker 串行、每条连接一个发送队列），不需要排序，但也不要跳帧。
-- 补丁里的 `null` 就是业务值 nil（见上）；要删键只有数组的 `remove` 和 map 的 `{"set":{...},"remove":[...]}`。
-- 每条连接的发送队列只有 32 帧。客户端读不动了（队列塞满），服务端会直接断开这条连接——这是有意的：让它重连后重拉全量，好过收一半补丁继续跑。
-- 房间内不做 HTTP 轮询；断线用指数退避重连，重连成功后立刻重新拉快照。只有大厅的建房/加入仍用 HTTP。
-
-## DeepSeek与文字对手扩展
-
-模型在服务器侧作为`TextOpponent`运行，不直接访问数据库或规则内部状态。输入仅限该AI阵营私有快照和对话消息，输出为结构化候选命令与文字说明。
-
-```text
-私有快照/玩家文字 → DeepSeek适配器 → 候选JSON命令
-→ 命令schema校验 → 与普通玩家相同的合法性校验 → ready与权威结算
+```json
+{"type":"rpc_response","id":"req-18","status":200,"body":{"accepted":true,"command_id":"01J...","turn":1}}
 ```
 
-建议后续增加独立的AI控制接口，而不复用真人Cookie：
+RPC 限制：
 
-- `POST /api/v1/rooms/{id}/ai/slots`：房主配置AI阵营和模型参数引用；
-- `POST /api/v1/rooms/{id}/ai/messages`：向AI发送文字；
-- `GET /api/v1/rooms/{id}/ai/plans/{planID}`：查看解析后的候选命令和解释；
-- `POST /api/v1/rooms/{id}/ai/plans/{planID}/approve`：确认执行候选命令。
+- `id` 非空且不超过 128 字节，`path` 不超过 512 字节，不能带 query 或 fragment。
+- `method` 只能是 GET 或 POST。
+- 只允许当前房间的 `GET state`、`GET events`、`POST commands`、`POST ready`。
+- 请求体规则、幂等、错误码与 HTTP 一致。
+- 会话失效时，首个 RPC 会收到 401 响应，随后连接关闭；客户端应返回大厅重新加入。
 
-这些接口尚未实现，当前仅定义扩展边界。模型密钥仅通过服务器环境变量注入，不写入SQLite、浏览器、Git或战报。解析失败不得猜测执行，应返回澄清需求。
+### 6.2 观战连接
+
+使用 `GET /ws?mode=spectator`。无 Cookie 连接也按观战流程处理。连接后 10 秒内第一条消息必须是：
+
+```json
+{"type":"subscribe","room_id":"ROOM","token":"XXXX-XXXX-XXXX"}
+```
+
+订阅失败返回 `{"type":"error","error":"..."}` 并关闭连接。成功后首帧为全量，之后为补丁：
+
+```json
+{"type":"snapshot","view":{}}
+{"type":"snapshot","patch":{}}
+```
+
+观战视图合并双方合法视图，并标记 `spectator:true`。它不包含玩家私有 `orders` 或 `join_token`，也不公开潜艇实时位置。观战连接不使用 RPC。
+
+### 6.3 心跳、重连与队列
+
+- 服务端每 30 秒发送 WebSocket ping；90 秒未收到 pong 会断开。
+- 每条连接的发送队列为 32 帧；客户端读取过慢导致队列满时，服务端主动断开。
+- 玩家重连后必须重新 `GET state`，以新快照作为补丁底座。不要在房间中轮询 HTTP 状态。
+
+## 7. 状态补丁
+
+玩家收到：
+
+```json
+{"type":"state","patch":{}}
+```
+
+补丁是同一客户端上一份投影与新投影的差异，不是按命令类型预定义的消息。没有变化时不推帧。
+
+### 7.1 合并规则
+
+1. 普通对象逐键递归合并，未出现的键保持原值。
+2. 标量、普通数组以及不能安全增量表达的实体数组整块替换。
+3. 实体数组的增量形式为：
+
+```json
+{
+  "upsert": [{"fleet_id":"TF17","coord":"0203"}],
+  "remove": ["TF44"]
+}
+```
+
+实体主键依次取第一个非空字段：`id`、`unit_id`、`task_id`、`carrier_id`、`fleet_id`、`coord`。`upsert` 只含变化属性，必须合并进原实体，不能直接替换原对象。
+
+4. 字符串键 map 的增删形式为：
+
+```json
+{"set":{"A":12.5},"remove":["B"]}
+```
+
+5. `null` 是真实业务值，不表示删除键。`0`、`false`、空字符串和空数组同样要照常覆盖。个别按所有权或可选性定义的字段可能不出现在全量快照中。
+6. 实体数组只有在原顺序可保持且新元素追加到尾部时才使用增量；其他情况会重发整个数组。事件数组按旧到新排序，便于追加。
+
+如果本地底座缺失、合并失败或曾跳过帧，应断开并重连，再获取全量快照。不能继续把后续补丁应用到可疑底座上。
+
+## 8. 常见状态码
+
+以下状态码用于大厅 HTTP 响应和 WebSocket `rpc_response.status`。旧房间 HTTP 路径一律返回 404，不应再用于重试或降级。
+
+| 状态码 | 含义 |
+|---|---|
+| 200 | 请求或命令成功；也可能是幂等命令的首次回执 |
+| 201 | 房间创建成功 |
+| 400 | JSON、未知字段、参数、命令合法性或业务条件不满足 |
+| 401 | 玩家 Cookie 缺失或会话失效 |
+| 403 | 会话不属于该房间、RPC 路径不允许、观战 token 不正确 |
+| 404 | 房间、玩家、接口或观战 token 不存在 |
+| 409 | `base_turn` 与当前回合不一致、ready 后操作被锁、持久化结算冲突 |
+| 500 | 状态读取、编码、结算或数据库内部错误 |
+| 503 | 闲置房间正在重载；通常可直接重试 |

@@ -122,7 +122,7 @@ export interface AirUnit {
   kind: 'fighter' | 'dive_bomber' | 'torpedo_bomber' | 'recon' | 'level_bomber' | 'medium_bomber' | 'heavy_bomber' | 'strategic_bomber'
   /** 飞行员熟练度：决定 DC 临场发挥判定的骰子档位（劣势/普通/2 骰优势/3 骰优势），不改卡面数值。 */
   skill?: 'rookie' | 'regular' | 'veteran' | 'ace'
-  status: 'hangar' | 'service' | 'elevator' | 'deck' | 'ready' | 'recovery' | 'cap' | 'recon' | 'attack_holding' | 'attack'
+  status: 'hangar' | 'service' | 'elevator' | 'deck' | 'ready' | 'recovery' | 'cap' | 'asw' | 'recon' | 'attack_holding' | 'attack' | 'cover' | 'transfer'
   strength: number
   max_range: number
   remaining_range: number
@@ -148,7 +148,7 @@ export interface AirUnit {
   elevator_id?: string
   priority: number
   task_id?: string
-  task_kind?: 'cap' | 'recon' | 'attack' | 'transfer'
+  task_kind?: 'cap' | 'asw' | 'recon' | 'attack' | 'cover' | 'transfer'
   origin_coord?: string
   coord?: string
   target_coord?: string
@@ -692,6 +692,8 @@ export interface RoomResponse {
 
 export interface StrikeTarget {
   coord: string
+  fleet_id?: string
+  airfield_id?: string
   label: string
   count: number
   contact_level?: 1 | 2 | 3 | 4

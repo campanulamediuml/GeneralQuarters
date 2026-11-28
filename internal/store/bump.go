@@ -2,13 +2,19 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
+
+	"generalquarters/internal/game"
 )
 
-// BumpVersion 只推进房间版本号（保存待结算命令时用）：让"该版本已被处理"对并发命令可见，
-// 同时把该玩家置为未准备，语义与 ApplyImmediate 一致。
-func (s *Store) BumpVersion(ctx context.Context, room Room, playerID, commandID, fingerprint, response string) (Room, error) {
+// SavePlannedOrder 原子保存房间版本、幂等回执和待结算订单。
+func (s *Store) SavePlannedOrder(ctx context.Context, room Room, playerID, commandID string, order game.Order, response, fingerprint string) (Room, error) {
+	data, err := json.Marshal(order)
+	if err != nil {
+		return room, err
+	}
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
 		return room, err
@@ -26,9 +32,15 @@ func (s *Store) BumpVersion(ctx context.Context, room Room, playerID, commandID,
 	if _, err := tx.ExecContext(ctx, "UPDATE players SET ready=0 WHERE id=?", playerID); err != nil {
 		return room, err
 	}
+	if _, err := tx.ExecContext(ctx, `INSERT INTO orders VALUES(?,?,?,?,?) ON CONFLICT(room_id,turn,player_id,unit_id) DO UPDATE SET order_json=excluded.order_json`, room.ID, room.Turn, playerID, order.UnitID, data); err != nil {
+		return room, err
+	}
 	if _, err := tx.ExecContext(ctx, "INSERT INTO commands VALUES(?,?,?,?,?)", playerID, commandID, response, now, fingerprint); err != nil {
 		return room, err
 	}
+	if err := tx.Commit(); err != nil {
+		return room, err
+	}
 	room.Version = newVersion
-	return room, tx.Commit()
+	return room, nil
 }

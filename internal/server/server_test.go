@@ -3,18 +3,20 @@ package server
 import (
 	"bytes"
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/cookiejar"
 	"net/http/httptest"
 	"path/filepath"
 	"runtime"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 
 	"generalquarters/internal/game"
 	"generalquarters/internal/store"
+	"github.com/gorilla/websocket"
 )
 
 type testView struct {
@@ -35,6 +37,10 @@ type testView struct {
 type testClient struct {
 	client *http.Client
 	base   string
+
+	rpcMu     sync.Mutex
+	rpcSeq    int
+	roomConns map[string]*websocket.Conn
 }
 
 func newTestClient(t *testing.T, base string) *testClient {
@@ -45,7 +51,69 @@ func newTestClient(t *testing.T, base string) *testClient {
 	return &testClient{client: &http.Client{Jar: jar}, base: base}
 }
 
+// call 使用各接口唯一的传输方式：大厅走 HTTP，房间状态与操作走 WebSocket RPC。
 func (c *testClient) call(t *testing.T, method, path string, input, output any) int {
+	t.Helper()
+	if strings.HasPrefix(path, "/api/v1/rooms/") {
+		for _, suffix := range []string{"/state", "/events", "/commands", "/ready"} {
+			if strings.HasSuffix(path, suffix) {
+				return c.rpc(t, method, path, input, output)
+			}
+		}
+	}
+	return c.httpCall(t, method, path, input, output)
+}
+
+func (c *testClient) rpc(t *testing.T, method, path string, input, output any) int {
+	t.Helper()
+	c.rpcMu.Lock()
+	defer c.rpcMu.Unlock()
+	parts := strings.Split(path, "/")
+	if len(parts) < 5 {
+		t.Fatalf("RPC 房间路径无效：%s", path)
+	}
+	roomID := parts[4]
+	conn := c.roomConns[roomID]
+	if conn == nil {
+		conn = dialTestWS(t, c, "/ws?room_id="+roomID)
+		if c.roomConns == nil {
+			c.roomConns = map[string]*websocket.Conn{}
+		}
+		c.roomConns[roomID] = conn
+	}
+	c.rpcSeq++
+	id := "test-rpc-" + strconv.Itoa(c.rpcSeq)
+	var body json.RawMessage
+	if input != nil {
+		encoded, err := json.Marshal(input)
+		if err != nil {
+			t.Fatal(err)
+		}
+		body = encoded
+	}
+	if err := conn.WriteJSON(wsRequest{Type: "rpc_request", ID: id, Method: method, Path: path, Body: body}); err != nil {
+		t.Fatal(err)
+	}
+	response := readWSResponse(t, conn, id)
+	if output != nil && len(response.Body) > 0 {
+		if err := json.Unmarshal(response.Body, output); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return response.Status
+}
+
+func (c *testClient) resetRPC() {
+	c.rpcMu.Lock()
+	defer c.rpcMu.Unlock()
+	for _, conn := range c.roomConns {
+		_ = conn.Close()
+	}
+	c.roomConns = nil
+}
+
+// httpCall 只用于大厅接口和"旧房间 HTTP 已删除"的协议断言。
+func (c *testClient) httpCall(t *testing.T, method, path string, input, output any) int {
 	t.Helper()
 	var body bytes.Buffer
 	if input != nil {
@@ -83,6 +151,31 @@ func setupTestServer(t *testing.T, options ...func(*Server)) (*testClient, strin
 	httpServer := httptest.NewServer(mux)
 	cleanup := func() { httpServer.Close(); database.Close() }
 	return newTestClient(t, httpServer.URL), path, database, cleanup
+}
+
+func TestRoomHTTPInterfacesRemoved(t *testing.T) {
+	client, _, _, cleanup := setupTestServer(t)
+	defer cleanup()
+	var created roomResponse
+	if status := client.httpCall(t, http.MethodPost, "/api/v1/rooms", map[string]any{"scenario_id": "_fixture", "solo": true}, &created); status != http.StatusCreated {
+		t.Fatalf("创建房间状态码%d", status)
+	}
+	tests := []struct {
+		method string
+		path   string
+	}{
+		{http.MethodGet, "/state"},
+		{http.MethodGet, "/events"},
+		{http.MethodPost, "/commands"},
+		{http.MethodPost, "/ready"},
+		{http.MethodGet, "/spectate?token=" + created.JoinToken},
+	}
+	for _, test := range tests {
+		path := "/api/v1/rooms/" + created.RoomID + test.path
+		if status := client.httpCall(t, test.method, path, nil, nil); status != http.StatusNotFound {
+			t.Errorf("%s %s 应返回 404，实际 %d", test.method, path, status)
+		}
+	}
 }
 
 func TestTwoPlayerCommandAndTurnFlow(t *testing.T) {
@@ -305,29 +398,14 @@ func TestConcurrentCommandsHaveSingleWinner(t *testing.T) {
 		{"command_id": "concurrent-screen", "type": "LAUNCH_STRIKE", "aircraft_id": "a2-cv-01-fighter-x1", "aircraft_ids": []string{"a2-cv-01-fighter-x1"}},
 	}
 	statuses := make(chan int, len(commands))
-	errors := make(chan error, len(commands))
-	for _, command := range commands {
+	transports := []*testClient{a, {client: a.client, base: a.base}}
+	for index, command := range commands {
+		client := transports[index]
 		go func() {
-			body, err := json.Marshal(command)
-			if err != nil {
-				errors <- err
-				return
-			}
-			request, err := http.NewRequest(http.MethodPost, a.base+"/api/v1/rooms/"+created.RoomID+"/commands", bytes.NewReader(body))
-			if err != nil {
-				errors <- err
-				return
-			}
-			request.Header.Set("Content-Type", "application/json")
-			response, err := a.client.Do(request)
-			if err != nil {
-				errors <- err
-				return
-			}
-			responseBody, _ := io.ReadAll(response.Body)
-			response.Body.Close()
-			t.Logf("并发命令响应：status=%d body=%s", response.StatusCode, responseBody)
-			statuses <- response.StatusCode
+			var response map[string]any
+			status := client.call(t, http.MethodPost, "/api/v1/rooms/"+created.RoomID+"/commands", command, &response)
+			t.Logf("并发命令响应：status=%d body=%v", status, response)
+			statuses <- status
 		}()
 	}
 	// 并发下必须只有一个成功，但"输的那个"不一定是版本冲突：
@@ -336,18 +414,14 @@ func TestConcurrentCommandsHaveSingleWinner(t *testing.T) {
 	// 这比版本号更精确：拒绝理由是真实的业务冲突，而不是"你的快照旧了"。
 	accepted, rejected := 0, 0
 	for range commands {
-		select {
-		case err := <-errors:
-			t.Fatal(err)
-		case status := <-statuses:
-			switch status {
-			case http.StatusOK:
-				accepted++
-			case http.StatusConflict, http.StatusBadRequest:
-				rejected++
-			default:
-				t.Fatalf("并发命令返回意外状态码：%d", status)
-			}
+		status := <-statuses
+		switch status {
+		case http.StatusOK:
+			accepted++
+		case http.StatusConflict, http.StatusBadRequest:
+			rejected++
+		default:
+			t.Fatalf("并发命令返回意外状态码：%d", status)
 		}
 	}
 	if accepted != 1 || rejected != 1 {

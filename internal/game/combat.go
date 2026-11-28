@@ -401,7 +401,7 @@ func gunneryVolley(state *State, attackers, enemies []Unit, halfGuns bool) ([]Hi
 // 美军 1944 年以前 -20；己方混乱每点 -5。
 func torpedoChance(state State, weapon *Unit, target *Unit) float64 {
 	chance := 25.0
-	switch target.Card.SpeedClass {
+	switch EffectiveSpeedClass(target) {
 	case "slow":
 		chance += 10
 	case "fast":

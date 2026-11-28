@@ -3,6 +3,51 @@ package game
 import "testing"
 
 // 规则书 597–602 行：基础 100%，每 1hex 美军 -10%、日军 -20%，无轰炸机的编队距离惩罚翻倍。
+func TestAirborneRadioTasksGroundFormationUsesActualAircraft(t *testing.T) {
+	state := sandboxState(t)
+	aircraft := &AirfieldAirUnit{ID: "ground-radio-regression-aircraft", Faction: "A", Kind: "dive_bomber"}
+	state.GroundAir[aircraft.ID] = aircraft
+	aircraft.TaskID = "ground-radio-regression"
+	aircraft.TaskKind = "attack"
+	aircraft.Status = "attack"
+	aircraft.Coord = "0205"
+
+	statuses := AirborneRadioTasks(state, "A")
+	var status *RadioTaskStatus
+	for index := range statuses {
+		if statuses[index].TaskID == aircraft.TaskID {
+			status = &statuses[index]
+			break
+		}
+	}
+	if status == nil {
+		t.Fatal("岸基空中编队没有无线电状态")
+	}
+	want, _ := radioSuccessChance(state, "A", aircraft.Coord, []*AirUnit{airUnitFromGround(aircraft)})
+	if status.Chance != int(want+0.5) {
+		t.Fatalf("岸基编队显示的无线电成功率错误：got %d, want %.0f", status.Chance, want)
+	}
+	if status.Airborne != 1 {
+		t.Fatalf("岸基编队空中算子数错误：got %d, want 1", status.Airborne)
+	}
+}
+
+func TestClearRadioOrderValidatesTaskOwnership(t *testing.T) {
+	state := sandboxState(t)
+	aircraft := state.Aircraft["a2-cv-01-fighter-x1"]
+	aircraft.Status = "cap"
+	aircraft.TaskID = "air-clear-radio"
+	if err := ValidateOrder(state, "A", Order{Type: "CLEAR_MOVE", TaskID: aircraft.TaskID}); err != nil {
+		t.Fatalf("本方应能撤销待结算的无线电命令：%v", err)
+	}
+	if err := ValidateOrder(state, "B", Order{Type: "CLEAR_MOVE", TaskID: aircraft.TaskID}); err == nil {
+		t.Fatal("不能撤销敌方编队的无线电命令")
+	}
+	if err := ValidateOrder(state, "A", Order{Type: "CLEAR_MOVE", TaskID: "air-missing"}); err == nil {
+		t.Fatal("不能撤销不存在的航空编队命令")
+	}
+}
+
 func TestRadioSuccessChanceByDistance(t *testing.T) {
 	state := sandboxState(t)
 	bombers := []*AirUnit{{ID: "x", Kind: "dive_bomber"}}

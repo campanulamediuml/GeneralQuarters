@@ -9,28 +9,7 @@ import (
 	"generalquarters/internal/store"
 )
 
-// doSpectate 是"观战"视角：用房间 join_token 换一份不按阵营裁剪的完整快照。
-// 对局本身仍然是两边私有情报各看各的；这个接口只给拿得到邀请 token 的人（房主/旁观者）用，
-// 页面是 /watch/{roomID}?token=XXXX。它会合并 A/B 两边的合法视图——
-// 每艘船取自己阵营那份（含完整卡面），敌方视图里的情报投影直接丢掉。
-func (s *Server) doSpectate(msg roomMsg) roomReply {
-	ctx := context.Background()
-	actor, err := s.actorRoom(msg.roomID)
-	if err != nil {
-		return roomError(http.StatusNotFound, "房间不存在")
-	}
-	if game.NormalizeToken(msg.token) != actor.room.JoinToken {
-		return roomError(http.StatusForbidden, "观战 token 不正确")
-	}
-	view, err := s.spectateView(ctx, actor.room, actor.players)
-	if err != nil {
-		return roomError(http.StatusInternalServerError, "读取观战视图失败")
-	}
-	return roomJSON(http.StatusOK, view)
-}
-
-// spectateView 读取玩家和战报再投影。HTTP 接口和 WebSocket 推送共用这条路径，
-// 免得两边对同一份状态给出不一样的视图。
+// spectateView 读取玩家和战报，再投影成 WebSocket 观战连接的首帧与补丁底座。
 func (s *Server) spectateView(ctx context.Context, room store.Room, players []store.Player) (map[string]any, error) {
 	events, err := s.store.AllEvents(ctx, room.ID)
 	if err != nil {
@@ -110,9 +89,9 @@ func buildSpectateView(room store.Room, players []store.Player, events []store.E
 		"shore_supplies":  intMapSnapshot(state.ShoreSupplies),
 		// 观战页只给潜艇战报，不给潜艇实时位置：潜艇的隐蔽性对观战者也不开放。
 		"sub_battles": game.VisibleSubBattles(state),
-		"outcome":         state.Outcome,
-		"night":           state.Night,
-		"clock":           game.Clock(state),
+		"outcome":     state.Outcome,
+		"night":       state.Night,
+		"clock":       game.Clock(state),
 		// 和玩家视图一样发对象：前端按 wind.cells 画逐格风向箭头，发纯字符串时观战页拿不到逐格风。
 		"wind":          game.WindView{Wind: game.PrevailingWind(state), Cells: game.WindCells(state)},
 		"weather_cells": game.CloudCells(state.Map),

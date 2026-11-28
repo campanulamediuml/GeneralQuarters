@@ -15,7 +15,7 @@ import (
 // 时间线（规则书〈猎杀潜航〉）：
 //  1. 每回合开始时先按 1d6 定的相位每 6 回合随机挪 1 格（当前格和周围 6 格都可能）；
 //  2. 然后结算潜艇战：同格有敌方舰队 → 双方各掷 d10 加修正，差额归点数高的一方；
-//  3. 拿到点数的一方按 4→2→1 的顺序兑换效果（同一行可以买多次）；
+//  3. 拿到点数的一方只执行能负担的最高一档效果；
 //  4. 潜艇被发现后，由触发遭遇战的那支舰队每回合投 1 次深水炸弹，潜艇每回合掷一次撤退。
 //
 // 设计边界：
@@ -411,7 +411,7 @@ func fleetBattleModifiers(state State, fleet []Unit) int {
 }
 
 // resolveSubmarineBattle 结算一次潜艇战：双方掷 d10，差额归点数高的一方，
-// 再按 4→2→1 的顺序兑换效果（同一行可以买多次）。
+// 胜方只执行能负担的最高一档效果，不重复购买，也不在效果未奏效后改买较低档。
 func resolveSubmarineBattle(state *State, sub *Submarine, fleetID string) []EngineEvent {
 	fleet := fleetMembers(state, fleetID)
 	if len(fleet) == 0 {
@@ -442,26 +442,24 @@ func resolveSubmarineBattle(state *State, sub *Submarine, fleetID string) []Engi
 	} else if side != "" {
 		report.FleetPoints = points
 	}
-	// 兑换效果：从上到下逐行扣取，点数不够就取下一行；同一行可以重复购买。
-	for _, cost := range []int{4, 2, 1} {
-		for points >= cost {
-			points -= cost
-			if side == sub.Faction {
-				events = append(events, buySubmarineEffect(state, sub, fleetID, cost, &report)...)
-			} else {
-				events = append(events, buyFleetEffect(state, sub, fleetID, cost, &report)...)
-			}
-			report.PointsLeft = points
-			// 潜艇沉了、或者被发现（钉住后不再继续兑换）就停手。
-			if state.Submarines[sub.ID] == nil || sub.Discovered {
-				points = 0
-				break
-			}
-		}
-		if points <= 0 {
-			break
+	cost := 0
+	switch {
+	case points >= 4:
+		cost = 4
+	case points >= 2:
+		cost = 2
+	case points >= 1:
+		cost = 1
+	}
+	if side != "" && cost > 0 {
+		points -= cost
+		if side == sub.Faction {
+			events = append(events, buySubmarineEffect(state, sub, fleetID, cost, &report)...)
+		} else {
+			events = append(events, buyFleetEffect(state, sub, fleetID, cost, &report)...)
 		}
 	}
+	report.PointsLeft = points
 	report.Summary = submarineBattleSummary(*state, report)
 	state.SubBattles = append(state.SubBattles, report)
 	events = append(events, EngineEvent{Type: "submarine_battle", Audience: "all", Text: report.Summary})

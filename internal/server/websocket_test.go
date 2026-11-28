@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -278,21 +277,9 @@ func TestStateViewIsDeterministic(t *testing.T) {
 
 func rawState(t *testing.T, client *testClient, roomID string) []byte {
 	t.Helper()
-	request, err := http.NewRequest(http.MethodGet, client.base+"/api/v1/rooms/"+roomID+"/state", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	response, err := client.client.Do(request)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer response.Body.Close()
-	if response.StatusCode != http.StatusOK {
-		t.Fatalf("state status %d", response.StatusCode)
-	}
-	body, err := io.ReadAll(response.Body)
-	if err != nil {
-		t.Fatal(err)
+	var body json.RawMessage
+	if status := client.call(t, http.MethodGet, "/api/v1/rooms/"+roomID+"/state", nil, &body); status != http.StatusOK {
+		t.Fatalf("state status %d", status)
 	}
 	return body
 }

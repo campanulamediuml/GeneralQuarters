@@ -436,7 +436,7 @@ func (s *Store) SaveOrder(ctx context.Context, roomID string, turn int, playerID
 	if err != nil {
 		return err
 	}
-	// 幂等响应可能已经由 BumpVersion 写过（规划移动先推进版本再存命令），用 upsert 覆盖即可。
+	// 普通待结算命令在这里同时写订单和幂等回执；重复保存同一 command_id 时覆盖回执。
 	_, err = tx.ExecContext(ctx, `INSERT INTO commands VALUES(?,?,?,?,?) ON CONFLICT(player_id,command_id) DO UPDATE SET response_json=excluded.response_json, request_fingerprint=excluded.request_fingerprint`, playerID, commandID, response, time.Now().UTC().Format(time.RFC3339Nano), fingerprint)
 	if err != nil {
 		return err

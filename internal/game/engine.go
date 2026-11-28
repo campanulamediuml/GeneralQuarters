@@ -834,6 +834,19 @@ func ValidateOrder(state State, faction string, order Order) error {
 	if order.Type == "SPLIT_FLEET" {
 		return validateSplitFleet(state, faction, order)
 	}
+	if order.Type == "CLEAR_MOVE" && order.TaskID != "" {
+		for _, aircraft := range airTaskMembersEveryStatus(state, order.TaskID) {
+			if aircraft.Faction == faction {
+				return nil
+			}
+		}
+		for _, aircraft := range groundTaskMembersEveryStatus(state, order.TaskID) {
+			if aircraft.Faction == faction {
+				return nil
+			}
+		}
+		return fmt.Errorf("航空编队不存在或不属于当前玩家")
+	}
 	if order.Type == "SET_ENGAGEMENT" {
 		unit := state.Units[order.UnitID]
 		if unit == nil || unit.Faction != faction {

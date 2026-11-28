@@ -1,14 +1,17 @@
 openapi: 3.0.3
 info:
-  title: General Quarters API
-  version: 0.1.0
-  description: 权威服务器房间与回合接口。所有命中、移动合法性和战争迷雾均由服务器处理。
+  title: General Quarters HTTP API
+  version: 0.2.0
+  description: |-
+    大厅、健康检查和观战 token 解析接口。
+    房间内的 state、events、commands、ready 与观战统一使用 WebSocket，不再提供 HTTP 接口。
+    WebSocket RPC、快照和增量补丁契约见仓库根目录 API.md；OpenAPI 3.0 不描述这些帧协议。
 servers:
   - url: /
 tags:
   - name: System
   - name: Rooms
-  - name: Commands
+  - name: Spectator
 paths:
   /healthz:
     get:
@@ -21,163 +24,110 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [status]
                 properties:
                   status: {type: string, example: ok}
+  /api/docs:
+    get:
+      tags: [System]
+      summary: 在线 API 速查页
+      responses:
+        '200':
+          description: HTML 文档
+          content:
+            text/html:
+              schema: {type: string}
   /api/v1/openapi.yaml:
     get:
       tags: [System]
-      summary: 下载OpenAPI文档
+      summary: 下载 HTTP OpenAPI 定义
       responses:
-        '200': {description: OpenAPI YAML}
+        '200':
+          description: OpenAPI YAML
+          content:
+            application/yaml:
+              schema: {type: string}
   /api/v1/rooms:
     post:
       tags: [Rooms]
-      summary: 创建房间并载入剧本
-      description: 创建后自动成为A阵营房主，并通过HttpOnly Cookie建立玩家会话。
+      summary: 创建房间并建立房主会话
+      description: 成功后设置 HttpOnly Cookie gq_session。进入房间后使用该 Cookie 连接 /ws，房间内操作不再使用 HTTP。
       requestBody:
         required: false
         content:
           application/json:
-            schema:
-              type: object
-              properties:
-                name: {type: string, example: 玩家A}
-                scenario_id: {type: string, example: _coral_real, default: _coral_real}
+            schema: {$ref: '#/components/schemas/CreateRoomRequest'}
       responses:
         '201':
           description: 创建成功
+          headers:
+            Set-Cookie:
+              description: 玩家会话 Cookie
+              schema: {type: string}
           content:
             application/json:
               schema: {$ref: '#/components/schemas/RoomResponse'}
         '400': {$ref: '#/components/responses/BadRequest'}
+        '500': {$ref: '#/components/responses/InternalServerError'}
   /api/v1/rooms/join:
     post:
       tags: [Rooms]
-      summary: 使用邀请token加入房间
-      description: 成功后成为剩余阵营玩家，并建立独立HttpOnly会话。
+      summary: 使用邀请 token 加入房间
+      description: 成功后加入剩余阵营并设置独立的 gq_session Cookie；响应不返回 join_token。进入房间后使用该 Cookie 连接 /ws。
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              required: [token]
-              properties:
-                token: {type: string, example: 7K4M-9Q2X-6T8P}
-                name: {type: string, example: 玩家B}
+            schema: {$ref: '#/components/schemas/JoinRoomRequest'}
       responses:
         '200':
           description: 加入成功
+          headers:
+            Set-Cookie:
+              description: 玩家会话 Cookie
+              schema: {type: string}
           content:
             application/json:
               schema: {$ref: '#/components/schemas/RoomResponse'}
         '400': {$ref: '#/components/responses/BadRequest'}
-  /api/v1/rooms/{roomID}/state:
+        '404': {$ref: '#/components/responses/NotFound'}
+        '500': {$ref: '#/components/responses/InternalServerError'}
+  /api/v1/watch/{token}:
     get:
-      tags: [Rooms]
-      summary: 获取当前玩家的私有游戏快照
-      description: 响应只包含该玩家有权看到的单位、命令和事件。join_token仅向房主返回。
+      tags: [Spectator]
+      summary: 将观战 token 解析为房间 ID
+      description: 取得 room_id 后连接 /ws?mode=spectator，并用 room_id 和同一 token 订阅。观战快照与补丁不经过 HTTP。
       parameters:
-        - {$ref: '#/components/parameters/RoomID'}
+        - name: token
+          in: path
+          required: true
+          description: 12 位邀请 token，可带显示用连字符
+          schema: {type: string, example: 7K4M-9Q2X-6T8P}
       responses:
         '200':
-          description: 私有快照
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/GameView'}
-        '401': {$ref: '#/components/responses/Unauthorized'}
-        '403': {$ref: '#/components/responses/Forbidden'}
-  /api/v1/rooms/{roomID}/events:
-    get:
-      tags: [Rooms]
-      summary: 获取当前玩家可见的最近100条事件
-      parameters:
-        - {$ref: '#/components/parameters/RoomID'}
-      responses:
-        '200':
-          description: 事件列表，按事件ID倒序
+          description: 解析成功
           content:
             application/json:
               schema:
                 type: object
+                required: [room_id]
                 properties:
-                  events:
-                    type: array
-                    items: {$ref: '#/components/schemas/Event'}
-        '401': {$ref: '#/components/responses/Unauthorized'}
-  /api/v1/rooms/{roomID}/commands:
-    post:
-      tags: [Commands]
-      summary: 提交立即生效的移动、整编或航空命令
-      description: command_id用于幂等重试；base_turn可选，只用于拒绝跨回合的过期操作——同回合内重复命令一律接受，后写的覆盖先写的。移动、整编和航空任务分配立即结算；升降机、甲板、攻击编组、扇面hex、发现判定和情报只由服务端计算。PREPARE_AIR已废弃，整备和提升必须绑定任务。CLEAR_MOVE仅清理旧版协议的待结算命令。
-      parameters:
-        - {$ref: '#/components/parameters/RoomID'}
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: {$ref: '#/components/schemas/Command'}
-      responses:
-        '200':
-          description: 命令已接受，或返回幂等命令的首次响应
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  accepted: {type: boolean}
-                  command_id: {type: string}
-        '400': {$ref: '#/components/responses/BadRequest'}
-        '409': {$ref: '#/components/responses/Conflict'}
-  /api/v1/rooms/{roomID}/ready:
-    post:
-      tags: [Commands]
-      summary: 设置回合准备状态
-      description: 所有当前玩家ready后同步结算回合。单人沙盒中，唯一玩家ready即可结算。
-      parameters:
-        - {$ref: '#/components/parameters/RoomID'}
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [ready]
-              properties:
-                base_turn: {type: integer, example: 1, description: 提交时看到的回合号，可选；落后于当前回合会被拒绝}
-                ready: {type: boolean, example: true}
-      responses:
-        '200':
-          description: 回执；最新状态走 WebSocket 推送
-          content:
-            application/json:
-              schema: {$ref: '#/components/schemas/ReadyResponse'}
-        '409': {$ref: '#/components/responses/Conflict'}
+                  room_id: {type: string}
+        '404': {$ref: '#/components/responses/NotFound'}
 components:
-  parameters:
-    RoomID:
-      name: roomID
-      in: path
-      required: true
-      schema: {type: string, example: 04ca6f34b85a65d2}
   responses:
     BadRequest:
-      description: 请求或命令无效
+      description: 请求、未知字段或业务条件无效
       content:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
-    Unauthorized:
-      description: 缺少或失效的玩家会话
+    NotFound:
+      description: 房间、接口或 token 不存在
       content:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
-    Forbidden:
-      description: 会话不属于该房间
-      content:
-        application/json:
-          schema: {$ref: '#/components/schemas/Error'}
-    Conflict:
-      description: 回合已结算（base_turn 落后）或命令校验失败
+    InternalServerError:
+      description: 状态或数据库内部错误
       content:
         application/json:
           schema: {$ref: '#/components/schemas/Error'}
@@ -186,346 +136,30 @@ components:
       type: object
       required: [error]
       properties:
-        error: {type: string, example: 目标必须与当前hex相邻且可通行}
-    ReadyResponse:
+        error: {type: string, example: 请求JSON无效}
+        error_code: {type: string}
+        error_params:
+          type: object
+          additionalProperties: {type: string}
+    CreateRoomRequest:
       type: object
-      required: [accepted, turn]
+      additionalProperties: false
       properties:
-        accepted: {type: boolean}
-        turn: {type: integer, description: 回执里的当前回合号}
-        phase: {type: string, enum: [deploy, battle], description: 只在"双方都部署完毕、这一刻切进 battle"的回执里出现；部署不算回合，turn 仍是 1}
+        name: {type: string, example: 玩家A}
+        scenario_id: {type: string, enum: [_coral_real, _marianas], default: _coral_real}
+        faction: {type: string, enum: [A, B], default: A}
+        solo: {type: boolean, default: false, description: true 为单人沙盒，false 为双人房}
+    JoinRoomRequest:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token: {type: string, example: 7K4M-9Q2X-6T8P}
+        name: {type: string, example: 玩家B}
     RoomResponse:
       type: object
+      required: [room_id, player_id]
       properties:
         room_id: {type: string}
         player_id: {type: string}
-        join_token: {type: string, description: 仅创建房间时返回}
-    Command:
-      type: object
-      required: [command_id, type]
-      properties:
-        command_id: {type: string, maxLength: 128}
-        base_turn: {type: integer, description: 提交时看到的回合号，可选；落后于当前回合会被拒绝}
-        type: {type: string, enum: [SET_MOVE, CLEAR_MOVE, SET_HEADING, SET_AUTO_NAV, SET_ENGAGEMENT, SET_LOADOUT, MERGE_FLEET, REORGANIZE_HEX, LAUNCH_CAP, LAUNCH_COVER, LAUNCH_RECON, LAUNCH_STRIKE, LAUNCH_TRANSFER, PREPARE_AIR, RETURN_TO_HANGAR, RECOVER_AIR, PRIORITIZE_AIR_TASK, SET_STRIKE_TARGET, SET_STRIKE_DISPERSION, SET_AIR_CYCLE]}
-        unit_id: {type: string, description: 舰船移动与整编命令必填, example: a-bb-01}
-        target_unit_id: {type: string, description: MERGE_FLEET必填，目标舰队中的单位, example: a-dd-01}
-        aircraft_id: {type: string, description: 单算子航空命令或任务ID, example: air-b-01}
-        aircraft_ids: {type: array, minItems: 1, maxItems: 20, items: {type: string}, description: CAP和侦察须同舰同型；攻击编队可跨同舰队母舰并混合攻击机型}
-        task_id: {type: string, description: LAUNCH_RECON加入同舰队已有侦察组或LAUNCH_STRIKE加入同舰队已有攻击编队时必填；侦察组继承原组参数，已离场攻击编队不可加入, example: air-b-03}
-        coord: {type: string, description: SET_MOVE和REORGANIZE_HEX必填；SET_AUTO_NAV作为目的地；新建LAUNCH_STRIKE时作为已侦测敌方目标hex必填，加入已有编队时继承, example: '0203'}
-        engagement: {type: string, enum: [aggressive, advantage, avoid], description: SET_AUTO_NAV和SET_ENGAGEMENT使用；aggressive=逢敌必战，advantage=优势交战，avoid=避免近战}
-        target_fleet_id: {type: string, description: SET_STRIKE_TARGET/LAUNCH_STRIKE可显式指定敌方舰队；目标hex同时有敌方机场和舰队时用它选择打舰队，省略则维持机场优先, example: TF44}
-        loadout: {type: string, description: SET_LOADOUT必填，例如 bomb、torpedo、bomb+tank、torpedo+tank}
-        heading: {type: string, enum: [E, SE, SW, W, NW, NE], description: LAUNCH_RECON必填，搜索航线中轴；舰载机限侦察机/TBF/SB2C，陆基机场除战斗机外均可执行（含B-17/B-25/B-26）, example: W}
-        sector_width: {type: integer, enum: [60, 120], description: LAUNCH_RECON必填；120度最终发现率减半, example: 60}
-        recon_radius: {type: integer, minimum: 0, description: 可选；省略或为0时使用recon_radius_limit，手动值不能超过该上限, example: 6}
-        assignments:
-          type: object
-          description: REORGANIZE_HEX必填，该hex全部己方单位ID到fleet_id的映射
-          additionalProperties: {type: string}
-          example: {a-flag: a-flag, a-screen: a-flag}
-    Player:
-      type: object
-      properties:
-        id: {type: string}
-        faction: {type: string, enum: [A, B]}
-        name: {type: string}
-        is_host: {type: boolean}
-        ready: {type: boolean}
-        connected: {type: boolean}
-    ShipCard:
-      type: object
-      description: 服务端生成的舰船角色卡。当前生命在Unit.strength中，其余当前装备与能力在此字段中。
-      properties:
-        gunnery: {type: integer, description: 服务端按主炮口径×数量÷9四舍五入计算}
-        damage_control: {type: integer, description: 当前损管值，DCT骰点小于等于此值时通过}
-        main_gun_count: {type: integer}
-        main_gun_caliber: {type: number, description: 主炮口径，英寸}
-        heavy_aa: {type: number}
-        light_aa: {type: number}
-        surface_radar: {type: boolean}
-        air_radar: {type: boolean}
-        speed_class: {type: string, enum: [normal, fast, slow, very_slow]}
-        torpedo_salvos: {type: integer, description: 剩余齐射轮数，每轮4枚鱼雷}
-        aircraft: {type: integer, description: 当前舰载机或水上飞机数量}
-        hangar_capacity: {type: integer, description: 独立机库容量；CV默认24，CVL/CVE默认9，非航母由具体剧本部署指定}
-        deck_capacity: {type: integer, description: 航母每回合起降容量}
-        elevator_count: {type: integer}
-        depth_charges: {type: integer}
-        cargo: {type: integer}
-        armored_carrier: {type: boolean}
-        historical_loss: {type: string, description: 历史沉没时间，可选}
-    AircraftElevator:
-      type: object
-      description: 挂在单舰甲板下的独立升降机对象，水机舰使用crane类型
-      properties:
-        id: {type: string, example: b-cv-01-elevator-1}
-        kind: {type: string, enum: [elevator, crane]}
-        capacity: {type: integer, description: 单次提升或下降的最大算子数}
-        status: {type: string, enum: [idle, lifting, lowering, damaged]}
-        task_id: {type: string}
-        aircraft_ids: {type: array, items: {type: string}}
-    FlightDeck:
-      type: object
-      properties:
-        length: {type: integer, description: 本舰甲板长度，同时限制停放和每回合起飞容量}
-        operation: {type: string, enum: ['', launch, recover]}
-        elevators: {type: array, items: {$ref: '#/components/schemas/AircraftElevator'}}
-    ShipDamage:
-      type: object
-      description: 服务端持久化的当前舰船损伤，客户端只读
-      properties:
-        fire: {type: string, enum: [small, burning]}
-        flooding: {type: array, items: {type: integer}, description: 每层进水的剩余修复等待回合}
-        disabled: {type: boolean}
-        tilt: {type: boolean}
-        oil_leak: {type: boolean}
-        deck_damaged: {type: boolean}
-        deck_destroyed: {type: boolean}
-        elevator_damage: {type: integer}
-        torpedo_disabled: {type: boolean}
-        surface_radar_disabled: {type: boolean}
-        air_radar_disabled: {type: boolean}
-        sonar_disabled: {type: boolean}
-    Unit:
-      type: object
-      properties:
-        id: {type: string}
-        definition_id: {type: string, description: 单位目录中的稳定定义ID}
-        fleet_id: {type: string}
-        name: {type: string}
-        type: {type: string, enum: [BB, BC, CA, CL, DD, CV, CVL, TRS, CVE]}
-        faction: {type: string}
-        coord: {type: string, example: '0202'}
-        heading: {type: string, enum: [E, SE, SW, W, NW, NE]}
-        moved: {type: boolean, description: 本回合是否已经移动}
-        move_cooldown: {type: integer, description: 距离下次可移动的剩余回合数，普通/快速3、纯高速DD2、慢速5、极慢10、失去动力24}
-        confusion: {type: integer, description: 交战混乱值，回合开始衰减；大于0时禁止整编}
-        contact_level: {type: integer, enum: [1, 2, 3, 4], description: 情报卡片等级；仅4级包含具体舰船属性}
-        damage: {$ref: '#/components/schemas/ShipDamage'}
-        strength: {type: integer, description: 当前生命值}
-        max_strength: {type: integer, description: 初始生命值}
-        card: {$ref: '#/components/schemas/ShipCard'}
-        deck: {$ref: '#/components/schemas/FlightDeck', description: 仅具备航空作业能力的舰船持有}
-        legal_moves:
-          type: array
-          description: 仅己方单位返回，由服务器计算
-          items: {type: string}
-    DistanceReference:
-      type: object
-      description: 服务端生成的选中算子距离参考
-      properties:
-        origin: {type: string, example: '0202'}
-        max_distance: {type: integer, example: 8}
-        cells:
-          type: array
-          items:
-            type: object
-            properties:
-              coord: {type: string, example: '0208'}
-              distance: {type: integer, example: 6}
-    FleetGroup:
-      allOf:
-        - {$ref: '#/components/schemas/Unit'}
-        - type: object
-          description: 服务端生成的地图舰队投影；id为舰队首舰单位ID，客户端不得以此修改状态
-          properties:
-            fleet_id: {type: string}
-            members:
-              type: array
-              items: {$ref: '#/components/schemas/Unit'}
-            count: {type: integer, description: 成员舰船数量}
-            strength: {type: integer, description: 服务端汇总的当前总强度}
-            max_strength: {type: integer, description: 服务端汇总的最大总强度}
-            moved: {type: boolean, description: 舰队本回合是否已经移动}
-            move_interval: {type: integer, description: 按全队最慢航速计算的移动间隔}
-            move_cooldown: {type: integer, description: 全队剩余移动冷却回合}
-            confusion: {type: integer, description: 全队交战混乱值}
-            contact_level: {type: integer, enum: [1, 2, 3, 4]}
-            contact_size: {type: string, enum: [small, medium, large], description: 一级情报规模文字；1-4艘small、5-9艘medium、10艘以上large}
-            distance_reference: {$ref: '#/components/schemas/DistanceReference'}
-    AirUnit:
-      type: object
-      properties:
-        id: {type: string}
-        definition_id: {type: string}
-        carrier_id: {type: string}
-        faction: {type: string, enum: [A, B]}
-        name: {type: string}
-        model: {type: string}
-        kind: {type: string, enum: [fighter, dive_bomber, torpedo_bomber, recon, level_bomber, medium_bomber, heavy_bomber, strategic_bomber]}
-        status: {type: string, enum: [hangar, service, elevator, deck, ready, recovery, cap, recon, attack_holding, attack], description: 依次表示机库、任务整备、升降机上、甲板、待回收、空中任务和攻击编队等待/离场}
-        strength: {type: integer}
-        max_range: {type: integer, description: 服务端包含副油箱后的最大航程}
-        remaining_range: {type: integer, description: 攻击编队等待期间每回合减1}
-        air_combat: {type: integer}
-        anti_ship: {type: integer}
-        anti_ground: {type: integer}
-        seaplane: {type: boolean, description: true时界面使用橙色水机算子}
-        airfield_only: {type: boolean, description: 陆基机型，只能从机场起降}
-        torpedo_capable: {type: boolean, description: 有鱼雷挂架；B-26 挂鱼雷时按鱼雷机结算}
-        high_altitude_bomber: {type: boolean, description: 挂炸弹对舰时按高空轰炸结算，免疫轻防空但命中率减半}
-        launched: {type: boolean, description: 是否占用本回合起飞容量}
-        elevator_id: {type: string, description: status为elevator时指向本舰具体升降机}
-        priority: {type: integer}
-        task_id: {type: string, description: 同一航空任务的共享ID，攻击编队可跨母舰共享}
-        task_kind: {type: string, enum: [cap, recon, attack], description: 已分配任务类型，算子尚未起飞时用于区分预备任务}
-        origin_coord: {type: string, description: 侦察扇面顶点}
-        coord: {type: string, description: 航空算子当前hex}
-        target_coord: {type: string, description: 攻击编队目标hex}
-        heading: {type: string, enum: [E, SE, SW, W, NW, NE]}
-        sector_width: {type: integer, enum: [60, 120]}
-        recon_radius: {type: integer}
-        recon_distance: {type: integer, description: 当前距离圈}
-        recon_radius_limit: {type: integer, description: 服务端按返航燃料给出的最大可选半径}
-        returning: {type: boolean}
-        tracking_fleet_id: {type: string}
-    ReconSector:
-      type: object
-      description: 单个侦察机算子的独立位置和搜索范围；未升空算子使用母舰当前位置且不生成扇面
-      properties:
-        aircraft_id: {type: string}
-        status: {type: string}
-        origin_coord: {type: string, description: 已升空时为实际起飞hex，未升空时为母舰当前hex}
-        current_coord: {type: string}
-        heading: {type: string, enum: [E, SE, SW, W, NW, NE]}
-        sector_width: {type: integer, enum: [60, 120]}
-        recon_radius: {type: integer}
-        recon_distance: {type: integer}
-        returning: {type: boolean}
-        tracking_fleet_id: {type: string}
-        sector_hexes: {type: array, items: {type: string}, description: 该算子独立计算的完整扇面}
-        current_ring_hexes: {type: array, items: {type: string}, description: 该算子独立计算的当前搜索圈}
-        distance_reference: {$ref: '#/components/schemas/DistanceReference'}
-    AirTask:
-      type: object
-      properties:
-        id: {type: string}
-        kind: {type: string, enum: [cap, recon, asw, attack, transfer]}
-        phase: {type: string, enum: [servicing, lifting, preparing, launching, assembling, active], description: 整备、升降机提升、甲板等待、放飞、攻击编队等待和任务执行}
-        name: {type: string}
-        carrier_id: {type: string, description: 任务首架算子的母舰}
-        carrier_ids: {type: array, items: {type: string}, description: 攻击编队可包含多艘母舰}
-        fleet_id: {type: string}
-        aircraft_ids: {type: array, items: {type: string}}
-        aircraft: {type: array, items: {$ref: '#/components/schemas/AirUnit'}}
-        airborne_count: {type: integer, description: 已升空算子数，攻击编队全部到齐后才能离场}
-        priority: {type: integer, description: 1为最高优先级，参与升降机调度}
-        queue_position: {type: integer, description: 服务端排序后的连续队列位置}
-        origin_coord: {type: string, description: 本次出海的起飞顶点（航母/机场坐标）}
-        current_coord: {type: string, description: 编队当前位置}
-        target_coord: {type: string, description: 打击=目标hex；掩护/转场=目的地；CAP=值班空域；侦察为空}
-        heading: {type: string, enum: [E, SE, SW, W, NW, NE]}
-        sector_width: {type: integer, enum: [60, 120]}
-        recon_radius: {type: integer}
-        recon_distance: {type: integer}
-        returning: {type: boolean}
-        tracking_fleet_id: {type: string}
-        sector_hexes: {type: array, items: {type: string}, description: 服务端计算的完整扇面覆盖}
-        current_ring_hexes: {type: array, items: {type: string}, description: 任务代表算子的当前距离圈，兼容字段}
-        recon_sectors: {type: array, items: {$ref: '#/components/schemas/ReconSector'}, description: 每架侦察机各自的扇面、搜索圈和实时位置，大地图使用此字段}
-        distance_reference: {$ref: '#/components/schemas/DistanceReference'}
-    CarrierAirStatus:
-      type: object
-      properties:
-        unit_id: {type: string}
-        name: {type: string}
-        type: {type: string}
-        hangar_used: {type: integer}
-        hangar_capacity: {type: integer}
-        deck_length: {type: integer, description: 本舰甲板长度}
-        deck_capacity: {type: integer, description: 兼容字段，值同deck_length}
-        deck_used: {type: integer, description: 当前停放或等待回收的算子数}
-        launch_used: {type: integer, description: 本回合已经起飞的算子数}
-        operation: {type: string, enum: ['', launch, recover]}
-        elevators: {type: array, items: {$ref: '#/components/schemas/AircraftElevator'}}
-        aircraft: {type: array, items: {$ref: '#/components/schemas/AirUnit'}}
-    AviationView:
-      type: object
-      properties:
-        carriers: {type: array, items: {$ref: '#/components/schemas/CarrierAirStatus'}}
-        tasks: {type: array, items: {$ref: '#/components/schemas/AirTask'}}
-    Event:
-      type: object
-      properties:
-        id: {type: integer, format: int64}
-        turn: {type: integer}
-        sequence: {type: integer}
-        type: {type: string}
-        text: {type: string}
-        created_at: {type: string, format: date-time}
-    AirCombatReport:
-      type: object
-      properties:
-        id: {type: string}
-        coord: {type: string}
-        attacker_faction: {type: string, enum: [A, B]}
-        defender_faction: {type: string, enum: [A, B]}
-        attacker_models: {type: array, items: {type: string}}
-        defender_models: {type: array, items: {type: string}}
-        attacker_count: {type: integer}
-        defender_count: {type: integer}
-        attacker_losses: {type: integer}
-        defender_losses: {type: integer}
-        aa_hits: {type: integer}
-        strike_hits: {type: integer}
-        winner: {type: string, enum: [A, B, draw]}
-        summary: {type: string}
-    DeployZone:
-      type: object
-      description: 开局部署区。剧本没写 deploy_zones 时不会出现
-      properties:
-        anchor: {type: string, example: '3250', description: 部署区锚点 hex}
-        radius: {type: integer, example: 8, description: 锚点半径（六边形距离）}
-        cells: {type: string, description: 行优先的 '0'/'1' 串，标出半径内可以摆船的格位；前端改用 legal_moves 高亮，该字段留给脚本}
-    GameView:
-      type: object
-      properties:
-        room_id: {type: string}
-        status: {type: string}
-        turn: {type: integer}
-        phase: {type: string, enum: [deploy, battle], description: 开局部署阶段；剧本没有部署区时直接是 battle}
-        deploy_zone: {$ref: '#/components/schemas/DeployZone'}
-        weather_cells: {type: string, description: 行优先、每格一个字符 '0'..'3'（晴/多云/降雨/风暴）。服务端按云层数记账，4 层以上同样显示 3}
-        wind_cells: {type: string, description: 行优先、每格一个数字 0–5，依次对应 NE/E/SE/SW/W/NW（记来向）}
-        wind:
-          type: object
-          description: 盛行风与各己方舰队所在格的朝向关系
-          properties:
-            wind: {type: string}
-            cells: {type: string}
-            fleets: {type: array, items: {type: object}}
-        night: {type: boolean}
-        clock: {type: object, description: 剧本时间线快照；没有昼夜循环时为 null}
-        scenario:
-          type: object
-          properties:
-            id: {type: string}
-            name: {type: string}
-            description: {type: string}
-        map: {type: object, description: 地图定义；ABCD坐标，奇数行向右偏移半格}
-        units:
-          type: array
-          items: {$ref: '#/components/schemas/Unit'}
-        fleets:
-          type: array
-          description: 服务端按fleet_id生成的权威舰队投影，地图直接渲染此字段
-          items: {$ref: '#/components/schemas/FleetGroup'}
-        aviation: {$ref: '#/components/schemas/AviationView'}
-        air_combats: {type: array, items: {$ref: '#/components/schemas/AirCombatReport'}, description: 当前阵营可见的权威空战报告}
-        you: {$ref: '#/components/schemas/Player'}
-        players:
-          type: array
-          items: {$ref: '#/components/schemas/Player'}
-        orders:
-          type: array
-          items:
-            type: object
-            properties:
-              type: {type: string}
-              unit_id: {type: string}
-              coord: {type: string}
-        events:
-          type: array
-          items: {$ref: '#/components/schemas/Event'}
-        join_token: {type: string, description: 仅房主可见}
+        join_token: {type: string, description: 仅创建房间响应返回}

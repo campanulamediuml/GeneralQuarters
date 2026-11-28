@@ -2,13 +2,12 @@ package game
 
 import "testing"
 
-// TestMarianasSpeedClasses 校验马里亚纳的速度分档：35 节以上 fast、25–35 节 normal、
-// 25 节以下 slow。移动上 fast 和 normal 都是 3 回合走一格，fast 的差别只在
-// 被鱼雷 -10% / 被空袭 -5% 的命中修正（外加纯高速驱逐舰队 2 回合）。
+// TestMarianasSpeedClasses 校验马里亚纳的速度分档：35 节及以上 fast、25 节及以上但不足 35 节 normal、
+// 15 节及以上但不足 25 节 slow，不足 15 节 very_slow。
 //
 // 这条分档的直接后果：二战能跑 35 节以上基本只有驱逐舰和日本那批 35 节级巡洋舰，
 // 所以航母、战列舰（包括依阿华 33 节、金刚级 30 节）全部是 normal，
-// 扶桑/山城 24.7 节按 25 节取整，同样算 normal（3 回合走一格）。
+// 扶桑/山城 24.7 节按统一阈值算 slow；移动仍按各自 move_cycle 结算。
 func TestMarianasSpeedClasses(t *testing.T) {
 	scenario, gameMap, catalog, err := LoadScenario("../../content", "_marianas")
 	if err != nil {
@@ -45,7 +44,9 @@ func TestMarianasSpeedClasses(t *testing.T) {
 		"大和":   "normal",
 		"陆奥":   "normal",
 		"巴尔的摩": "normal",
-		// 25 节以下：美军老式战列舰、护航航母、运输船
+		// 15 节及以上但不足 25 节：扶桑级、美军老式战列舰、护航航母
+		"扶桑":   "slow",
+		"山城":   "slow",
 		"田纳西":  "slow",
 		"纳托马湾": "slow",
 	}

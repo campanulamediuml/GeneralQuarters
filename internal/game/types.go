@@ -221,8 +221,8 @@ type Submarine struct {
 	FirstMoveTurn int `json:"first_move_turn"`
 	MoveInterval  int `json:"move_interval"`
 	// Discovered 表示潜艇已经被某支舰队发现：只对该阵营显示，并被钉在原地。
-	Discovered    bool   `json:"discovered"`
-	DiscoveredBy  string `json:"discovered_by"`
+	Discovered     bool   `json:"discovered"`
+	DiscoveredBy   string `json:"discovered_by"`
 	TrackedFleetID string `json:"tracked_fleet_id"`
 }
 
@@ -243,20 +243,20 @@ type SubmarineBattle struct {
 	FleetRoll   int `json:"fleet_roll"`
 	SubPoints   int `json:"sub_points"`
 	FleetPoints int `json:"fleet_points"`
-	// PointsLeft 是兑换完效果后剩下的点数（不够再买任何一行）。
+	// PointsLeft 是执行一次最高档效果后剩余、且不再使用的点数。
 	PointsLeft int `json:"points_left"`
-	// Effects 是按购买顺序记下的效果文案。
+	// Effects 是本次执行的效果文案。
 	Effects []string `json:"effects"`
 	// 鱼雷：打了几发、命中几次、打的谁。
-	TorpedoShots    int    `json:"torpedo_shots"`
-	TorpedoHits     int    `json:"torpedo_hits"`
-	TorpedoShip     string `json:"torpedoed_ship,omitempty"`
-	TorpedoShipType string `json:"torpedoed_ship_type,omitempty"`
-	TorpedoShipSunk bool   `json:"torpedoed_ship_sunk"`
-	SubmarineSunk     bool `json:"submarine_sunk"`
-	SubmarineEscaped  bool `json:"submarine_escaped"`
-	Discovered        bool `json:"discovered"`
-	Summary           string `json:"summary"`
+	TorpedoShots     int    `json:"torpedo_shots"`
+	TorpedoHits      int    `json:"torpedo_hits"`
+	TorpedoShip      string `json:"torpedoed_ship,omitempty"`
+	TorpedoShipType  string `json:"torpedoed_ship_type,omitempty"`
+	TorpedoShipSunk  bool   `json:"torpedoed_ship_sunk"`
+	SubmarineSunk    bool   `json:"submarine_sunk"`
+	SubmarineEscaped bool   `json:"submarine_escaped"`
+	Discovered       bool   `json:"discovered"`
+	Summary          string `json:"summary"`
 }
 
 type UnitDefinition struct {

@@ -128,7 +128,7 @@ func TestSubmarinePatrolPhaseAndPinning(t *testing.T) {
 	}
 }
 
-// TestSubmarineBattleReportsPointsAndEffects 潜艇战：差额为战斗点数，点数再兑换成效果。
+// TestSubmarineBattleReportsPointsAndEffects 胜方用骰差只执行一次能负担的最高档效果。
 func TestSubmarineBattleReportsPointsAndEffects(t *testing.T) {
 	for seed := uint64(1); seed < 60; seed++ {
 		state := submarineFixture()
@@ -148,8 +148,42 @@ func TestSubmarineBattleReportsPointsAndEffects(t *testing.T) {
 		if report.SubPoints+report.FleetPoints != diff {
 			t.Fatalf("种子 %d：战斗点数应等于骰差 %d，实际 潜艇%d 舰队%d", seed, diff, report.SubPoints, report.FleetPoints)
 		}
-		if diff > 0 && len(report.Effects) == 0 && report.PointsLeft > 0 {
-			t.Fatalf("种子 %d：有 %d 点战斗点数和效果都没兑换", seed, diff)
+		cost := 0
+		switch {
+		case diff >= 4:
+			cost = 4
+		case diff >= 2:
+			cost = 2
+		case diff >= 1:
+			cost = 1
+		}
+		if report.PointsLeft != diff-cost {
+			t.Fatalf("种子 %d：应只扣除最高档效果 %d 点，剩余点数应为 %d，实际 %d", seed, cost, diff-cost, report.PointsLeft)
+		}
+		if cost == 0 {
+			if report.TorpedoShots != 0 || len(report.Effects) != 0 {
+				t.Fatalf("种子 %d：没有可用点数时不应执行效果：%+v", seed, report)
+			}
+		} else if report.SubPoints > 0 {
+			if report.TorpedoShots != 0 && cost != 4 && cost != 2 {
+				t.Fatalf("种子 %d：%d 点效果不应发射鱼雷", seed, cost)
+			}
+			if (cost == 4 || cost == 2) && report.TorpedoShots != 1 {
+				t.Fatalf("种子 %d：%d 点效果应只发射 1 发鱼雷，实际 %d", seed, cost, report.TorpedoShots)
+			}
+			if cost == 4 && !report.SubmarineEscaped {
+				t.Fatalf("种子 %d：4 点效果应全身而退", seed)
+			}
+			if cost == 4 && report.Discovered {
+				t.Fatalf("种子 %d：4 点效果后不应再购买 2 点暴露效果", seed)
+			}
+		} else {
+			if len(report.Effects) != 1 {
+				t.Fatalf("种子 %d：舰队方应只执行 1 条效果，实际 %+v", seed, report.Effects)
+			}
+			if cost == 4 && report.Discovered {
+				t.Fatalf("种子 %d：4 点击沉判定未成功也不应补买 2 点暴露效果", seed)
+			}
 		}
 		if report.Summary == "" || len(events) == 0 {
 			t.Fatalf("种子 %d：战报和事件都不能为空", seed)

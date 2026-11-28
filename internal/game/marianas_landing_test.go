@@ -316,8 +316,30 @@ func TestMarianasLightCarrierGroup(t *testing.T) {
 		if unit.FleetID != "TF58.3" || unit.Type != "CVL" {
 			continue
 		}
+		if unit.Strength != 2 || unit.Card.DamageControl != 2 {
+			t.Fatalf("%s 生命/损管 %d/%d，期望 2/2", unit.Name, unit.Strength, unit.Card.DamageControl)
+		}
 		if unit.Card.HangarCapacity != 9 || unit.Card.Aircraft != 9 {
 			t.Fatalf("%s 机库 %d/%d，期望 9/9", unit.Name, unit.Card.Aircraft, unit.Card.HangarCapacity)
+		}
+	}
+}
+
+func TestMarianasCarriersHaveNoGuns(t *testing.T) {
+	scenario, gameMap, catalog, err := LoadScenario("../../content", "_marianas")
+	if err != nil {
+		t.Fatalf("加载剧本失败：%v", err)
+	}
+	state, err := NewState(scenario, gameMap, catalog, 42)
+	if err != nil {
+		t.Fatalf("建局失败：%v", err)
+	}
+	for _, unit := range state.Units {
+		if unit.Type != "CV" && unit.Type != "CVL" && unit.Type != "CVE" {
+			continue
+		}
+		if unit.Card.MainGunCount != 0 || unit.Card.Gunnery != 0 {
+			t.Fatalf("%s 主炮/炮击 %d/%d，期望 0/0", unit.Name, unit.Card.MainGunCount, unit.Card.Gunnery)
 		}
 	}
 }

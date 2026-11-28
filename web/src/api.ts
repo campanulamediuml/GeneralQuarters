@@ -7,7 +7,7 @@ let roomSocket: WebSocket | undefined
 let rpcSequence = 0
 const pendingRpc = new Map<string, PendingRpc>()
 
-// 服务端在状态变化时直接推视图过来：连上给全量，之后只给和上一帧的差异。
+// 玩家先通过 RPC 拉全量底座，之后服务端在状态变化时只推与上一帧的差异。
 // 这里负责把补丁合并成完整视图再交给视图层——视图层只关心"现在是什么样"。
 type StateListener = (view: GameView) => void
 let stateListener: StateListener | undefined
@@ -107,12 +107,6 @@ export const api = {
   // 观战链接 /watch/{token}：token 换 room_id，之后连 /ws?mode=spectator 订阅。
   watchRoom(token: string) {
     return request<{ room_id: string }>('/api/v1/watch/' + encodeURIComponent(token))
-  },
-  // 观战首帧走 HTTP：WebSocket 抖动时页面也能先画出战场，之后再用推送增量更新。
-  spectate(roomID: string, token: string) {
-    return request<Record<string, unknown>>(
-      '/api/v1/rooms/' + roomID + '/spectate?token=' + encodeURIComponent(token),
-    )
   },
   createRoom(name: string, scenarioID = '_coral_real', solo = false, faction: 'A' | 'B' = 'A') {
     return request<RoomResponse>('/api/v1/rooms', { method: 'POST', body: JSON.stringify({ name, scenario_id: scenarioID, solo, faction }) })

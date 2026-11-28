@@ -1,44 +1,53 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>General Quarters API</title><style>body{max-width:1040px;margin:0 auto;padding:40px 24px;background:#0b1519;color:#d9e3df;font:15px/1.75 system-ui}h1,h2{color:#e6c98a}code,pre{background:#13252b;color:#a9d8ce;border-radius:5px}code{padding:2px 5px}pre{padding:16px;overflow:auto}a{color:#8fc8bb}table{width:100%;border-collapse:collapse}td,th{padding:10px;border-bottom:1px solid #294047;text-align:left}.pill{color:#8fc8bb}</style></head><body>
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>General Quarters API</title><style>body{max-width:1040px;margin:0 auto;padding:40px 24px;background:#0b1519;color:#d9e3df;font:15px/1.75 system-ui}h1,h2{color:#e6c98a}code,pre{background:#13252b;color:#a9d8ce;border-radius:5px}code{padding:2px 5px}pre{padding:16px;overflow:auto}a{color:#8fc8bb}table{width:100%;border-collapse:collapse}td,th{padding:10px;border-bottom:1px solid #294047;text-align:left}.muted{color:#9fb2b3}</style></head><body>
 <h1>General Quarters API</h1>
-<p>版本0.1.0 · <a href="/api/v1/openapi.yaml">下载OpenAPI文档</a> · <a href="/">返回游戏</a> · 完整字段与语义见仓库根目录的<code>API.md</code>（本页只是速查表）</p>
+<p>版本 0.2.0 · <a href="/api/v1/openapi.yaml">下载 OpenAPI 定义</a> · <a href="/">返回游戏</a></p>
+<p class="muted">本页是速查表。完整命令、快照字段和补丁语义见仓库根目录的 <code>API.md</code>。</p>
 
 <h2>约定</h2>
 <ul>
-<li>会话由创建/加入接口写入HttpOnly Cookie<code>gq_session</code>；除健康检查与文档外都要带。</li>
-<li>错误一律是<code>{"error":"人类可读说明"}</code>；成功是JSON。</li>
-<li>hex坐标为<code>ABCD</code>：AB行、CD列，例如<code>0203</code>。</li>
-<li><code>base_turn</code>可选：提交时看到的回合号，只有"回合已结算"的过期提交会被409拒绝，不比对版本号。</li>
-<li><code>command_id</code>由客户端生成、玩家范围内唯一；断线重试必须沿用原ID。</li>
-<li>房间闲置12小时且无人在线时只释放内存，库里的房间、事件与回合快照全部保留，下次访问自动重载。</li>
+<li>创建或加入房间后，玩家使用 HttpOnly Cookie <code>gq_session</code>；观战使用房间 <code>join_token</code>。</li>
+<li>成功响应为 JSON；错误为 <code>{"error":"说明"}</code>，可另带 <code>error_code</code> 和 <code>error_params</code>。</li>
+<li>请求体会拒绝未知字段。hex 坐标为 <code>ABCD</code>：AB 行、CD 列，例如 <code>0203</code>。</li>
+<li><code>base_turn</code> 大于 0 时必须等于当前回合。<code>command_id</code> 在同一玩家范围内唯一，重试必须沿用原 ID 和请求体。</li>
+<li>闲置 12 小时且无玩家在线的房间只释放内存，不删除数据库记录；后续访问会自动重载。</li>
 </ul>
 
-<h2>HTTP（大厅 + 脚本兜底）</h2>
+<h2>HTTP（仅大厅与观战 token 解析）</h2>
 <table>
 <tr><th>方法</th><th>路径</th><th>用途</th></tr>
-<tr><td>POST</td><td>/api/v1/rooms</td><td>创建房间，body可含<code>name</code>、<code>scenario_id</code>、<code>solo</code>、<code>faction</code></td></tr>
-<tr><td>POST</td><td>/api/v1/rooms/join</td><td>凭<code>token</code>加入，body含<code>token</code>、<code>name</code></td></tr>
-<tr><td>GET</td><td>/api/v1/rooms/{id}/state</td><td>当前玩家私有快照（含<code>phase</code>、<code>weather_cells</code>等）</td></tr>
-<tr><td>GET</td><td>/api/v1/rooms/{id}/events</td><td>最近100条可见事件</td></tr>
-<tr><td>POST</td><td>/api/v1/rooms/{id}/commands</td><td>提交一条命令（进房后网页改走WebSocket）</td></tr>
-<tr><td>POST</td><td>/api/v1/rooms/{id}/ready</td><td>就绪；回执<code>{accepted,turn}</code></td></tr>
+<tr><td>GET</td><td>/healthz</td><td>健康检查</td></tr>
+<tr><td>POST</td><td>/api/v1/rooms</td><td>创建房间；body 可含 <code>name</code>、<code>scenario_id</code>、<code>faction</code>、<code>solo</code></td></tr>
+<tr><td>POST</td><td>/api/v1/rooms/join</td><td>凭 <code>token</code> 加入；body 含 <code>token</code>、<code>name</code></td></tr>
+<tr><td>GET</td><td>/api/v1/watch/{token}</td><td>解析观战 token，返回 <code>room_id</code></td></tr>
 </table>
 
 <h2>命令与回合</h2>
-<pre>POST /api/v1/rooms/{id}/commands
-{"command_id":"唯一ID","base_turn":3,"type":"SET_MOVE","unit_id":"a-flag","coord":"0203"}
+<p>以下 JSON 是 WebSocket RPC 的 <code>body</code>；对应 HTTP 房间接口已删除。</p>
+<pre>命令  {"command_id":"唯一ID","base_turn":3,"type":"SET_MOVE","unit_id":"a-flag","coord":"0203"}
+就绪  {"base_turn":3,"ready":true}</pre>
+<p>战斗阶段的 <code>SET_MOVE</code> 只登记规划，回合结算才移动；整编、拆分和非无线电航空命令立即修改状态。无线电 <code>RECALL_AIR</code>、<code>RETASK_AIR</code>、<code>RETARGET_AIR</code> 在结算时判定。<code>CLEAR_MOVE</code> 用 <code>unit_id</code> 撤销移动规划，或用 <code>task_id</code> 撤销无线电规划。</p>
+<p>玩家 ready 后所有命令都会锁定。战斗阶段不允许 <code>ready:false</code>；部署阶段可用它撤销部署完成，但部署命令不会自动取消 ready。双方都完成部署后进入 <code>battle</code>，回合仍为 1。双人房必须两名玩家都到齐并 ready，单人沙盒由唯一玩家推进。</p>
+<p><code>PREPARE_AIR</code> 已废弃并返回 400；手动上甲板使用 <code>LIFT_TO_DECK</code>。</p>
 
-POST /api/v1/rooms/{id}/ready
-{"base_turn":3,"ready":true}</pre>
-<p><code>CLEAR_MOVE</code>等撤回类命令结构相同但不需要<code>coord</code>。<code>state.phase == "deploy"</code>时是开局部署：<code>SET_MOVE</code>只受部署区限制、立即生效且没有冷却；双方都ready才开战（<code>phase</code>变<code>battle</code>，回合号仍是1）；部署阶段允许<code>ready:false</code>撤回，任何部署动作也会自动撤回ready。开战后ready不可撤销，所有玩家ready即同步结算并提升<code>turn</code>。</p>
-
-<h2>WebSocket</h2>
-<p>连接<code>GET /ws</code>，用同一会话Cookie；观战用<code>?mode=spectator</code>，连上后10秒内发订阅帧<code>{"type":"subscribe","room_id":"…","token":"…"}</code>。进房后的状态读取、命令、ready都走这条连接，不再轮询。</p>
-<pre>请求  {"type":"rpc_request","id":"1","method":"POST","path":"/api/v1/rooms/{id}/commands","body":{…}}
+<h2>WebSocket RPC</h2>
+<p>玩家用同一会话 Cookie 连接 <code>GET /ws</code>。进房后的状态、事件、命令和 ready 只能走这条连接，没有房间 HTTP 降级接口。</p>
+<pre>请求  {"type":"rpc_request","id":"1","method":"GET","path":"/api/v1/rooms/{id}/state"}
 应答  {"type":"rpc_response","id":"1","status":200,"body":{…}}
-推送  {"type":"state","patch":{…}}      // 增量，按字段合并
-      {"type":"snapshot","view":{…}}    // 全量底座（首帧/重连/观战）</pre>
-<p>服务端每30秒ping一次，90秒没有pong即断开；单帧上限1MB。补丁只带变化的节点，实体列表按<code>id</code>合并，客户端不能把补丁整块赋值给数组。</p>
+推送  {"type":"state","patch":{…}}</pre>
+<p>玩家连接和每次重连都必须先 <code>GET state</code> 建立全量底座，之后才能合并 <code>state.patch</code>。</p>
 
-<h2>AI扩展边界</h2>
-<p>DeepSeek适配器在服务器内运行：模型只接收当前阵营的私有视图和对话，输出候选结构化命令；候选命令仍走同一套校验与回合引擎。API密钥不进入浏览器，自然语言不能直接改变游戏状态。</p>
+<h2>观战</h2>
+<p>连接 <code>GET /ws?mode=spectator</code>，10 秒内发送：</p>
+<pre>{"type":"subscribe","room_id":"…","token":"XXXX-XXXX-XXXX"}</pre>
+<pre>首帧  {"type":"snapshot","view":{…}}
+补丁  {"type":"snapshot","patch":{…}}</pre>
+
+<h2>补丁与心跳</h2>
+<ul>
+<li>普通对象递归合并；标量和普通数组整块替换。</li>
+<li>实体数组使用 <code>{"upsert":[…],"remove":[…]}</code>；upsert 要就地合并。主键依次识别 <code>id</code>、<code>unit_id</code>、<code>task_id</code>、<code>carrier_id</code>、<code>fleet_id</code>、<code>coord</code>。</li>
+<li>字符串键 map 的删除使用 <code>{"set":{…},"remove":[…]}</code>。<code>null</code> 是业务值，不表示删除。</li>
+<li>服务端每 30 秒 ping，90 秒未收到 pong 断开；单帧上限 1 MiB，发送队列 32 帧。</li>
+<li>底座缺失、合并失败或跳帧时，应重连并重新获取全量，不要继续应用补丁。</li>
+</ul>
 </body></html>

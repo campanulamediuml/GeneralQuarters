@@ -54,6 +54,28 @@ func TestSurfaceCombatDeterministic(t *testing.T) {
 	}
 }
 
+func TestTorpedoUsesCurrentSpeedClass(t *testing.T) {
+	attacker := &Unit{ID: "a", FleetID: "a", Type: "DD", Faction: "B", Coord: "0101"}
+	target := &Unit{ID: "b", FleetID: "b", Type: "BB", Faction: "A", Coord: "0101", Card: ShipCard{SpeedClass: "fast", DamageControl: 5}}
+	state := State{Doctrines: map[string]string{"A": "us", "B": "japan"}, Units: map[string]*Unit{"a": attacker, "b": target}}
+	if got := torpedoChance(state, attacker, target); got != 15 {
+		t.Fatalf("未受损的快速目标应为 25-10=15%%，实际 %.0f%%", got)
+	}
+	EnsureDamage(target).Flooding = []int{1}
+	if got := torpedoChance(state, attacker, target); got != 25 {
+		t.Fatalf("一层进水后快速应降为普通并取消 -10%%，实际 %.0f%%", got)
+	}
+	EnsureDamage(target).Flooding = []int{1, 2}
+	if got := torpedoChance(state, attacker, target); got != 35 {
+		t.Fatalf("两层进水后快速应降为慢速并获得 +10%%，实际 %.0f%%", got)
+	}
+	EnsureDamage(target).Flooding = nil
+	EnsureDamage(target).Tilt = true
+	if got := torpedoChance(state, attacker, target); got != 25 {
+		t.Fatalf("倾斜同样应使快速降为普通，实际 %.0f%%", got)
+	}
+}
+
 func TestTorpedoUsesTargetSpeedAndConsumesSalvo(t *testing.T) {
 	attacker := &Unit{ID: "a", FleetID: "a", Name: "攻击舰", Type: "DD", Faction: "A", Coord: "0101", Card: ShipCard{TorpedoSalvos: 2}}
 	target := &Unit{ID: "b", FleetID: "b", Name: "目标舰", Type: "BB", Faction: "B", Coord: "0101", Strength: 6, MaxStrength: 6, Card: ShipCard{SpeedClass: "slow", DamageControl: 7}}

@@ -41,8 +41,12 @@ func TestSweepIdleRoomsFreesActorButKeepsHistory(t *testing.T) {
 		t.Fatal("读状态后应该已经有 room actor")
 	}
 
-	// 把房间的活动时间推到 13 小时前，模拟废弃对局。创建房间时玩家 connected=0，
-	// 所以这里不需要额外断开连接。
+	// 先关闭长连接，再显式落库离线状态，避免连接消息与后面的巡检竞争。
+	client.resetRPC()
+	if err := database.SetConnected(ctx, created.PlayerID, false); err != nil {
+		t.Fatalf("置离线失败：%v", err)
+	}
+	// 把房间的活动时间推到 13 小时前，模拟废弃对局。
 	old := time.Now().UTC().Add(-13 * time.Hour).Format(time.RFC3339Nano)
 	if _, err := database.DB.Exec("UPDATE rooms SET updated_at=?", old); err != nil {
 		t.Fatalf("改写活动时间失败：%v", err)
@@ -70,7 +74,8 @@ func TestSweepIdleRoomsFreesActorButKeepsHistory(t *testing.T) {
 	if turns == 0 {
 		t.Fatal("回合快照被清掉了")
 	}
-	// 再访问一次：按需从库里重新载入，状态照常返回，而不是 404。
+	// 回收会断开旧 WS；像真实客户端一样重连，再按需从库里重新载入。
+	client.resetRPC()
 	var reloaded map[string]any
 	if status := client.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &reloaded); status != http.StatusOK {
 		t.Fatalf("释放内存后重进应当能重新载入，实际 %d", status)
@@ -103,8 +108,9 @@ func TestSweepIdleRoomsKeepsConnectedRoom(t *testing.T) {
 	if status := client.call(t, http.MethodGet, "/api/v1/rooms/"+created.RoomID+"/state", nil, &first); status != http.StatusOK {
 		t.Fatalf("读状态失败：%d", status)
 	}
-	// 先标在线（会刷新活动时间），再把活动时间推回 13 小时前：
-	// 判定时应由"有人在线"这条兜住。
+	// 保持一条真实 WS 连接，再标在线并刷新活动时间；随后只把房间活动时间推回 13 小时前。
+	connection := dialTestWS(t, client, "/ws?room_id="+created.RoomID)
+	defer connection.Close()
 	if err := database.SetConnected(ctx, created.PlayerID, true); err != nil {
 		t.Fatalf("置在线失败：%v", err)
 	}

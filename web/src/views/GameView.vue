@@ -9,6 +9,7 @@ import { airfieldContactStatus } from '../airfields'
 import { applyDisplay, label } from '../display'
 import { shipDamageBadges, shipDamageDetailLabels } from '../shipDamage'
 import { contentImageURL } from '../silhouette-masks'
+import { airTaskTargetLabel } from '../strikeTargets'
 import HexMap from '../components/HexMap.vue'
 import AirfieldCounter from '../components/AirfieldCounter.vue'
 import ShipCard from '../components/ShipCard.vue'
@@ -98,6 +99,7 @@ watch(() => state.value?.phase, (phase) => {
 const strikeTargets = computed<StrikeTarget[]>(() => {
   const fleets_ = fleets.value.filter((fleet) => fleet.faction !== state.value?.you.faction).map((fleet) => ({
     coord: fleet.coord,
+    fleet_id: fleet.fleet_id,
     label: `${fleet.fleet_name || fleet.name} · ${fleet.count}艘 · ${fleet.coord}${fleet.contact_level ? ` · 情报${fleet.contact_level}` : ''}`,
     count: fleet.count,
     contact_level: fleet.contact_level,
@@ -108,6 +110,7 @@ const strikeTargets = computed<StrikeTarget[]>(() => {
     .filter((airfield) => airfield.faction !== state.value?.you.faction)
     .map((airfield) => ({
       coord: airfield.coord,
+      airfield_id: airfield.id,
       label: `${airfield.contact_level >= 3 ? airfield.name : '敌方机场'} · ${airfield.runways}跑道 · ${airfield.coord}`,
       count: 0,
       contact_level: (airfield.contact_level || 1) as 1 | 2 | 3 | 4,
@@ -320,8 +323,7 @@ const mapAirTaskTarget = computed(() => {
   const task = mapAirTask.value
   if (!task) return ''
   if (!task.target_coord) return '未设置'
-  const label = strikeTargets.value.find((target) => target.coord === task.target_coord)?.label
-  return label || task.target_coord
+  return airTaskTargetLabel(task, strikeTargets.value)
 })
 // 起飞位置：任务卡上要能回答"这队飞机是从哪儿起飞的"。
 // 以前只给当前坐标和目标，航母上起飞的 CAP/掩护看在眼里就是"坐标 = 母舰"，不知道出发点。
@@ -1080,10 +1082,10 @@ const outcomeText = computed(() => {
   return `对局结束：${result}（${outcome.reason}）`
 })
 
-async function clearOrder(key: string) {
+async function clearOrder(order: Pick<Order, 'unit_id' | 'task_id'>) {
   if (!state.value || locked.value) return
   try {
-    await sendCommand(key.startsWith('task-') ? { type: 'CLEAR_MOVE', task_id: key } : { type: 'CLEAR_MOVE', unit_id: key })
+    await sendCommand(order.task_id ? { type: 'CLEAR_MOVE', task_id: order.task_id } : { type: 'CLEAR_MOVE', unit_id: order.unit_id || '' })
   } catch (cause) {
     error.value = cause instanceof Error ? cause.message : '取消失败'
   }
@@ -1401,7 +1403,7 @@ onUnmounted(() => {
                 <div class="map-lobby-content">
                   <section class="side-card commander-card"><div class="section-kicker">YOUR COMMAND</div><div class="commander-line"><div class="faction-seal" :class="`seal-${state.you.faction.toLowerCase()}`">{{ state.you.faction }}</div><div><h2>{{ state.you.name }}</h2><span>{{ state.you.faction === 'A' ? '苍蓝舰队' : '赤红舰队' }} · {{ state.you.is_host ? '房主' : '参战玩家' }}</span></div></div><div class="room-code"><span>ROOM</span><code>{{ state.room_id }}</code></div></section>
                   <section v-if="state.join_token" class="side-card invite-card"><div><span class="section-kicker">INVITE PLAYER B</span></div><button class="token-display" @click="copyToken"><code>{{ state.join_token }}</code><span>{{ copied ? '已复制' : '复制' }}</span></button><div v-if="watchPath" class="watch-row"><a :href="watchPath" target="_blank" rel="noreferrer">观战页 ↗</a><button @click="copyWatchLink">{{ watchCopied ? '链接已复制' : '复制观战链接' }}</button></div></section>
-                  <section class="side-card orders-card"><div class="side-card-head"><span class="section-kicker">PENDING ORDERS</span><span>{{ state.orders.length }}</span></div><div v-if="state.orders.length" class="order-list"><div v-for="order in state.orders" :key="order.unit_id || order.task_id"><span>{{ order.task_id ? `任务 ${order.task_id}` : unitName(order.unit_id) }}</span><code>{{ order.type === 'MERGE_FLEET' ? `整编 → ${unitName(order.target_unit_id || '')}` : order.type === 'REORGANIZE_HEX' ? `整编hex ${order.coord}` : order.type === 'RECALL_AIR' ? '无线电召回' : order.type === 'RETASK_AIR' ? `无线电改令 → ${order.task_kind}` : `预定 → ${order.coord}` }}</code><button aria-label="取消命令" @click="clearOrder(order.unit_id || order.task_id || '')">×</button></div></div><p v-else class="empty-copy">尚未下达移动或整编命令</p>
+                  <section class="side-card orders-card"><div class="side-card-head"><span class="section-kicker">PENDING ORDERS</span><span>{{ state.orders.length }}</span></div><div v-if="state.orders.length" class="order-list"><div v-for="order in state.orders" :key="order.unit_id || order.task_id"><span>{{ order.task_id ? `任务 ${order.task_id}` : unitName(order.unit_id) }}</span><code>{{ order.type === 'MERGE_FLEET' ? `整编 → ${unitName(order.target_unit_id || '')}` : order.type === 'REORGANIZE_HEX' ? `整编hex ${order.coord}` : order.type === 'RECALL_AIR' ? '无线电召回' : order.type === 'RETASK_AIR' ? `无线电改令 → ${order.task_kind}` : `预定 → ${order.coord}` }}</code><button aria-label="取消命令" @click="clearOrder(order)">×</button></div></div><p v-else class="empty-copy">尚未下达移动或整编命令</p>
                     <div class="supply-summary"><span>滩头物资</span><b>{{ shoreSupplyTotal }}</b><small v-for="(value, coord) in state.shore_supplies || {}" :key="coord">{{ coord }}:{{ value }}</small></div>
                     <div v-if="enemyShoreSupplyTotal" class="supply-summary enemy-supplies"><span>敌方滩头物资</span><b>{{ enemyShoreSupplyTotal }}</b><small v-for="(value, coord) in state.enemy_shore_supplies || {}" :key="coord">{{ coord }}:{{ value }}</small><small class="supply-hint">可派舰队岸轰清除</small></div>
                   </section>

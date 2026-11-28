@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import type { AirTask, AirUnit, AviationView, CarrierAirStatus, GroundAirStatus, Player, ReconHeading, StrikeTarget, Unit } from '../types'
 import { airfieldTypeHint, airfieldTypeLabel } from '../airfields'
+import { airTaskTargetLabel } from '../strikeTargets'
 import AircraftCounter from './AircraftCounter.vue'
 import AirfieldCounter from './AirfieldCounter.vue'
 import ShipCounter from './ShipCounter.vue'
@@ -395,7 +396,7 @@ function taskSummary(task: AirTask) {
 }
 
 function targetLabel(task: AirTask) {
-  return props.targets.find((target) => target.coord === task.target_coord)?.label || task.target_coord || ''
+  return airTaskTargetLabel(task, props.targets)
 }
 
 function selectTask(task: AirTask) {
@@ -556,7 +557,7 @@ function counterHint(aircraft: AirUnit) {
   const loadout = loadoutName(aircraft)
   // 在空中的算子要能分出"出击中"和"返航中"：单看 status 分不出来，
   // 往目标飞和往回飞都是 attack，只有 returning 这个标记能回答"它现在是在去还是回"。
-  const airborne = ['cap', 'recon', 'attack', 'attack_holding', 'cover', 'transfer'].includes(aircraft.status)
+  const airborne = ['cap', 'asw', 'recon', 'attack', 'attack_holding', 'cover', 'transfer'].includes(aircraft.status)
   if (airborne && aircraft.returning) return `返航中 · 剩余航程 ${aircraft.remaining_range}${loadout}`
   if (aircraft.status === 'attack_holding') return `出击中 · 等待编队 · 剩余航程 ${aircraft.remaining_range}${loadout}`
   if (airborne) return `出击中 · 剩余航程 ${aircraft.remaining_range}${loadout}`
@@ -642,7 +643,7 @@ function operationName(carrier: CarrierAirStatus) {
                 <AircraftCounter :aircraft="stack.aircraft" :stack-count="stack.ids.length" :player-faction="playerFaction" :class="{ selected: selectedAircraftId && stack.ids.includes(selectedAircraftId) }" :draggable="['service', 'deck', 'ready'].includes(stack.aircraft.status)" @click="selectCounter(stack.aircraft)" @toggle-cycle="toggleCycle(stack.aircraft, stack.ids)" @dragstart="['service', 'deck', 'ready'].includes(stack.aircraft.status) && startDrag(stack.aircraft, $event, stack.ids)" @dragend="endDrag" />
                 <small>{{ counterHint(stack.aircraft) }}</small>
                 <select
-                  v-if="!['cap', 'asw', 'recon', 'attack', 'attack_holding'].includes(stack.aircraft.status)"
+                  v-if="['hangar', 'service', 'deck', 'ready'].includes(stack.aircraft.status)"
                   class="loadout-picker"
                   :value="stack.aircraft.loadout"
                   :disabled="busy"
@@ -652,7 +653,7 @@ function operationName(carrier: CarrierAirStatus) {
                 >
                   <option v-for="option in loadoutOptionsFor(stack.aircraft)" :key="option" :value="option">{{ loadoutOptionLabel(stack.aircraft, option) }}</option>
                 </select>
-                <button v-if="['cap', 'asw'].includes(stack.aircraft.status)" :disabled="busy" @click.stop="recover(stack.ids)">{{ airfieldMode ? '着陆并回收' : '着舰并排队下降' }}</button>
+                <button v-if="stack.aircraft.status === 'cap'" :disabled="busy" @click.stop="recover(stack.ids)">{{ airfieldMode ? '着陆并回收' : '着舰并排队下降' }}</button>
               </div>
             </div>
             <aside class="air-task-content">
