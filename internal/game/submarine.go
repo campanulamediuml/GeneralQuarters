@@ -844,6 +844,18 @@ func VisibleSubmarines(state State, faction string) []Submarine {
 	return result
 }
 
+// SpectatorSubmarines 给持有观战 token 的只读全知视图返回双方全部潜艇。
+// 玩家投影仍走 VisibleSubmarines，不会因为观战需要而暴露对方的隐蔽位置。
+func SpectatorSubmarines(state State) []Submarine {
+	result := []Submarine{}
+	for _, id := range sortedSubmarineIDs(state.Submarines) {
+		if sub := state.Submarines[id]; sub != nil {
+			result = append(result, *sub)
+		}
+	}
+	return result
+}
+
 // VisibleSubBattles 返回潜艇战战报：交战双方的舰队与潜艇已经同格遭遇，战报对两边公开。
 func VisibleSubBattles(state State) []SubmarineBattle {
 	result := make([]SubmarineBattle, len(state.SubBattles))

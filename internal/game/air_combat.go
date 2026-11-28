@@ -991,17 +991,17 @@ func resolveBombingOn(state *State, attacker *AirUnit, target *Unit, mixed, capR
 		return nil
 	}
 	events := []EngineEvent{}
-	antiShip := attacker.AntiShip + AttackBonus(attacker.Loadout)
+	antiShip := EffectiveAntiShip(attacker.Loadout, attacker.AntiShip)
 	if attacker.Confusion && antiShip > 0 {
 		antiShip--
 	}
 	// 投弹前每架飞机掷一次 DC：过了这一次的对舰攻击值 +1（原版"投弹 DC"）。
-	// 熟练度决定这一掷的骰子档位，而不是给卡面数值加减。
-	if dcCheckWithSkill(state, attacker.Skill) {
+	// 当前挂载没有对舰攻击值时不判定，不能用临场发挥凭空造出一次攻击。
+	if antiShip > 0 && dcCheckWithSkill(state, attacker.Skill) {
 		antiShip++
 	}
 	chance := strikeHitChance(*state, attacker, target, mixed, capRemaining)
-	// 鱼雷机挂炸弹：没法俯冲，只能低空水平投弹，对舰命中判定取劣势。
+	// 鱼雷机挂炸弹时没法俯冲，只能低空水平投弹，对舰命中判定取劣势。
 	disadvantage := bombAttackDisadvantage(attacker)
 	hits := 0
 	// 记录尝试次数，即使 0 命中也要让战报/动画知道"确实投弹了"，而不是看起来漏结算。

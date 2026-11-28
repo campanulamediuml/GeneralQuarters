@@ -5,6 +5,7 @@ import { applyViewPatch, type ViewPatch } from '../patch'
 import { contactSizeLabel } from '../fleet'
 import { applyDisplay, label } from '../display'
 import { cycleKnots, speedKnots } from '../format'
+import { airFormationTitle, groupAirFormationAircraft, isAirFormation } from '../airFormation'
 import type { AirTask, AirfieldContact, GameEvent, GameView, Unit } from '../types'
 import HexMap from '../components/HexMap.vue'
 import ShipCard from '../components/ShipCard.vue'
@@ -42,12 +43,12 @@ const hexCoord = ref('')
 const hexFleets = computed(() => fleets.value.filter((fleet) => fleet.coord === hexCoord.value))
 const hexAirfields = computed(() => (state.value?.airfields || []).filter((airfield) => airfield.coord === hexCoord.value))
 // 侦察算子有独立的小标记，清单里只列飞行编队（攻击/转场/掩护）。
-const hexAirTasks = computed(() => [...tasks.value, ...groundTasks.value].filter((task) => task.kind !== 'recon' && task.current_coord === hexCoord.value))
+const hexAirTasks = computed(() => [...tasks.value, ...groundTasks.value].filter((task) => isAirFormation(task) && task.current_coord === hexCoord.value))
 function selectHex(coord: string) {
   clearDetailSelection()
   const hasContent = fleets.value.some((fleet) => fleet.coord === coord)
     || (state.value?.airfields || []).some((airfield) => airfield.coord === coord)
-    || [...tasks.value, ...groundTasks.value].some((task) => task.kind !== 'recon' && task.current_coord === coord)
+    || [...tasks.value, ...groundTasks.value].some((task) => isAirFormation(task) && task.current_coord === coord)
   hexCoord.value = hasContent ? coord : ''
 }
 // 航速用服务端算好的编队节奏（已经含"最慢一艘"和编队规模惩罚）；只有老快照缺字段时，
@@ -69,7 +70,8 @@ function carriersOf(faction: 'A' | 'B') {
 const tasks = computed(() => state.value?.aviation?.tasks || [])
 const groundTasks = computed(() => state.value?.ground_tasks || [])
 const events = computed<GameEvent[]>(() => [...(state.value?.events || [])].reverse())
-// 潜艇战报：观战页能看到战报，但不给潜艇的实时位置（隐蔽性对观战者也不开放）。
+// 观战 token 是双方全知的只读视角；玩家视图仍不会下发未发现的敌方潜艇。
+const submarines = computed(() => state.value?.submarines || [])
 const subBattles = computed(() => state.value?.sub_battles || [])
 const scores = computed(() => state.value?.scores || {})
 const losses = computed(() => state.value?.losses || {})
@@ -170,6 +172,9 @@ function groundStatusLabel(status: string) {
   return label('aircraft_status', status) || status || '—'
 }
 const selectedAirTask = computed(() => tasks.value.find((task) => task.id === selectedAirTaskID.value) || groundTasks.value.find((task) => task.id === selectedAirTaskID.value))
+const selectedAirTaskTitle = computed(() => selectedAirTask.value ? airFormationTitle(selectedAirTask.value) : '')
+const selectedAirTaskGroups = computed(() => groupAirFormationAircraft(selectedAirTask.value))
+const formationTasks = computed(() => tasks.value.filter(isAirFormation))
 // 舰队详情里补一行“空中掩护”：地图上那面 CAP 牌子在整张马里亚纳缩到 100% 时只有 7px 宽，
 // 看不清字；面板里给出准确的 CAP／掩护架数。
 // 船牌下面的空白：航母／战列舰的机库到底装了什么，就从这里补上。
@@ -230,6 +235,8 @@ const distanceOrigin = computed(() => {
 })
 
 function selectAirTask(taskID: string) {
+  const task = tasks.value.find((item) => item.id === taskID) || groundTasks.value.find((item) => item.id === taskID)
+  if (!isAirFormation(task)) return
   clearDetailSelection()
   selectedAirTaskID.value = taskID
 }
@@ -343,6 +350,7 @@ onUnmounted(() => {
           spectate
           :wind-cells="state.wind?.cells || ''"
           :weather-cells="state.weather_cells || ''"
+          :submarines="submarines"
           :sub-battles="state.sub_battles || []"
           :turn="state.turn"
           @select-unit="selectUnit"
@@ -370,7 +378,7 @@ onUnmounted(() => {
             <div>
               <span class="kicker">{{ detailAirfield ? 'AIRFIELD' : selectedAirTask ? 'AIR FORMATION' : 'FORMATION' }}</span>
               <h2 v-if="detailAirfield">{{ detailAirfield.name }}</h2>
-              <h2 v-else-if="selectedAirTask">{{ selectedAirTask.name }}</h2>
+              <h2 v-else-if="selectedAirTask">{{ selectedAirTaskTitle }}</h2>
               <h2 v-else>{{ fleetLabel(selectedFleet!) }}</h2>
             </div>
             <button type="button" aria-label="关闭详情" @click="closeDetail">×</button>
@@ -396,19 +404,21 @@ onUnmounted(() => {
 
           <template v-else-if="selectedAirTask">
             <dl class="watch-meta">
-              <div><dt>任务</dt><dd>{{ selectedAirTask.kind }} · {{ selectedAirTask.phase }}</dd></div>
+              <div><dt>状态</dt><dd>{{ selectedAirTask.returning ? '【返航中】' : '【出击中】' }}</dd></div>
               <div><dt>位置</dt><dd>{{ selectedAirTask.current_coord || selectedAirTask.origin_coord || '—' }}</dd></div>
               <div><dt>目标</dt><dd>{{ selectedAirTask.target_coord || '未设置' }}</dd></div>
               <div><dt>兵力</dt><dd>{{ selectedAirTask.airborne_count }} / {{ selectedAirTask.aircraft_ids.length }} 升空</dd></div>
             </dl>
             <div class="watch-air-strip">
-              <AircraftCounter
-                v-for="aircraft in selectedAirTask.aircraft"
-                :key="aircraft.id"
-                :aircraft="aircraft"
-                :player-faction="aircraft.faction"
-                :cycle-clickable="false"
-              />
+              <div v-for="group in selectedAirTaskGroups" :key="group.key" class="watch-air-group">
+                <AircraftCounter
+                  :aircraft="group.aircraft"
+                  :stack-count="group.count"
+                  :player-faction="group.aircraft.faction"
+                  :cycle-clickable="false"
+                />
+                <div class="air-task-loadout">{{ group.aircraft.loadout_label || '无挂载' }}</div>
+              </div>
             </div>
           </template>
 
@@ -515,18 +525,18 @@ onUnmounted(() => {
               <small>机库 {{ carrier.hangar_used }}/{{ carrier.hangar_capacity }} · 甲板 {{ carrier.deck_used }}/{{ carrier.deck_length }} · {{ carrier.blocked_reason || carrier.operation || '正常' }}</small>
             </div>
           </template>
-          <div v-if="tasks.length" class="watch-task-list">
-            <h3>在编任务</h3>
+          <div v-if="formationTasks.length" class="watch-task-list">
+            <h3>打击与转场编队</h3>
             <button
-              v-for="task in tasks"
+              v-for="task in formationTasks"
               :key="task.id"
               type="button"
               class="watch-task"
               :class="{ selected: task.id === selectedAirTaskID }"
               @click="selectAirTask(task.id)"
             >
-              <span>{{ task.name }}</span>
-              <small>{{ task.kind }} · {{ task.phase }} · {{ task.airborne_count }}/{{ task.aircraft_ids.length }} · {{ task.current_coord || '—' }}</small>
+              <span>{{ airFormationTitle(task) }}</span>
+              <small>{{ task.airborne_count }}/{{ task.aircraft_ids.length }} · {{ task.current_coord || '—' }}</small>
             </button>
           </div>
         </section>

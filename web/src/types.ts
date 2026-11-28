@@ -586,7 +586,7 @@ export interface GameView {
   // phase = 'deploy' 时双方还在部署区摆船；deploy_zone 是己方部署区（锚点/半径/格位串）。
   phase?: string
   deploy_zone?: DeployZone
-  /** 部署阶段是本方待部署的潜艇；开战后只剩被本方发现的敌方潜艇 */
+  /** 玩家视图按部署/发现规则过滤；观战视图包含双方全部潜艇。 */
   submarines?: Submarine[]
   /** 潜艇战战报（双方可见） */
   sub_battles?: SubmarineBattle[]

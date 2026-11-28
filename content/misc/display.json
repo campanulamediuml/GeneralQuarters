@@ -69,6 +69,7 @@
     },
     "skill_badge": {
       "rookie": "新",
+      "regular": "普",
       "veteran": "老",
       "ace": "精"
     },

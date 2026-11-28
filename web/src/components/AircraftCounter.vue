@@ -37,11 +37,11 @@ const cycleKind = computed(() => props.aircraft.cycle_kind || props.aircraft.tas
 const canCycle = computed(() => friendly.value && ['cap', 'cover', 'recon'].includes(cycleKind.value || '') && props.aircraft.status !== 'attack')
 const cycleOn = computed(() => Boolean(props.aircraft.on_cycle))
 const cycleLabel = computed(() => (cycleOn.value ? '自动循环已开启，点击取消' : '自动循环已关闭，点击开启'))
-// 飞行员熟练度：普通不画角标，新/老/精三档各占一个字，放在机型名前面。
+// 飞行员熟练度：新/普/老/精各占一个字，放在机型名前面。
 // 熟练度不改卡面数值，只决定 DC 临场发挥那一掷的骰子档位，角标负责让人一眼看出这队是谁在飞。
 // 角标一个字、说明里的档位名，同样查服务端文案表；默认按"普通"。
 const skillKey = computed(() => props.aircraft.skill || 'regular')
-const skillBadge = computed(() => (props.aircraft.skill ? label('skill_badge', props.aircraft.skill) : ''))
+const skillBadge = computed(() => label('skill_badge', skillKey.value))
 const skillLabel = computed(() => label('skill_label', skillKey.value))
 // 档位名和规则书同一套：无加成 / 2 骰劣势 / 单骰 / 2 骰优势。
 const skillTier = computed(() => label('skill_tier', skillKey.value))

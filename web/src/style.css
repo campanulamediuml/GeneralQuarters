@@ -432,10 +432,7 @@ path.hex-wind{pointer-events:none;fill:none;stroke:#7fa6b0;stroke-width:1.3;stro
 .air-task-model{width:112px;min-width:0}
 .air-task-model .air-counter{width:100%;height:auto;margin:0;cursor:default}
 .air-task-model.returning .air-counter{border-color:#b8784e}
-.air-task-model-meta{display:flex;flex-direction:column;gap:1px;margin-top:4px;text-align:center}
-.air-task-model-meta b{color:#c5d7d2;font:600 11px 'Rajdhani','Noto Sans SC',sans-serif;white-space:nowrap}
-.air-task-model-meta span{color:#8ba4a6;font-size:8px;white-space:nowrap}
-.air-task-model-meta em{color:#71908f;font-size:8px;font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.air-task-loadout{margin-top:3px;color:#9fb6b0;font-size:9px;line-height:1.3;text-align:center;white-space:nowrap}
 .lane-departed-hint{display:block;margin-top:8px;color:#83a2a4;font-size:9px}
 
 /* 缩放到头时按钮置灰：cursor 用 default 而不是全局 disabled 的 wait，端点不是"正在等" */
@@ -604,6 +601,11 @@ path.hex-wind{pointer-events:none;fill:none;stroke:#7fa6b0;stroke-width:1.3;stro
 .map-submarine.selected rect { stroke: #7cf0c1; stroke-width: 2; }
 .map-submarine.spotted rect { fill: rgba(74, 22, 22, .92); stroke: #ff8f6b; stroke-width: 1.6; stroke-dasharray: 4 3; }
 .map-submarine.spotted .submarine-caption { fill: #ffb49b; }
+.map-submarine.spectator { cursor: default; }
+.map-submarine.spectator.faction-a rect { fill: rgba(18, 34, 46, .92); stroke: #78c4ff; stroke-dasharray: none; }
+.map-submarine.spectator.faction-a .submarine-caption { fill: #b9d9f2; }
+.map-submarine.spectator.faction-b rect { fill: rgba(74, 22, 22, .92); stroke: #ff8f6b; stroke-dasharray: none; }
+.map-submarine.spectator.faction-b .submarine-caption { fill: #ffb49b; }
 .map-submarine:hover rect { stroke-width: 2; }
 
 /* 部署标签：紧凑潜艇列表与可操作海图并排，避免卡片被地图画布遮住。 */

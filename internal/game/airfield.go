@@ -767,8 +767,8 @@ func resolveGroundStrike(state *State, taskID, coord string) []EngineEvent {
 		if aircraft.Confusion && antiGround > 0 {
 			antiGround--
 		}
-		// 投弹 DC：每架飞机一次判定，过了这一次的对地攻击值 +1（与对舰同一条规则）。
-		if dcCheckWithSkill(state, aircraft.Skill) {
+		// 当前挂载没有对地攻击值时不判定，不能用临场发挥凭空造出一次攻击。
+		if antiGround > 0 && dcCheckWithSkill(state, aircraft.Skill) {
 			antiGround++
 		}
 		chance := groundHitChance(*state, airfield, groundAircraftView(aircraft), capRemaining)

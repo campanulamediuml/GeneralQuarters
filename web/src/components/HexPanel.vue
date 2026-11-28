@@ -35,7 +35,7 @@ function fleetTitle(fleet: FleetGroup) {
 }
 
 function taskTitle(task: AirTask) {
-  const base = task.kind === 'attack' ? '攻击编队' : task.kind === 'cover' ? '掩护编队' : task.kind === 'recon' ? '侦察' : '转场编队'
+  const base = task.kind === 'attack' ? '打击编队' : task.kind === 'cover' ? '掩护编队' : task.kind === 'recon' ? '侦察' : '转场编队'
   return (task.returning ? '返航·' : '') + base
 }
 

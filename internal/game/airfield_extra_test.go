@@ -62,7 +62,7 @@ func TestAirfieldStrikeInterruptsServicing(t *testing.T) {
 		attackers := map[string]*AirUnit{}
 		for _, id := range []string{"atk-1", "atk-2", "atk-3", "atk-4"} {
 			attackers[id] = &AirUnit{ID: id, CarrierID: "a2-cv-01", Faction: "A", Kind: "dive_bomber", Model: "SB2C", Status: "attack",
-				Strength: 2, AirCombat: 1, AntiGround: 4, TaskID: "ground-task", TaskKind: "attack",
+				Strength: 2, AirCombat: 1, AntiGround: 4, TaskID: "ground-task", TaskKind: "attack", Loadout: LoadoutBombTank,
 				Coord: airfield.Coord, TargetCoord: airfield.Coord, RemainingRange: 8, MaxRange: 12}
 		}
 		state.Aircraft = attackers

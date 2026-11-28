@@ -383,7 +383,7 @@ RPC 限制：
 {"type":"snapshot","patch":{}}
 ```
 
-观战视图合并双方合法视图，并标记 `spectator:true`。它不包含玩家私有 `orders` 或 `join_token`，也不公开潜艇实时位置。观战连接不使用 RPC。
+观战视图合并双方合法视图，并标记 `spectator:true`。它不包含玩家私有 `orders` 或 `join_token`。持有观战 token 的只读视图额外包含 `submarines`，展示双方全部潜艇及实时位置；这不会改变玩家快照的隐蔽规则。观战连接不使用 RPC。
 
 ### 6.3 心跳、重连与队列
 

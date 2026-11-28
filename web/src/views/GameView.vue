@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { adoptPushedView, api, attachRoomSocket, handleRoomSocketMessage, onPushedState } from '../api'
-import type { AirCombatReport, AirTask, AirUnit, GameView, Order, ReconHeading, StrikeTarget, Unit } from '../types'
+import type { AirCombatReport, AirTask, GameView, Order, ReconHeading, StrikeTarget, Unit } from '../types'
 import { contactCapitalsLabel, contactIntelLabel, contactSizeLabel, groupFleets, type FleetGroup } from '../fleet'
 import HexPanel from '../components/HexPanel.vue'
 import { airfieldContactStatus } from '../airfields'
@@ -10,6 +10,7 @@ import { applyDisplay, label } from '../display'
 import { shipDamageBadges, shipDamageDetailLabels } from '../shipDamage'
 import { contentImageURL } from '../silhouette-masks'
 import { airTaskTargetLabel } from '../strikeTargets'
+import { airFormationTitle, groupAirFormationAircraft, isAirFormation } from '../airFormation'
 import HexMap from '../components/HexMap.vue'
 import AirfieldCounter from '../components/AirfieldCounter.vue'
 import ShipCard from '../components/ShipCard.vue'
@@ -216,7 +217,8 @@ const distanceOrigin = computed(() => {
 const mapAirTask = computed<AirTask | undefined>(() => {
   const id = mapAirTaskID.value
   if (!id) return undefined
-  return (state.value?.aviation.tasks || []).find((item) => item.id === id) ?? (state.value?.ground_tasks || []).find((item) => item.id === id)
+  const task = (state.value?.aviation.tasks || []).find((item) => item.id === id) ?? (state.value?.ground_tasks || []).find((item) => item.id === id)
+  return isAirFormation(task) ? task : undefined
 })
 // 每支空中编队每回合只有一次无线电机会（规则书 601 行）：发出即消耗，失败也算用掉。
 const mapAirTaskRadio = computed(() => (state.value?.radio_tasks || []).find((item) => item.task_id === mapAirTaskID.value))
@@ -236,59 +238,9 @@ const mapAirTaskRadioTitle = computed(() => {
   if (radio.used) return '本回合已经发过无线电，不能再通信'
   return `无线电：最近友军 ${radio.distance} hex，成功率 ${radio.chance}%`
 })
-// 编队标题只写"攻击编队 × 30"：机型明细交给下面的飞机卡，一行标题塞三四个机型必被截断。
-const mapAirTaskTitle = computed(() => {
-  const task = mapAirTask.value
-  if (!task) return ''
-  const total = task.aircraft_ids.length || task.aircraft.length
-  if (task.kind === 'attack') return `攻击编队 × ${total}`
-  if (task.kind === 'transfer') return `转场编队 × ${total}`
-  return task.name
-})
-// 编队详情按"机型 + 状态 + 挂载 + 剩余航程"分组，和观战页同一套口径：
-// 同一队飞机是分几批升空的，油量各不相同，只写一个"剩余航程"会骗人。
-interface AirTaskModelRow {
-  key: string
-  aircraft: AirUnit
-  count: number
-  code: string
-  status: string
-  range: number
-  max: number
-  loadout: string
-  /** 挂载中文名由服务端下发：前端只渲染，不再维护 id→名字的映射。 */
-  loadoutLabel: string
-}
-const mapAirModelRows = computed<AirTaskModelRow[]>(() => {
-  const task = mapAirTask.value
-  if (!task) return []
-  const rows = new Map<string, AirTaskModelRow>()
-  for (const aircraft of task.aircraft) {
-    const range = aircraft.remaining_range
-    const key = [aircraft.model, aircraft.status, aircraft.returning ? 'r' : '', aircraft.loadout || '', range].join('|')
-    const existing = rows.get(key)
-    if (existing) {
-      existing.count += 1
-      continue
-    }
-    rows.set(key, {
-      key,
-      aircraft,
-      count: 1,
-      code: aircraft.model.split(/\s+/)[0],
-      status: aircraftFlightStatus(aircraft),
-      range,
-      max: aircraft.max_range,
-      loadout: aircraft.loadout || '',
-      loadoutLabel: aircraft.loadout_label || '',
-    })
-  }
-  // 同型排在一起，型内按剩余航程从多到少：一眼看出哪几架快没油了。
-  return [...rows.values()].sort((a, b) => {
-    if (a.aircraft.model !== b.aircraft.model) return a.aircraft.model < b.aircraft.model ? -1 : 1
-    return b.range - a.range
-  })
-})
+// 混合编队标题不点名机型；机型、挂载和剩余航程由下面的合并卡展示。
+const mapAirTaskTitle = computed(() => mapAirTask.value ? airFormationTitle(mapAirTask.value) : '')
+const mapAirModelRows = computed(() => groupAirFormationAircraft(mapAirTask.value))
 // 在空中的算子只写"出击中"不够用：往目标飞和往回飞都是 attack，只有 returning 能回答"在去还是在回"。
 // 舰队防空值 = 本舰队重型防空之和（规则书"重防空 = 同一支舰队所有舰船重防空值之和"）。
 // 空袭结算里重防空是整队掷的，但只结算被攻击的那支舰队，所以面板上就是这个数本身。
@@ -299,17 +251,6 @@ const selectedFleetHeavyAA = computed(() => {
   return Math.round(total * 10) / 10
 })
 
-function aircraftFlightStatus(aircraft: AirUnit) {
-  const airborne = ['cap', 'asw', 'recon', 'attack', 'attack_holding', 'cover', 'transfer'].includes(aircraft.status)
-  if (airborne && aircraft.returning) return '返航中'
-  if (aircraft.status === 'attack_holding') return '出击中 · 等待编队'
-  if (aircraft.status === 'attack') return '出击中'
-  // 机场算子不走甲板和升降机：落地是在跑道上，待命也是在跑道上，不能跟着航母叫"着舰/甲板"。
-  const fromAirfield = airfields.value.some((airfield) => airfield.id === aircraft.carrier_id)
-  if (aircraft.status === 'recovery') return fromAirfield ? '着陆中' : '着舰中'
-  // 状态名同样查服务端文案表；机场算子和航母算子的"deck"文案不同，分两组。
-  return label(fromAirfield ? 'aircraft_status_airfield' : 'aircraft_status', aircraft.status) || '空中'
-}
 const mapAirTaskPhase = computed(() => {
   const task = mapAirTask.value
   if (!task) return ''
@@ -692,6 +633,8 @@ function cancelStrikeTarget() {
 // 点地图上的编队牌：开/关编队详情。选目标的过程中点编队牌不算数，别把选目标打断。
 function selectMapAirTask(taskID: string) {
   if (strikeTargetTaskID.value) return
+  const task = (state.value?.aviation.tasks || []).find((item) => item.id === taskID) ?? (state.value?.ground_tasks || []).find((item) => item.id === taskID)
+  if (!isAirFormation(task)) return
   inspectedAirfieldID.value = ''
   selectedID.value = ''
   shipDetailOpen.value = false
@@ -773,7 +716,7 @@ function selectHex(coord: string) {
 }
 
 function hexAirTasksFor(coord: string) {
-  return [...(state.value?.aviation.tasks || []), ...groundTasks.value].filter((task) => task.kind !== 'recon' && task.current_coord === coord)
+  return [...(state.value?.aviation.tasks || []), ...groundTasks.value].filter((task) => isAirFormation(task) && task.current_coord === coord)
 }
 
 // 这一格里能点开的东西：舰队（含已侦察的敌舰队）、机场、飞行编队。
@@ -1329,16 +1272,11 @@ onUnmounted(() => {
                   <div class="fleet-workbench-actions"><button aria-label="关闭编队详情" @click="mapAirTaskID = ''">×</button></div>
                 </header>
                 <div class="air-task-detail">
-                  <!-- 编队里的飞机按"机型 + 状态 + 航程"铺开成卡：剩多少油、在去还是在回，
-                       每张卡自己说话。合计数字（编队最小航程）会把快没油的几架藏起来。 -->
+                  <!-- 只有机型、挂载、熟练度和剩余航程都相同的飞机才合并。 -->
                   <div class="air-task-model-grid">
-                    <div v-for="row in mapAirModelRows" :key="row.key" class="air-task-model" :class="{ returning: row.aircraft.returning }" :title="`${row.aircraft.model} ×${row.count}${row.loadoutLabel ? ' · 挂载 ' + row.loadoutLabel : ''}`">
+                    <div v-for="row in mapAirModelRows" :key="row.key" class="air-task-model" :class="{ returning: row.aircraft.returning }" :title="`${row.aircraft.model}${row.aircraft.loadout_label ? ' · ' + row.aircraft.loadout_label : ''} · 剩余航程 ${row.range} · ×${row.count}`">
                       <AircraftCounter :aircraft="row.aircraft" :stack-count="row.count" :player-faction="state.you.faction" :cycle-clickable="false" />
-                      <div class="air-task-model-meta">
-                        <b>{{ row.code }} ×{{ row.count }}</b>
-                        <span>{{ row.status }} · 航程 {{ row.range }}/{{ row.max }}</span>
-                        <em v-if="row.loadoutLabel">{{ row.loadoutLabel }}</em>
-                      </div>
+                      <div class="air-task-loadout">{{ row.aircraft.loadout_label || '无挂载' }}</div>
                     </div>
                   </div>
                   <dl>

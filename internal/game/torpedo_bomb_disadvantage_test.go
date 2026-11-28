@@ -2,8 +2,8 @@ package game
 
 import "testing"
 
-// 鱼雷机挂炸弹：它没有俯冲轰炸能力，只能低空水平投弹，对舰命中判定取劣势。
-// 挂鱼雷照常，俯冲轰炸机挂炸弹也不吃这一条（它们本来就能俯冲）。
+// 鱼雷机挂炸弹只能低空水平投弹，对舰取劣势；挂鱼雷本身不取劣势。
+// 俯冲轰炸机挂炸弹也不吃这一条（它们本来就能俯冲）。
 func TestTorpedoBomberBombDisadvantage(t *testing.T) {
 	state := loadNightMarianas(t)
 

@@ -10,15 +10,16 @@ import (
 )
 
 type spectateView struct {
-	Turn      int                        `json:"turn"`
-	Units     []game.Unit                `json:"units"`
-	Fleets    []game.FleetGroup          `json:"fleets"`
-	Airfields []game.AirfieldContact     `json:"airfields"`
-	GroundAir []game.AirfieldAirStatus   `json:"ground_air"`
-	Aviation  game.AviationView          `json:"aviation"`
-	Events    []store.Event              `json:"events"`
-	Losses    map[string]game.LossLedger `json:"losses"`
-	Spectator bool                       `json:"spectator"`
+	Turn       int                        `json:"turn"`
+	Units      []game.Unit                `json:"units"`
+	Fleets     []game.FleetGroup          `json:"fleets"`
+	Airfields  []game.AirfieldContact     `json:"airfields"`
+	GroundAir  []game.AirfieldAirStatus   `json:"ground_air"`
+	Aviation   game.AviationView          `json:"aviation"`
+	Events     []store.Event              `json:"events"`
+	Losses     map[string]game.LossLedger `json:"losses"`
+	Submarines []game.Submarine           `json:"submarines"`
+	Spectator  bool                       `json:"spectator"`
 	// 观战页要摊开双方的每一笔战果分：这两个字段必须一起下发，明细之和还要等于总分。
 	Scores         map[string]float64          `json:"scores"`
 	ScoreBreakdown map[string][]game.ScoreLine `json:"score_breakdown"`
@@ -108,6 +109,55 @@ func TestSpectateMergesBothFactions(t *testing.T) {
 	}
 	if frame := readWSEvent(t, badConn, "error"); len(frame["error"]) == 0 {
 		t.Fatal("错误 token 应返回观战错误帧")
+	}
+}
+
+func TestSpectatorSeesBothSubmarineDeployments(t *testing.T) {
+	host, _, _, cleanup := setupTestServer(t)
+	defer cleanup()
+	created := createTestPlayerRoom(t, host, "_coral_real", "A", false)
+	guest := newTestClient(t, host.base)
+	if status := guest.call(t, http.MethodPost, "/api/v1/rooms/join", map[string]string{"token": created.JoinToken, "name": "B", "faction": "B"}, nil); status != http.StatusOK {
+		t.Fatalf("加入房间状态码%d", status)
+	}
+	placeSubmarines(t, host, created.RoomID)
+	placeSubmarines(t, guest, created.RoomID)
+
+	watcher := newTestClient(t, host.base)
+	conn := dialTestWS(t, watcher, "/ws?mode=spectator")
+	if err := conn.WriteJSON(map[string]string{"type": "subscribe", "room_id": created.RoomID, "token": created.JoinToken}); err != nil {
+		t.Fatal(err)
+	}
+	encoded, err := json.Marshal(readStateView(t, conn, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var view spectateView
+	if err := json.Unmarshal(encoded, &view); err != nil {
+		t.Fatal(err)
+	}
+	deployable := map[string]int{}
+	deployed := map[string]int{}
+	for _, submarine := range view.Submarines {
+		if !submarine.Reserve {
+			deployable[submarine.Faction]++
+		}
+		if submarine.Deployed && submarine.Coord != "" {
+			deployed[submarine.Faction]++
+		}
+	}
+	for _, faction := range []string{"A", "B"} {
+		if deployable[faction] != 6 || deployed[faction] != 9 {
+			t.Fatalf("观战应看到 %s 的 6 艘部署艇和 3 艘预备艇：deployable=%d deployed=%d", faction, deployable[faction], deployed[faction])
+		}
+	}
+
+	playerView := fetchViewMap(t, host, created.RoomID)
+	for _, raw := range playerView["submarines"].([]any) {
+		submarine := raw.(map[string]any)
+		if submarine["faction"] != "A" {
+			t.Fatalf("玩家视图不应因观战功能泄露对方潜艇：%+v", submarine)
+		}
 	}
 }
 

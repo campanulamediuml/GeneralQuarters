@@ -87,7 +87,8 @@ func buildSpectateView(room store.Room, players []store.Player, events []store.E
 		"score_breakdown": game.ScoreBreakdown(state),
 		"objectives":      state.Objectives,
 		"shore_supplies":  intMapSnapshot(state.ShoreSupplies),
-		// 观战页只给潜艇战报，不给潜艇实时位置：潜艇的隐蔽性对观战者也不开放。
+		// 观战 token 提供双方潜艇的只读全知视图；玩家快照仍使用 VisibleSubmarines。
+		"submarines":  game.SpectatorSubmarines(state),
 		"sub_battles": game.VisibleSubBattles(state),
 		"outcome":     state.Outcome,
 		"night":       state.Night,

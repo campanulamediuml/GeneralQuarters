@@ -38,7 +38,7 @@ const props = defineProps<{
   weatherCells?: string
   /** 观战模式：双方都按"完整可读"画，不套用情报等级/敌方样式，也不画己方航行目的地 */
   spectate?: boolean
-  /** 潜艇：部署阶段是己方待摆位的艇，开战后只有被己方发现的敌方潜艇 */
+  /** 玩家视图只给可见潜艇；观战视图给双方全部潜艇并按阵营着色。 */
   submarines?: Submarine[]
   /** 正在等玩家点海图选位置的那艘潜艇 */
   selectedSubmarineId?: string
@@ -274,7 +274,7 @@ function flightPosition(coord: string, index: number, total: number) {
 // 编队牌写任务状态而不是型号：拆组之后同一格会并存"攻击"和"返航"两张牌，
 // 玩家得一眼看出哪张还在打、哪张已经往家飞。
 function flightLabel(task: AirTask) {
-  const base = task.kind === 'attack' ? '攻击' : task.kind === 'cover' ? '掩护' : '转场'
+  const base = task.kind === 'attack' ? '打击' : task.kind === 'cover' ? '掩护' : '转场'
   return task.returning ? '返航·' + base : base
 }
 
@@ -678,11 +678,12 @@ const submarineMarkers = computed(() => {
   }
   return [...markers.values()]
 })
-// 同一格的潜艇只画一个居中堆，侧栏选中的潜艇显示在堆顶。
+// 同格同阵营的潜艇居中堆叠；观战时双方即使同格也分成两堆，不会混成一种颜色。
 const submarineStacks = computed(() => {
   const deployed = submarineMarkers.value
-  return [...groupByCoord(deployed, (submarine) => submarine.coord).entries()].map(([coord, submarines]) => ({
-    coord,
+  return [...groupByCoord(deployed, (submarine) => `${submarine.coord}|${submarine.faction}`).values()].map((submarines) => ({
+    coord: submarines[0].coord,
+    faction: submarines[0].faction,
     count: submarines.length,
     submarine: submarines.find((submarine) => submarine.id === props.selectedSubmarineId) || submarines[0],
   }))
@@ -797,12 +798,14 @@ function unitPosition(coord: string, index: number) {
   return { x: point.x + index * 22 - 11, y: point.y - index * 20 + 10 }
 }
 
-function submarinePosition(coord: string) {
+function submarinePosition(coord: string, faction: 'A' | 'B') {
   const point = center(coord)
+  const sides = new Set(submarineStacks.value.filter((stack) => stack.coord === coord).map((stack) => stack.faction))
+  const x = point.x + (sides.size > 1 ? (faction === 'A' ? -12 : 12) : 0)
   const fleets = fleetsAt(coord)
-  if (!fleets.some(submarineEngaged)) return point
+  if (!fleets.some(submarineEngaged)) return { x, y: point.y }
   const fleetBottom = Math.max(...fleets.map((_, index) => unitPosition(coord, index).y + 18))
-  return { x: point.x, y: fleetBottom + 11 }
+  return { x, y: fleetBottom + 11 }
 }
 
 function moveOrder(fleet: FleetGroup) {
@@ -1136,18 +1139,19 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         <text v-else-if="unit.moved && !stackedAt(coord)" class="unit-order" text-anchor="middle" y="48">已移动</text>
       </g>
     </g>
-    <!-- 同格潜艇居中堆叠，最多画两层背衬；具体选艇在部署标签的列表里完成。 -->
+    <!-- 同格同阵营潜艇居中堆叠，最多画两层背衬；观战双方同格时向左右错开。 -->
     <g
       v-for="stack in submarineStacks"
-      :key="'sub-stack-' + stack.coord"
+      :key="'sub-stack-' + stack.coord + '-' + stack.faction"
       class="map-submarine"
-      :class="{ selected: selectedSubmarineId === stack.submarine.id, spotted: stack.submarine.discovered }"
+      :class="[`faction-${stack.faction.toLowerCase()}`, { spectator: spectate, selected: selectedSubmarineId === stack.submarine.id, spotted: stack.submarine.discovered }]"
       :data-submarine-id="stack.submarine.id"
       :data-submarine-coord="stack.coord"
+      :data-submarine-faction="stack.faction"
       :data-submarine-count="stack.count"
       :data-submarine-discovered="stack.submarine.discovered ? '1' : '0'"
-      :transform="`translate(${submarinePosition(stack.coord).x}, ${submarinePosition(stack.coord).y})`"
-      @click.stop="emit('selectSubmarine', stack.submarine.id)"
+      :transform="`translate(${submarinePosition(stack.coord, stack.faction).x}, ${submarinePosition(stack.coord, stack.faction).y})`"
+      @click.stop="!spectate && emit('selectSubmarine', stack.submarine.id)"
     >
       <rect v-for="layer in Math.min(stack.count - 1, 2)" :key="'sub-layer-' + layer" class="submarine-stack-edge" :x="-17 - layer * 2" :y="-9 - layer * 2" width="34" height="18" rx="3" />
       <rect class="submarine-body" x="-17" y="-9" width="34" height="18" rx="3" />
@@ -1156,8 +1160,8 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         <circle r="7" />
         <text y="2.5" text-anchor="middle">{{ stack.count }}</text>
       </g>
-      <text class="submarine-caption" y="20" text-anchor="middle">{{ stack.submarine.discovered ? '发现潜艇' : stack.submarine.name }}</text>
-      <title>{{ stack.submarine.discovered ? `已发现敌方潜艇 · 在 ${stack.coord} 被钉住，逐回合投放深水炸弹` : `${stack.submarine.name} · 点击选中后再点海格部署` }}{{ stack.count > 1 ? ` · 本格共${stack.count}艘` : '' }}</title>
+      <text class="submarine-caption" y="20" text-anchor="middle">{{ stack.submarine.discovered && !spectate ? '发现潜艇' : stack.submarine.name }}</text>
+      <title>{{ spectate ? `${stack.faction === 'B' ? '日军' : '美军'} · ${stack.submarine.name} · ${stack.coord}` : stack.submarine.discovered ? `已发现敌方潜艇 · 在 ${stack.coord} 被钉住，逐回合投放深水炸弹` : `${stack.submarine.name} · 点击选中后再点海格部署` }}{{ stack.count > 1 ? ` · 本方本格共${stack.count}艘` : '' }}</title>
     </g>
     <g v-for="coord in reconAirCoords" :key="`recon-aircraft-${coord}`">
       <g
