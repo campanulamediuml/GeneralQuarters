@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
-import type { AirTask, DistanceReference, EnemyAirContact, GameMap, Order, ReconSector, Submarine, Unit } from '../types'
+import type { AirTask, DistanceReference, EnemyAirContact, GameMap, Order, ReconSector, Submarine, SubmarineBattle, Unit } from '../types'
 import { contactCapitalsLabel, contactSizeLabel, fleetOrder, type FleetGroup } from '../fleet'
 import { aircraftPictureURL, shipMaskURL } from '../silhouette-masks'
 import { airfieldContactStatus } from '../airfields'
@@ -42,6 +42,9 @@ const props = defineProps<{
   submarines?: Submarine[]
   /** 正在等玩家点海图选位置的那艘潜艇 */
   selectedSubmarineId?: string
+  /** 当前回合的遭遇战与持续反潜共同驱动舰队红色状态条。 */
+  subBattles?: SubmarineBattle[]
+  turn?: number
 }>()
 
 const emit = defineEmits<{
@@ -652,18 +655,51 @@ const airfieldCoords = computed(() => [...airfieldsByCoord.value.keys()])
 const reconAirByCoord = computed(() => groupByCoord(reconSectors.value, (sector) => sector.current_coord || ''))
 const reconAirCoords = computed(() => [...reconAirByCoord.value.keys()])
 
-// 潜艇：部署阶段画本方已落位的艇；开战后只画被本方发现的敌艇。
-// 同格多艘按顺序横排，否则两艘叠在一起只看得见一艘。
-const visibleSubmarines = computed(() => {
-  const seen = new Map<string, number>()
-  return (props.submarines || [])
-    .filter((submarine) => submarine.deployed && submarine.coord)
-    .map((submarine) => {
-      const index = seen.get(submarine.coord) || 0
-      seen.set(submarine.coord, index + 1)
-      return { ...submarine, stack_index: index }
+// 当前回合战报对双方公开，即使尚未形成持续追踪，也保留这一回合的遭遇算子。
+const submarineMarkers = computed(() => {
+  const markers = new Map<string, Submarine>()
+  for (const battle of props.subBattles || []) {
+    if (battle.turn !== props.turn) continue
+    markers.set(battle.submarine_id, {
+      id: battle.submarine_id,
+      faction: battle.submarine_faction as 'A' | 'B',
+      name: battle.submarine_name,
+      coord: battle.coord,
+      reserve: false,
+      deployed: true,
+      first_move_turn: 0,
+      move_interval: 0,
+      discovered: true,
+      tracked_fleet_id: battle.fleet_id,
     })
+  }
+  for (const submarine of props.submarines || []) {
+    if (submarine.deployed && submarine.coord) markers.set(submarine.id, submarine)
+  }
+  return [...markers.values()]
 })
+// 同一格的潜艇只画一个居中堆，侧栏选中的潜艇显示在堆顶。
+const submarineStacks = computed(() => {
+  const deployed = submarineMarkers.value
+  return [...groupByCoord(deployed, (submarine) => submarine.coord).entries()].map(([coord, submarines]) => ({
+    coord,
+    count: submarines.length,
+    submarine: submarines.find((submarine) => submarine.id === props.selectedSubmarineId) || submarines[0],
+  }))
+})
+const submarineEngagedFleetIDs = computed(() => {
+  const ids = new Set<string>()
+  for (const submarine of props.submarines || []) {
+    if (submarine.discovered && submarine.tracked_fleet_id) ids.add(submarine.tracked_fleet_id)
+  }
+  for (const battle of props.subBattles || []) {
+    if (battle.turn === props.turn) ids.add(battle.fleet_id)
+  }
+  return ids
+})
+function submarineEngaged(unit: FleetGroup) {
+  return submarineEngagedFleetIDs.value.has(unit.fleet_id)
+}
 
 // 当前距离圈上是谁（画在地形格上的 data-recon-current-aircraft）。
 // 以前是每格 filter 一遍全部扇面：3328 × 扇面数，纯浪费。
@@ -759,6 +795,14 @@ function unitPosition(coord: string, index: number) {
   const point = center(coord)
   if (!stackedAt(coord)) return { x: point.x, y: point.y }
   return { x: point.x + index * 22 - 11, y: point.y - index * 20 + 10 }
+}
+
+function submarinePosition(coord: string) {
+  const point = center(coord)
+  const fleets = fleetsAt(coord)
+  if (!fleets.some(submarineEngaged)) return point
+  const fleetBottom = Math.max(...fleets.map((_, index) => unitPosition(coord, index).y + 18))
+  return { x: point.x, y: fleetBottom + 11 }
 }
 
 function moveOrder(fleet: FleetGroup) {
@@ -1043,7 +1087,7 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         v-for="(unit, index) in fleetsAt(coord)"
         :key="unit.fleet_id"
         class="map-unit"
-        :class="[`faction-${unit.faction.toLowerCase()}`, `contact-${unit.contact_level || 0}`, { selected: selectedUnit?.fleet_id === unit.fleet_id, draggable: unit.faction === playerFaction && (unit.legal_moves?.length || 0) > 0, moved: unit.moved || (unit.move_cooldown || 0) > 0, planned: Boolean(moveOrder(unit)), 'drag-source': dragging && draggedUnit?.id === unit.id }]"
+        :class="[`faction-${unit.faction.toLowerCase()}`, `contact-${unit.contact_level || 0}`, { selected: selectedUnit?.fleet_id === unit.fleet_id, draggable: unit.faction === playerFaction && (unit.legal_moves?.length || 0) > 0, moved: unit.moved || (unit.move_cooldown || 0) > 0, planned: Boolean(moveOrder(unit)), 'submarine-engaged': submarineEngaged(unit), 'drag-source': dragging && draggedUnit?.id === unit.id }]"
         :data-unit-id="unit.id"
         :data-fleet-id="unit.fleet_id"
         :data-display-coord="unit.coord"
@@ -1054,6 +1098,7 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
       >
         <rect x="-26" y="-18" width="52" height="36" rx="3" />
         <path class="unit-stripe" d="M-26 11h52v7h-52z" />
+        <path v-if="submarineEngaged(unit)" class="unit-submarine-stripe" d="M-26 14.5h52V18h-52z" />
         <template v-if="unit.contact_level && unit.contact_level < 4">
           <!-- 情报分级：1 级"有敌舰"；2 级只给规模；3 级再加"存在航母/战列舰/重巡"。
                4 级才画真实剪影和舰名（下面的 unit-name 分支）。 -->
@@ -1091,23 +1136,28 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
         <text v-else-if="unit.moved && !stackedAt(coord)" class="unit-order" text-anchor="middle" y="48">已移动</text>
       </g>
     </g>
-    <!-- 潜艇小算子：部署阶段挂在本方已落位的艇上；开战后只有被发现的敌艇才会出现。
-         两者样式分开：部署阶段可点选摆位，被发现的是"钉死在原地"的敌情。 -->
-    <g v-for="submarine in visibleSubmarines" :key="'sub-' + submarine.id">
-      <g
-        class="map-submarine"
-        :class="{ selected: selectedSubmarineId === submarine.id, spotted: submarine.discovered }"
-        :data-submarine-id="submarine.id"
-        :data-submarine-coord="submarine.coord"
-        :data-submarine-discovered="submarine.discovered ? '1' : '0'"
-        :transform="`translate(${center(submarine.coord).x + 24 + submarine.stack_index * 36}, ${center(submarine.coord).y - 26})`"
-        @click.stop="emit('selectSubmarine', submarine.id)"
-      >
-        <rect x="-17" y="-9" width="34" height="18" rx="3" />
-        <image v-if="shipMaskURL(submarine.picture)" :href="shipMaskURL(submarine.picture)!" x="-15" y="-7" width="30" height="14" preserveAspectRatio="xMidYMid meet" class="submarine-mask" />
-        <text class="submarine-caption" y="20" text-anchor="middle">{{ submarine.discovered ? '发现潜艇' : submarine.name }}</text>
-        <title>{{ submarine.discovered ? `已发现敌方潜艇 · 在 ${submarine.coord} 被钉住，逐回合投放深水炸弹` : `${submarine.name} · 点击选中后再点海格部署` }}</title>
+    <!-- 同格潜艇居中堆叠，最多画两层背衬；具体选艇在部署标签的列表里完成。 -->
+    <g
+      v-for="stack in submarineStacks"
+      :key="'sub-stack-' + stack.coord"
+      class="map-submarine"
+      :class="{ selected: selectedSubmarineId === stack.submarine.id, spotted: stack.submarine.discovered }"
+      :data-submarine-id="stack.submarine.id"
+      :data-submarine-coord="stack.coord"
+      :data-submarine-count="stack.count"
+      :data-submarine-discovered="stack.submarine.discovered ? '1' : '0'"
+      :transform="`translate(${submarinePosition(stack.coord).x}, ${submarinePosition(stack.coord).y})`"
+      @click.stop="emit('selectSubmarine', stack.submarine.id)"
+    >
+      <rect v-for="layer in Math.min(stack.count - 1, 2)" :key="'sub-layer-' + layer" class="submarine-stack-edge" :x="-17 - layer * 2" :y="-9 - layer * 2" width="34" height="18" rx="3" />
+      <rect class="submarine-body" x="-17" y="-9" width="34" height="18" rx="3" />
+      <image v-if="shipMaskURL(stack.submarine.picture)" :href="shipMaskURL(stack.submarine.picture)!" x="-15" y="-7" width="30" height="14" preserveAspectRatio="xMidYMid meet" class="submarine-mask" />
+      <g v-if="stack.count > 1" class="submarine-stack-count" transform="translate(16 -10)">
+        <circle r="7" />
+        <text y="2.5" text-anchor="middle">{{ stack.count }}</text>
       </g>
+      <text class="submarine-caption" y="20" text-anchor="middle">{{ stack.submarine.discovered ? '发现潜艇' : stack.submarine.name }}</text>
+      <title>{{ stack.submarine.discovered ? `已发现敌方潜艇 · 在 ${stack.coord} 被钉住，逐回合投放深水炸弹` : `${stack.submarine.name} · 点击选中后再点海格部署` }}{{ stack.count > 1 ? ` · 本格共${stack.count}艘` : '' }}</title>
     </g>
     <g v-for="coord in reconAirCoords" :key="`recon-aircraft-${coord}`">
       <g
@@ -1211,6 +1261,7 @@ function contactSizeName(size?: 'small' | 'medium' | 'large' | string) {
     <g v-if="dragging && draggedUnit" ref="ghostElement" class="map-unit drag-ghost" :class="`faction-${draggedUnit.faction.toLowerCase()}`" transform="translate(-1000, -1000)">
       <rect x="-26" y="-18" width="52" height="36" rx="3" />
       <path class="unit-stripe" d="M-26 11h52v7h-52z" />
+      <path v-if="submarineEngaged(draggedUnit)" class="unit-submarine-stripe" d="M-26 14.5h52V18h-52z" />
       <g class="unit-ship-mark">
         <image v-if="singleMask(draggedUnit)" :href="singleMask(draggedUnit)!" x="-24" y="-13" width="48" height="20" preserveAspectRatio="xMidYMax meet" class="fleet-ship-mask" />
       </g>

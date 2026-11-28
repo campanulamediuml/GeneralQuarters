@@ -343,6 +343,8 @@ onUnmounted(() => {
           spectate
           :wind-cells="state.wind?.cells || ''"
           :weather-cells="state.weather_cells || ''"
+          :sub-battles="state.sub_battles || []"
+          :turn="state.turn"
           @select-unit="selectUnit"
           @select-airfield="selectAirfield"
           @inspect-airfield="selectAirfield"
